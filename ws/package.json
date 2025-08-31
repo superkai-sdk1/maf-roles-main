@@ -1,0 +1,14 @@
+{
+  "name": "maf-roles-ws",
+  "version": "1.0.0",
+  "description": "WebSocket server for maf-roles",
+  "main": "ws.js",
+  "scripts": {
+    "start": "node ws.js"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7",
+    "uuid": "^9.0.0",
+    "ws": "^8.11.0"
+  }
+}
