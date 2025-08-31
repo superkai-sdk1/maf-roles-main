@@ -1,0 +1,1039 @@
+:root {
+  --maf-accent-color: #ae8cff;
+  --maf-accent-color-rgb: 174,140,255;
+  --maf-accent-color-22: rgba(var(--maf-accent-color-rgb), 0.13);
+  --maf-accent-color-24: rgba(var(--maf-accent-color-rgb), 0.14);
+  --maf-accent-color-2b: rgba(var(--maf-accent-color-rgb), 0.17);
+  --maf-accent-color-33: rgba(var(--maf-accent-color-rgb), 0.20);
+  --maf-accent-color-44: rgba(var(--maf-accent-color-rgb), 0.27);
+  --maf-accent-color-55: rgba(var(--maf-accent-color-rgb), 0.33);
+  --maf-accent-color-80: rgba(var(--maf-accent-color-rgb), 0.50);
+  --maf-accent-color-88: rgba(var(--maf-accent-color-rgb), 0.53);
+  --maf-accent-color-99: rgba(var(--maf-accent-color-rgb), 0.60);
+  --maf-accent-color-cc: rgba(var(--maf-accent-color-rgb), 0.80);
+  --maf-panel-glow: 0 0 18px 4px var(--maf-accent-color-44), 0 0 1px 0px #31225c, 0 2px 8px #0003;
+  --maf-panel-border: linear-gradient(120deg, var(--maf-accent-color, #ae8cff), #5b3e9c 60%, #ede7f6 100%);
+  --maf-panel-bg-dark: #191420e6;
+  --maf-panel-bg-dark2: #221a2b;
+  --maf-panel-radius: 18px;
+  --maf-panel-padding: 9px 18px;
+  --maf-panel-shadow: 0 0 12px 2px #ae8cff40, 0 2px 10px #0002;
+  --maf-panel-border-width: 2.2px;
+  --maf-panel-fadein: mafFadeIn 0.65s cubic-bezier(.6, 0, .3, 1);
+  --maf-panel-fadeout: mafFadeOut 0.5s cubic-bezier(.6, 0, .3, 1);
+  --maf-bg-main: #23232a;
+  --maf-bg-secondary: #2c2c36;
+  --maf-bg-accent: #37374a;
+  --maf-text-main: #fff;
+  --maf-btn-main: #23232a;
+}
+
+/* Фиксируем размер экрана */
+html, body {
+  width: 1920px !important;
+  height: 1080px !important;
+  min-width: 1920px !important;
+  min-height: 1080px !important;
+  max-width: 1920px !important;
+  max-height: 1080px !important;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  font-family: 'Gilroy', 'Gilroy-Bold', 'Gilroy-Medium', 'Gilroy-Regular', Arial, sans-serif !important;
+  background: transparent !important;
+  color: var(--md3-on-surface);
+}
+
+/* Центрируем основной контейнер, если нужно */
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 1920px !important;
+  height: 1080px !important;
+  min-width: 1920px !important;
+  min-height: 1080px !important;
+  max-width: 1920px !important;
+  max-height: 1080px !important;
+}
+
+.fa {
+  font-family: 'FontAwesome' !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  overflow: hidden;
+  position: relative;
+}
+
+.darker {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20vh;
+  background: linear-gradient(0deg, #000000 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+input {
+  font-family: 'Akrobat', sans-serif;
+}
+
+/* .wrap фиксируем по ширине и высоте */
+.wrap {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 700px;
+    bottom: 16px;
+    width: 0vw;
+    height: auto;
+    min-width: 1920px;
+    max-width: 1920px;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    z-index: 2;
+}
+
+/* New row for people at the bottom */
+.people-row-bottom {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 20px;
+    width: 1920px;
+    min-width: 1920px;
+    max-width: 1920px;
+    height: 192px; /* 160px * 1.2 */
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-end;
+    z-index: 10;
+    pointer-events: none;
+    /* margin-bottom: 0; */
+    /* padding-bottom: 0; */
+}
+
+.people-row-bottom .people {
+    pointer-events: auto;
+    /* Optionally add margin between players */
+    margin: 0 14px; /* немного увеличим отступ */
+}
+
+.people {
+  position: relative;
+  font-family: 'Gilroy', 'Gilroy-Bold', 'Gilroy-Medium', 'Gilroy-Regular', Arial, sans-serif !important;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: 144px;
+  background: var(--maf-bg-main) !important;
+  color: var(--maf-text-main) !important;
+  box-sizing: border-box;
+  transition: filter 0.5s, transform 0.5s, background 0.2s, color 0.2s;
+  filter: grayscale(0) brightness(1) drop-shadow(0px 11px 3px rgba(0, 0, 0, 0.75));
+  border-radius: 19.2px; /* добавлено: скругление как у подсветки */
+}
+
+.people.killed,
+.people.voted,
+.people.removed,
+.people.tech-fall-removed,
+.people.fall-removed {
+  filter: grayscale(1) brightness(0.75) drop-shadow(0px 0px 0px rgba(0, 0, 0, 0.5));
+  transform: translateY(15px);
+  opacity: 0.7;
+  transition: filter 0.5s, transform 0.5s, opacity 0.5s;
+}
+
+.people.options .people-role-select {
+  opacity: 1;
+  height: auto;
+}
+
+.people.die {
+  transform: translateY(15px);
+  filter: grayscale(1) brightness(0.75) drop-shadow(0px 0px 0px rgba(0, 0, 0, 0.5));
+}
+
+.people.highlighted {
+  position: relative;
+  z-index: 10;
+}
+
+.people.highlighted::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 19.2px; /* match .people border-radius */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  pointer-events: none;
+  opacity: 0;
+  animation:
+    highlight-glow 2s infinite ease-in-out,
+    highlight-fade-in 0.5s forwards;
+  z-index: 4;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes highlight-fade-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes highlight-glow {
+  0%, 100% {
+    border-color: var(--maf-accent-color-80);
+    box-shadow:
+      0 0 9.8px 3.9px var(--maf-accent-color-99),
+      0 0 24.6px 7.9px var(--maf-accent-color-33);
+  }
+  50% {
+    border-color: var(--maf-accent-color-cc);
+    box-shadow:
+      0 0 9.8px 3.9px var(--maf-accent-color-99),
+      0 0 24.6px 7.9px var(--maf-accent-color-33);
+  }
+}
+
+.avatar {
+  position: static;
+  z-index: 1;
+  width: 144px;
+  height: 170.4px; /* 144px * 1.1 */
+  border-radius: 19.2px 19.2px 0 0; /* скругление только сверху */
+  overflow: hidden;
+  display: block;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+  margin: 0;
+  background-color: #222;
+}
+
+.badges-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 144px;
+  height: 158.4px; /* 144px * 1.1 */
+  pointer-events: none;
+  z-index: 11;
+}
+
+.role-badge {
+  position: absolute;
+  left: -13px;
+  top: -8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;    /* 38px * 1.2 */
+  height: 46px;   /* 38px * 1.2 */
+  font-weight: 700;
+  font-size: 1.2em; /* чуть больше */
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.19);
+  z-index: 5;
+  animation: badge-pulse 1.8s infinite cubic-bezier(.4, 0, .6, 1), badge-glow 2.3s infinite linear;
+  user-select: none;
+  box-sizing: border-box;
+  border-radius: 60%; /* чуть больше радиус */
+  border: 3px solid var(--maf-accent-color);
+  box-shadow: 0 0 22px 6px var(--maf-accent-color-99), 0 3px 14px rgba(0, 0, 0, 0.16);
+  background: var(--role-bg, #1C1C1C);
+  background: linear-gradient(135deg, var(--role-bg, #1C1C1C) 80%, #2d2d2d 100%);
+  transition: box-shadow 0.3s, background 0.2s, color 0.2s;
+}
+
+.role-badge--sheriff { --role-bg: #E63946; }
+.role-badge--mafia { --role-bg: #1C1C1C; }
+.role-badge--don { --role-bg: #1C1C1C; }
+
+.status-badge {
+  position: absolute;
+  right: -13px;
+  top: -8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;    /* 38px * 1.2 */
+  height: 46px;   /* 38px * 1.2 */
+  font-size: 1.3em;
+  color: #fff;
+  z-index: 5;
+  border-radius: 50%;
+  border: 3px solid var(--maf-accent-color);
+  box-shadow: 0 0 22px 6px var(--maf-accent-color-99), 0 3px 14px rgba(0, 0, 0, 0.16);
+  background: #1C1C1C !important;
+  animation: badge-pulse 1.8s infinite cubic-bezier(.4, 0, .6, 1), badge-glow 2.3s infinite linear;
+  transition: box-shadow 0.3s, background 0.2s, color 0.2s;
+}
+
+.status-badge--die {
+  color: var(--maf-accent-color);
+  font-size: 1.6em;
+}
+
+.status-badge--like {
+  color: var(--maf-accent-color);
+}
+
+@keyframes badge-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.09); }
+  100% { transform: scale(1); }
+}
+
+@keyframes badge-glow {
+  0%, 100% { box-shadow: 0 0 22px 6px var(--maf-accent-color-99), 0 3px 14px rgba(0, 0, 0, 0.16); }
+  50% { box-shadow: 0 0 34px 10px var(--maf-accent-color-cc), 0 3px 14px rgba(0, 0, 0, 0.16); }
+}
+
+
+
+@keyframes mafFadeIn {
+  from { opacity: 0; transform: scale(0.97) translateY(-18px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes mafFadeOut {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(0.96) translateY(-18px); }
+}
+
+.maf-anim-text {
+  display: inline-block;
+  transition: color 0.23s, filter 0.23s;
+  animation: mafTextFade 0.44s;
+}
+
+@keyframes mafTextFade {
+  from { opacity: 0; filter: blur(6px); }
+  to { opacity: 1; filter: blur(0); }
+}
+
+.maf-anim-list {
+  display: inline-block;
+  animation: mafListFade 0.6s;
+}
+
+@keyframes mafListFade {
+  from { opacity: 0; transform: translateY(-16px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.status-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 7px;
+  margin-left: 4px;
+  font-size: 1.13em;
+  filter: drop-shadow(0 0 6px var(--maf-accent-color-44));
+}
+
+.status-icon.status-die { color: var(--maf-accent-color); }
+.status-icon.status-vote { color: var(--maf-accent-color) !important; filter: drop-shadow(0 0 7px var(--maf-accent-color-88)); }
+
+.people-name-box {
+  width: 144px;
+  background: var(--maf-bg-accent) !important;
+  color: var(--maf-text-main) !important;
+  padding: 6px 0;
+  position: relative;
+  border-radius: 0 0 19.2px 19.2px;
+  box-sizing: border-box;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.people-name-index {
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--maf-accent-color);
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  pointer-events: none;
+  display: inline-block;
+  vertical-align: middle;
+  min-width: 28px;
+  text-align: left;
+}
+
+.people-name-wrapper {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  padding-left: 0;
+  padding-right: 0;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.people-name {
+  font-size: clamp(0.7em, 1em, 1em);
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: none !important;
+  transition: font-size 0.2s ease, margin-left 0.2s, color 0.2s;
+  width: calc(100% - 40px); /* 40px чтобы не наползать на номер */
+  margin-left: 0;
+  margin-right: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Добавляем отступ слева при уменьшении шрифта */
+.people-name {
+  /* ...existing code... */
+}
+@media (min-width: 0px) {
+  .people-name {
+    /* Если font-size уменьшился, добавляем отступ */
+    /* Пример: если font-size меньше 1em, margin-left становится 12px, иначе 0 */
+    margin-left: clamp(0px, calc((1em - 100%) * 12), 12px);
+  }
+}
+.people-role {
+  position: absolute !important;
+  top: -30px;
+  width: 48px;    /* 40px * 1.2 */
+  height: 48px;   /* 40px * 1.2 */
+  border-radius: 36px; /* 30px * 1.2 */
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.people-role.ico-red {
+  visibility: hidden;
+}
+
+.ico-don,
+.ico-black,
+.ico-sheriff {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  width: 48px;    /* 40px * 1.2 */
+  height: 48px;   /* 40px * 1.2 */
+  border-radius: 36px; /* 30px * 1.2 */
+  transform: translate(0, 0);
+}
+
+.ico-don:after,
+.ico-black:after,
+.ico-sheriff:after {
+  content: '';
+  position: absolute;
+  top: 40%;
+  left: 75%;
+  width: 100%;
+  height: 100%;
+  transform: translateX(-50%) translateY(-50%);
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+.ico-don {
+  background-image: url(/icon/don.png);
+  z-index: 2;
+}
+
+.ico-don:after {
+  background-image: url(/icon/don.png);
+  z-index: 2;
+}
+
+.ico-black {
+  background-image: url(/icon/black.png);
+  z-index: 2;
+}
+
+.ico-black:after {
+  background-image: url(/icon/black.png);
+  z-index: 2;
+}
+
+.ico-sheriff {
+  background-image: url(/icon/sheriff.png);
+  z-index: 2;
+}
+
+.ico-sheriff:after {
+  background-image: url(/icon/sheriff.png);
+  z-index: 2;
+}
+
+.ico-red {
+  background-color: red;
+}
+
+.ico-red:after {
+  filter: saturate(0) invert(1) brightness(10);
+  margin: -2px 0 0 1px;
+}
+
+.killed-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 30px;
+  z-index: 2;
+}
+
+.like-icon {
+  position: absolute;
+  top: 0;
+  right: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 30px;
+  z-index: 2;
+  background: none;
+}
+
+/* --- Плашка День/Ночь компактная и выезжает из-под основной инфо-плашки --- */
+.maf-info-panel.day-night {
+  position: fixed;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  top: auto;
+  transform: none;
+  min-width: unset;
+  max-width: unset;
+  z-index: 100;
+  margin: 0 auto;
+}
+
+/* Удаляем все media queries */
+/* @media (max-width: 600px) {
+  /* удалено 
+}
+@media (max-width: 900px) {
+  /* удалено 
+} */
+
+/* --- АНИМАЦИИ ПАНЕЛЕЙ --- */
+.maf-info-panel,
+.additional-info-panel,
+.main-info-panel,
+.best-move-info-panel,
+.statuses-info-panel {
+	position: relative;
+	overflow: visible;
+	border-radius: 22px;
+	border: 4px solid var(--maf-accent-color);
+	background: #222;
+	box-shadow:
+		0 0 22px 4px var(--maf-accent-color-88),
+		0 0 38px 12px var(--maf-accent-color-33);
+	background-image:
+		linear-gradient(#222, #222),
+		conic-gradient(from 0deg, var(--maf-accent-color), var(--maf-accent-color-80), var(--maf-accent-color) 100%);
+	background-origin: border-box;
+	background-clip: padding-box, border-box;
+	animation: maf-border-glow 3s linear infinite;
+	width: auto;
+	white-space: nowrap;
+	min-width: 100px;
+	max-width: 500px;
+	padding-left: 20px;
+	padding-right: 20px;
+	padding-top: 15px;
+	padding-bottom: 15px;
+}
+@keyframes maf-border-glow {
+	0% { background-image:
+		linear-gradient(#222, #222),
+		conic-gradient(from 0deg, var(--maf-accent-color), var(--maf-accent-color-80), var(--maf-accent-color) 100%);
+	}
+	100% { background-image:
+		linear-gradient(#222, #222),
+		conic-gradient(from 360deg, var(--maf-accent-color), var(--maf-accent-color-80), var(--maf-accent-color) 100%);
+	}
+}
+/* Светящийся эффект */
+.maf-info-panel {
+	box-shadow:
+		0 0 22px 4px var(--maf-accent-color-88),
+		0 0 38px 12px var(--maf-accent-color-33);
+}
+
+/* --- ТРАНЗИЦИИ ПАНЕЛЕЙ --- */
+.maf-info-panel-enter-active,
+.maf-info-panel-leave-active {
+	transition: all 0.6s cubic-bezier(.77,0,.18,1);
+	will-change: transform, opacity;
+}
+/* Центральная панель (main, best-move, additional) — вверх */
+.maf-info-panel.main-enter,
+.maf-info-panel.best-move-enter,
+.maf-info-panel.additional-enter {
+	opacity: 0;
+}
+.maf-info-panel.main-leave-to,
+.maf-info-panel.best-move-leave-to,
+.maf-info-panel.additional-leave-to {
+	opacity: 0;
+}
+/* Левая панель (room-number) — влево */
+.maf-info-panel.room-number-enter {
+	transform: translateX(-80px) scale(0.95);
+	opacity: 0;
+}
+.maf-info-panel.room-number-leave-to {
+	transform: translateX(-80px) scale(0.95);
+	opacity: 0;
+}
+/* Правая панель (statuses) — вправо */
+.maf-info-panel.statuses-enter {
+	transform: translateX(80px) scale(0.95);
+	opacity: 0;
+}
+.maf-info-panel.statuses-leave-to {
+	transform: translateX(80px) scale(0.95);
+	opacity: 0;
+}
+/* День/ночь — вверх (как центральная) */
+.maf-info-panel.day-night-enter {
+	transform: translateY(-60px) scale(0.95);
+	opacity: 0;
+}
+.maf-info-panel.day-night-leave-to {
+	transform: translateY(-60px) scale(0.95);
+	opacity: 0;
+}
+/* Для плавности */
+.maf-info-panel-enter,
+.maf-info-panel-leave-to {
+	pointer-events: none;
+}
+
+.maf-info-panel.room-number {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 3.96em;
+  min-width: 510px;
+  min-height: 162px;
+  padding: 54px 114px;
+  border-radius: 54px !important;
+  z-index: 200;
+  justify-content: center;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 0 88px 24px var(--maf-accent-color-cc), 0 6px 48px rgba(0,0,0,0.33);
+  max-width: none !important;   /* убираем ограничения */
+  max-height: none !important;
+  overflow: visible !important;
+  box-sizing: border-box;
+}
+
+.room-number-panel {
+  display: none !important;
+}
+
+/* Новое окно с номером комнаты */
+.titan-room {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 500px;
+  height: 400px;
+  transform: translate(-50%, -50%);
+  background: var(--md3-surface);
+  color: var(--md3-on-primary);
+  font-size: 3em;
+  font-family: 'Gilroy', Arial, sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  border-radius: 40px;
+  box-shadow: 0 0 88px 24px var(--maf-accent-color-cc), 0 6px 48px rgba(0,0,0,0.33);
+  border: 4px solid var(--maf-accent-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* --- Новая шапка для панелей --- */
+.maf-header-panels {
+	position: fixed;
+	top: 10px;
+	left: 0;
+	width: 100vw;
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: flex-start;
+	z-index: 100;
+	pointer-events: none;
+}
+
+.maf-header-panel {
+	flex: 1 1 0;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	min-width: 0;
+	max-width: 33vw;
+}
+
+.maf-header-panel--center {
+	align-items: center;
+	justify-content: flex-start;
+	flex: 1 1 0;
+	max-width: 34vw;
+}
+
+.maf-header-panel--left {
+	align-items: flex-start;
+	justify-content: flex-start;
+	max-width: 33vw;
+}
+
+.maf-header-panel--right {
+	align-items: flex-end;
+	justify-content: flex-start;
+	max-width: 33vw;
+	pointer-events: none;
+}
+
+.maf-header-panel--right .maf-info-panel {
+	pointer-events: auto;
+}
+
+.maf-header-panel--right .maf-info-panel.statuses {
+	margin-bottom: 0;
+}
+
+.maf-header-panel--right .maf-info-panel.best-move {
+	margin-top: 5px !important;
+}
+
+
+
+/* Уникальные классы для каждой панели */
+.main-info-panel {
+	position: fixed;
+	top: 10px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 101;
+	text-align: center;
+}
+
+.additional-info-panel {
+	position: fixed;
+	top: 10px;
+	left: 30px;
+	z-index: 101;
+	/* Стилизация как у maf-info-panel */
+	overflow: visible;
+	border-radius: 22px;
+	border: 4px solid var(--maf-accent-color);
+	background: #222;
+	box-shadow:
+		0 0 22px 4px var(--maf-accent-color-88),
+		0 0 38px 12px var(--maf-accent-color-33);
+	background-image:
+		linear-gradient(#222, #222),
+		conic-gradient(from 0deg, var(--maf-accent-color), var(--maf-accent-color-80), var(--maf-accent-color) 100%);
+	background-origin: border-box;
+	background-clip: padding-box, border-box;
+	animation: maf-border-glow 3s linear infinite;
+	width: auto;
+	white-space: nowrap;
+	min-width: 100px;
+	max-width: 500px;
+	padding-left: 20px;
+	padding-right: 20px;
+	padding-top: 15px;
+	padding-bottom: 15px;
+	box-shadow:
+		0 0 22px 4px #ae8cff88,
+		0 0 38px 12px #ae8cff33;
+}
+
+.statuses-info-panel {
+	position: fixed;
+	top: 10px;
+	right: 30px;
+	z-index: 101;
+}
+
+.best-move-info-panel {
+	position: fixed;
+	right: 30px;
+	/* top вычисляется относительно .statuses-info-panel */
+	/* Используем JS/DOM или фиксированное значение, если высота известна */
+	top: calc(10px + 70px + 5px); /* 70px — примерная высота statuses, 5px — отступ */
+	z-index: 101;
+	margin-top: 0 !important;
+}
+
+/* Удаляем flex-контейнер и колонки */
+.maf-header-panels,
+.maf-header-panel,
+.maf-header-panel--center,
+.maf-header-panel--left,
+.maf-header-panel--right {
+	display: none !important;
+}
+
+/* Панели и подложки */
+.maf-info-panel,
+.additional-info-panel,
+.statuses-info-panel,
+.best-move-info-panel {
+  background: var(--maf-bg-secondary) !important;
+  color: var(--maf-text-main) !important;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  border-radius: 22px;
+  border: 4px solid var(--maf-accent-color);
+  box-shadow:
+    0 0 22px 4px var(--maf-accent-color-88),
+    0 0 38px 12px var(--maf-accent-color-33);
+  /* убираем background-image и background: #222; */
+}
+
+/* Подложка под никнейм */
+.people-name-box {
+  background: var(--maf-bg-acцент) !important;
+  color: var(--maf-text-main) !important;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* Основной фон карточки игрока */
+.people {
+  background: var(--maf-bg-main) !important;
+  color: var(--maf-text-main) !important;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* Никнейм */
+.people-name {
+  color: var(--maf-text-main) !important;
+  transition: color 0.2s;
+}
+
+/* Бейджи ролей и статусов */
+.role-badge,
+.status-badge {
+  background: var(--maf-btn-main) !important;
+  color: var(--maf-text-main) !important;
+  border: 3px solid var(--maf-accent-color);
+  transition: background 0.2s, color 0.2s, border 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Кнопки ролей и статусов (для roles.html если появятся) */
+.role-badges-right input.role-button,
+.role-badges-right button.role-button {
+  background: var(--maf-btn-main) !important;
+  color: var(--maf-text-main) !important;
+  border: 1.5px solid var(--maf-accent-color);
+  border-radius: 8px;
+  margin-left: 2px;
+  margin-right: 2px;
+  font-weight: 700;
+  font-size: 1em;
+  padding: 2px 10px;
+  transition: background 0.2s, color 0.2s, border 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.role-badges-right input.role-button.active,
+.role-badges-right button.role-button.active {
+  border: 2.5px solid var(--maf-accent-color);
+  box-shadow: 0 0 16px 4px var(--maf-accent-color-88), 0 0 8px 2px var(--maf-accent-color-44);
+  z-index: 2;
+}
+
+/* Победившая команда: модальное окно */
+.winner-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: rgba(24, 18, 43, 0.80);
+    backdrop-filter: blur(18px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: winner-fade-in 0.7s cubic-bezier(.4,0,.2,1);
+    /* уменьшаем padding для экономии места */
+    padding: 0 30px;
+}
+@keyframes winner-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.winner-modal-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px; /* уменьшено */
+    width: 100vw;
+    max-width: 100vw;
+    pointer-events: none;
+}
+.winner-section, .loser-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100vw;
+    max-width: 100vw;
+}
+.winner-title, .loser-title {
+    font-size: 2.9em; /* увеличен размер */
+    font-weight: 900;
+    color: var(--maf-accent-color, #ae8cff);
+    letter-spacing: 0.06em;
+    margin-bottom: 16px;
+    text-shadow: 0 2px 18px var(--maf-accent-color-88), 0 1px 8px #0008;
+    text-align: center;
+    transition: color 0.2s;
+}
+.winner-title {
+    color: var(--maf-accent-color, #ae8cff);
+}
+.loser-title {
+    /* Используем более тёмный вариант акцентного цвета */
+    color: #6a3fa7; /* fallback для фиолетового */
+    color: color-mix(in srgb, var(--maf-accent-color, #ae8cff) 60%, #18181d 40%);
+    /* Если color-mix не поддерживается, останется fallback */
+    text-shadow: 0 2px 18px var(--maf-accent-color-44), 0 1px 8px #0008;
+    transition: color 0.2s;
+}
+.winner-cards-row, .loser-cards-row {
+    display: flex;
+    flex-direction: row;
+    gap: 18px; /* уменьшено */
+    justify-content: center;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-bottom: 0;
+    margin-top: 0;
+    max-width: 1800px; /* ограничение ширины */
+}
+.winner-cards-row {
+    margin-bottom: 18px; /* уменьшено */
+}
+.loser-cards-row {
+    margin-top: 0;
+}
+.winner-card {
+    width: 180px;
+    min-height: 240px;
+    /* height: 240px; */ /* убрано фиксированное значение */
+    background: var(--maf-bg-main, #23232a);
+    color: var(--maf-text-main, #fff);
+    border-radius: 24px;
+    box-shadow: 0 0 24px 4px var(--maf-accent-color-44), 0 3px 14px #0005;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0;
+    position: relative;
+    animation: winner-card-pop 0.7s cubic-bezier(.4,0,.2,1);
+    transition: background 0.2s, color 0.2s;
+    pointer-events: auto;
+}
+@keyframes winner-card-pop {
+    0% { opacity: 0; transform: scale(0.7) translateY(80px);}
+    60% { opacity: 1; transform: scale(1.08) translateY(-12px);}
+    100% { opacity: 1; transform: scale(1) translateY(0);}
+}
+.winner-avatar {
+    width: 100%;
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
+    border-radius: 24px 24px 0 0;
+    background-size: cover;
+    background-position: center;
+    margin-bottom: 0;
+    margin-top: 0;
+    box-shadow: 0 0 12px 3px var(--maf-accent-color-44), 0 2px 8px rgba(0,0,0,0.16);
+    background-color: #222;
+    display: block;
+}
+.winner-name {
+    font-size: 1.1em; /* уменьшено */
+    font-weight: 800;
+    color: var(--maf-accent-color, #ae8cff);
+    margin-bottom: 3px;
+    text-align: center;
+    text-shadow: 0 1px 8px #0008;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.winner-role {
+    font-size: 0.95em; /* уменьшено */
+    font-weight: 700;
+    color: #fff;
+    opacity: 0.85;
+    text-align: center;
+    margin-top: 0;
+    letter-spacing: 0.03em;
+    text-shadow: 0 1px 8px #0008;
+}
+
+/* Анимация появления модального окна */
+.winner-modal-fade-enter-active,
+.winner-modal-fade-leave-active {
+    transition: opacity 0.5s cubic-bezier(.4,0,.2,1);
+}
+.winner-modal-fade-enter, .winner-modal-fade-leave-to {
+    opacity: 0;
+}
+

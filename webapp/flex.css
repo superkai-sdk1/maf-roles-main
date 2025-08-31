@@ -1,0 +1,82 @@
+:root {
+  --background-color: #121212;
+  --surface-color: #1f1f1f;
+  --error-color: #cf6679;
+  --on-primary-color: #ffffff;
+  --on-secondary-color: #ffffff;
+  --on-background-color: #ffffff;
+  --on-surface-color: #ffffff;
+  --on-error-color: #000000;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--on-background-color);
+}
+
+.flex {
+  display: flex !important;
+  flex-direction: row;
+  /*flex-wrap: wrap;*/
+  background-color: var(--surface-color);
+  color: var(--on-surface-color);
+}
+
+.flex:not(.flex-column):not(.flex-no_margin) > * {
+  margin-right: 10px;
+}
+
+.flex:not(.flex-column):not(.flex-no_margin) > *:last-child {
+  margin-right: 0;
+}
+
+.flex.flex-column {
+  flex-direction: column;
+}
+
+.flex.flex-center {
+  align-items: center;
+  align-content: center;
+}
+
+.flex.flex-middle {
+  justify-content: center;
+}
+
+.flex.flex-end {
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+.flex.flex-start {
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.flex.flex-auto > * {
+  flex: 0 0 auto;
+}
+
+.flex.flex-50 > * {
+  flex: 1 1 100%;
+}
+
+.flex > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.flex > *.flex-bug-scroll {
+  height: 100%;
+  overflow: hidden;
+}
+
+.flex .flex-fixed {
+  flex: 0 0 auto;
+}
+
+.flex .flex-fixed:empty:not(hr, img, .fa) {
+  margin-right: 0;
+}
+
+/*# sourceMappingURL=flex.css.map */
