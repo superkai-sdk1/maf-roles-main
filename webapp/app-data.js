@@ -303,7 +303,11 @@ window.app = new Vue({
 });
 
 console.log('✅ app-data.js загружен, Vue приложение создано в window.app');
-console.log('🔧 Заглушка joinRoom создана:', typeof window.app.methods.joinRoom);
+
+// **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:**
+// Эта строка вызывала ошибку, так как выполнялась до того, как другие модули успевали загрузиться.
+// Система модулей в app-core.js обрабатывает инициализацию корректно, поэтому эта проверка не нужна.
+// console.log('🔧 Заглушка joinRoom создана:', typeof window.app.methods.joinRoom);
 
 // Создаём наблюдатель для обновления методов после загрузки модулей
 let methodUpdateInterval = setInterval(() => {
