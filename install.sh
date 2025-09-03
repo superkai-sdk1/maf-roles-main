@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# СКРИПТ УСТАНОВКИ С SSL (HTTPS) (v7 - Финальная версия)
+# СКРИПТ УСТАНОВКИ С ЯВНЫМ УКАЗАНИЕМ NODE.JS (v8 - Финальная версия)
 # ==============================================================================
 
 set -e
@@ -13,10 +13,10 @@ PROJECT_DEST_DIR="/var/www/$DOMAIN"
 FRONTEND_DIR_NAME="webapp"
 BACKEND_DIR_NAME="websocket"
 BACKEND_SCRIPT_NAME="ws.js"
-BACKEND_PORT="8081" # Порт из ваших логов
+BACKEND_PORT="8081"
 BACKEND_SERVICE_NAME="maf-roles-websocket"
 NODE_VERSION="20"
-LETSENCRYPT_EMAIL="admin@$DOMAIN" # Email для уведомлений от Let's Encrypt
+LETSENCRYPT_EMAIL="admin@$DOMAIN"
 
 # --- Проверяем, что скрипт запущен с правами sudo ---
 if [ "$EUID" -ne 0 ]; then
@@ -32,14 +32,12 @@ apt-get install -y nginx curl python3-certbot-nginx
 # --- 2. Копирование файлов и установка прав ---
 echo "--- Шаг 2/5: Копирование файлов проекта в $PROJECT_DEST_DIR ---"
 mkdir -p "$PROJECT_DEST_DIR"
-# Копируем все, кроме .git
 rsync -av --exclude='.git' "$PROJECT_SOURCE_DIR/" "$PROJECT_DEST_DIR/"
-# Устанавливаем правильные права доступа, чтобы Nginx мог читать файлы
-chown -R www-data:www-data "$PROJECT_DEST_DIR"
+chown -R root:root "$PROJECT_DEST_DIR" # Запускать будем от root
 chmod -R 755 "$PROJECT_DEST_DIR"
 
 # --- 3. Установка Node.js и зависимостей бекенда ---
-echo "--- Шаг 3/5: Установка Node.js и зависимостей сервера ---"
+echo "--- Шаг 3/5: Установка Node.js v$NODE_VERSION и зависимостей сервера ---"
 export NVM_DIR="$HOME/.nvm"
 if [ ! -s "$NVM_DIR/nvm.sh" ]; then
     mkdir -p "$NVM_DIR"
@@ -48,14 +46,19 @@ fi
 . "$NVM_DIR/nvm.sh"
 nvm install $NODE_VERSION
 nvm use $NODE_VERSION
-# Устанавливаем зависимости от имени пользователя www-data для безопасности
+
+# **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:** Находим полный путь к нужной версии Node.js
+NODE_PATH=$(which node)
+echo "Будет использован Node.js по пути: $NODE_PATH"
+
+# Устанавливаем зависимости
 cd "$PROJECT_DEST_DIR/$BACKEND_DIR_NAME"
 npm install
 cd "$PROJECT_DEST_DIR"
 
 # --- 4. Настройка Nginx и получение SSL-сертификата ---
 echo "--- Шаг 4/5: Настройка Nginx и получение SSL-сертификата ---"
-# Создаем финальную конфигурацию Nginx
+# Создаем временный конфиг для получения сертификата
 cat <<EOF > "/etc/nginx/sites-available/$DOMAIN"
 server {
     listen 80;
@@ -71,10 +74,10 @@ ln -sf "/etc/nginx/sites-available/$DOMAIN" "/etc/nginx/sites-enabled/"
 rm -f /etc/nginx/sites-enabled/default
 systemctl reload nginx
 
-# Получаем сертификат
+# Получаем/обновляем сертификат
 certbot --nginx --agree-tos --redirect --non-interactive -m "$LETSENCRYPT_EMAIL" -d "$DOMAIN"
 
-# Перезаписываем конфиг еще раз, чтобы добавить WebSocket proxy
+# Создаем финальную конфигурацию Nginx
 cat <<EOF > "/etc/nginx/sites-available/$DOMAIN"
 server {
     listen 80;
@@ -110,11 +113,14 @@ EOF
 systemctl reload nginx
 
 # --- 5. Запуск сервера через PM2 ---
-echo "--- Шаг 5/5: Запуск сервера через PM2 ---"
+echo "--- Шаг 5/5: Запуск сервера через PM2 с правильной версией Node.js ---"
 npm install pm2 -g
 pm2 delete "$BACKEND_SERVICE_NAME" || true
-# Запускаем от имени www-data для безопасности
-pm2 start "$PROJECT_DEST_DIR/$BACKEND_DIR_NAME/$BACKEND_SCRIPT_NAME" --name "$BACKEND_SERVICE_NAME" --user www-data
+
+# **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:** Запускаем, явно указывая путь к интерпретатору
+pm2 start "$PROJECT_DEST_DIR/$BACKEND_DIR_NAME/$BACKEND_SCRIPT_NAME" --interpreter "$NODE_PATH" --name "$BACKEND_SERVICE_NAME"
+
+# Сохраняем список процессов и настраиваем автозапуск
 pm2 save
 pm2 startup
 
