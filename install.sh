@@ -1,25 +1,25 @@
 #!/bin/bash
 
 # ==============================================================================
-# ФИНАЛЬНЫЙ СКРИПТ УСТАНОВКИ (v5)
+# СКРИПТ УСТАНОВКИ ВЕБ-ПРИЛОЖЕНИЯ И WEBSOCKET-СЕРВЕРА (v6 - Финальная версия)
 # ==============================================================================
 
 # --- Останавливаем скрипт при любой ошибке ---
 set -e
 
-# --- Конфигурация проекта (изменять здесь, если нужно) ---
+# --- Имя папки с файлами фронтенда ---
 FRONTEND_DIR_NAME="webapp"
-BACKEND_DIR_NAME="websocket"
+# --- Имя основного файла веб-сокет сервера ---
 BACKEND_SCRIPT_NAME="ws.js"
-BACKEND_SERVICE_NAME="maf-roles-websocket"
-NODE_VERSION="20"
 
 # ------------------------------------------------------------------------------
-# --- Системные переменные и проверки (не изменять) ---
+# --- Переменные проекта ---
 # ------------------------------------------------------------------------------
 PROJECT_DIR=$(pwd)
 FRONTEND_DIR="$PROJECT_DIR/$FRONTEND_DIR_NAME"
-BACKEND_DIR="$PROJECT_DIR/$BACKEND_DIR_NAME"
+BACKEND_DIR="$PROJECT_DIR/websocket"
+BACKEND_SERVICE_NAME="maf-roles-websocket"
+NODE_VERSION="20"
 
 # --- Проверяем, что скрипт запущен с правами sudo ---
 if [ "$EUID" -ne 0 ]; then
@@ -27,21 +27,21 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# --- Переходим в директорию скрипта, чтобы все пути были правильными ---
+# --- Переходим в директорию скрипта ---
 cd "$(dirname "$0")" || exit
 
-# --- Проверяем существование директорий ---
+# --- Проверяем существование директорий и файлов ---
 if [ ! -d "$FRONTEND_DIR" ]; then
     echo "Ошибка: Директория фронтенда '$FRONTEND_DIR' не найдена!"
     exit 1
 fi
-if [ ! -d "$BACKEND_DIR" ]; then
-    echo "Ошибка: Директория бекенда '$BACKEND_DIR' не найдена!"
+if [ ! -f "$BACKEND_DIR/$BACKEND_SCRIPT_NAME" ]; then
+    echo "Ошибка: Файл сервера '$BACKEND_DIR/$BACKEND_SCRIPT_NAME' не найден!"
     exit 1
 fi
 
 # --- Запрос домена ---
-read -p "Введите ваш домен (например, example.com): " DOMAIN
+read -p "Введите ваш домен (например, minahor.ru): " DOMAIN
 if [ -z "$DOMAIN" ]; then
     echo "Домен не может быть пустым. Прерывание."
     exit 1
@@ -55,25 +55,22 @@ apt-get install -y nginx curl
 # --- 2. Установка Node.js и зависимостей ---
 echo "--- Шаг 2/4: Установка Node.js и зависимостей сервера ---"
 
-# Устанавливаем и загружаем NVM в окружение скрипта.
-# Все выполняется от имени root, так как скрипт запущен через sudo.
-export NVM_DIR="/root/.nvm"
+# Устанавливаем и загружаем NVM в окружение скрипта
+export NVM_DIR="$HOME/.nvm"
 if [ ! -s "$NVM_DIR/nvm.sh" ]; then
     mkdir -p "$NVM_DIR"
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 fi
 
-# **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:** Загружаем nvm в текущую сессию, чтобы команда стала доступна
-source "$NVM_DIR/nvm.sh"
+# Загружаем nvm в текущую сессию
+. "$NVM_DIR/nvm.sh"
 
 # Устанавливаем Node.js
-echo "Установка Node.js v$NODE_VERSION..."
 nvm install $NODE_VERSION
 nvm use $NODE_VERSION
 nvm alias default $NODE_VERSION
 
 # Устанавливаем зависимости бекенда
-echo "Установка зависимостей для $BACKEND_DIR_NAME..."
 cd "$BACKEND_DIR"
 npm install
 cd "$PROJECT_DIR"
@@ -82,13 +79,11 @@ cd "$PROJECT_DIR"
 echo "--- Шаг 3/4: Настройка и запуск сервера через pm2 ---"
 npm install pm2 -g
 pm2 delete "$BACKEND_SERVICE_NAME" || true
-
-# **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:** Используем правильное имя файла ws.js
-echo "Запуск $BACKEND_SCRIPT_NAME через pm2..."
 pm2 start "$BACKEND_DIR/$BACKEND_SCRIPT_NAME" --name "$BACKEND_SERVICE_NAME"
 
+# Сохраняем список процессов и настраиваем автозапуск
 pm2 save
-STARTUP_COMMAND=$(pm2 startup | tail -n 1)
+pm2 startup
 
 # --- 4. Настройка Nginx ---
 echo "--- Шаг 4/4: Настройка веб-сервера Nginx ---"
@@ -99,12 +94,13 @@ server {
     listen 80;
     server_name $DOMAIN;
 
-    # **ИСПРАВЛЕНО:** Корень сайта - папка с файлами фронтенда, без build
     root $FRONTEND_DIR;
     index index.html index.htm;
 
+    # Ключевое исправление для SPA (Single Page Application)
+    # Все запросы, которые не являются файлами, перенаправляются на index.html
     location / {
-        try_files \$uri \$uri/ =404;
+        try_files \$uri /index.html;
     }
 
     # Правило для проксирования websocket-соединений на Node.js сервер
@@ -129,8 +125,5 @@ systemctl reload nginx
 echo "================================================================"
 echo "УСТАНОВКА УСПЕШНО ЗАВЕРШЕНА!"
 echo "Сайт должен быть доступен по адресу: http://$DOMAIN"
-echo ""
-echo "!!! ВАЖНОЕ ДЕЙСТВИЕ !!!"
-echo "Для настройки автозапуска сервера после перезагрузки, выполните следующую команду:"
-echo "$STARTUP_COMMAND"
+echo "Сервер '$BACKEND_SERVICE_NAME' запущен и настроен на автозапуск."
 echo "================================================================"
