@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# СКРИПТ УСТАНОВКИ С PHP (v9 - Финальная версия)
+# СКРИПТ УСТАНОВКИ С PHP И PPA (v10 - Финальная версия)
 # ==============================================================================
 
 set -e
@@ -16,7 +16,7 @@ BACKEND_SCRIPT_NAME="ws.js"
 BACKEND_PORT="8081"
 BACKEND_SERVICE_NAME="maf-roles-websocket"
 NODE_VERSION="20"
-PHP_VERSION="8.2" # Современная, стабильная версия PHP
+PHP_VERSION="8.2"
 LETSENCRYPT_EMAIL="admin@$DOMAIN"
 
 # --- Проверяем, что скрипт запущен с правами sudo ---
@@ -25,21 +25,27 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# --- 1. Установка зависимостей (включая PHP) ---
-echo "--- Шаг 1/5: Установка Nginx, Certbot, PHP и других утилит ---"
+# --- 1. Установка зависимостей (включая PHP из PPA) ---
+echo "--- Шаг 1/5: Добавление репозитория PHP и установка зависимостей ---"
 apt-get update
+# Устанавливаем утилиту для добавления репозиториев и добавляем PPA для PHP
+apt-get install -y software-properties-common
+add-apt-repository ppa:ondrej/php -y
+# Обновляем список пакетов еще раз
+apt-get update
+# Теперь устанавливаем все зависимости
 apt-get install -y nginx curl python3-certbot-nginx "php${PHP_VERSION}-fpm"
 
 # --- 2. Копирование файлов и установка прав ---
 echo "--- Шаг 2/5: Копирование файлов проекта в $PROJECT_DEST_DIR ---"
 mkdir -p "$PROJECT_DEST_DIR"
 rsync -av --exclude='.git' "$PROJECT_SOURCE_DIR/" "$PROJECT_DEST_DIR/"
-chown -R www-data:www-data "$PROJECT_DEST_DIR" # PHP и Nginx работают от www-data
+chown -R www-data:www-data "$PROJECT_DEST_DIR"
 chmod -R 755 "$PROJECT_DEST_DIR"
 
 # --- 3. Установка Node.js и зависимостей бекенда ---
 echo "--- Шаг 3/5: Установка Node.js v$NODE_VERSION и зависимостей сервера ---"
-export NVM_DIR="/root/.nvm" # Устанавливаем и используем nvm от root
+export NVM_DIR="/root/.nvm"
 if [ ! -s "$NVM_DIR/nvm.sh" ]; then
     mkdir -p "$NVM_DIR"
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
@@ -64,7 +70,7 @@ server {
     server_name $DOMAIN;
     root $PROJECT_DEST_DIR/$FRONTEND_DIR_NAME;
     index index.html;
-    location / { try_files \$uri /index.html; }
+    location / { try_files $uri /index.html; }
 }
 EOF
 ln -sf "/etc/nginx/sites-available/$DOMAIN" "/etc/nginx/sites-enabled/"
@@ -90,16 +96,14 @@ server {
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
-    root $PROJECT_DEST_DIR; # Корень проекта, чтобы PHP мог найти /api
+    root $PROJECT_DEST_DIR;
     index index.html index.htm index.php;
 
     location / {
-        # Сначала ищем файл в webapp, потом отдаем index.html
         root $PROJECT_DEST_DIR/$FRONTEND_DIR_NAME;
         try_files \$uri /index.html;
     }
 
-    # **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:** Обработка PHP файлов
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
         fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
