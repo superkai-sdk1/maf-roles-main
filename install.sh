@@ -115,7 +115,6 @@ server {
 }
 EOF
 systemctl reload nginx
-
 # --- 5. Запуск Node.js сервера ---
 echo "--- Шаг 5/5: Запуск Node.js сервера через PM2 ---"
 npm install pm2 -g
