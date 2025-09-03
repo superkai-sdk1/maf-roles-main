@@ -1,10 +1,13 @@
 #!/bin/bash
 
 # ==============================================================================
-# СКРИПТ УДАЛЕНИЯ ВЕБ-ПРИЛОЖЕНИЯ И WEBSOCKET-СЕРВЕРА (v4)
+# ФИНАЛЬНЫЙ СКРИПТ УДАЛЕНИЯ (v5)
 # ==============================================================================
 
 set -e
+
+# --- Переменные ---
+BACKEND_SERVICE_NAME="maf-roles-websocket"
 
 # --- Проверяем, что скрипт запущен с правами sudo ---
 if [ "$EUID" -ne 0 ]; then
@@ -20,15 +23,15 @@ if [ -z "$DOMAIN" ]; then
 fi
 
 # --- Загружаем nvm, чтобы найти правильный pm2 ---
-export NVM_DIR="$HOME/.nvm"
+export NVM_DIR="/root/.nvm"
 if [ -s "$NVM_DIR/nvm.sh" ]; then
-    \. "$NVM_DIR/nvm.sh"
+    source "$NVM_DIR/nvm.sh"
 fi
 
 # --- 1. Остановка и удаление сервиса PM2 ---
 echo "--- Шаг 1/2: Удаление сервиса из PM2 ---"
 if command -v pm2 &> /dev/null; then
-    pm2 delete "maf-roles-websocket" || echo "Информация: Сервис не найден в pm2."
+    pm2 delete "$BACKEND_SERVICE_NAME" || echo "Информация: Сервис не найден в pm2."
     pm2 unstartup || echo "Информация: Конфигурация автозапуска не найдена."
     pm2 save --force
 else

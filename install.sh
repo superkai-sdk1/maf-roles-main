@@ -1,25 +1,25 @@
 #!/bin/bash
 
 # ==============================================================================
-# СКРИПТ УСТАНОВКИ ВЕБ-ПРИЛОЖЕНИЯ И WEBSOCKET-СЕРВЕРА (v5)
+# ФИНАЛЬНЫЙ СКРИПТ УСТАНОВКИ (v5)
 # ==============================================================================
 
 # --- Останавливаем скрипт при любой ошибке ---
 set -e
 
-# --- Имя папки с файлами фронтенда ---
+# --- Конфигурация проекта (изменять здесь, если нужно) ---
 FRONTEND_DIR_NAME="webapp"
+BACKEND_DIR_NAME="websocket"
+BACKEND_SCRIPT_NAME="ws.js"
+BACKEND_SERVICE_NAME="maf-roles-websocket"
+NODE_VERSION="20"
 
 # ------------------------------------------------------------------------------
-# --- Переменные проекта ---
+# --- Системные переменные и проверки (не изменять) ---
 # ------------------------------------------------------------------------------
 PROJECT_DIR=$(pwd)
 FRONTEND_DIR="$PROJECT_DIR/$FRONTEND_DIR_NAME"
-BACKEND_DIR="$PROJECT_DIR/websocket"
-BACKEND_SERVICE_NAME="maf-roles-websocket"
-NODE_VERSION="20"
-# **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:** Правильное имя файла сервера
-BACKEND_SCRIPT_NAME="ws.js"
+BACKEND_DIR="$PROJECT_DIR/$BACKEND_DIR_NAME"
 
 # --- Проверяем, что скрипт запущен с правами sudo ---
 if [ "$EUID" -ne 0 ]; then
@@ -27,7 +27,7 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# --- Переходим в директорию скрипта ---
+# --- Переходим в директорию скрипта, чтобы все пути были правильными ---
 cd "$(dirname "$0")" || exit
 
 # --- Проверяем существование директорий ---
@@ -55,22 +55,25 @@ apt-get install -y nginx curl
 # --- 2. Установка Node.js и зависимостей ---
 echo "--- Шаг 2/4: Установка Node.js и зависимостей сервера ---"
 
-# Устанавливаем и загружаем NVM в окружение скрипта
-export NVM_DIR="$HOME/.nvm"
+# Устанавливаем и загружаем NVM в окружение скрипта.
+# Все выполняется от имени root, так как скрипт запущен через sudo.
+export NVM_DIR="/root/.nvm"
 if [ ! -s "$NVM_DIR/nvm.sh" ]; then
     mkdir -p "$NVM_DIR"
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 fi
 
-# Загружаем nvm в текущую сессию
-. "$NVM_DIR/nvm.sh"
+# **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:** Загружаем nvm в текущую сессию, чтобы команда стала доступна
+source "$NVM_DIR/nvm.sh"
 
 # Устанавливаем Node.js
+echo "Установка Node.js v$NODE_VERSION..."
 nvm install $NODE_VERSION
 nvm use $NODE_VERSION
 nvm alias default $NODE_VERSION
 
 # Устанавливаем зависимости бекенда
+echo "Установка зависимостей для $BACKEND_DIR_NAME..."
 cd "$BACKEND_DIR"
 npm install
 cd "$PROJECT_DIR"
@@ -79,8 +82,11 @@ cd "$PROJECT_DIR"
 echo "--- Шаг 3/4: Настройка и запуск сервера через pm2 ---"
 npm install pm2 -g
 pm2 delete "$BACKEND_SERVICE_NAME" || true
-# Используем правильное имя файла
+
+# **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:** Используем правильное имя файла ws.js
+echo "Запуск $BACKEND_SCRIPT_NAME через pm2..."
 pm2 start "$BACKEND_DIR/$BACKEND_SCRIPT_NAME" --name "$BACKEND_SERVICE_NAME"
+
 pm2 save
 STARTUP_COMMAND=$(pm2 startup | tail -n 1)
 
@@ -93,6 +99,7 @@ server {
     listen 80;
     server_name $DOMAIN;
 
+    # **ИСПРАВЛЕНО:** Корень сайта - папка с файлами фронтенда, без build
     root $FRONTEND_DIR;
     index index.html index.htm;
 
@@ -100,6 +107,7 @@ server {
         try_files \$uri \$uri/ =404;
     }
 
+    # Правило для проксирования websocket-соединений на Node.js сервер
     location /socket.io/ {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
