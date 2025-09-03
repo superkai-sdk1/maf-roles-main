@@ -1,23 +1,45 @@
 #!/bin/bash
 
-# --- Останавливаем скрипт при любой ошибке ---
+# ==============================================================================
+# СКРИПТ УСТАНОВКИ ВЕБ-ПРИЛОЖЕНИЯ И WEBSOCKET-СЕРВЕРА
+# ==============================================================================
+
+# --- Останавливаем скрипт при любой ошибке для предсказуемости ---
 set -e
+
+# ---
+# !!! ВАЖНО: УКАЖИТЕ ПРАВИЛЬНОЕ ИМЯ ПАПКИ С ФРОНТЕНДОМ !!!
+# ---
+FRONTEND_DIR_NAME="maf-roles-main-front"
+
+# ------------------------------------------------------------------------------
+# --- Переменные проекта (обычно не требуют изменений) ---
+# ------------------------------------------------------------------------------
+PROJECT_DIR=$(pwd)
+FRONTEND_DIR="$PROJECT_DIR/$FRONTEND_DIR_NAME"
+BACKEND_DIR="$PROJECT_DIR/websocket"
+BACKEND_SERVICE_NAME="maf-roles-websocket"
+NODE_VERSION="20"
 
 # --- Проверяем, что скрипт запущен с правами sudo ---
 if [ "$EUID" -ne 0 ]; then
-  echo "Пожалуйста, запустите этот скрипт с правами sudo: sudo bash install.sh"
+  echo "Ошибка: Пожалуйста, запустите этот скрипт с правами sudo: sudo bash install.sh"
   exit 1
 fi
 
 # --- Переходим в директорию скрипта, чтобы все пути были правильными ---
 cd "$(dirname "$0")" || exit
 
-# --- Переменные проекта ---
-PROJECT_DIR=$(pwd)
-FRONTEND_DIR="$PROJECT_DIR/maf-roles-main-front" # Укажите правильную папку с фронтендом
-BACKEND_DIR="$PROJECT_DIR/websocket"
-BACKEND_SERVICE_NAME="maf-roles-websocket"
-NODE_VERSION="20"
+# --- Проверяем существование директорий ---
+if [ ! -d "$FRONTEND_DIR" ]; then
+    echo "Ошибка: Директория фронтенда '$FRONTEND_DIR' не найдена!"
+    echo "Пожалуйста, проверьте переменную FRONTEND_DIR_NAME в начале скрипта."
+    exit 1
+fi
+if [ ! -d "$BACKEND_DIR" ]; then
+    echo "Ошибка: Директория бекенда '$BACKEND_DIR' не найдена!"
+    exit 1
+fi
 
 # --- Запрос домена ---
 read -p "Введите ваш домен (например, example.com): " DOMAIN
@@ -26,45 +48,37 @@ if [ -z "$DOMAIN" ]; then
     exit 1
 fi
 
-# --- 1. Установка системных зависимостей (Nginx) ---
-echo "--- Установка Nginx и curl ---"
+# --- 1. Установка системных зависимостей ---
+echo "--- Шаг 1/5: Установка Nginx и других утилит ---"
 apt-get update
 apt-get install -y nginx curl
 
 # --- 2. Установка NVM и Node.js ---
-echo "--- Установка nvm и Node.js v$NODE_VERSION ---"
-# Устанавливаем от имени обычного пользователя, если он есть, иначе от root
+echo "--- Шаг 2/5: Установка Node.js через nvm ---"
 USER_TO_RUN_NVM=$(logname)
 sudo -u "$USER_TO_RUN_NVM" bash -c "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
 sudo -u "$USER_TO_RUN_NVM" bash -c "source ~/.nvm/nvm.sh && nvm install $NODE_VERSION && nvm alias default $NODE_VERSION"
 
-# --- Экспорт путей для текущей сессии root ---
+# --- Экспортируем пути nvm для текущей root-сессии, чтобы pm2 и npm работали ---
 export NVM_DIR="/home/$USER_TO_RUN_NVM/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
-# --- 3. Сборка Фронтенда ---
-echo "--- Сборка фронтенд-приложения ---"
-cd "$FRONTEND_DIR" || { echo "Ошибка: не найдена директория фронтенда $FRONTEND_DIR"; exit 1; }
-npm install
-npm run build
-cd "$PROJECT_DIR"
+# --- 3. Сборка Фронтенда и установка Бекенда ---
+echo "--- Шаг 3/5: Установка зависимостей и сборка проектов ---"
+# Выполняем от имени пользователя, чтобы избежать проблем с правами
+sudo -u "$USER_TO_RUN_NVM" bash -c "source ~/.nvm/nvm.sh && cd '$FRONTEND_DIR' && npm install && npm run build"
+sudo -u "$USER_TO_RUN_NVM" bash -c "source ~/.nvm/nvm.sh && cd '$BACKEND_DIR' && npm install"
 
-# --- 4. Установка зависимостей и запуск Бекенда ---
-echo "--- Установка зависимостей бекенда ---"
-cd "$BACKEND_DIR" || { echo "Ошибка: не найдена директория бекенда $BACKEND_DIR"; exit 1; }
-npm install
-cd "$PROJECT_DIR"
-
-echo "--- Установка и настройка pm2 ---"
+# --- 4. Установка и запуск Бекенда через PM2 ---
+echo "--- Шаг 4/5: Настройка и запуск сервера через pm2 ---"
 npm install pm2 -g
 pm2 delete "$BACKEND_SERVICE_NAME" || true
-# Запускаем сервер из его директории
 pm2 start "$BACKEND_DIR/server.js" --name "$BACKEND_SERVICE_NAME"
 pm2 save
-pm2 startup
+STARTUP_COMMAND=$(pm2 startup | tail -n 1)
 
 # --- 5. Настройка Nginx ---
-echo "--- Настройка Nginx ---"
+echo "--- Шаг 5/5: Настройка веб-сервера Nginx ---"
 NGINX_CONFIG="/etc/nginx/sites-available/$DOMAIN"
 
 cat <<EOF > "$NGINX_CONFIG"
@@ -72,18 +86,18 @@ server {
     listen 80;
     server_name $DOMAIN;
 
-    # Корень сайта - собранный фронтенд
+    # Корень сайта - папка со собранным фронтендом
     root $FRONTEND_DIR/build;
     index index.html index.htm;
 
-    # Отдаем статику
+    # Правило для Single Page Application (SPA)
     location / {
         try_files \$uri /index.html;
     }
 
-    # Прокси для веб-сокета
+    # Правило для проксирования websocket-соединений на Node.js сервер
     location /socket.io/ {
-        proxy_pass http://localhost:3000; # Убедитесь, что порт совпадает с портом в websocket/server.js
+        proxy_pass http://localhost:3000; # Убедитесь, что порт совпадает с портом бекенда
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -93,17 +107,18 @@ server {
 }
 EOF
 
-# --- Активация конфигурации ---
+# --- Активация конфигурации и перезапуск Nginx ---
 ln -sf "$NGINX_CONFIG" "/etc/nginx/sites-enabled/"
-# Удаляем дефолтный конфиг, если он есть
 rm -f /etc/nginx/sites-enabled/default
-
-# --- Проверка и перезапуск Nginx ---
 nginx -t
 systemctl reload nginx
 
-echo "----------------------------------------------------------------"
+# --- Финальное сообщение ---
+echo "================================================================"
 echo "УСТАНОВКА УСПЕШНО ЗАВЕРШЕНА!"
-echo "Ваш сайт должен быть доступен по адресу: http://$DOMAIN"
-echo "Для завершения настройки автозапуска pm2, выполните команду, которую он вывел выше."
-echo "----------------------------------------------------------------"
+echo "Сайт должен быть доступен по адресу: http://$DOMAIN"
+echo ""
+echo "!!! ВАЖНОЕ ДЕЙСТВИЕ !!!"
+echo "Для настройки автозапуска сервера после перезагрузки, выполните следующую команду:"
+echo "$STARTUP_COMMAND"
+echo "================================================================"
