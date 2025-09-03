@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# СКРИПТ УДАЛЕНИЯ (v8 - Финальная версия)
+# СКРИПТ УДАЛЕНИЯ С PHP (v9 - Финальная версия)
 # ==============================================================================
 
 set -e
@@ -9,6 +9,7 @@ set -e
 # --- Переменные ---
 DOMAIN="minahor.ru"
 PROJECT_DEST_DIR="/var/www/$DOMAIN"
+PHP_VERSION="8.2"
 
 # --- Проверяем, что скрипт запущен с правами sudo ---
 if [ "$EUID" -ne 0 ]; then
@@ -18,7 +19,7 @@ fi
 
 # --- 1. Остановка и удаление сервиса PM2 ---
 echo "--- Удаление сервиса из PM2 ---"
-export NVM_DIR="$HOME/.nvm"
+export NVM_DIR="/root/.nvm"
 if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh"; fi
 if command -v pm2 &> /dev/null; then
     pm2 unstartup || echo "Info: Автозапуск не был настроен."
@@ -39,6 +40,11 @@ systemctl reload nginx
 # --- 4. Удаление файлов проекта ---
 echo "--- Удаление файлов проекта из $PROJECT_DEST_DIR ---"
 rm -rf "$PROJECT_DEST_DIR"
+
+# --- 5. Удаление PHP ---
+echo "--- Удаление PHP ---"
+apt-get purge -y "php${PHP_VERSION}-fpm"
+apt-get autoremove -y
 
 echo "================================================================"
 echo "УДАЛЕНИЕ ЗАВЕРШЕНО."

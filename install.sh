@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# СКРИПТ УСТАНОВКИ С ЯВНЫМ УКАЗАНИЕМ NODE.JS (v8 - Финальная версия)
+# СКРИПТ УСТАНОВКИ С PHP (v9 - Финальная версия)
 # ==============================================================================
 
 set -e
@@ -16,6 +16,7 @@ BACKEND_SCRIPT_NAME="ws.js"
 BACKEND_PORT="8081"
 BACKEND_SERVICE_NAME="maf-roles-websocket"
 NODE_VERSION="20"
+PHP_VERSION="8.2" # Современная, стабильная версия PHP
 LETSENCRYPT_EMAIL="admin@$DOMAIN"
 
 # --- Проверяем, что скрипт запущен с правами sudo ---
@@ -24,21 +25,21 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# --- 1. Установка зависимостей ---
-echo "--- Шаг 1/5: Установка Nginx, Certbot и других утилит ---"
+# --- 1. Установка зависимостей (включая PHP) ---
+echo "--- Шаг 1/5: Установка Nginx, Certbot, PHP и других утилит ---"
 apt-get update
-apt-get install -y nginx curl python3-certbot-nginx
+apt-get install -y nginx curl python3-certbot-nginx "php${PHP_VERSION}-fpm"
 
 # --- 2. Копирование файлов и установка прав ---
 echo "--- Шаг 2/5: Копирование файлов проекта в $PROJECT_DEST_DIR ---"
 mkdir -p "$PROJECT_DEST_DIR"
 rsync -av --exclude='.git' "$PROJECT_SOURCE_DIR/" "$PROJECT_DEST_DIR/"
-chown -R root:root "$PROJECT_DEST_DIR" # Запускать будем от root
+chown -R www-data:www-data "$PROJECT_DEST_DIR" # PHP и Nginx работают от www-data
 chmod -R 755 "$PROJECT_DEST_DIR"
 
 # --- 3. Установка Node.js и зависимостей бекенда ---
 echo "--- Шаг 3/5: Установка Node.js v$NODE_VERSION и зависимостей сервера ---"
-export NVM_DIR="$HOME/.nvm"
+export NVM_DIR="/root/.nvm" # Устанавливаем и используем nvm от root
 if [ ! -s "$NVM_DIR/nvm.sh" ]; then
     mkdir -p "$NVM_DIR"
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
@@ -46,8 +47,6 @@ fi
 . "$NVM_DIR/nvm.sh"
 nvm install $NODE_VERSION
 nvm use $NODE_VERSION
-
-# **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:** Находим полный путь к нужной версии Node.js
 NODE_PATH=$(which node)
 echo "Будет использован Node.js по пути: $NODE_PATH"
 
@@ -56,8 +55,8 @@ cd "$PROJECT_DEST_DIR/$BACKEND_DIR_NAME"
 npm install
 cd "$PROJECT_DEST_DIR"
 
-# --- 4. Настройка Nginx и получение SSL-сертификата ---
-echo "--- Шаг 4/5: Настройка Nginx и получение SSL-сертификата ---"
+# --- 4. Настройка Nginx с PHP и SSL ---
+echo "--- Шаг 4/5: Настройка Nginx с PHP и получение SSL-сертификата ---"
 # Создаем временный конфиг для получения сертификата
 cat <<EOF > "/etc/nginx/sites-available/$DOMAIN"
 server {
@@ -65,9 +64,7 @@ server {
     server_name $DOMAIN;
     root $PROJECT_DEST_DIR/$FRONTEND_DIR_NAME;
     index index.html;
-    location / {
-        try_files \$uri /index.html;
-    }
+    location / { try_files \$uri /index.html; }
 }
 EOF
 ln -sf "/etc/nginx/sites-available/$DOMAIN" "/etc/nginx/sites-enabled/"
@@ -77,7 +74,7 @@ systemctl reload nginx
 # Получаем/обновляем сертификат
 certbot --nginx --agree-tos --redirect --non-interactive -m "$LETSENCRYPT_EMAIL" -d "$DOMAIN"
 
-# Создаем финальную конфигурацию Nginx
+# Создаем финальную конфигурацию Nginx с PHP
 cat <<EOF > "/etc/nginx/sites-available/$DOMAIN"
 server {
     listen 80;
@@ -93,11 +90,21 @@ server {
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
-    root $PROJECT_DEST_DIR/$FRONTEND_DIR_NAME;
-    index index.html;
+    root $PROJECT_DEST_DIR; # Корень проекта, чтобы PHP мог найти /api
+    index index.html index.htm index.php;
 
     location / {
+        # Сначала ищем файл в webapp, потом отдаем index.html
+        root $PROJECT_DEST_DIR/$FRONTEND_DIR_NAME;
         try_files \$uri /index.html;
+    }
+
+    # **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:** Обработка PHP файлов
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        include fastcgi_params;
     }
 
     location /bridge {
@@ -113,14 +120,10 @@ EOF
 systemctl reload nginx
 
 # --- 5. Запуск сервера через PM2 ---
-echo "--- Шаг 5/5: Запуск сервера через PM2 с правильной версией Node.js ---"
+echo "--- Шаг 5/5: Запуск Node.js сервера через PM2 ---"
 npm install pm2 -g
 pm2 delete "$BACKEND_SERVICE_NAME" || true
-
-# **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:** Запускаем, явно указывая путь к интерпретатору
 pm2 start "$PROJECT_DEST_DIR/$BACKEND_DIR_NAME/$BACKEND_SCRIPT_NAME" --interpreter "$NODE_PATH" --name "$BACKEND_SERVICE_NAME"
-
-# Сохраняем список процессов и настраиваем автозапуск
 pm2 save
 pm2 startup
 
