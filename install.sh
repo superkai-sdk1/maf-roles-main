@@ -53,7 +53,22 @@ chown -R www-data:www-data $WEB_ROOT
 chown -R www-data:www-data $WS_ROOT
 
 echo -e "${GREEN}Шаг 4: Настройка Nginx...${NC}"
-# Создаем конфигурационный файл Nginx
+
+# Создаем отдельный файл для проксирования WebSocket
+# Это более надежный способ, т.к. certbot корректно обработает include
+mkdir -p /etc/nginx/snippets/
+cat <<EOF > /etc/nginx/snippets/websocket-proxy.conf
+location /bridge {
+    proxy_pass http://localhost:8081;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+}
+EOF
+
+# Создаем основной конфигурационный файл Nginx
 cat <<EOF > /etc/nginx/sites-available/$DOMAIN
 server {
     root $WEB_ROOT;
@@ -69,14 +84,8 @@ server {
         fastcgi_pass unix:/var/run/php/php8.1-fpm.sock; # Для Ubuntu 22.04, может отличаться
     }
 
-    location /bridge {
-        proxy_pass http://localhost:8081;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-    }
+    # Подключаем конфигурацию для WebSocket
+    include snippets/websocket-proxy.conf;
 }
 EOF
 
