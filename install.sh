@@ -33,7 +33,15 @@ fi
 
 echo -e "${GREEN}Шаг 1: Обновление системы и установка зависимостей...${NC}"
 apt update && apt upgrade -y
-apt install -y nginx nodejs npm php-fpm php-curl certbot python3-certbot-nginx
+# Устанавливаем curl и другие нужные пакеты. Node.js установим отдельно.
+apt install -y nginx php-fpm php-curl certbot python3-certbot-nginx curl
+
+echo -e "${GREEN}Шаг 1.1: Установка Node.js v16...${NC}"
+# Используем официальный скрипт NodeSource для установки Node.js 16.x
+# Это гарантирует, что pm2 будет использовать современную версию
+curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+apt-get install -y nodejs
+
 
 echo -e "${GREEN}Шаг 2: Настройка брандмауэра (UFW)...${NC}"
 ufw allow OpenSSH
