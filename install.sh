@@ -1,84 +1,109 @@
 #!/bin/bash
 
+# --- Останавливаем скрипт при любой ошибке ---
+set -e
+
+# --- Проверяем, что скрипт запущен с правами sudo ---
+if [ "$EUID" -ne 0 ]; then
+  echo "Пожалуйста, запустите этот скрипт с правами sudo: sudo bash install.sh"
+  exit 1
+fi
+
 # --- Переходим в директорию скрипта, чтобы все пути были правильными ---
 cd "$(dirname "$0")" || exit
 
-# --- Переменные ---
-WEBSOCKET_DIR="./websocket"
-ENV_FILE="$WEBSOCKET_DIR/.env"
-SERVICE_NAME="maf-roles-websocket"
+# --- Переменные проекта ---
+PROJECT_DIR=$(pwd)
+FRONTEND_DIR="$PROJECT_DIR/maf-roles-main-front" # Укажите правильную папку с фронтендом
+BACKEND_DIR="$PROJECT_DIR/websocket"
+BACKEND_SERVICE_NAME="maf-roles-websocket"
 NODE_VERSION="20"
 
 # --- Запрос домена ---
-if [ -f "$ENV_FILE" ]; then
-    # Загружаем домен из файла, если он уже существует
-    source "$ENV_FILE"
-fi
-
+read -p "Введите ваш домен (например, example.com): " DOMAIN
 if [ -z "$DOMAIN" ]; then
-    read -p "Введите ваш домен (например, example.com): " DOMAIN
-    if [ -z "$DOMAIN" ]; then
-        echo "Домен не может быть пустым. Прерывание."
-        exit 1
-    fi
-fi
-
-# --- Установка NVM (Node Version Manager) ---
-echo "Установка nvm..."
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-
-# --- Загрузка nvm в текущую сессию ---
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-# --- Проверка, что nvm загружен ---
-if ! command -v nvm &> /dev/null
-then
-    echo "Ошибка: nvm не был загружен. Попробуйте перезапустить терминал и запустить скрипт снова."
+    echo "Домен не может быть пустым. Прерывание."
     exit 1
 fi
 
-# --- Установка Node.js ---
-echo "Установка Node.js v$NODE_VERSION..."
-nvm install $NODE_VERSION
-nvm use $NODE_VERSION
-nvm alias default $NODE_VERSION
+# --- 1. Установка системных зависимостей (Nginx) ---
+echo "--- Установка Nginx и curl ---"
+apt-get update
+apt-get install -y nginx curl
 
-echo "Проверка версий:"
-node -v
-npm -v
+# --- 2. Установка NVM и Node.js ---
+echo "--- Установка nvm и Node.js v$NODE_VERSION ---"
+# Устанавливаем от имени обычного пользователя, если он есть, иначе от root
+USER_TO_RUN_NVM=$(logname)
+sudo -u "$USER_TO_RUN_NVM" bash -c "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
+sudo -u "$USER_TO_RUN_NVM" bash -c "source ~/.nvm/nvm.sh && nvm install $NODE_VERSION && nvm alias default $NODE_VERSION"
 
-# --- Создание .env файла ---
-echo "Создание файла .env в $WEBSOCKET_DIR..."
-mkdir -p "$WEBSOCKET_DIR"
-echo "DOMAIN=$DOMAIN" > "$ENV_FILE"
-echo "PORT=3000" >> "$ENV_FILE"
+# --- Экспорт путей для текущей сессии root ---
+export NVM_DIR="/home/$USER_TO_RUN_NVM/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
-# --- Установка зависимостей проекта ---
-echo "Установка зависимостей в директории $WEBSOCKET_DIR..."
-# Переходим в папку websocket, чтобы npm нашел package.json
-cd "$WEBSOCKET_DIR" || exit
+# --- 3. Сборка Фронтенда ---
+echo "--- Сборка фронтенд-приложения ---"
+cd "$FRONTEND_DIR" || { echo "Ошибка: не найдена директория фронтенда $FRONTEND_DIR"; exit 1; }
 npm install
-cd ..
+npm run build
+cd "$PROJECT_DIR"
 
-# --- Установка и настройка PM2 ---
-echo "Установка и настройка pm2..."
+# --- 4. Установка зависимостей и запуск Бекенда ---
+echo "--- Установка зависимостей бекенда ---"
+cd "$BACKEND_DIR" || { echo "Ошибка: не найдена директория бекенда $BACKEND_DIR"; exit 1; }
+npm install
+cd "$PROJECT_DIR"
+
+echo "--- Установка и настройка pm2 ---"
 npm install pm2 -g
-
-# Удаляем старый сервис, если он существует
-pm2 delete "$SERVICE_NAME" || true
-
-# Запускаем новый сервис из основной директории проекта
-pm2 start "$WEBSOCKET_DIR/server.js" --name "$SERVICE_NAME"
-
-# Сохраняем конфигурацию для автозапуска
+pm2 delete "$BACKEND_SERVICE_NAME" || true
+# Запускаем сервер из его директории
+pm2 start "$BACKEND_DIR/server.js" --name "$BACKEND_SERVICE_NAME"
 pm2 save
-
-# Генерируем команду для настройки автозапуска
 pm2 startup
 
+# --- 5. Настройка Nginx ---
+echo "--- Настройка Nginx ---"
+NGINX_CONFIG="/etc/nginx/sites-available/$DOMAIN"
+
+cat <<EOF > "$NGINX_CONFIG"
+server {
+    listen 80;
+    server_name $DOMAIN;
+
+    # Корень сайта - собранный фронтенд
+    root $FRONTEND_DIR/build;
+    index index.html index.htm;
+
+    # Отдаем статику
+    location / {
+        try_files \$uri /index.html;
+    }
+
+    # Прокси для веб-сокета
+    location /socket.io/ {
+        proxy_pass http://localhost:3000; # Убедитесь, что порт совпадает с портом в websocket/server.js
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+    }
+}
+EOF
+
+# --- Активация конфигурации ---
+ln -sf "$NGINX_CONFIG" "/etc/nginx/sites-enabled/"
+# Удаляем дефолтный конфиг, если он есть
+rm -f /etc/nginx/sites-enabled/default
+
+# --- Проверка и перезапуск Nginx ---
+nginx -t
+systemctl reload nginx
+
 echo "----------------------------------------------------------------"
-echo "Установка почти завершена!"
-echo "Сервис '$SERVICE_NAME' запущен."
-echo "Чтобы настроить автозапуск, скопируйте команду, которую вывел pm2 выше, и выполните ее."
+echo "УСТАНОВКА УСПЕШНО ЗАВЕРШЕНА!"
+echo "Ваш сайт должен быть доступен по адресу: http://$DOMAIN"
+echo "Для завершения настройки автозапуска pm2, выполните команду, которую он вывел выше."
 echo "----------------------------------------------------------------"
