@@ -1,16 +1,16 @@
 #!/bin/bash
 
 # ==============================================================================
-# СКРИПТ УСТАНОВКИ ВЕБ-ПРИЛОЖЕНИЯ И WEBSOCKET-СЕРВЕРА
+# СКРИПТ УСТАНОВКИ ВЕБ-ПРИЛОЖЕНИЯ И WEBSOCKET-СЕРВЕРА (v3)
 # ==============================================================================
 
-# --- Останавливаем скрипт при любой ошибке для предсказуемости ---
+# --- Останавливаем скрипт при любой ошибке ---
 set -e
 
 # ---
-# !!! ВАЖНО: УКАЖИТЕ ПРАВИЛЬНОЕ ИМЯ ПАПКИ С ФРОНТЕНДОМ !!!
+# Имя папки с файлами фронтенда (HTML, CSS, JS)
 # ---
-FRONTEND_DIR_NAME="maf-roles-main-front"
+FRONTEND_DIR_NAME="webapp"
 
 # ------------------------------------------------------------------------------
 # --- Переменные проекта (обычно не требуют изменений) ---
@@ -33,7 +33,7 @@ cd "$(dirname "$0")" || exit
 # --- Проверяем существование директорий ---
 if [ ! -d "$FRONTEND_DIR" ]; then
     echo "Ошибка: Директория фронтенда '$FRONTEND_DIR' не найдена!"
-    echo "Пожалуйста, проверьте переменную FRONTEND_DIR_NAME в начале скрипта."
+    echo "Пожалуйста, убедитесь, что папка '$FRONTEND_DIR_NAME' существует в корне проекта."
     exit 1
 fi
 if [ ! -d "$BACKEND_DIR" ]; then
@@ -49,36 +49,38 @@ if [ -z "$DOMAIN" ]; then
 fi
 
 # --- 1. Установка системных зависимостей ---
-echo "--- Шаг 1/5: Установка Nginx и других утилит ---"
+echo "--- Шаг 1/4: Установка Nginx и других утилит ---"
 apt-get update
 apt-get install -y nginx curl
 
-# --- 2. Установка NVM и Node.js ---
-echo "--- Шаг 2/5: Установка Node.js через nvm ---"
+# --- 2. Установка Node.js и зависимостей бекенда ---
+echo "--- Шаг 2/4: Установка Node.js и зависимостей сервера ---"
 USER_TO_RUN_NVM=$(logname)
-sudo -u "$USER_TO_RUN_NVM" bash -c "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
-sudo -u "$USER_TO_RUN_NVM" bash -c "source ~/.nvm/nvm.sh && nvm install $NODE_VERSION && nvm alias default $NODE_VERSION"
 
-# --- Экспортируем пути nvm для текущей root-сессии, чтобы pm2 и npm работали ---
+# Устанавливаем nvm
+sudo -u "$USER_TO_RUN_NVM" bash -c "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
+
+# Экспортируем пути nvm для текущей root-сессии
 export NVM_DIR="/home/$USER_TO_RUN_NVM/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
-# --- 3. Сборка Фронтенда и установка Бекенда ---
-echo "--- Шаг 3/5: Установка зависимостей и сборка проектов ---"
-# Выполняем от имени пользователя, чтобы избежать проблем с правами
-sudo -u "$USER_TO_RUN_NVM" bash -c "source ~/.nvm/nvm.sh && cd '$FRONTEND_DIR' && npm install && npm run build"
+# Устанавливаем Node.js
+nvm install $NODE_VERSION
+nvm alias default $NODE_VERSION
+
+# Устанавливаем зависимости бекенда
 sudo -u "$USER_TO_RUN_NVM" bash -c "source ~/.nvm/nvm.sh && cd '$BACKEND_DIR' && npm install"
 
-# --- 4. Установка и запуск Бекенда через PM2 ---
-echo "--- Шаг 4/5: Настройка и запуск сервера через pm2 ---"
+# --- 3. Установка и запуск Бекенда через PM2 ---
+echo "--- Шаг 3/4: Настройка и запуск сервера через pm2 ---"
 npm install pm2 -g
 pm2 delete "$BACKEND_SERVICE_NAME" || true
 pm2 start "$BACKEND_DIR/server.js" --name "$BACKEND_SERVICE_NAME"
 pm2 save
 STARTUP_COMMAND=$(pm2 startup | tail -n 1)
 
-# --- 5. Настройка Nginx ---
-echo "--- Шаг 5/5: Настройка веб-сервера Nginx ---"
+# --- 4. Настройка Nginx ---
+echo "--- Шаг 4/4: Настройка веб-сервера Nginx ---"
 NGINX_CONFIG="/etc/nginx/sites-available/$DOMAIN"
 
 cat <<EOF > "$NGINX_CONFIG"
@@ -86,13 +88,13 @@ server {
     listen 80;
     server_name $DOMAIN;
 
-    # Корень сайта - папка со собранным фронтендом
-    root $FRONTEND_DIR/build;
+    # Корень сайта - папка с файлами фронтенда
+    root $FRONTEND_DIR;
     index index.html index.htm;
 
-    # Правило для Single Page Application (SPA)
+    # Правило для отдачи статики
     location / {
-        try_files \$uri /index.html;
+        try_files \$uri \$uri/ =404;
     }
 
     # Правило для проксирования websocket-соединений на Node.js сервер
