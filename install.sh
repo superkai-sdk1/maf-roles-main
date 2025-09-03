@@ -38,16 +38,18 @@ apt install -y nginx php-fpm php-curl certbot python3-certbot-nginx curl
 
 echo -e "${GREEN}Шаг 1.1: Очистка старых версий Node.js...${NC}"
 # Принудительно удаляем старые и конфликтующие пакеты перед установкой.
-# Игнорируем ошибки, если пакеты не установлены.
-apt-get remove -y nodejs libnode-dev npm || true
+# Сначала используем dpkg для удаления самого проблемного пакета.
+echo "Принудительное удаление libnode-dev через dpkg..."
+dpkg --remove --force-remove-reinstreq libnode-dev || true
+# Затем стандартная очистка через apt
+apt-get remove -y nodejs npm || true
 apt-get autoremove -y || true
 
 echo -e "${GREEN}Шаг 1.2: Установка Node.js v16...${NC}"
 # Используем официальный скрипт NodeSource для установки Node.js 16.x
-# Это гарантирует, что pm2 будет использовать современную версию
 curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
-# Используем --force-overwrite для решения конфликтов dpkg
-apt-get install -y -o Dpkg::Options::="--force-overwrite" nodejs
+# Устанавливаем Node.js
+apt-get install -y nodejs
 
 
 echo -e "${GREEN}Шаг 2: Настройка брандмауэра (UFW)...${NC}"
