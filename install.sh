@@ -31,12 +31,18 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-echo -e "${GREEN}Шаг 1: Обновление системы и установка зависимостей...${NC}"
+echo -e "${GREEN}Шаг 1: Обновление системы и установка базовых зависимостей...${NC}"
 apt update && apt upgrade -y
 # Устанавливаем curl и другие нужные пакеты. Node.js установим отдельно.
 apt install -y nginx php-fpm php-curl certbot python3-certbot-nginx curl
 
-echo -e "${GREEN}Шаг 1.1: Установка Node.js v16...${NC}"
+echo -e "${GREEN}Шаг 1.1: Очистка старых версий Node.js...${NC}"
+# Принудительно удаляем старые и конфликтующие пакеты перед установкой.
+# Игнорируем ошибки, если пакеты не установлены.
+apt-get remove -y nodejs libnode-dev npm || true
+apt-get autoremove -y || true
+
+echo -e "${GREEN}Шаг 1.2: Установка Node.js v16...${NC}"
 # Используем официальный скрипт NodeSource для установки Node.js 16.x
 # Это гарантирует, что pm2 будет использовать современную версию
 curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
