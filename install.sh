@@ -1,144 +1,115 @@
 #!/bin/bash
 
-# Установочный скрипт для Maf-Roles-Panel
-# Прекращает выполнение при любой ошибке
-set -e
+# Variables
+GIT_REPO_URL="https://github.com/KaiMichael/maf-roles-main.git"
+APP_DIR_NAME="maf-roles-main"
+APP_DIR="/root/$APP_DIR_NAME"
+MAIN_SCRIPT="index.js"
+APP_NAME="maf-roles"
+NODE_VERSION="20" # Using a modern, stable LTS version
 
-# Цвета для вывода
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Function to print messages
+print_message() {
+    echo "========================================="
+    echo "$1"
+    echo "========================================="
+}
 
-# --- Конфигурация ---
-echo -e "${YELLOW}Добро пожаловать в установщик Maf Roles Panel!${NC}"
-read -p "Пожалуйста, введите ваше доменное имя (например, minahor.ru): " DOMAIN
-
-if [ -z "$DOMAIN" ]; then
-    echo "Доменное имя не может быть пустым. Выход."
-    exit 1
-fi
-
-# Пути к директориям проекта
-WEB_ROOT="/var/www/$DOMAIN"
-WS_ROOT="/var/www/ws-$DOMAIN"
-WS_SERVICE_NAME="maf-bridge-$DOMAIN"
-
-# --- Начало установки ---
-
-# 1. Проверка прав суперпользователя
-if [ "$EUID" -ne 0 ]; then
-  echo "Пожалуйста, запустите этот скрипт с правами суперпользователя (sudo bash install.sh)"
+# Ensure script is run as root
+if [ "$(id -u)" -ne 0 ]; then
+  print_message "This script must be run as root. Please use sudo."
   exit 1
 fi
 
-echo -e "${GREEN}Шаг 1: Обновление системы и установка базовых зависимостей...${NC}"
-apt update && apt upgrade -y
-apt install -y nginx php-fpm php-curl certbot python3-certbot-nginx curl
+print_message "Starting installation of $APP_NAME"
 
-# --- УСТАНОВКА NODE.JS ЧЕРЕЗ NVM (НОВЫЙ ПОДХОД) ---
-echo -e "${GREEN}Шаг 2: Установка Node.js v20 через NVM (Node Version Manager)...${NC}"
+# Update package list
+apt-get update
 
-# Устанавливаем NVM для текущего пользователя (root, так как скрипт под sudo)
-# Используем -o- для вывода в stdout и | bash для выполнения
+# Install git and curl if they are not installed
+print_message "Installing git and curl..."
+apt-get install -y git curl
+
+# --- NVM and Node.js Installation ---
+print_message "Installing Node.js v$NODE_VERSION using NVM (Node Version Manager)"
+
+# Set the NVM directory and ensure it's sourced for this script
+export NVM_DIR="/root/.nvm"
+# Download and run the nvm installation script
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 
-# Загружаем NVM в текущую сессию скрипта
-export NVM_DIR="$HOME/.nvm"
+# Source nvm script to make it available in the current shell session
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
-# Проверяем, загрузился ли NVM
+# Add NVM to bashrc to make it available in new shells
+echo \'\'\'
+export NVM_DIR="/root/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+\'\'\' >> /root/.bashrc
+
+
+# Verify nvm installation
 if ! command -v nvm &> /dev/null
 then
-    echo "NVM не смог установиться или загрузиться. Выход."
-    exit 1
+    # Source again just in case
+    source /root/.bashrc
+    if ! command -v nvm &> /dev/null
+    then
+        print_message "NVM installation failed. Exiting."
+        exit 1
+    fi
 fi
 
-# Устанавливаем последнюю LTS-версию Node.js (v20 на данный момент) и делаем ее версией по умолчанию
-nvm install 20
-nvm use 20
-nvm alias default 20
+# Install the specified version of Node.js
+print_message "Installing Node.js v$NODE_VERSION..."
+nvm install $NODE_VERSION
 
-echo "Установлена версия Node.js:"
+# Set the installed version as the default
+nvm alias default $NODE_VERSION
+nvm use default
+
+# Verify Node.js and npm installation
+print_message "Node.js and npm versions:"
 node -v
-echo "Установлена версия npm:"
 npm -v
 
-# --- КОНЕЦ БЛОКА NVM ---
+# --- Application Setup ---
+print_message "Cloning application from Git repository"
+# Remove existing directory if it exists
+if [ -d "$APP_DIR" ]; then
+    rm -rf "$APP_DIR"
+fi
+cd /root
+git clone "$GIT_REPO_URL"
+cd "$APP_DIR"
 
-echo -e "${GREEN}Шаг 3: Настройка брандмауэра (UFW)...${NC}"
-ufw allow OpenSSH
-ufw allow 'Nginx Full'
-ufw --force enable
+print_message "Installing application dependencies using npm"
+# Use the npm from nvm's path
+/root/.nvm/versions/node/$(nvm current)/bin/npm install
 
-echo -e "${GREEN}Шаг 4: Создание структуры папок и копирование файлов...${NC}"
-mkdir -p $WEB_ROOT
-mkdir -p $WS_ROOT
+# --- PM2 Setup ---
+print_message "Installing/updating PM2"
+# Use the npm from nvm's path to install pm2 globally for the nvm-managed node version
+/root/.nvm/versions/node/$(nvm current)/bin/npm install pm2 -g
 
-cp -r webapp/* $WEB_ROOT/
-cp -r websocket/* $WS_ROOT/
+# Define the path to the nvm-installed pm2
+PM2_PATH="/root/.nvm/versions/node/$(nvm current)/bin/pm2"
 
-chown -R www-data:www-data $WEB_ROOT
-chown -R www-data:www-data $WS_ROOT
+print_message "Stopping any existing PM2 process for this app"
+$PM2_PATH delete "$APP_NAME" || true
 
-echo -e "${GREEN}Шаг 5: Настройка Nginx...${NC}"
-mkdir -p /etc/nginx/snippets/
-cat <<EOF > /etc/nginx/snippets/websocket-proxy.conf
-location /bridge {
-    proxy_pass http://localhost:8081;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade \$http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host \$host;
-    proxy_set_header X-Real-IP \$remote_addr;
-}
-EOF
+print_message "Starting application with PM2"
+cd "$APP_DIR"
+$PM2_PATH start "$MAIN_SCRIPT" --name "$APP_NAME"
 
-cat <<EOF > /etc/nginx/sites-available/$DOMAIN
-server {
-    root $WEB_ROOT;
-    index index.php panel.html index.html;
-    server_name $DOMAIN www.$DOMAIN;
+print_message "Setting up PM2 to start on boot"
+# The 'env' part ensures the command runs with the correct user environment
+$PM2_PATH startup systemd -u root --hp /root
 
-    location / {
-        try_files \$uri \$uri/ =404;
-    }
+# Save the current process list to be respawned on reboot
+$PM2_PATH save
 
-    location ~ \.php\$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
-    }
-
-    include snippets/websocket-proxy.conf;
-}
-EOF
-
-ln -s -f /etc/nginx/sites-available/$DOMAIN /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
-
-echo "Проверка конфигурации Nginx и перезапуск..."
-nginx -t
-systemctl restart nginx
-
-echo -e "${GREEN}Шаг 6: Настройка и запуск WebSocket сервера с помощью PM2...${NC}"
-cd $WS_ROOT
-# Устанавливаем зависимости проекта
-npm install
-
-# Устанавливаем PM2 глобально для нашей версии Node.js
-npm install -g pm2
-
-# Запускаем приложение через PM2, явно указывая путь к интерпретатору Node.js
-# Это гарантирует, что systemd-сервис, созданный pm2, будет использовать правильную версию
-pm2 start ws.js --name "$WS_SERVICE_NAME" --interpreter="$NVM_DIR/versions/node/$(nvm current)/bin/node"
-
-# Сохраняем список процессов и создаем стартап-скрипт
-pm2 save
-# Команда startup покажет, что нужно выполнить для автозапуска от имени root
-pm2 startup
-
-echo -e "${GREEN}Шаг 7: Получение SSL-сертификата от Let's Encrypt...${NC}"
-certbot --nginx -d $DOMAIN -d www.$DOMAIN --non-interactive --agree-tos -m "admin@$DOMAIN" --redirect
-
-echo -e "${GREEN}Установка завершена!${NC}"
-echo "Ваше веб-приложение доступно по адресу: https://$DOMAIN"
-echo "WebSocket сервер запущен и работает в фоновом режиме."
+print_message "Installation complete. $APP_NAME is running and will restart on boot."
+print_message "To check status, run: $PM2_PATH status"
