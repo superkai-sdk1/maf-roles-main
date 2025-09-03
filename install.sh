@@ -1,25 +1,19 @@
 #!/bin/bash
 
 # ==============================================================================
-# СКРИПТ УСТАНОВКИ ВЕБ-ПРИЛОЖЕНИЯ И WEBSOCKET-СЕРВЕРА (v6 - Финальная версия)
+# СКРИПТ УСТАНОВКИ ВЕБ-ПРИЛОЖЕНИЯ И WEBSOCKET-СЕРВЕРА (v7 - Исправление прав)
 # ==============================================================================
 
-# --- Останавливаем скрипт при любой ошибке ---
 set -e
 
-# --- Имя папки с файлами фронтенда ---
+# --- Переменные, которые можно менять ---
+DOMAIN="minahor.ru"
+PROJECT_SOURCE_DIR="/root/maf-roles-main" # Откуда копировать проект
+PROJECT_DEST_DIR="/var/www/minahor.ru"   # Куда развернуть проект
 FRONTEND_DIR_NAME="webapp"
-# --- Имя основного файла веб-сокет сервера ---
 BACKEND_SCRIPT_NAME="ws.js"
-
-# ------------------------------------------------------------------------------
-# --- Переменные проекта ---
-# ------------------------------------------------------------------------------
-PROJECT_DIR=$(pwd)
-FRONTEND_DIR="$PROJECT_DIR/$FRONTEND_DIR_NAME"
-BACKEND_DIR="$PROJECT_DIR/websocket"
-BACKEND_SERVICE_NAME="maf-roles-websocket"
 NODE_VERSION="20"
+WEBSOCKET_PORT=8081 # Порт из логов вашего приложения
 
 # --- Проверяем, что скрипт запущен с правами sudo ---
 if [ "$EUID" -ne 0 ]; then
@@ -27,85 +21,63 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# --- Переходим в директорию скрипта ---
-cd "$(dirname "$0")" || exit
-
-# --- Проверяем существование директорий и файлов ---
-if [ ! -d "$FRONTEND_DIR" ]; then
-    echo "Ошибка: Директория фронтенда '$FRONTEND_DIR' не найдена!"
-    exit 1
-fi
-if [ ! -f "$BACKEND_DIR/$BACKEND_SCRIPT_NAME" ]; then
-    echo "Ошибка: Файл сервера '$BACKEND_DIR/$BACKEND_SCRIPT_NAME' не найден!"
-    exit 1
-fi
-
-# --- Запрос домена ---
-read -p "Введите ваш домен (например, minahor.ru): " DOMAIN
-if [ -z "$DOMAIN" ]; then
-    echo "Домен не может быть пустым. Прерывание."
-    exit 1
-fi
-
 # --- 1. Установка системных зависимостей ---
-echo "--- Шаг 1/4: Установка Nginx и curl ---"
+echo "--- Шаг 1/5: Установка Nginx и rsync ---"
 apt-get update
-apt-get install -y nginx curl
+apt-get install -y nginx curl rsync
 
-# --- 2. Установка Node.js и зависимостей ---
-echo "--- Шаг 2/4: Установка Node.js и зависимостей сервера ---"
+# --- 2. Создание директории и копирование проекта ---
+echo "--- Шаг 2/5: Копирование файлов проекта в $PROJECT_DEST_DIR ---"
+mkdir -p "$PROJECT_DEST_DIR"
+rsync -a --delete "$PROJECT_SOURCE_DIR/" "$PROJECT_DEST_DIR/"
 
-# Устанавливаем и загружаем NVM в окружение скрипта
+# --- 3. Установка Node.js и зависимостей ---
+echo "--- Шаг 3/5: Установка Node.js и зависимостей сервера ---"
 export NVM_DIR="$HOME/.nvm"
 if [ ! -s "$NVM_DIR/nvm.sh" ]; then
     mkdir -p "$NVM_DIR"
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 fi
-
-# Загружаем nvm в текущую сессию
 . "$NVM_DIR/nvm.sh"
-
-# Устанавливаем Node.js
 nvm install $NODE_VERSION
 nvm use $NODE_VERSION
 nvm alias default $NODE_VERSION
 
-# Устанавливаем зависимости бекенда
-cd "$BACKEND_DIR"
+# Устанавливаем зависимости в новой директории
+cd "$PROJECT_DEST_DIR/$FRONTEND_DIR_NAME/.." # Переходим в корень проекта
+cd websocket
 npm install
-cd "$PROJECT_DIR"
 
-# --- 3. Установка и запуск Бекенда через PM2 ---
-echo "--- Шаг 3/4: Настройка и запуск сервера через pm2 ---"
+# --- 4. Настройка и запуск сервера через PM2 ---
+echo "--- Шаг 4/5: Настройка и запуск сервера через pm2 ---"
 npm install pm2 -g
-pm2 delete "$BACKEND_SERVICE_NAME" || true
-pm2 start "$BACKEND_DIR/$BACKEND_SCRIPT_NAME" --name "$BACKEND_SERVICE_NAME"
-
-# Сохраняем список процессов и настраиваем автозапуск
+pm2 delete "maf-roles-websocket" || true
+# Запускаем скрипт из новой директории
+pm2 start "$PROJECT_DEST_DIR/websocket/$BACKEND_SCRIPT_NAME" --name "maf-roles-websocket"
 pm2 save
 pm2 startup
 
-# --- 4. Настройка Nginx ---
-echo "--- Шаг 4/4: Настройка веб-сервера Nginx ---"
-NGINX_CONFIG="/etc/nginx/sites-available/$DOMAIN"
+# --- 5. Настройка Nginx и прав доступа ---
+echo "--- Шаг 5/5: Настройка веб-сервера Nginx и прав доступа ---"
+# Устанавливаем правильные права для Nginx
+chown -R www-data:www-data "$PROJECT_DEST_DIR"
+chmod -R 755 "$PROJECT_DEST_DIR"
 
+NGINX_CONFIG="/etc/nginx/sites-available/$DOMAIN"
 cat <<EOF > "$NGINX_CONFIG"
 server {
     listen 80;
     server_name $DOMAIN;
 
-    root $FRONTEND_DIR;
+    root $PROJECT_DEST_DIR/$FRONTEND_DIR_NAME;
     index index.html index.htm;
 
-    # Ключевое исправление для SPA (Single Page Application)
-    # Все запросы, которые не являются файлами, перенаправляются на index.html
     location / {
         try_files \$uri /index.html;
     }
 
-    # Правило для проксирования websocket-соединений на Node.js сервер
     location /socket.io/ {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:$WEBSOCKET_PORT;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -115,15 +87,12 @@ server {
 }
 EOF
 
-# --- Активация конфигурации и перезапуск Nginx ---
 ln -sf "$NGINX_CONFIG" "/etc/nginx/sites-enabled/"
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl reload nginx
 
-# --- Финальное сообщение ---
 echo "================================================================"
 echo "УСТАНОВКА УСПЕШНО ЗАВЕРШЕНА!"
 echo "Сайт должен быть доступен по адресу: http://$DOMAIN"
-echo "Сервер '$BACKEND_SERVICE_NAME' запущен и настроен на автозапуск."
 echo "================================================================"
