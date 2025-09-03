@@ -1,70 +1,84 @@
 #!/bin/bash
 
-# Exit immediately if a command exits with a non-zero status.
-set -e
+# --- Переходим в директорию скрипта, чтобы все пути были правильными ---
+cd "$(dirname "$0")" || exit
 
-# --- Variables ---
-APP_NAME="maf-roles-main"
-# Get the directory of the script
-APP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+# --- Переменные ---
+WEBSOCKET_DIR="./websocket"
+ENV_FILE="$WEBSOCKET_DIR/.env"
+SERVICE_NAME="maf-roles-websocket"
+NODE_VERSION="20"
 
-# --- Prompt for Domain ---
-echo "Пожалуйста, введите ваш домен (например, example.com):"
-read DOMAIN
+# --- Запрос домена ---
+if [ -f "$ENV_FILE" ]; then
+    # Загружаем домен из файла, если он уже существует
+    source "$ENV_FILE"
+fi
 
 if [ -z "$DOMAIN" ]; then
-    echo "Ошибка: Домен не может быть пустым."
+    read -p "Введите ваш домен (например, example.com): " DOMAIN
+    if [ -z "$DOMAIN" ]; then
+        echo "Домен не может быть пустым. Прерывание."
+        exit 1
+    fi
+fi
+
+# --- Установка NVM (Node Version Manager) ---
+echo "Установка nvm..."
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+
+# --- Загрузка nvm в текущую сессию ---
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# --- Проверка, что nvm загружен ---
+if ! command -v nvm &> /dev/null
+then
+    echo "Ошибка: nvm не был загружен. Попробуйте перезапустить терминал и запустить скрипт снова."
     exit 1
 fi
 
-echo "DOMAIN=$DOMAIN" > "$APP_DIR/.env"
-echo "Домен '$DOMAIN' сохранен в .env файл."
-
-# --- Install NVM (Node Version Manager) ---
-echo "Установка nvm..."
-# Use -s for silent, -o /dev/null to discard the script itself after running
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-
-# --- Source NVM ---
-# This makes nvm available in the current script session
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-
-echo "nvm успешно установлен."
-
-# --- Install Node.js and Set as Default ---
-NODE_VERSION="20"
-echo "Установка Node.js v$NODE_VERSION через nvm..."
+# --- Установка Node.js ---
+echo "Установка Node.js v$NODE_VERSION..."
 nvm install $NODE_VERSION
 nvm use $NODE_VERSION
 nvm alias default $NODE_VERSION
 
-echo "Node.js v$(node -v) и npm v$(npm -v) установлены."
+echo "Проверка версий:"
+node -v
+npm -v
 
-# --- Install Project Dependencies ---
-echo "Установка зависимостей проекта через npm..."
-cd "$APP_DIR"
+# --- Создание .env файла ---
+echo "Создание файла .env в $WEBSOCKET_DIR..."
+mkdir -p "$WEBSOCKET_DIR"
+echo "DOMAIN=$DOMAIN" > "$ENV_FILE"
+echo "PORT=3000" >> "$ENV_FILE"
+
+# --- Установка зависимостей проекта ---
+echo "Установка зависимостей в директории $WEBSOCKET_DIR..."
+# Переходим в папку websocket, чтобы npm нашел package.json
+cd "$WEBSOCKET_DIR" || exit
 npm install
+cd ..
 
-echo "Зависимости установлены."
+# --- Установка и настройка PM2 ---
+echo "Установка и настройка pm2..."
+npm install pm2 -g
 
-# --- Install and Configure PM2 ---
-echo "Установка/обновление pm2..."
-npm install -g pm2
+# Удаляем старый сервис, если он существует
+pm2 delete "$SERVICE_NAME" || true
 
-echo "Запуск приложения '$APP_NAME' через pm2..."
-# Delete any old process with the same name to ensure a clean start
-pm2 delete "$APP_NAME" || true
-# Start the new process
-pm2 start "$APP_DIR/dist/main.js" --name "$APP_NAME"
+# Запускаем новый сервис из основной директории проекта
+pm2 start "$WEBSOCKET_DIR/server.js" --name "$SERVICE_NAME"
 
-echo "Настройка автозапуска pm2..."
-# This command generates and displays the command to run.
-# We need to execute that command.
-pm2 startup | tail -n 1 | bash
-
-# Save the current pm2 process list to be resurrected on reboot
+# Сохраняем конфигурацию для автозапуска
 pm2 save
 
-echo "Установка завершена! Приложение '$APP_NAME' запущено и настроено на автозапуск."
+# Генерируем команду для настройки автозапуска
+pm2 startup
+
+echo "----------------------------------------------------------------"
+echo "Установка почти завершена!"
+echo "Сервис '$SERVICE_NAME' запущен."
+echo "Чтобы настроить автозапуск, скопируйте команду, которую вывел pm2 выше, и выполните ее."
+echo "----------------------------------------------------------------"
