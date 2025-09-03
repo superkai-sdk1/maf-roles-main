@@ -46,7 +46,8 @@ echo -e "${GREEN}Шаг 1.2: Установка Node.js v16...${NC}"
 # Используем официальный скрипт NodeSource для установки Node.js 16.x
 # Это гарантирует, что pm2 будет использовать современную версию
 curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
-apt-get install -y nodejs
+# Используем --force-overwrite для решения конфликтов dpkg
+apt-get install -y -o Dpkg::Options::="--force-overwrite" nodejs
 
 
 echo -e "${GREEN}Шаг 2: Настройка брандмауэра (UFW)...${NC}"
