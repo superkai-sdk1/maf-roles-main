@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# СКРИПТ УДАЛЕНИЯ ВЕБ-ПРИЛОЖЕНИЯ И WEBSOCKET-СЕРВЕРА
+# СКРИПТ УДАЛЕНИЯ ВЕБ-ПРИЛОЖЕНИЯ И WEBSOCKET-СЕРВЕРА (v4)
 # ==============================================================================
 
 set -e
@@ -12,9 +12,6 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# --- Переменные ---
-BACKEND_SERVICE_NAME="maf-roles-websocket"
-
 # --- Запрос домена для корректного удаления конфига Nginx ---
 read -p "Введите домен, который вы использовали при установке: " DOMAIN
 if [ -z "$DOMAIN" ]; then
@@ -23,15 +20,15 @@ if [ -z "$DOMAIN" ]; then
 fi
 
 # --- Загружаем nvm, чтобы найти правильный pm2 ---
-USER_TO_RUN_NVM=$(logname)
-export NVM_DIR="/home/$USER_TO_RUN_NVM/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    \. "$NVM_DIR/nvm.sh"
+fi
 
 # --- 1. Остановка и удаление сервиса PM2 ---
 echo "--- Шаг 1/2: Удаление сервиса из PM2 ---"
 if command -v pm2 &> /dev/null; then
-    pm2 stop "$BACKEND_SERVICE_NAME" || echo "Информация: Сервис не был запущен."
-    pm2 delete "$BACKEND_SERVICE_NAME" || echo "Информация: Сервис не найден в pm2."
+    pm2 delete "maf-roles-websocket" || echo "Информация: Сервис не найден в pm2."
     pm2 unstartup || echo "Информация: Конфигурация автозапуска не найдена."
     pm2 save --force
 else
@@ -58,6 +55,4 @@ systemctl reload nginx
 
 echo "================================================================"
 echo "УДАЛЕНИЕ ЗАВЕРШЕНО."
-echo "Сервис PM2 и конфигурация Nginx для домена $DOMAIN удалены."
-echo "Файлы проекта, Nginx, Node.js и nvm НЕ были удалены с сервера."
 echo "================================================================"
