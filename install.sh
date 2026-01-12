@@ -8,7 +8,7 @@
 set -e
 
 # --- Переменные ---
-DOMAIN="minahor.ru"
+DOMAIN="titanmafia.pro"
 PROJECT_SOURCE_DIR=$(pwd)
 PROJECT_DEST_DIR="/var/www/$DOMAIN"
 FRONTEND_DIR_NAME="webapp"
