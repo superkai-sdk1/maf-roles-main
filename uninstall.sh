@@ -7,7 +7,7 @@
 set -e
 
 # --- Переменные ---
-DOMAIN="minahor.ru"
+DOMAIN="titanmafia.pro"
 PROJECT_DEST_DIR="/var/www/$DOMAIN"
 PHP_VERSION="8.2"
 
