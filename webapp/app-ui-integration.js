@@ -139,7 +139,7 @@ Object.assign(window.app.methods, {
         if (this.ws) {
             this.ws.close();
         }
-        this.ws = new WebSocket('wss://minahor.ru/bridge');
+        this.ws = new WebSocket('wss://titanmafia.pro/bridge');
         this.waitingForState = true;
         this.stateReceived = false;
         
@@ -1223,3 +1223,4 @@ if (window.app && window.app.$options) {
     window.app.joinRoom = window.app.methods.joinRoom.bind(window.app);
     console.log('✅ joinRoom обновлён в Vue экземпляре:', typeof window.app.joinRoom);
 }
+
