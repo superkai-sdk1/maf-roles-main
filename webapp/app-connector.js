@@ -8,7 +8,7 @@ console.log('📦 Загружается app-connector.js...');
 const waitPromise = (milliseconds) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 class GoMafiaConnector {
-    apiUrl = 'https://minahor.ru/api/';
+    apiUrl = 'https://titanmafia.pro/api/';
     apiSuffix = '?za';
 
     async getTournament(tournamentID) {
@@ -74,7 +74,7 @@ class GoMafiaConnector {
         logins.forEach(playerLogin => fd.append('playerLogin[]', playerLogin));
         
         try {
-            const response = await fetch('https://minahor.ru/api/players-get.php?za', { method: 'POST', body: fd });
+            const response = await fetch('https://titanmafia.pro/api/players-get.php?za', { method: 'POST', body: fd });
             
             // Проверяем, что получили успешный ответ
             if (!response.ok) {
@@ -155,3 +155,4 @@ const goMafia = new GoMafiaConnector();
 window.goMafia = goMafia;
 
 console.log('✅ app-connector.js загружен, goMafia доступен в window.goMafia');
+
