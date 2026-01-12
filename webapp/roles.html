@@ -612,7 +612,7 @@ Vue.component('role-badge', {
 				if (this.ws) {
 					this.ws.close();
 				}
-				this.ws = new WebSocket('wss://minahor.ru/bridge');
+				this.ws = new WebSocket('wss://titanmafia.pro/bridge');
 				this.ws.onopen = () => {
 					this.ws.send(JSON.stringify({ joinRoom: roomId }));
 				};
@@ -984,4 +984,5 @@ Vue.component('role-badge', {
 
 </script>
 </body>
+
 </html>
