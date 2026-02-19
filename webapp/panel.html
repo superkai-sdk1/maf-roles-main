@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>Maf roles control panel</title>
+    <script>
+        // Обработка ошибок Telegram WebApp
+        window.addEventListener('error', (e) => {
+            if (e.filename && e.filename.includes('telegram-web-app.js')) {
+                console.warn('⚠️ Ошибка в Telegram WebApp скрипте (игнорируется):', e.message);
+                e.preventDefault();
+            }
+        });
+    </script>
+    <script src="https://telegram.org/js/telegram-web-app.js" onerror="console.warn('⚠️ Не удалось загрузить Telegram WebApp скрипт')"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+    <link rel="stylesheet" href="../assets/font-akrobat/css.css">
+    <link rel="stylesheet" href="../assets/flex.css">
+    <link rel="stylesheet" href="./styles-panel.css">
+    <link rel="stylesheet" href="./login/auth.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.materialdesignicons.com/7.2.96/css/materialdesignicons.min.css">
+    
+    <!-- Стили для отключения зума и адаптации под Telegram Mini Apps -->
+    <style>
+        /* Глобальный сброс box-sizing для предсказуемых размеров */
+        *, *:before, *:after {
+            box-sizing: border-box;
+        }
+
+        /* Отключение зума и жестов */
+        * {
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
+        }
+        
+        /* Разрешаем выделение текста в input полях */
+        input, textarea {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+            -webkit-touch-callout: default;
+        }
+        
+        /* Предотвращение зума при двойном тапе */
+        body {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            touch-action: manipulation;
+        }
+        
+        /* Telegram Mini Apps специфичные стили */
+        .tg-app {
+            height: 100vh; /* Fallback */
+            height: var(--tg-viewport-height, 100vh);
+            overflow: hidden;
+        }
+
+        /* Исправление для кликабельности убитых игроков на тач-устройствах */
+        .player-inactive {
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        
+        /* Адаптация под безопасные зоны */
+        @supports (padding: max(0px)) {
+            body {
+                padding-left: max(0px, env(safe-area-inset-left));
+                padding-right: max(0px, env(safe-area-inset-right));
+            }
+        }
+
+        /* --- GRID DASHBOARD STYLES FOR SCORES --- */
+        .scores-list {
+            padding-bottom: 100px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            box-sizing: border-box;
+            padding-top: 84px;
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+
+        .score-card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(16px) saturate(140%);
+            -webkit-backdrop-filter: blur(16px) saturate(140%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 22px;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1);
+            width: 100%;
+            position: relative;
+        }
+
+        .score-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 22px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 50%);
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .score-card.highlighted {
+            background: rgba(174, 140, 255, 0.12);
+            border-color: rgba(174, 140, 255, 0.35);
+            box-shadow: 0 0 0 1px rgba(174,140,255,0.3), 0 8px 32px rgba(174,140,255,0.15);
+            transform: scale(1.01);
+            z-index: 10;
+        }
+
+        .score-header {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            background: transparent;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .score-card.highlighted .score-header {
+            background: linear-gradient(90deg, rgba(174,140,255,0.08) 0%, transparent 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .score-content {
+            padding: 12px;
+            background: rgba(0,0,0,0.15);
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* GRID LAYOUT */
+        .score-dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .dashboard-cell {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            min-height: 80px;
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .dashboard-cell::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 50%);
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .dashboard-cell.full-width {
+            grid-column: 1 / -1;
+            min-height: auto;
+        }
+
+        .cell-label {
+            font-size: 0.7em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 8px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            white-space: nowrap;
+        }
+
+        /* Opinion & Protocol Lists */
+        .info-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex-grow: 1;
+            width: 100%;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85em;
+            padding: 4px 8px;
+            background: rgba(0,0,0,0.15);
+            border-radius: 8px;
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .info-text-mini {
+            font-size: 0.9em;
+            font-style: italic;
+            color: #ccc;
+            line-height: 1.4;
+            padding: 4px;
+            word-wrap: break-word;
+        }
+
+        /* Inputs */
+        .math-input-container {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .math-input {
+            width: 100%;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #fff;
+            border-radius: 10px;
+            padding: 8px;
+            text-align: center;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 1.2em;
+            font-weight: bold;
+            outline: none;
+            transition: all 0.2s;
+            min-width: 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .math-input:focus {
+            border-color: var(--maf-accent-color);
+            background: rgba(0,0,0,0.35);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), 0 0 0 2px var(--maf-accent-color);
+        }
+
+        .math-input.positive { color: #30d158; }
+        .math-input.negative { color: #ff453a; }
+
+        /* Status & Total */
+        .status-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .total-content {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .total-value {
+            font-size: 2em;
+            font-weight: 800;
+            font-family: 'Roboto Mono', monospace;
+            background: linear-gradient(135deg, #fff 0%, var(--maf-accent-color, #ae8cff) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+            filter: drop-shadow(0 0 8px rgba(174,140,255,0.2));
+        }
+
+        .win-badge {
+            font-size: 0.7em;
+            background: rgba(255, 214, 10, 0.12);
+            color: #ffd60a;
+            padding: 3px 8px;
+            border-radius: 8px;
+            margin-top: 4px;
+            white-space: nowrap;
+            border: 1px solid rgba(255,214,10,0.15);
+        }
+
+        /* Common Elements */
+        .role-tag {
+            padding: 3px 10px;
+            border-radius: 8px;
+            font-size: 0.75em;
+            margin-left: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            white-space: nowrap;
+            backdrop-filter: blur(4px);
+        }
+
+        .role-tag.peace { background: rgba(30,58,138,0.6); color: #90caf9; border: 1px solid rgba(144, 202, 249, 0.15); }
+        .role-tag.sheriff { background: rgba(66,54,2,0.6); color: #ffd54f; border: 1px solid rgba(255, 213, 79, 0.15); }
+        .role-tag.mafia { background: rgba(62,26,26,0.6); color: #ef9a9a; border: 1px solid rgba(239, 154, 154, 0.15); }
+        .role-tag.don { background: rgba(74,20,140,0.6); color: #e1bee7; border: 1px solid rgba(225, 190, 231, 0.15); }
+
+        .player-num-badge {
+            width: 28px;
+            height: 28px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 12px;
+            font-size: 0.9em;
+            color: #aaa;
+            flex-shrink: 0;
+        }
+
+        .score-card.highlighted .player-num-badge {
+            background: var(--maf-accent-color);
+            color: #000;
+        }
+
+        .check-icon { color: #30d158; margin-left: 4px; }
+        .cross-icon { color: #ff453a; margin-left: 4px; }
+
+        .self-kill-status {
+            color: #ff453a;
+            font-weight: bold;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(255, 69, 58, 0.5);
+            animation: pulse-red 2s infinite;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            width: 100%;
+        }
+
+        @keyframes pulse-red {
+            0% { text-shadow: 0 0 5px rgba(255, 69, 58, 0.3); opacity: 0.8; }
+            50% { text-shadow: 0 0 15px rgba(255, 69, 58, 0.7); opacity: 1; }
+            100% { text-shadow: 0 0 5px rgba(255, 69, 58, 0.3); opacity: 0.8; }
+        }
+
+        .empty-data {
+            font-size: 0.8em;
+            color: rgba(255,255,255,0.25);
+            text-align: center;
+            margin-top: auto;
+            margin-bottom: auto;
+        }
+
+        /* --- REVEAL BUTTON STYLE --- */
+        .reveal-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255,255,255,0.6);
+            padding: 6px 16px;
+            border-radius: 10px;
+            font-size: 0.9em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            min-width: 60px;
+            text-align: center;
+            outline: none;
+        }
+
+        .reveal-btn:active {
+            transform: scale(0.92);
+        }
+
+        .reveal-btn.active {
+            background: rgba(48, 209, 88, 0.15);
+            border-color: rgba(48,209,88,0.35);
+            color: #30d158;
+            box-shadow: 0 0 12px rgba(48, 209, 88, 0.15);
+        }
+
+        /* --- MOBILE RESPONSIVENESS --- */
+        @media (max-width: 380px) {
+            .score-content {
+                padding: 8px;
+            }
+            .score-dashboard-grid {
+                gap: 6px;
+            }
+            .dashboard-cell {
+                padding: 8px 6px;
+                min-height: 70px;
+            }
+            .cell-label {
+                font-size: 0.65em;
+                margin-bottom: 6px;
+            }
+            .math-input {
+                font-size: 1em;
+                padding: 6px;
+            }
+            .total-value {
+                font-size: 1.6em;
+            }
+            .role-tag {
+                margin-left: 6px;
+                padding: 2px 6px;
+                font-size: 0.7em;
+            }
+            .info-item {
+                font-size: 0.8em;
+                padding: 3px 6px;
+            }
+            .reveal-btn {
+                padding: 4px 10px;
+                font-size: 0.85em;
+                min-width: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+<script>
+// Инициализация Telegram Web App
+if (window.Telegram && window.Telegram.WebApp) {
+    const tg = window.Telegram.WebApp;
+    
+    // 1. Базовое расширение (для всех версий)
+    tg.expand();
+    
+    // 2. Попытка включить настоящий полноэкранный режим (Bot API 8.0+)
+    if (typeof tg.requestFullscreen === 'function') {
+        tg.requestFullscreen();
+    }
+    
+    // 3. Отключаем вертикальные свайпы для предотвращения закрытия
+    if (typeof tg.disableVerticalSwipes === 'function') {
+        tg.disableVerticalSwipes();
+    }
+    
+    // Устанавливаем цвет хедера и фона
+    tg.setHeaderColor('#0c0a1e');
+    tg.setBackgroundColor('#0c0a1e');
+
+    // Добавляем класс для Telegram приложения
+    document.body.classList.add('tg-app');
+    
+    // Функция обновления высоты вьюпорта
+    function updateViewportHeight() {
+        // Используем tg.viewportStableHeight если доступно, иначе viewportHeight
+        const vh = tg.viewportStableHeight || tg.viewportHeight;
+        if (vh) {
+            document.documentElement.style.setProperty('--tg-viewport-height', `${vh}px`);
+        }
+    }
+    
+    // Слушаем изменение размера вьюпорта
+    tg.onEvent('viewportChanged', updateViewportHeight);
+    
+    // Инициализация высоты с небольшой задержкой для надежности
+    updateViewportHeight();
+    setTimeout(updateViewportHeight, 100);
+    
+    // Показываем, что приложение готово
+    tg.ready();
+    
+    // Включаем подтверждение закрытия
+    tg.enableClosingConfirmation();
+    
+    // Глобальная функция для тактильного отклика
+    window.haptic = {
+        impact: (style = 'light') => {
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred(style);
+        },
+        notification: (type = 'success') => {
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred(type);
+        },
+        selection: () => {
+            if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+        }
+    };
+    
+    // Функции для работы с сессиями
+    window.sessionManager = {
+        // Ключ для хранения данных сессии
+        SESSION_KEY: 'maf_panel_session_data',
+        
+        // Сохранение данных сессии
+        saveSession: function(data) {
+            try {
+                const sessionData = {
+                    ...data,
+                    timestamp: Date.now()
+                };
+                
+                // Сохраняем в localStorage
+                localStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData));
+                
+                // Также сохраняем в Telegram CloudStorage если доступно
+                if (tg.CloudStorage) {
+                    tg.CloudStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData));
+                }
+            } catch (error) {
+                console.error('Ошибка сохранения сессии:', error);
+            }
+        },
+        
+        // Получение данных сессии
+        getSession: function() {
+            try {
+                const localData = localStorage.getItem(this.SESSION_KEY);
+                if (localData) {
+                    return JSON.parse(localData);
+                }
+                return null;
+            } catch (error) {
+                console.error('Ошибка загрузки сессии:', error);
+                return null;
+            }
+        },
+        
+        // Проверка валидности сессии (3 часа)
+        isSessionValid: function(sessionData) {
+            if (!sessionData || !sessionData.timestamp) {
+                return false;
+            }
+            
+            const now = Date.now();
+            const sessionTime = sessionData.timestamp;
+            const threeHours = 3 * 60 * 60 * 1000; // 3 часа в миллисекундах
+            
+            return (now - sessionTime) < threeHours;
+        },
+        
+        // Проверка, есть ли значимые данные в сессии
+        hasSignificantData: function(sessionData) {
+            if (!sessionData) return false;
+            
+            // Проверяем, что есть комната И (турнир ИЛИ ручной режим с игроками)
+            return sessionData.roomId && (
+                sessionData.tournamentId || 
+                (sessionData.manualMode && sessionData.manualPlayers && sessionData.manualPlayers.length > 0)
+            );
+        },
+        
+        // Очистка сессии
+        clearSession: function() {
+            try {
+                localStorage.removeItem(this.SESSION_KEY);
+                if (tg.CloudStorage) {
+                    tg.CloudStorage.removeItem(this.SESSION_KEY);
+                }
+            } catch (error) {
+                console.error('Ошибка очистки сессии:', error);
+            }
+        }
+    };
+} else {
+    // Заглушка для haptic, если не в Telegram
+    window.haptic = {
+        impact: () => {},
+        notification: () => {},
+        selection: () => {}
+    };
+}
+</script>
+<script src="./login/auth.js"></script>
+<div id="app" :class="{ 'obs-cef': isObs }">
+    <!-- Баннер о неактивной панели -->
+    <div v-if="!isActivePanel && activePanelId && roomId" class="top-banner">
+        <b>Внимание!</b> В этой комнате уже есть активная панель.<br>
+        <button @click="activateThisPanel(); window.haptic.impact('medium');">
+            Сделать эту панель главной
+        </button>
+    </div>
+    
+    <div :class="{ 'content-shifted': (!isActivePanel && activePanelId && roomId) }">
+        <!-- Модальное окно восстановления сессии -->
+        <div v-if="showSessionRestoreModal" class="modal z-high">
+            <div class="modal-content">
+                <h2 class="mb-10">Восстановить сессию?</h2>
+                <div class="text-secondary text-center mb-20 text-large">
+                    Обнаружена сессия от {{ formatSessionTime(previousSession.timestamp) }}
+                </div>
+                <div v-if="previousSession.roomId" class="session-data-box">
+                    <div class="font-bold text-center mb-10 text-white-bold">Данные сессии:</div>
+                    <div class="text-secondary text-center">Комната: <span class="text-white-bold">{{ previousSession.roomId }}</span></div>
+                    <div v-if="previousSession.tournamentId" class="text-secondary text-center">Турнир: <span class="text-white-bold">{{ previousSession.tournamentId }}</span></div>
+                    <div v-if="previousSession.gameSelected" class="text-secondary text-center">Игра: <span class="text-white-bold">{{ previousSession.gameSelected }}</span></div>
+                </div>
+                <div class="modal-actions">
+                    <button class="glass-btn btn-primary" @click="restoreSession(); window.haptic.notification('success');">
+                        <i class="fa fa-undo" style="margin-right:8px;"></i>
+                        Да, восстановить
+                    </button>
+                    <button class="glass-btn btn-danger" @click="skipSessionRestore(); window.haptic.impact('light');">
+                        <i class="fa fa-times" style="margin-right:8px;"></i>
+                        Нет, начать заново
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Модальное окно выбора комнаты -->
+        <div v-if="showRoomModal" class="modal">
+            <div class="modal-content">
+                <h2>Введите код комнаты</h2>
+                <div class="selection-card" style="cursor: default; background: rgba(255,255,255,0.03);">
+                    <div class="selection-icon">
+                        <i class="mdi mdi-door-open" style="color: var(--accent-color);"></i>
+                    </div>
+                    <div class="selection-info" style="flex-grow: 1;">
+                        <input
+                            type="text"
+                            inputmode="numeric"
+                            pattern="[0-9]*"
+                            v-model="roomInput"
+                            maxlength="4"
+                            placeholder="1234"
+                            class="text-center-input"
+                            style="background: transparent; border: none; box-shadow: none; padding: 0; font-size: 1.5em; font-weight: 800;"
+                            @keydown.enter="joinRoom(); window.haptic.impact('medium');"
+                            @input="roomInput = roomInput.replace(/[^0-9]/g, '')"
+                        />
+                    </div>
+                </div>
+                <button class="glass-btn w-full mt-16 btn-primary" @click="joinRoom(); window.haptic.impact('medium');">Войти в комнату</button>
+            </div>
+        </div>
+        
+        <!-- Модальное окно выбора режима -->
+        <div v-else-if="showModal" class="modal">
+            <div class="modal-content">
+                <h2>Добро пожаловать!</h2>
+                <div class="mode-select-buttons">
+                    <div
+                        class="mode-btn"
+                        :class="{selected: inputMode === 'gomafia'}"
+                        tabindex="0"
+                        @click="inputMode = 'gomafia'; window.haptic.selection();"
+                        @keydown.enter.space="inputMode = 'gomafia'"
+                        role="button"
+                    >
+                        <img src="./icon/gomafia.png" alt="Gomafia" />
+                        <div class="selection-info">
+                            <div class="selection-title">GoMafia</div>
+                            <div class="selection-desc">Турнирный режим</div>
+                        </div>
+                    </div>
+                    <div
+                        class="mode-btn"
+                        :class="{selected: inputMode === 'manual'}"
+                        tabindex="0"
+                        @click="inputMode = 'manual'; window.haptic.selection();"
+                        @keydown.enter.space="inputMode = 'manual'"
+                        role="button"
+                    >
+                        <img src="./icon/goruchkami.png" alt="GoРучками" />
+                        <div class="selection-info">
+                            <div class="selection-title">GoРучками</div>
+                            <div class="selection-desc">Ручная рассадка</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="inputMode === 'gomafia'" class="modal-fields mt-16">
+                    <div class="selection-card" style="cursor: default; background: rgba(255,255,255,0.03);">
+                        <div class="selection-icon">
+                            <i class="mdi mdi-trophy-outline" style="color: #ffd700;"></i>
+                        </div>
+                        <div class="selection-info" style="flex-grow: 1;">
+                            <input
+                                type="text"
+                                inputmode="numeric"
+                                pattern="[0-9]*"
+                                v-model="tournamentId"
+                                placeholder="Номер турнира"
+                                style="background: transparent; border: none; box-shadow: none; padding: 0; font-size: 1.2em; font-weight: 700;"
+                                @keydown.enter="loadTournament(); window.haptic.impact('medium');"
+                                @input="tournamentId = tournamentId.replace(/[^0-9]/g, '')"
+                            >
+                        </div>
+                    </div>
+                    <button class="glass-btn w-full btn-primary" @click="loadTournament(); window.haptic.impact('medium');">Загрузить турнир</button>
+                </div>
+
+                <div v-else-if="inputMode === 'manual'" class="modal-fields mt-16">
+                    <div class="selection-card" style="cursor: default; background: rgba(255,255,255,0.03);">
+                        <div class="selection-icon">
+                            <i class="mdi mdi-account-group-outline" style="color: var(--accent-color);"></i>
+                        </div>
+                        <div class="selection-info" style="flex-grow: 1;">
+                            <input
+                                type="number"
+                                min="1"
+                                max="15"
+                                v-model.number="manualPlayersCount"
+                                placeholder="Кол-во игроков (1-15)"
+                                style="background: transparent; border: none; box-shadow: none; padding: 0; font-size: 1.2em; font-weight: 700;"
+                            >
+                        </div>
+                    </div>
+                    <button class="glass-btn w-full btn-primary" @click="createManualTable(); window.haptic.impact('medium');">Создать стол</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Модальное окно для выбора Лучшего Хода -->
+        <div v-if="showBestMoveModal" class="modal">
+            <div class="best-move-modal-content">
+                <h2>Лучший ход</h2>
+                <p>Выберите трех игроков:</p>
+                <div class="modal-grid">
+                    <button v-for="n in 9" :key="'bm'+n"
+                            class="modal-btn"
+                            :class="{ selected: bestMove.includes(n) }"
+                            :disabled="tableOut[n-1]?.roleKey === firstKilledPlayer"
+                            @click="toggleBestMove(n); window.haptic.selection();">
+                        {{ n }}
+                    </button>
+                    <button v-if="tableOut.length >= 10"
+                            class="modal-btn"
+                            :class="{ selected: bestMove.includes(10) }"
+                            :disabled="tableOut[9]?.roleKey === firstKilledPlayer"
+                            @click="toggleBestMove(10); window.haptic.selection();">
+                        10
+                    </button>
+                </div>
+                <div class="modal-actions">
+                    <button class="glass-btn btn-primary" @click="confirmBestMove(); window.haptic.notification('success');">Принять ЛХ</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Модальное окно выбора победителя -->
+        <div v-if="showWinnerModal" class="modal">
+            <div class="modal-content">
+                <h2>Выберите победителя</h2>
+                <div class="winner-selection-grid">
+                    <div class="winner-card civilians" @click="setWinnerTeam('civilians'); window.haptic.notification('success');">
+                        <div class="winner-icon">
+                            <i class="mdi mdi-account-group"></i>
+                        </div>
+                        <div class="winner-info">
+                            <div class="winner-title">Победа мирных</div>
+                            <div class="winner-desc">Красная команда</div>
+                        </div>
+                    </div>
+
+                    <div class="winner-card mafia" @click="setWinnerTeam('mafia'); window.haptic.notification('success');">
+                        <div class="winner-icon">
+                            <i class="mdi mdi-skull"></i>
+                        </div>
+                        <div class="winner-info">
+                            <div class="winner-title">Победа мафии</div>
+                            <div class="winner-desc">Черная команда</div>
+                        </div>
+                    </div>
+
+                    <div class="winner-card draw" @click="setWinnerTeam('draw'); window.haptic.notification('success');">
+                        <div class="winner-icon">
+                            <i class="fa fa-handshake"></i>
+                        </div>
+                        <div class="winner-info">
+                            <div class="winner-title">Ничья</div>
+                            <div class="winner-desc">Равный результат</div>
+                        </div>
+                    </div>
+                </div>
+                <button class="glass-btn btn-danger mt-16 w-full" @click="showWinnerModal = false; window.haptic.impact('light');">
+                    Отмена
+                </button>
+            </div>
+        </div>
+
+        <!-- Интерфейс подсчета баллов (показывается если выбран победитель) -->
+        <div v-if="winnerTeam && tableOut?.length" class="scores-list">
+            <div class="text-center font-bold text-large mb-20" style="text-shadow: 0 0 15px rgba(255,255,255,0.3);">
+                Победили: <span :style="{color: winnerTeam === 'civilians' ? '#ff5252' : (winnerTeam === 'mafia' ? '#4fc3f7' : '#fff')}">
+                    {{ winnerTeam === 'civilians' ? 'Мирные' : (winnerTeam === 'mafia' ? 'Мафия' : 'Ничья') }}
+                </span>
+            </div>
+
+            <div v-for="(playerData, index) in tableOut"
+                 :key="playerData.roleKey"
+                 class="score-card"
+                 :class="{ 'highlighted': highlightedPlayer === playerData.roleKey }"
+                 @click="toggleHighlight(playerData.roleKey, $event); window.haptic.selection();">
+
+                <div class="player-row-content">
+                    <b class="flex-fixed player-num">{{index + 1}}</b>
+                    <div class="avatar-uploader flex-fixed">
+                        <div class="avatar" :style="{backgroundImage: playerData.avatarCss}"></div>
+                    </div>
+                    <div class="text-ellipsis player-name">{{playerData.login}}</div>
+                    <div class="role-badges-right">
+                        <span class="role-tag" :class="playerData.role || 'peace'">
+                            {{ getRoleLabel(playerData.role) }}
+                        </span>
+                        <b style="font-size: 1.2em; margin-left: 10px; min-width: 30px; text-align: right;">{{ calculatePlayerScore(playerData.roleKey) }}</b>
+                    </div>
+                </div>
+
+                <transition name="slide-fade">
+                    <div v-if="highlightedPlayer === playerData.roleKey" class="score-content" @click.stop>
+                        <div class="score-dashboard-grid">
+                            <!-- Ряд 1: Протокол | Мнение -->
+                            <div class="dashboard-cell">
+                                <div class="cell-label">Протокол</div>
+                                <div class="info-list">
+                                    <div v-if="checkProtocol(playerData.roleKey)">
+                                        <div v-for="(res, idx) in checkProtocol(playerData.roleKey)" :key="'prot'+idx" class="info-item">
+                                            <span>#{{ idx }}</span>
+                                            <div class="flex align-center">
+                                                <span :class="'text-' + res.role" style="margin-right:4px;">{{ getRoleLabel(res.role) }}</span>
+                                                <i :class="res.correct ? 'fa fa-check check-icon' : 'fa fa-times cross-icon'"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-else class="empty-data">Пусто</div>
+                                </div>
+                            </div>
+
+                            <div class="dashboard-cell">
+                                <div class="cell-label">Мнение</div>
+                                <div class="info-list">
+                                    <div v-if="checkOpinion(playerData.roleKey)">
+                                        <div v-for="(res, idx) in checkOpinion(playerData.roleKey)" :key="'opin'+idx" class="info-item">
+                                            <span>#{{ idx }}</span>
+                                            <div class="flex align-center">
+                                                <span :class="'text-' + res.role" style="margin-right:4px;">{{ getRoleLabel(res.role) }}</span>
+                                                <i :class="res.correct ? 'fa fa-check check-icon' : 'fa fa-times cross-icon'"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-else class="empty-data">Пусто</div>
+                                </div>
+                            </div>
+
+                            <!-- Ряд 2: Текстовое мнение (если есть) -->
+                            <div v-if="getOpinionText(playerData.roleKey)" class="dashboard-cell full-width">
+                                <div class="cell-label">Текст мнения</div>
+                                <div class="info-text-mini">
+                                    "{{ getOpinionText(playerData.roleKey) }}"
+                                </div>
+                            </div>
+
+                            <!-- Ряд 3: Доп | Штраф -->
+                            <div class="dashboard-cell">
+                                <div class="cell-label" style="color:#4caf50;"><i class="fa fa-plus"></i> Доп</div>
+                                <div class="math-input-container">
+                                    <div class="math-input-wrapper">
+                                        <button class="math-btn minus" @click="adjustScore(playerData.roleKey, 'bonus', -0.1); window.haptic.impact('light');">-</button>
+                                        <input type="number" step="0.1" class="math-input positive"
+                                               placeholder="0"
+                                               :value="playerScores[playerData.roleKey]?.bonus || ''"
+                                               @input="updatePlayerScore(playerData.roleKey, 'bonus', $event.target.value)">
+                                        <button class="math-btn plus" @click="adjustScore(playerData.roleKey, 'bonus', 0.1); window.haptic.impact('light');">+</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="dashboard-cell">
+                                <div class="cell-label" style="color:#f44336;"><i class="fa fa-minus"></i> Штраф</div>
+                                <div class="math-input-container">
+                                    <div class="math-input-wrapper">
+                                        <button class="math-btn minus" @click="adjustScore(playerData.roleKey, 'penalty', -0.1); window.haptic.impact('light');">-</button>
+                                        <input type="number" step="0.1" class="math-input negative"
+                                               placeholder="0"
+                                               :value="playerScores[playerData.roleKey]?.penalty || ''"
+                                               @input="updatePlayerScore(playerData.roleKey, 'penalty', $event.target.value)">
+                                        <button class="math-btn plus" @click="adjustScore(playerData.roleKey, 'penalty', 0.1); window.haptic.impact('light');">+</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Ряд 4: Вскрытие | Итого -->
+                            <div class="dashboard-cell">
+                                <div class="cell-label">Статус</div>
+                                <div class="status-content">
+                                    <div class="status-row">
+                                        <span class="status-text">Вскрытие</span>
+                                        <button class="reveal-btn"
+                                                :class="{ 'active': playerScores[playerData.roleKey]?.reveal }"
+                                                @click="toggleReveal(playerData.roleKey); window.haptic.impact('light');">
+                                            {{ playerScores[playerData.roleKey]?.reveal ? 'Да' : 'Нет' }}
+                                        </button>
+                                    </div>
+                                    <div v-if="(playerData.role === 'don' || playerData.role === 'black') && playerData.action === 'killed'" class="self-kill-status">
+                                        <i class="mdi mdi-skull" style="margin-right: 6px;"></i> САМОСТРЕЛ
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="dashboard-cell" style="background: rgba(var(--maf-accent-color-rgb), 0.05); border-color: rgba(var(--maf-accent-color-rgb), 0.2);">
+                                <div class="cell-label" style="color: var(--maf-accent-color);">Итого</div>
+                                <div class="total-content">
+                                    <span class="total-value">{{ calculatePlayerScore(playerData.roleKey) }}</span>
+                                    <div v-if="(winnerTeam === 'civilians' && (!playerData.role || playerData.role === 'sheriff')) || (winnerTeam === 'mafia' && (playerData.role === 'don' || playerData.role === 'black'))" class="win-badge">
+                                        +1 Победа
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </transition>
+            </div>
+
+            <button class="glass-btn w-full btn-primary mt-20" @click="sendResultsToTelegram(); window.haptic.notification('success');">
+                <i class="fa fa-paper-plane" style="margin-right:8px;"></i>
+                Отправить результаты в Телеграм
+            </button>
+
+            <button class="glass-btn w-full btn-danger mt-10" @click="setWinnerTeam(null); window.haptic.impact('light');">
+                <i class="fa fa-arrow-left" style="margin-right:8px;"></i>
+                Вернуться к игре
+            </button>
+        </div>
+
+        <!-- Таблица игроков (скрывается если выбран победитель) -->
+        <div v-else-if="tableOut?.length" class="players-list">
+            <div v-for="(playerData, index) in tableOut"
+                 :key="playerData.roleKey"
+                 class="player-row"
+                 :class="{
+                    'highlighted': highlightedPlayer === playerData.roleKey,
+                    'killed': playerData.action === 'killed',
+                    'voted': playerData.action === 'voted',
+                    'removed': playerData.action === 'removed',
+                    'tech-fall-removed': playerData.action === 'tech_fall_removed',
+                    'fall-removed': playerData.action === 'fall_removed',
+                    'mode-day': currentMode==='day',
+                    'mode-night': currentMode==='night',
+                    'mode-old': currentMode==='old',
+                    'foul-4': currentMode==='day' && playerData.foul===4,
+                    'player-inactive': ['removed','killed','voted','tech_fall_removed','fall_removed'].includes(playerData.action)
+                 }"
+                 :style="{'--i':index}"
+                 onclick="void(0)"
+                 @click="toggleHighlight(playerData.roleKey, $event); window.haptic.selection();"
+            >
+                <div class="player-row-content">
+                    <b class="flex-fixed player-num">{{index + 1}}</b>
+                    <div class="avatar-uploader flex-fixed">
+                        <div class="avatar" :style="{backgroundImage: playerData.avatarCss}"></div>
+                        <div v-if="avatarExHas(playerData.roleKey)" class="avatar-x" @click.stop="avatarExSet(playerData.roleKey); window.haptic.impact('light');">
+                            <i class="fa fa-times"></i>
+                        </div>
+                        <div class="hovered" @click.stop="avatarExLoad(playerData.roleKey)">
+                            <i class="fa fa-camera"></i>
+                            <input type="file" accept="image/*" @change="onAvatarExUpload($event, playerData.roleKey)" ref="fileInputs" />
+                        </div>
+                    </div>
+                    <template v-if="manualMode">
+                        <template v-if="manualGameSelected === 1">
+                            <input class="input-compact" v-model="manualPlayers[index].login" placeholder="Имя игрока">
+                        </template>
+                        <template v-else>
+                            <select v-model="manualPlayers[index].login" @change="onManualSelectPlayer(index)">
+                                <option value="">— Новый игрок —</option>
+                                <option v-for="(p, idx) in firstGamePlayers" :value="p.login">{{p.login}}</option>
+                            </select>
+                        </template>
+                    </template>
+                    <div v-else class="text-ellipsis player-name">{{playerData.login}}</div>
+                    <div class="role-badges-right">
+                        <!-- Кнопка Вернуть игрока для удалённого -->
+                        <template v-if="['removed','killed','voted','tech_fall_removed','fall_removed'].includes(playerData.action)">
+                            <button class="role-button return-player-btn" @click.stop="clearPlayerStatus(playerData.roleKey); window.haptic.impact('medium');" title="Вернуть игрока">❤️</button>
+                        </template>
+                        <template v-else>
+                        <!-- Режим Роли -->
+                        <template v-if="currentMode==='roles'">
+                            <button class="role-button" :class="{ active: playerData.role === 'don' }" @click.stop="roleSet(playerData.roleKey, 'don'); window.haptic.impact('light');" title="Дон">Д</button>
+                            <button class="role-button" :class="{ active: playerData.role === 'black' }" @click.stop="roleSet(playerData.roleKey, 'black'); window.haptic.impact('light');" title="Мафия">М</button>
+                            <button class="role-button" :class="{ active: playerData.role === 'sheriff' }" @click.stop="roleSet(playerData.roleKey, 'sheriff'); window.haptic.impact('light');" title="Шериф">Ш</button>
+                        </template>
+                        <!-- Режим День -->
+                        <template v-if="currentMode==='day'">
+                            <button class="role-button day-tools" @click.stop="toggleRemove(playerData.roleKey); window.haptic.impact('medium');" :title="playerData.action==='removed'?'Вернуть':'Удалить'">
+                                <i class="fa fa-ban"></i>
+                            </button>
+                            <button class="role-button day-tools" @click.stop="toggleTechFoul(playerData.roleKey); window.haptic.impact('light');" :title="playerData.techFoul===0?'Тех.фол':'ТФ'+playerData.techFoul">
+                                ⚡<span v-if="playerData.techFoul>0">{{playerData.techFoul}}</span>
+                            </button>
+                            <button class="role-button day-tools" @click.stop="toggleFoul(playerData.roleKey); window.haptic.impact('light');" :title="'Фол ('+playerData.foul+')'">
+                                ⚠️<span v-if="playerData.foul>0">{{playerData.foul}}</span>
+                            </button>
+                        </template>
+                        <!-- Режим Ночь -->
+                        <template v-if="currentMode==='night'">
+                            <button class="role-button night-tools" @click.stop="actionSet(playerData.roleKey, 'killed', { nightKill: true }); window.haptic.impact('heavy');" :class="{active: playerData.action==='killed'}" title="Убить">
+                                <i class="mdi mdi-crosshairs-gps"></i>
+                            </button>
+                        </template>
+                        </template>
+                    </div>
+                </div>
+                <transition name="slide-fade">
+                    <div v-if="highlightedPlayer === playerData.roleKey" class="candidate-menu" @click.stop @touchstart.stop>
+                        <!-- Таймер секция (теперь доступна всем) -->
+                        <div class="timer-section">
+                            <div class="timer-display" :class="{ 
+                                running: getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused,
+                                warning: getTimerDisplay(playerData.roleKey).timeLeft <= 10 && getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused
+                            }">
+                                {{ formatTimerTime(getTimerDisplay(playerData.roleKey).timeLeft) }}
+                            </div>
+                            <div class="timer-controls">
+                                <button 
+                                    class="timer-btn timer-start"
+                                    :disabled="getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused"
+                                    @click.stop="handleTimerStart(playerData.roleKey); window.haptic.impact('light');"
+                                    :title="getTimerDisplay(playerData.roleKey).isPaused ? 'Продолжить' : 'Старт'">
+                                    <i class="fa fa-play"></i>
+                                </button>
+                                <button 
+                                    class="timer-btn timer-pause"
+                                    :disabled="!getTimerDisplay(playerData.roleKey).isRunning || getTimerDisplay(playerData.roleKey).isPaused"
+                                    @click.stop="pausePlayerTimer(playerData.roleKey); window.haptic.impact('light');"
+                                    title="Пауза">
+                                    <i class="fa fa-pause"></i>
+                                </button>
+                                <button 
+                                    class="timer-btn timer-add"
+                                    :class="{ disabled: !isAddTimeButtonAvailable(playerData.roleKey) }"
+                                    :disabled="!isAddTimeButtonAvailable(playerData.roleKey)"
+                                    @click.stop="addThirtySecondsToTimer(playerData.roleKey); window.haptic.impact('light');"
+                                    title="Добавить 30 секунд">
+                                    +30
+                                </button>
+                                <button 
+                                    class="timer-btn timer-stop"
+                                    @click.stop="stopPlayerTimer(playerData.roleKey); window.haptic.impact('light');"
+                                    title="Стоп">
+                                    <i class="fa fa-stop"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Сетка кандидатов (только для живых игроков) -->
+                        <div v-if="playerData.action !== 'killed'" class="candidate-grid">
+                            <button v-for="n in tableOut.length"
+                                    :key="'cand'+n"
+                                    class="candidate-btn"
+                                    :class="candidateButtonClass(playerData.roleKey, n)"
+                                    :disabled="isCandidateButtonDisabled(playerData.roleKey, n)"
+                                    @click.stop="toggleNomination(playerData.roleKey, n); window.haptic.selection();">
+                                {{ n }}
+                            </button>
+                        </div>
+                        <div v-if="playerData.action !== 'killed' && nominations[playerData.roleKey] && nominations[playerData.roleKey].length" class="text-center text-accent font-bold text-large mt-md">
+                            Выставлен: <span style="font-size:1.18em;">{{ nominations[playerData.roleKey][0] }}</span>
+                        </div>
+
+                        <!-- Секция Протокол и Мнение для убитых игроков -->
+                        <div v-if="playerData.action === 'killed'" class="protocol-opinion-section">
+                            <div class="protocol-section">
+                                <div class="section-title">Протокол</div>
+                                <div class="protocol-grid">
+                                    <button v-for="n in tableOut.length"
+                                            :key="'prot'+n"
+                                            class="protocol-btn"
+                                            :class="getProtocolRoleClass(playerData.roleKey, n)"
+                                            @click.stop="toggleProtocolRole(playerData.roleKey, n); window.haptic.selection();">
+                                        <span class="player-num">{{ n }}</span>
+                                        <span class="role-label">{{ getProtocolRoleLabel(playerData.roleKey, n) }}</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="opinion-section">
+                                <div class="section-title">Мнение</div>
+                                <div class="opinion-grid">
+                                    <button v-for="n in tableOut.length"
+                                            :key="'opin'+n"
+                                            class="opinion-btn"
+                                            :class="getOpinionRoleClass(playerData.roleKey, n)"
+                                            @click.stop="toggleOpinionRole(playerData.roleKey, n); window.haptic.selection();">
+                                        <span class="player-num">{{ n }}</span>
+                                        <span class="role-label">{{ getOpinionRoleLabel(playerData.roleKey, n) }}</span>
+                                    </button>
+                                </div>
+                                <textarea
+                                    class="opinion-text"
+                                    placeholder="Введите мнение..."
+                                    :value="opinionText && opinionText[playerData.roleKey]"
+                                    @input="updateOpinionText(playerData.roleKey, $event.target.value)"
+                                    @click.stop
+                                    @touchstart.stop
+                                ></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </transition>
+            </div>
+        </div>
+
+        <!-- Заголовок голосования -->
+        <div v-if="tableOut?.length && !winnerTeam" class="text-center font-bold text-large" style="margin:18px 0 6px 0;">Голосование</div>
+
+        <!-- Кнопки истории и начала голосования -->
+        <div v-if="tableOut?.length" class="modal-actions-row" style="justify-content:center; padding:0 16px; margin-bottom:18px; box-sizing:border-box;">
+            <button class="glass-btn flex-1" @click="showVotingHistory = true; activeVotingTab = Math.max(0, votingHistory.length - 1); window.haptic.impact('light');" style="min-width:0;">
+                <i class="fa fa-history" style="margin-right:8px;"></i>
+                История
+            </button>
+            <button v-if="!winnerTeam" class="glass-btn flex-1 btn-primary" @click="startVoting(); window.haptic.impact('medium');" style="min-width:0;">
+                <i class="fa fa-thumbs-up" style="margin-right:8px;"></i>
+                Начать
+            </button>
+        </div>
+
+        <!-- Заголовок победителей -->
+        <div v-if="tableOut?.length && !winnerTeam" class="text-center font-bold text-large" style="margin:18px 0 6px 0;">Завершение</div>
+
+        <!-- Кнопки победившей команды -->
+        <div v-if="tableOut?.length && !winnerTeam" class="winner-team-row">
+            <button class="glass-btn btn-wide btn-primary" @click="showWinnerModal = true; window.haptic.impact('medium');">
+                <i class="fa fa-flag-checkered" style="margin-right:8px;"></i>
+                Завершить игру
+            </button>
+        </div>
+
+        <!-- Кнопки настроек и тем -->
+        <div class="settings-btn-container" v-if="tableOut?.length">
+            <button class="settings-btn" @click="showSettingsModal = true; window.haptic.impact('light');" title="Настройки">
+                <i class="fa fa-cog"></i>
+            </button>
+            <button class="themes-btn" @click="showThemeModal = true; window.haptic.impact('light');" title="Темы">
+                <i class="fa fa-palette"></i>
+            </button>
+        </div>
+
+        <!-- Панель выбора игры и стола -->
+        <div v-if="tableOut?.length" class="game-table-panel">
+            <div class="flex">
+                <!-- Карточка Стола -->
+                <div v-if="!manualMode && gameSelectedObject && gameSelectedObject.length" class="game-option-card">
+                    <div class="label">Стол</div>
+                    <select v-model.number="tableSelected">
+                        <option v-for="(tableEl, index) in gameSelectedObject" :value="Number(tableEl.tableNum)">
+                            {{tableEl.tableNum}}
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Карточка Игры -->
+                <div class="game-option-card">
+                    <div class="label">Игра</div>
+                    <select
+                        v-if="manualMode"
+                        v-model.number="manualGameSelected"
+                        @change="onGameSelectChange($event)">
+                        <option v-for="game in manualGames" :value="game.num">
+                            {{game.num}}
+                        </option>
+                        <option value="new">+ Новая</option>
+                    </select>
+                    <select
+                        v-else
+                        v-model.number="gameSelected"
+                        @change="onGameSelectChange($event)">
+                        <option v-for="game in games" :value="game.gameNum">
+                            {{game.gameNum}}
+                        </option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модальное окно настроек -->
+        <div v-if="showSettingsModal" class="modal" @click.self="showSettingsModal = false">
+            <div class="settings-modal-content">
+                <h2>Настройки</h2>
+                <div class="settings-modal-scroll">
+                    <div class="switches-bottom">
+                        <label class="m3e-switch">
+                            <input type="checkbox" v-model="mainInfoVisible" @change="panelStateChanged; window.haptic.selection();">
+                            <span class="slider"></span>
+                            <span>Основная информация</span>
+                        </label>
+                        <label class="m3e-switch">
+                            <input type="checkbox" v-model="additionalInfoVisible" @change="panelStateChanged; window.haptic.selection();">
+                            <span class="slider"></span>
+                            <span>Доп. информация</span>
+                        </label>
+                        <label class="m3e-switch">
+                            <input type="checkbox" v-model="hideSeating" @change="panelStateChanged; window.haptic.selection();">
+                            <span class="slider"></span>
+                            <span>Скрыть рассадку</span>
+                        </label>
+                        <label class="m3e-switch">
+                            <input type="checkbox" v-model="hideLeaveOrder" @change="panelStateChanged; window.haptic.selection();">
+                            <span class="slider"></span>
+                            <span>Скрыть порядок ухода</span>
+                        </label>
+                        <label class="m3e-switch">
+                            <input type="checkbox" v-model="hideRolesStatus" @change="panelStateChanged; window.haptic.selection();">
+                            <span class="slider"></span>
+                            <span>Скрыть роли и статус</span>
+                        </label>
+                        <label class="m3e-switch">
+                            <input type="checkbox" v-model="hideBestMove" @change="panelStateChanged; window.haptic.selection();">
+                            <span class="slider"></span>
+                            <span>Скрыть ЛХ</span>
+                        </label>
+                        <label class="m3e-switch">
+                            <input type="checkbox" v-model="showRoomNumber" @change="panelStateChanged; window.haptic.selection();">
+                            <span class="slider"></span>
+                            <span>Показать номер комнаты</span>
+                        </label>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="glass-btn" @click="playersLoad(); window.haptic.impact('light');">
+                            <i class="fa fa-users" style="margin-right:8px;"></i>
+                            Загрузить игроков
+                        </button>
+                        <button class="glass-btn" @click="playersLoadOnline(); window.haptic.impact('light');">
+                            <i class="fa fa-sync" style="margin-right:8px;"></i>
+                            Обновить аватары
+                        </button>
+                        <button class="glass-btn" @click="refreshPage(); window.haptic.impact('medium');">
+                            <i class="fa fa-redo" style="margin-right:8px;"></i>
+                            Обновить страницу
+                        </button>
+                        <button class="glass-btn btn-danger" @click="reset(); window.haptic.notification('warning');">
+                            <i class="fa fa-trash" style="margin-right:8px;"></i>
+                            Сбросить всё
+                        </button>
+                    </div>
+                    <div v-if="tableOut?.length && manualMode" class="modal-actions">
+                        <button class="glass-btn" @click="resetManualMode(); window.haptic.impact('medium');">
+                            <i class="fa fa-exchange-alt" style="margin-right:8px;"></i>
+                            Сменить режим
+                        </button>
+                    </div>
+                </div>
+                <button class="glass-btn w-full mt-16" @click="showSettingsModal = false">Закрыть</button>
+            </div>
+        </div>
+
+        <!-- Модальное окно Темы -->
+        <div v-if="showThemeModal" class="modal z-max" @click.self="showThemeModal = false">
+            <div class="theme-modal-content">
+                <h2>Темы оформления</h2>
+                <div class="text-center text-secondary font-bold text-large mb-10" style="letter-spacing:.02em;">
+                    {{ colorSchemes.find(s=>s.key===selectedColorScheme)?.name || '' }}
+                </div>
+                <div class="theme-modal-scroll">
+                    <div class="theme-grid">
+                        <div v-for="scheme in colorSchemes"
+                             :key="scheme.key"
+                             :title="scheme.name"
+                             class="theme-preview-item"
+                             @click="applyColorSchemeAndSave(scheme.key); window.haptic.selection();"
+                             :style="{
+                                border: selectedColorScheme === scheme.key ? '4px solid #fff' : '2px solid var(--maf-accent-color)',
+                                background: scheme.preview,
+                                outline: selectedColorScheme === scheme.key ? '3px solid ' + scheme.accent : 'none',
+                                outlineOffset: selectedColorScheme === scheme.key ? '2px' : '0'
+                             }">
+                            <span>{{scheme.icon || '★'}}</span>
+                            <span v-if="selectedColorScheme === scheme.key" class="check">✔</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center text-secondary font-bold text-large" style="margin:18px 0 8px 0;">
+                    Фон панели
+                </div>
+                <div class="theme-modal-scroll">
+                    <div class="theme-grid">
+                        <div v-for="theme in backgroundThemes"
+                             :key="theme.key"
+                             :title="theme.name"
+                             class="theme-preview-item"
+                             @click="applyBackgroundThemeAndSave(theme.key); window.haptic.selection();"
+                             :style="{
+                                border: selectedBackgroundTheme === theme.key ? '4px solid #fff' : '2px solid var(--maf-accent-color)',
+                                background: theme.bgMain,
+                                outline: selectedBackgroundTheme === theme.key ? '3px solid var(--maf-accent-color)' : 'none',
+                                outlineOffset: selectedBackgroundTheme === theme.key ? '2px' : '0'
+                             }">
+                            <span>{{theme.icon}}</span>
+                            <span v-if="selectedBackgroundTheme === theme.key" class="check">✔</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="glass-btn btn-primary" @click="showThemeModal = false">Готово</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модальное окно голосования -->
+        <div v-if="showVotingModal" class="modal">
+            <div class="voting-modal-content">
+                <div class="voting-header w-100">
+                    <div class="voting-header-title">Выставлены:</div>
+                    <div class="voting-header-order">
+                        <span v-for="(candidate, idx) in votingOrder" :key="candidate"
+                              :class="['voting-header-candidate', {active: votingCurrentIndex === idx}]">
+                            {{ candidate }}
+                        </span>
+                    </div>
+                </div>
+                <div class="voting-question" v-if="!votingTieTimerActive">
+                    <template v-if="votingStage === 'main'">
+                        Кто голосует за <b>№{{ votingOrder[votingCurrentIndex] }}</b>
+                    </template>
+                    <template v-else-if="votingStage === 'tie'">
+                        <span class="text-large font-bold">Повторное голосование</span><br>
+                        Кто голосует за <b>№{{ votingOrder[votingCurrentIndex] }}</b>
+                    </template>
+                    <template v-else-if="votingStage === 'lift'">
+                        Кто за подъем кандидатов?
+                    </template>
+                </div>
+                <div v-if="!votingTieTimerActive && (votingStage === 'main' || votingStage === 'tie')" class="modal-grid">
+                    <button v-for="n in 10"
+                            :key="'vote'+n"
+                            :class="getVotingButtonClass(n)"
+                            :disabled="!isVotingButtonEnabled(n)"
+                            @click="toggleVotingSelection(n); window.haptic.selection();">
+                        {{ n }}
+                    </button>
+                </div>
+                <div v-else-if="!votingTieTimerActive && votingStage === 'lift'" class="modal-grid">
+                    <button v-for="n in 10"
+                            :key="'lift'+n"
+                            :class="getLiftVotingButtonClass(n)"
+                            :disabled="!isLiftVotingButtonEnabled(n)"
+                            @click="toggleLiftVotingSelection(n); window.haptic.selection();">
+                        {{ n }}
+                    </button>
+                </div>
+                <div v-if="votingNotification" class="text-center font-bold" style="color:var(--status-error);margin-bottom:8px;">{{ votingNotification }}</div>
+
+                <!-- Таймер ничьей (дополнительное время для кандидатов при ничьей) -->
+                <div v-if="votingTieTimerActive && votingTiePlayers.length > 1" class="voting-timer-section">
+                    <div class="voting-timer-tie-info">
+                        ⚖️ Ничья среди: {{ votingTiePlayers.join(', ') }}
+                    </div>
+                    <div class="voting-timer-title">
+                        ⏱ Дополнительное время — Игрок №{{ votingTiePlayers[votingTieTimerPlayerIndex] }}
+                    </div>
+                    <div class="voting-timer-display" :class="{
+                        'running': votingTieTimerRunning && !votingTieTimerPaused,
+                        'warning': votingTieTimerTimeLeft <= 10 && votingTieTimerRunning && !votingTieTimerPaused
+                    }">
+                        {{ formatVotingTimerTime(votingTieTimerTimeLeft) }}
+                    </div>
+                    <div class="voting-timer-controls">
+                        <button class="timer-btn timer-start"
+                                :disabled="votingTieTimerRunning && !votingTieTimerPaused"
+                                @click.stop="playVotingTieTimer(); window.haptic.impact('light');"
+                                :title="votingTieTimerPaused ? 'Продолжить' : 'Старт'">
+                            <i class="fa fa-play"></i>
+                        </button>
+                        <button class="timer-btn timer-pause"
+                                :disabled="!votingTieTimerRunning || votingTieTimerPaused"
+                                @click.stop="pauseVotingTieTimer(); window.haptic.impact('light');"
+                                title="Пауза">
+                            <i class="fa fa-pause"></i>
+                        </button>
+                        <button class="timer-btn timer-stop"
+                                @click.stop="stopVotingTieTimer(); window.haptic.impact('light');"
+                                title="Сброс">
+                            <i class="fa fa-stop"></i>
+                        </button>
+                    </div>
+                    <div class="voting-timer-nav">
+                        <button class="glass-btn"
+                                :disabled="votingTieTimerPlayerIndex <= 0"
+                                @click.stop="prevVotingTieTimerPlayer(); window.haptic.impact('light');">
+                            ◀ Пред.
+                        </button>
+                        <span class="voting-timer-player-indicator">
+                            {{ votingTieTimerPlayerIndex + 1 }} / {{ votingTiePlayers.length }}
+                        </span>
+                        <button class="glass-btn"
+                                :disabled="votingTieTimerPlayerIndex >= votingTiePlayers.length - 1"
+                                @click.stop="nextVotingTieTimerPlayer(); window.haptic.impact('light');">
+                            След. ▶
+                        </button>
+                    </div>
+                    <button class="glass-btn btn-primary w-full"
+                            @click.stop="skipVotingTieTimer(); startTieVoting(); window.haptic.impact('medium');">
+                        Перейти к повторному голосованию
+                    </button>
+                </div>
+
+                <div class="modal-actions" v-if="!votingTieTimerActive && !votingFinished">
+                    <button v-if="votingCurrentIndex > 0 || votingStage === 'lift'" class="glass-btn" @click="prevVoting(); window.haptic.impact('light');">
+                        Назад
+                    </button>
+                    <button class="glass-btn btn-primary" @click="acceptCurrentCandidateVotes(); window.haptic.impact('medium');" :disabled="acceptDisabled">
+                        Принять
+                    </button>
+                </div>
+                <div v-if="shouldShowFinishButton" class="w-100 mt-md">
+                    <!-- Таймер крайней речи -->
+                    <div v-if="votingLastSpeechTimerActive && votingWinners && votingWinners.length" class="voting-timer-section">
+                        <div class="voting-timer-title">
+                            🎤 Крайняя речь — Игрок №{{ votingWinners[votingLastSpeechPlayerIndex] }}
+                        </div>
+                        <div class="voting-timer-display" :class="{
+                            'running': votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused,
+                            'warning': votingLastSpeechTimerTimeLeft <= 10 && votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused
+                        }">
+                            {{ formatVotingTimerTime(votingLastSpeechTimerTimeLeft) }}
+                        </div>
+                        <div class="voting-timer-controls">
+                            <button class="timer-btn timer-start"
+                                    :disabled="votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused"
+                                    @click.stop="playVotingLastSpeechTimer(); window.haptic.impact('light');"
+                                    :title="votingLastSpeechTimerPaused ? 'Продолжить' : 'Старт'">
+                                <i class="fa fa-play"></i>
+                            </button>
+                            <button class="timer-btn timer-pause"
+                                    :disabled="!votingLastSpeechTimerRunning || votingLastSpeechTimerPaused"
+                                    @click.stop="pauseVotingLastSpeechTimer(); window.haptic.impact('light');"
+                                    title="Пауза">
+                                <i class="fa fa-pause"></i>
+                            </button>
+                            <button class="timer-btn timer-stop"
+                                    @click.stop="stopVotingLastSpeechTimer(); window.haptic.impact('light');"
+                                    title="Сброс">
+                                <i class="fa fa-stop"></i>
+                            </button>
+                        </div>
+                        <div v-if="votingWinners.length > 1" class="voting-timer-nav">
+                            <button class="glass-btn"
+                                    :disabled="votingLastSpeechPlayerIndex <= 0"
+                                    @click.stop="prevVotingLastSpeechPlayer(); window.haptic.impact('light');">
+                                ◀ Пред.
+                            </button>
+                            <span class="voting-timer-player-indicator">
+                                {{ votingLastSpeechPlayerIndex + 1 }} / {{ votingWinners.length }}
+                            </span>
+                            <button class="glass-btn"
+                                    :disabled="votingLastSpeechPlayerIndex >= votingWinners.length - 1"
+                                    @click.stop="nextVotingLastSpeechPlayer(); window.haptic.impact('light');">
+                                След. ▶
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Если есть победители - показываем кнопку завершения -->
+                    <button v-if="votingWinners && votingWinners.length"
+                            class="glass-btn w-full btn-primary"
+                            @click="closeVotingModalAndApplyResults(); window.haptic.notification('success');">
+                        Завершить голосование
+                    </button>
+
+                    <!-- Если никто не получил голосов -->
+                    <button v-else
+                            class="glass-btn w-full btn-danger"
+                            @click="closeVotingModalAndApplyResults(); window.haptic.notification('warning');">
+                        Завершить голосование (никого не заголосовали)
+                    </button>
+                </div>
+                <div class="voting-result">
+                    <div v-if="votingWinners && votingWinners.length">
+                        Заголосовали: {{ votingWinners.join(', ') }}
+                    </div>
+                    <div v-else-if="votingStage !== 'main' && votingTiePlayers && votingTiePlayers.length > 1">
+                        {{ votingStage === 'tie' ? 'Повторное голосование' : 'Голосование за подъем' }} среди: {{ votingTiePlayers.join(', ') }}
+                    </div>
+                    <div v-else>
+                        Никого не заголосовали
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модальное окно истории голосования -->
+        <div v-if="showVotingHistory" class="modal">
+            <div class="modal-content">
+                <h2>История голосований</h2>
+
+                <div v-if="votingHistory && votingHistory.length" class="w-100">
+                    <!-- Вкладки для каждого голосования -->
+                    <div class="voting-tabs-container">
+                        <div class="voting-tabs">
+                            <button
+                                v-for="(voting, index) in votingHistory"
+                                :key="'tab_' + index"
+                                @click="activeVotingTab = index; window.haptic.selection();"
+                                :class="['voting-tab', { 'active': activeVotingTab === index }]"
+                            >
+                                <span class="tab-title">#{{ voting.votingNumber }}</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Содержимое активной вкладки -->
+                    <div class="modal-scroll" v-if="votingHistory[activeVotingTab]">
+                        <div class="voting-session">
+                            <h3 class="text-accent text-center mb-20">
+                                Голосование {{ votingHistory[activeVotingTab].votingNumber }}
+                            </h3>
+
+                            <!-- Список выставленных кандидатов -->
+                            <div v-if="votingHistory[activeVotingTab].nominees && votingHistory[activeVotingTab].nominees.length"
+                                 class="voting-nominees-box">
+                                <h4 class="text-accent font-bold" style="margin-bottom: 8px; font-size: 1em;">
+                                    📋 Выставленные кандидаты:
+                                </h4>
+                                <div style="color: #fff; font-size: 1.1em; font-weight: 500;">
+                                    {{ votingHistory[activeVotingTab].nominees.join(', ') }}
+                                </div>
+                            </div>
+
+                            <!-- Перебираем все этапы голосования -->
+                            <div v-for="(stage, stageIndex) in votingHistory[activeVotingTab].stages" :key="'stage_' + stageIndex" class="voting-stage">
+                                <h4 class="text-secondary font-bold" style="font-size: 1.2em; margin-bottom: 15px; display: flex; align-items: center;">
+                                    <span style="margin-right: 10px;">{{ stage.stageName }}</span>
+                                    <span style="background: rgba(174,140,255,0.3); padding: 4px 8px; border-radius: 12px; font-size: 0.8em;">
+                                        Этап {{ stageIndex + 1 }}
+                                    </span>
+                                </h4>
+
+                                <!-- Результаты голосования (для main и tie) -->
+                                <div v-if="stage.type !== 'lift'" style="margin-left: 10px;">
+                                    <div v-for="candidate in stage.order" :key="'candidate_' + candidate" style="margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                            <strong class="text-accent" style="font-size: 1.1em;">Игрок №{{ candidate }}</strong>
+                                            <span style="background: rgba(174,140,255,0.3); padding: 2px 8px; border-radius: 10px; font-size: 0.9em; color: white;">
+                                                {{ stage.results[candidate] ? stage.results[candidate].length : 0 }} голосов
+                                            </span>
+                                        </div>
+                                        <div style="color: #fff; font-size: 0.95em;">
+                                            <span class="text-secondary">Голосовали:</span>
+                                            {{ stage.results[candidate] && stage.results[candidate].length ? stage.results[candidate].join(', ') : 'Никто' }}
+                                        </div>
+                                        <!-- Показываем, если этот кандидат победил на данном этапе -->
+                                        <div v-if="stage.winners && stage.winners.includes(candidate)" style="margin-top: 8px; color: var(--status-success); font-weight: 600; font-size: 0.9em;">
+                                            ✓ Заголосованный игрок
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Результаты голосования за подъем -->
+                                <div v-else style="margin-left: 10px;">
+                                    <div style="padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                            <strong class="text-accent" style="font-size: 1.1em;">Голосование за подъем</strong>
+                                            <span style="background: rgba(174,140,255,0.3); padding: 2px 8px; border-radius: 10px; font-size: 0.9em; color: white;">
+                                                {{ stage.liftResults ? stage.liftResults.length : 0 }} голосов
+                                            </span>
+                                        </div>
+                                        <div style="color: #fff; font-size: 0.95em;">
+                                            <span class="text-secondary">За подъем голосовали:</span>
+                                            {{ stage.liftResults && stage.liftResults.length ? stage.liftResults.join(', ') : 'Никто' }}
+                                        </div>
+                                        <!-- Показываем результат голосования за подъем -->
+                                        <div v-if="stage.winners && stage.winners.length" style="margin-top: 8px; color: var(--status-success); font-weight: 600; font-size: 0.9em;">
+                                            ✓ Игроки {{ stage.order.join(', ') }} заголосованы
+                                        </div>
+                                        <div v-else style="margin-top: 8px; color: var(--status-error); font-weight: 600; font-size: 0.9em;">
+                                            ✗ Игроки {{ stage.order.join(', ') }} остаются в игре
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Финальный результат голосования -->
+                            <div :class="['final-result', (votingHistory[activeVotingTab].finalWinners && votingHistory[activeVotingTab].finalWinners.length) ? 'result-success' : 'result-error']">
+                                <h4>
+                                    🏆 ИТОГОВЫЙ РЕЗУЛЬТАТ
+                                </h4>
+                                <div v-if="votingHistory[activeVotingTab].finalWinners && votingHistory[activeVotingTab].finalWinners.length"
+                                     style="color: #fff; font-weight: 600; font-size: 1.1em;">
+                                    Заголосованы игроки: {{ votingHistory[activeVotingTab].finalWinners.join(', ') }}
+                                </div>
+                                <div v-else style="color: #fff; font-weight: 600; font-size: 1.1em;">
+                                    Никого не заголосовали
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div v-else class="text-center text-secondary" style="padding: 40px;">
+                    <div style="font-size: 3em; margin-bottom: 15px; opacity: 0.5;">📋</div>
+                    <div style="font-size: 1.2em;">История голосований пуста</div>
+                    <div style="font-size: 0.9em; margin-top: 8px; opacity: 0.7;">Проведите первое голосование, и оно появится здесь</div>
+                </div>
+                <div class="modal-actions">
+                    <button class="glass-btn btn-primary" @click="showVotingHistory = false">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Фиксированная нижняя панель режимов -->
+    <div v-if="tableOut?.length && !winnerTeam" id="bottom-bar" class="glass-content glass-content--nav">
+        <button :class="['glass-item', { 'glass-item--active': currentMode==='roles' }]" @click="setMode('roles'); window.haptic.selection();">
+            <span>Роли</span>
+        </button>
+        <button :class="['glass-item', { 'glass-item--active': currentMode==='day' }]" @click="setMode('day'); window.haptic.selection();">
+            <span>День</span>
+        </button>
+        <button :class="['glass-item', { 'glass-item--active': currentMode==='night' }]" @click="setMode('night'); window.haptic.selection();">
+            <span>Ночь</span>
+        </button>
+    </div>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+<script src="./voting.js"></script>
+<script src="./timer.js"></script>
+<script src="./session-manager.js"></script>
+
+<!-- Модульная система приложения - загружаем в правильном порядке -->
+<script src="./app-connector.js"></script>
+<script src="./app-data.js"></script>
+<script src="./app-sessions.js"></script>
+<script src="./app-game-logic.js"></script>
+<script src="./app-ui-integration.js"></script>
+<script src="./app-core.js"></script>
+
+<script src="./assets/panel-notification.js"></script>
+<script>
+// Гарантируем, что editVotingHistory определён в основном Vue-инстансе
+if (window.app && typeof window.app.editVotingHistory === 'undefined') {
+    window.app.editVotingHistory = false;
+}
+
+if (window.app) {
+  // Заглушки функций для совместимости (модальное окно отключено)
+  window.app.showReturnPlayerModal = function(number, roleKey) {
+    console.log('showReturnPlayerModal отключено');
+    // Гарантируем, что модальное окно остается скрытым
+    this.showReturnPlayerModal = false;
+  };
+  window.app.confirmReturnPlayer = function() {
+    console.log('confirmReturnPlayer отключено');
+    this.showReturnPlayerModal = false;
+  };
+}
+
+// Финальная инициализация Telegram Web App
+if (window.Telegram && window.Telegram.WebApp && window.app) {
+    console.log('Финализация инициализации Telegram Web App');
+    // Убираем индикатор загрузки
+    window.Telegram.WebApp.ready();
+    // Глобальная переменная для доступа к приложению
+    window.telegramApp = window.app;
+}
+</script>
+</body>
+</html>
