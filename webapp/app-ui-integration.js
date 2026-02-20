@@ -73,6 +73,12 @@ Object.assign(window.app.methods, {
                 if (this.showBroadcastSettings) this.cancelBroadcastSettings();
                 this.showWinnerModal = false;
                 this.sendTelegramHapticFeedback('light');
+            } else if (this.showVotingScreen) {
+                // Закрываем экран голосования (если нет активного голосования)
+                if (!this.showVotingModal) {
+                    this.showVotingScreen = false;
+                    this.sendTelegramHapticFeedback('light');
+                }
             } else if (this.showProfileScreen) {
                 this.showProfileScreen = false;
                 this.sendTelegramHapticFeedback('light');
@@ -209,6 +215,36 @@ Object.assign(window.app.methods, {
             message += `🧠 <b>Лучший ход</b> (от игрока №${fkPlayer ? fkPlayer.num : '?'} ${fkName}):\n`;
             message += `👉 <b>${this.bestMove.join(', ')}</b>\n`;
             message += `<i>Угадано мафий: ${correctCount} из ${this.bestMove.length}</i>\n\n`;
+        }
+
+        // Ночные проверки Дона
+        const donKey = this._findRoleKey('don');
+        if (donKey && this.nightCheckHistory && this.nightCheckHistory.length > 0) {
+            const donChecks = this.nightCheckHistory.filter(h => h.checkerRole === 'don');
+            if (donChecks.length > 0) {
+                const donPlayer = this.tableOut.find(p => p.roleKey === donKey);
+                const donName = donPlayer ? (donPlayer.login || `Игрок ${donPlayer.num}`) : 'Дон';
+                message += `🎩 <b>Проверки Дона</b> (${donName}):\n`;
+                donChecks.forEach(c => {
+                    message += `  Ночь ${c.night}: №${c.target} — ${c.result}\n`;
+                });
+                message += `\n`;
+            }
+        }
+
+        // Ночные проверки Шерифа
+        const sheriffKey = this._findRoleKey('sheriff');
+        if (sheriffKey && this.nightCheckHistory && this.nightCheckHistory.length > 0) {
+            const sheriffChecks = this.nightCheckHistory.filter(h => h.checkerRole === 'sheriff');
+            if (sheriffChecks.length > 0) {
+                const sheriffPlayer = this.tableOut.find(p => p.roleKey === sheriffKey);
+                const sheriffName = sheriffPlayer ? (sheriffPlayer.login || `Игрок ${sheriffPlayer.num}`) : 'Шериф';
+                message += `⭐ <b>Проверки Шерифа</b> (${sheriffName}):\n`;
+                sheriffChecks.forEach(c => {
+                    message += `  Ночь ${c.night}: №${c.target} — ${c.result}\n`;
+                });
+                message += `\n`;
+            }
         }
 
         // Список игроков
@@ -867,12 +903,59 @@ Object.assign(window.app.methods, {
 
     // Управление режимами и темами
     setMode(mode) {
+        // Block navigation to day/night during discussion/freeSeating
+        if (this.gamePhase === 'discussion' || this.gamePhase === 'freeSeating') {
+            return;
+        }
+
+        const prevMode = this.currentMode;
         this.currentMode = mode;
+
+        // Переход в день
+        if (mode === 'day') {
+            this.gamePhase = 'day';
+            this.dayButtonBlink = false;
+            this.nightPhase = null;
+            if (this.nightAutoCloseTimer) {
+                clearTimeout(this.nightAutoCloseTimer);
+                this.nightAutoCloseTimer = null;
+            }
+
+            // Increment day number when transitioning from night (not from discussion/freeSeating)
+            if (prevMode === 'night') {
+                this.dayNumber = (this.dayNumber || 0) + 1;
+            }
+
+            // Автоматически открыть карточку первого непринятого убитого игрока
+            this.$nextTick(() => {
+                const killedPlayer = this.tableOut.find(p =>
+                    p.action === 'killed' && !this.protocolAccepted[p.roleKey]
+                );
+                if (killedPlayer) {
+                    this.highlightedPlayer = killedPlayer.roleKey;
+                    this.setHighlightedPlayer(killedPlayer.roleKey);
+                    this.$nextTick(() => {
+                        this._scrollToPlayer(killedPlayer.roleKey);
+                    });
+                }
+            });
+        }
+        // Переход в ночь
+        if (mode === 'night') {
+            this.gamePhase = 'night';
+            this.clearNightChecks(); // also increments nightNumber
+            this.nightPhase = null;
+            this.highlightedPlayer = null;
+            if (this.nightAutoCloseTimer) {
+                clearTimeout(this.nightAutoCloseTimer);
+                this.nightAutoCloseTimer = null;
+            }
+        }
+
         // Синхронизируем режим с roles.html через activeInfoTab
         let activeInfoTab = null;
         if (mode === 'day') activeInfoTab = 'day';
         else if (mode === 'night') activeInfoTab = 'night';
-        // Для режима 'roles' или других — null
         this.sendToRoom({
             type: "panelStateChange",
             panelState: {
@@ -891,6 +974,7 @@ Object.assign(window.app.methods, {
             }
         });
         this.sendFullState();
+        this.saveCurrentSession();
     },
 
     applyColorScheme(schemeKey) {
@@ -1233,7 +1317,79 @@ Object.assign(window.app.methods, {
         }
     },
 
+    // Плавный скролл к карточке игрока
+    _scrollToPlayer(roleKey) {
+        this.$nextTick(() => {
+            const playersList = document.querySelector('.players-list');
+            if (!playersList) return;
+            const rows = playersList.querySelectorAll('.player-row');
+            for (const row of rows) {
+                // Find the row by checking if it's highlighted
+                if (row.classList.contains('highlighted')) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    break;
+                }
+            }
+        });
+    },
+
     toggleHighlight(roleKey, event) {
+        // Блокируем раскрытие карточек во время договорки и свободной посадки
+        if (this.gamePhase === 'discussion' || this.gamePhase === 'freeSeating') {
+            return;
+        }
+
+        // Игнорируем клик если только что было взаимодействие с кнопками дневного режима
+        if (this._dayHoldTimestamp && (Date.now() - this._dayHoldTimestamp) < 300) {
+            return;
+        }
+
+        // === НОЧЬ: блокируем открытие карточек кроме текущей фазы ===
+        if (this.currentMode === 'night' && this.nightPhase && this.nightPhase !== 'done') {
+            const donKey = this._findRoleKey('don');
+            const sheriffKey = this._findRoleKey('sheriff');
+
+            if (this.nightPhase === 'don') {
+                // Только дон может быть открыт
+                if (roleKey !== donKey) return;
+
+                // Закрытие карточки дона: если проверка уже сделана — advance
+                if (this.highlightedPlayer === roleKey) {
+                    this.highlightedPlayer = null;
+                    this.setHighlightedPlayer(null);
+                    if (this.nightChecks[donKey]) {
+                        // Проверка была — переходим к шерифу
+                        if (this.nightAutoCloseTimer) {
+                            clearTimeout(this.nightAutoCloseTimer);
+                            this.nightAutoCloseTimer = null;
+                        }
+                        this.advanceNightPhase();
+                    }
+                    return;
+                }
+            } else if (this.nightPhase === 'sheriff') {
+                // Только шериф может быть открыт
+                if (roleKey !== sheriffKey) return;
+
+                if (this.highlightedPlayer === roleKey) {
+                    this.highlightedPlayer = null;
+                    this.setHighlightedPlayer(null);
+                    if (this.nightChecks[sheriffKey]) {
+                        if (this.nightAutoCloseTimer) {
+                            clearTimeout(this.nightAutoCloseTimer);
+                            this.nightAutoCloseTimer = null;
+                        }
+                        this.advanceNightPhase();
+                    }
+                    return;
+                }
+            }
+        }
+
+        // Убираем мигание при открытии карточки убитого
+        if (this.killedPlayerBlink && this.killedPlayerBlink[roleKey]) {
+            this.$set(this.killedPlayerBlink, roleKey, false);
+        }
         if (this.highlightedPlayer === roleKey) {
             this.highlightedPlayer = null;
         } else {
@@ -1266,12 +1422,28 @@ Object.assign(window.app.methods, {
         this.firstKilledPlayer = null;
         this.bestMove = [];
         this.bestMoveSelected = false;
+        this.bestMoveAccepted = false;
         this.showBestMoveModal = false;
+        this.killedCardPhase = {};
+        this.protocolAccepted = {};
+        this.nightPhase = null;
+        this.dayButtonBlink = false;
+        this.killedPlayerBlink = {};
+        if (this.nightAutoCloseTimer) {
+            clearTimeout(this.nightAutoCloseTimer);
+            this.nightAutoCloseTimer = null;
+        }
         this.saveRoomStateIncremental({
             firstKilledPlayer: null,
             bestMove: [],
             bestMoveSelected: false,
-            showBestMoveModal: false
+            bestMoveAccepted: false,
+            showBestMoveModal: false,
+            killedCardPhase: {},
+            protocolAccepted: {},
+            nightPhase: null,
+            dayButtonBlink: false,
+            killedPlayerBlink: {}
         });
         this.sendFullState();
     },
@@ -1432,7 +1604,9 @@ Object.assign(window.app, {
                     role: this.roles[p.roleKey] || null,
                     action: this.playersActions[p.roleKey] || null,
                     fouls: this.fouls[p.roleKey] || 0,
+                    foul: this.fouls[p.roleKey] || 0,
                     techFouls: this.techFouls[p.roleKey] || 0,
+                    techFoul: this.techFouls[p.roleKey] || 0,
                     removed: this.removed[p.roleKey] || false,
                     isFirstKilled: p.roleKey === this.firstKilledPlayer,
                     isHighlighted: p.roleKey === this.highlightedPlayer
@@ -1605,7 +1779,9 @@ Object.assign(window.app.computed, {
                 role: this.roles[p.roleKey] || null,
                 action: this.playersActions[p.roleKey] || null,
                 fouls: this.fouls[p.roleKey] || 0,
+                foul: this.fouls[p.roleKey] || 0,
                 techFouls: this.techFouls[p.roleKey] || 0,
+                techFoul: this.techFouls[p.roleKey] || 0,
                 removed: this.removed[p.roleKey] || false,
                 isFirstKilled: p.roleKey === this.firstKilledPlayer,
                 isHighlighted: p.roleKey === this.highlightedPlayer

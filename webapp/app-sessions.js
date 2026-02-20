@@ -309,6 +309,11 @@ Object.assign(window.app.methods, {
         // Победители и режимы
         if (session.winnerTeam !== undefined) this.winnerTeam = session.winnerTeam;
         if (session.currentMode) this.currentMode = session.currentMode;
+        if (session.rolesDistributed !== undefined) this.rolesDistributed = session.rolesDistributed;
+        // Если роли раздали, но режим всё ещё 'roles' — переключаем на 'day'
+        if (this.rolesDistributed && this.currentMode === 'roles') {
+            this.currentMode = 'day';
+        }
 
         // Аватары
         if (session.avatarsFromServer) this.avatarsFromServer = session.avatarsFromServer;
@@ -318,6 +323,26 @@ Object.assign(window.app.methods, {
         if (session.protocolData) this.protocolData = session.protocolData;
         if (session.opinionData) this.opinionData = session.opinionData;
         if (session.opinionText) this.opinionText = session.opinionText;
+
+        // Ночные проверки
+        if (session.nightCheckHistory) this.nightCheckHistory = session.nightCheckHistory;
+        if (session.nightNumber !== undefined) this.nightNumber = session.nightNumber;
+        if (session.killedCardPhase) this.killedCardPhase = session.killedCardPhase;
+        if (session.protocolAccepted) this.protocolAccepted = session.protocolAccepted;
+        if (session.bestMoveAccepted !== undefined) this.bestMoveAccepted = session.bestMoveAccepted;
+
+        // Game Phase System
+        if (session.gamePhase) this.gamePhase = session.gamePhase;
+        if (session.dayNumber !== undefined) this.dayNumber = session.dayNumber;
+        if (session.dayVoteOuts) this.dayVoteOuts = session.dayVoteOuts;
+        if (session.nightMisses) this.nightMisses = session.nightMisses;
+        if (session.firstKilledEver !== undefined) this.firstKilledEver = session.firstKilledEver;
+        // Note: timers are not restored, discussion/freeSeating phases reset on restore
+        if (this.gamePhase === 'discussion' || this.gamePhase === 'freeSeating') {
+            // If session was saved during a timed phase, skip to day
+            this.gamePhase = 'day';
+            this.currentMode = 'day';
+        }
 
         // Баллы
         if (session.playerScores) this.playerScores = session.playerScores;
@@ -365,10 +390,47 @@ Object.assign(window.app.methods, {
         this.showWinnerModal = false;
         this.playerScores = {};
         this.currentMode = 'roles';
+        this.rolesDistributed = false;
+        this.rolesHoldActive = false;
+        this.rolesHoldTimer = null;
+        this.rolesValidationError = '';
         this.fouls = {};
         this.techFouls = {};
         this.removed = {};
+        this.dayHoldActive = false;
+        this._dayHoldTimer = null;
+        this._dayHoldTarget = null;
+        this._dayHoldType = null;
+        this.nightChecks = {};
+        this.nightCheckHistory = [];
+        this.nightNumber = 0;
+        this.nightPhase = null;
+        this._freshlyKilledThisNight = null;
+        if (this.nightAutoCloseTimer) {
+            clearTimeout(this.nightAutoCloseTimer);
+            this.nightAutoCloseTimer = null;
+        }
+        this.protocolAccepted = {};
+        this.killedCardPhase = {};
+        this.bestMoveAccepted = false;
+        this.dayButtonBlink = false;
+        this.killedPlayerBlink = {};
         this.isRestoringSession = false;
+
+        // Game Phase System
+        this.gamePhase = 'roles';
+        this.dayNumber = 0;
+        this.dayVoteOuts = {};
+        this.nightMisses = {};
+        this.firstKilledEver = false;
+        this.discussionTimeLeft = 60;
+        this.freeSeatingTimeLeft = 40;
+        if (this.discussionTimerId) { clearInterval(this.discussionTimerId); this.discussionTimerId = null; }
+        if (this.freeSeatingTimerId) { clearInterval(this.freeSeatingTimerId); this.freeSeatingTimerId = null; }
+        this.discussionRunning = false;
+        this.freeSeatingRunning = false;
+        this.skipHoldActive = false;
+        if (this.skipHoldTimer) { clearTimeout(this.skipHoldTimer); this.skipHoldTimer = null; }
 
         // Номинации и голосования
         if (this.nominations !== undefined) this.nominations = {};
@@ -603,7 +665,15 @@ Object.assign(window.app.methods, {
             // Победители и режимы
             winnerTeam: this.winnerTeam,
             currentMode: this.currentMode,
-            
+            rolesDistributed: this.rolesDistributed,
+
+            // Game Phase System
+            gamePhase: this.gamePhase,
+            dayNumber: this.dayNumber,
+            dayVoteOuts: this.dayVoteOuts,
+            nightMisses: this.nightMisses,
+            firstKilledEver: this.firstKilledEver,
+
             // Аватары
             avatarsFromServer: this.avatarsFromServer,
             avatarsJustLoaded: this.avatarsJustLoaded,
@@ -612,6 +682,13 @@ Object.assign(window.app.methods, {
             protocolData: this.protocolData,
             opinionData: this.opinionData,
             opinionText: this.opinionText,
+
+            // Ночные проверки
+            nightCheckHistory: this.nightCheckHistory,
+            nightNumber: this.nightNumber,
+            killedCardPhase: this.killedCardPhase,
+            protocolAccepted: this.protocolAccepted,
+            bestMoveAccepted: this.bestMoveAccepted,
 
             // Баллы
             playerScores: this.playerScores

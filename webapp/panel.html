@@ -606,6 +606,42 @@ if (window.Telegram && window.Telegram.WebApp) {
     };
 }
 </script>
+<script>
+// ── Защита от случайных нажатий при скролле ──
+// Если палец сдвинулся более чем на 10px — это скролл, а не тап.
+// В этом случае подавляем click-событие, чтобы кнопки не срабатывали.
+(function() {
+    var SCROLL_THRESHOLD = 10; // px — порог смещения, после которого считаем жест скроллом
+    var touchStartX = 0;
+    var touchStartY = 0;
+    var isScrolling = false;
+
+    document.addEventListener('touchstart', function(e) {
+        var touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        isScrolling = false;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function(e) {
+        if (isScrolling) return;
+        var touch = e.touches[0];
+        var dx = Math.abs(touch.clientX - touchStartX);
+        var dy = Math.abs(touch.clientY - touchStartY);
+        if (dx > SCROLL_THRESHOLD || dy > SCROLL_THRESHOLD) {
+            isScrolling = true;
+        }
+    }, { passive: true });
+
+    document.addEventListener('click', function(e) {
+        if (isScrolling) {
+            e.preventDefault();
+            e.stopPropagation();
+            isScrolling = false;
+        }
+    }, true); // capturing phase — перехватываем до того, как Vue обработает
+})();
+</script>
 <script>document.write('<script src="./login/auth.js?v=' + window.__v + '"><\/script>');</script>
 <div id="app" :class="{ 'obs-cef': isObs }">
     <!-- Баннер о неактивной панели -->
@@ -762,84 +798,222 @@ if (window.Telegram && window.Telegram.WebApp) {
             </div>
         </div>
 
-        <!-- Модальное окно выбора режима -->
+        <!-- ============ ЭКРАН НОВОЙ ИГРЫ (единый) ============ -->
         <div v-if="showModal && !showMainMenu && !showGameTableModal" class="modal">
-            <div class="modal-content">
-                <h2>Добро пожаловать!</h2>
-                <div class="mode-select-buttons">
-                    <div
-                        class="mode-btn"
-                        :class="{selected: inputMode === 'gomafia'}"
-                        tabindex="0"
-                        @click="inputMode = 'gomafia'; window.haptic.selection();"
-                        @keydown.enter.space="inputMode = 'gomafia'"
-                        role="button"
+            <div class="modal-content ng-modal-content">
+
+                <!-- ─── Шаг 1: Выбор режима ─── -->
+                <template v-if="newGameStep === 'modes'">
+                    <h2>Новая игра</h2>
+
+                    <div class="ng-cards">
+                        <!-- GoMafia -->
+                        <div class="ng-card" @click="newGameStep = 'gomafia'; window.haptic.selection();">
+                            <img class="ng-card-icon" src="./icon/gomafia.png" alt="GoMafia" />
+                            <div class="ng-card-body">
+                                <div class="ng-card-title">GoMafia</div>
+                                <div class="ng-card-desc">Турнирный режим</div>
+                            </div>
+                            <i class="mdi mdi-chevron-right ng-card-arrow"></i>
+                        </div>
+
+                        <!-- GoРучками (скоро) -->
+                        <div class="ng-card ng-card-soon">
+                            <img class="ng-card-icon" src="./icon/goruchkami.png" alt="GoРучками" />
+                            <div class="ng-card-body">
+                                <div class="ng-card-title">GoРучками</div>
+                                <div class="ng-card-desc">Ручная рассадка</div>
+                            </div>
+                            <span class="ng-soon-badge">скоро</span>
+                        </div>
+
+                        <!-- Клубный рейтинг (скоро) -->
+                        <div class="ng-card ng-card-soon">
+                            <div class="ng-card-icon-placeholder"><i class="mdi mdi-trophy-variant-outline"></i></div>
+                            <div class="ng-card-body">
+                                <div class="ng-card-title">Клубный рейтинг</div>
+                                <div class="ng-card-desc">Клубные турниры</div>
+                            </div>
+                            <span class="ng-soon-badge">скоро</span>
+                        </div>
+
+                        <!-- Фанки (скоро) -->
+                        <div class="ng-card ng-card-soon">
+                            <div class="ng-card-icon-placeholder"><i class="mdi mdi-cards-playing-outline"></i></div>
+                            <div class="ng-card-body">
+                                <div class="ng-card-title">Фанки</div>
+                                <div class="ng-card-desc">Свободная игра</div>
+                            </div>
+                            <span class="ng-soon-badge">скоро</span>
+                        </div>
+                    </div>
+
+                    <button class="glass-btn w-full mt-16" style="opacity: 0.5; font-size: 0.9em;" @click="showModal = false; returnToMainMenu(); window.haptic.impact('light');">
+                        <i class="fa fa-arrow-left" style="margin-right:8px;"></i>
+                        Назад в главное меню
+                    </button>
+                </template>
+
+                <!-- ─── Шаг 2: GoMafia — выбор способа ─── -->
+                <template v-if="newGameStep === 'gomafia'">
+                    <div class="ng-step-header">
+                        <img src="./icon/gomafia.png" alt="GoMafia" class="ng-step-logo" />
+                        <div>
+                            <h2 class="ng-step-title">GoMafia</h2>
+                            <div class="ng-step-subtitle">Выберите турнир</div>
+                        </div>
+                    </div>
+
+                    <div class="ng-cards">
+                        <!-- Выбрать из списка -->
+                        <div class="ng-card" @click="openTournamentBrowser(); window.haptic.impact('medium');">
+                            <div class="ng-card-icon-placeholder" style="background: rgba(174,140,255,0.12);"><i class="mdi mdi-format-list-bulleted" style="color: var(--accent-color);"></i></div>
+                            <div class="ng-card-body">
+                                <div class="ng-card-title">Выбрать из списка</div>
+                                <div class="ng-card-desc">Турниры с gomafia.pro</div>
+                            </div>
+                            <i class="mdi mdi-chevron-right ng-card-arrow"></i>
+                        </div>
+
+                        <!-- Ввести номер -->
+                        <div class="ng-id-input-card">
+                            <div class="ng-id-row">
+                                <div class="ng-card-icon-placeholder" style="background: rgba(255,215,0,0.1);"><i class="mdi mdi-trophy-outline" style="color: #ffd700;"></i></div>
+                                <input
+                                    type="text"
+                                    inputmode="numeric"
+                                    pattern="[0-9]*"
+                                    v-model="tournamentId"
+                                    placeholder="Номер турнира"
+                                    class="ng-id-input"
+                                    @keydown.enter="loadTournament(); window.haptic.impact('medium');"
+                                    @input="tournamentId = tournamentId.replace(/[^0-9]/g, '')"
+                                >
+                            </div>
+                            <button class="glass-btn w-full btn-primary ng-load-btn" :disabled="!tournamentId" @click="loadTournament(); window.haptic.impact('medium');">
+                                <i class="mdi mdi-download" style="margin-right:6px;"></i> Загрузить турнир
+                            </button>
+                        </div>
+                    </div>
+
+                    <button class="glass-btn w-full mt-16" style="opacity: 0.5; font-size: 0.9em;" @click="newGameStep = 'modes'; window.haptic.impact('light');">
+                        <i class="fa fa-arrow-left" style="margin-right:8px;"></i>
+                        Назад
+                    </button>
+                </template>
+            </div>
+        </div>
+
+        <!-- ============ Модальное окно списка турниров GoMafia ============ -->
+        <div v-if="showTournamentBrowser" class="modal tb-modal">
+            <div class="modal-content tb-modal-content">
+
+                <!-- Заголовок -->
+                <div class="tb-header">
+                    <div class="tb-header-icon">
+                        <img src="./icon/gomafia.png" alt="GoMafia" />
+                    </div>
+                    <div class="tb-header-text">
+                        <h2 class="tb-title">Турниры</h2>
+                        <div class="tb-subtitle">gomafia.pro</div>
+                    </div>
+                </div>
+
+                <!-- Поиск -->
+                <div class="tb-search-wrap">
+                    <i class="fa fa-search tb-search-icon"></i>
+                    <input
+                        class="tb-search-input"
+                        type="text"
+                        placeholder="Поиск турнира..."
+                        :value="tournamentsFilters.search"
+                        @input="onTournamentSearchInput($event.target.value)"
                     >
-                        <img src="./icon/gomafia.png" alt="Gomafia" />
-                        <div class="selection-info">
-                            <div class="selection-title">GoMafia</div>
-                            <div class="selection-desc">Турнирный режим</div>
+                    <button v-if="tournamentsFilters.search" class="tb-search-clear" @click="applyTournamentFilter('search', '')">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+
+                <!-- Фильтры -->
+                <div class="tb-filters">
+                    <div class="tb-filter-row">
+                        <div class="tb-chip" :class="{ active: !tournamentsFilters.period }" @click="applyTournamentFilter('period', ''); window.haptic.selection();">
+                            <i class="mdi mdi-clock-outline"></i><span>Ближайшие</span>
+                        </div>
+                        <div class="tb-chip" :class="{ active: tournamentsFilters.period === 'past' }" @click="applyTournamentFilter('period', 'past'); window.haptic.selection();">
+                            <i class="mdi mdi-history"></i><span>Прошедшие</span>
                         </div>
                     </div>
-                    <div
-                        class="mode-btn"
-                        :class="{selected: inputMode === 'manual'}"
-                        tabindex="0"
-                        @click="inputMode = 'manual'; window.haptic.selection();"
-                        @keydown.enter.space="inputMode = 'manual'"
-                        role="button"
-                    >
-                        <img src="./icon/goruchkami.png" alt="GoРучками" />
-                        <div class="selection-info">
-                            <div class="selection-title">GoРучками</div>
-                            <div class="selection-desc">Ручная рассадка</div>
-                        </div>
+                    <div class="tb-filter-row">
+                        <div class="tb-chip" :class="{ active: !tournamentsFilters.type }" @click="applyTournamentFilter('type', ''); window.haptic.selection();"><span>Все</span></div>
+                        <div class="tb-chip" :class="{ active: tournamentsFilters.type === 'offline' }" @click="applyTournamentFilter('type', 'offline'); window.haptic.selection();"><i class="mdi mdi-map-marker-outline"></i><span>Офлайн</span></div>
+                        <div class="tb-chip" :class="{ active: tournamentsFilters.type === 'online' }" @click="applyTournamentFilter('type', 'online'); window.haptic.selection();"><i class="mdi mdi-wifi"></i><span>Онлайн</span></div>
+                        <div class="tb-chip tb-chip-star" :class="{ active: tournamentsFilters.fsm === 'fsm' }" @click="applyTournamentFilter('fsm', tournamentsFilters.fsm === 'fsm' ? '' : 'fsm'); window.haptic.selection();"><i class="mdi mdi-star-outline"></i><span>ФСМ</span></div>
                     </div>
                 </div>
 
-                <div v-if="inputMode === 'gomafia'" class="modal-fields mt-16">
-                    <div class="selection-card" style="cursor: default; background: rgba(255,255,255,0.03);">
-                        <div class="selection-icon">
-                            <i class="mdi mdi-trophy-outline" style="color: #ffd700;"></i>
-                        </div>
-                        <div class="selection-info" style="flex-grow: 1;">
-                            <input
-                                type="text"
-                                inputmode="numeric"
-                                pattern="[0-9]*"
-                                v-model="tournamentId"
-                                placeholder="Номер турнира"
-                                style="background: transparent; border: none; box-shadow: none; padding: 0; font-size: 1.2em; font-weight: 700;"
-                                @keydown.enter="loadTournament(); window.haptic.impact('medium');"
-                                @input="tournamentId = tournamentId.replace(/[^0-9]/g, '')"
-                            >
-                        </div>
+                <!-- Список турниров -->
+                <div class="tb-list-scroll">
+                    <div v-if="tournamentsLoading && tournamentsList.length === 0" class="tb-state">
+                        <div class="tb-spinner"></div>
+                        <span>Загрузка турниров...</span>
                     </div>
-                    <button class="glass-btn w-full btn-primary" @click="loadTournament(); window.haptic.impact('medium');">Загрузить турнир</button>
+
+                    <div v-else-if="tournamentsError" class="tb-state">
+                        <i class="mdi mdi-alert-circle-outline" style="font-size: 2em; color: var(--status-error);"></i>
+                        <span>{{ tournamentsError }}</span>
+                        <button class="glass-btn btn-small mt-10" @click="fetchTournaments()"><i class="fa fa-redo" style="margin-right: 6px;"></i> Повторить</button>
+                    </div>
+
+                    <div v-else-if="!tournamentsLoading && tournamentsList.length === 0" class="tb-state">
+                        <i class="mdi mdi-trophy-broken" style="font-size: 2em; opacity: 0.35;"></i>
+                        <span>Турниры не найдены</span>
+                    </div>
+
+                    <template v-else>
+                        <div class="tb-card"
+                             v-for="(t, idx) in tournamentsList"
+                             :key="t.id || t.tournamentId || idx"
+                             :class="{ 'tb-card-disabled': !isTournamentSeatingReady(t) }"
+                             @click="isTournamentSeatingReady(t) ? selectTournamentFromBrowser(t) : null; window.haptic.impact(isTournamentSeatingReady(t) ? 'medium' : 'light');">
+
+                            <div class="tb-card-top">
+                                <div class="tb-card-name">{{ t.name || t.title || ('Турнир #' + (t.id || t.tournamentId)) }}</div>
+                                <!-- Бейдж рассадки -->
+                                <div v-if="isTournamentSeatingReady(t)" class="tb-badge tb-badge-seating">
+                                    <i class="mdi mdi-check-circle" style="margin-right:3px;"></i>Рассадка
+                                </div>
+                                <div v-else class="tb-badge tb-badge-no-seating">
+                                    Нет рассадки
+                                </div>
+                            </div>
+
+                            <div class="tb-card-meta">
+                                <span v-if="formatTournamentDate(t)"><i class="mdi mdi-calendar-outline"></i> {{ formatTournamentDate(t) }}</span>
+                                <span v-if="getTournamentCity(t)"><i class="mdi mdi-map-marker-outline"></i> {{ getTournamentCity(t) }}</span>
+                                <span v-if="getTournamentPlayersCount(t)"><i class="mdi mdi-account-group-outline"></i> {{ getTournamentPlayersCount(t) }}</span>
+                                <span v-if="t.id || t.tournamentId" style="opacity:.5;">#{{ t.id || t.tournamentId }}</span>
+                            </div>
+
+                            <div v-if="!isTournamentSeatingReady(t)" class="tb-card-no-seating-hint">
+                                Рассадка пока не готова
+                            </div>
+                        </div>
+
+                        <button v-if="tournamentsHasMore" class="glass-btn w-full tb-load-more" @click="loadMoreTournaments(); window.haptic.impact('light');" :disabled="tournamentsLoading">
+                            <template v-if="tournamentsLoading"><span class="tb-spinner-sm"></span> Загрузка...</template>
+                            <template v-else><i class="mdi mdi-chevron-down"></i> Загрузить ещё</template>
+                        </button>
+
+                        <div v-if="tournamentsLoading && tournamentsList.length > 0" class="tb-loading-bottom">
+                            <span class="tb-spinner-sm"></span>
+                        </div>
+                    </template>
                 </div>
 
-                <div v-else-if="inputMode === 'manual'" class="modal-fields mt-16">
-                    <div class="selection-card" style="cursor: default; background: rgba(255,255,255,0.03);">
-                        <div class="selection-icon">
-                            <i class="mdi mdi-account-group-outline" style="color: var(--accent-color);"></i>
-                        </div>
-                        <div class="selection-info" style="flex-grow: 1;">
-                            <input
-                                type="number"
-                                min="1"
-                                max="15"
-                                v-model.number="manualPlayersCount"
-                                placeholder="Кол-во игроков (1-15)"
-                                style="background: transparent; border: none; box-shadow: none; padding: 0; font-size: 1.2em; font-weight: 700;"
-                            >
-                        </div>
-                    </div>
-                    <button class="glass-btn w-full btn-primary" @click="createManualTable(); window.haptic.impact('medium');">Создать стол</button>
-                </div>
-
-                <button class="glass-btn w-full mt-16" style="opacity: 0.5; font-size: 0.9em;" @click="showModal = false; returnToMainMenu(); window.haptic.impact('light');">
+                <button class="glass-btn w-full mt-10" style="opacity: 0.5; font-size: 0.9em;" @click="closeTournamentBrowser(); window.haptic.impact('light');">
                     <i class="fa fa-arrow-left" style="margin-right:8px;"></i>
-                    Назад в главное меню
+                    Назад
                 </button>
             </div>
         </div>
@@ -909,40 +1083,13 @@ if (window.Telegram && window.Telegram.WebApp) {
                     <i class="fa fa-check" style="margin-right: 8px;"></i>
                     Начать
                 </button>
-                <button class="glass-btn w-full mt-10" style="opacity: 0.5; font-size: 0.9em;" @click="showGameTableModal = false; tournament = undefined; showModal = true; window.haptic.impact('light');">
+                <button class="glass-btn w-full mt-10" style="opacity: 0.5; font-size: 0.9em;" @click="showGameTableModal = false; tournament = undefined; showModal = true; newGameStep = 'gomafia'; window.haptic.impact('light');">
                     <i class="fa fa-arrow-left" style="margin-right: 8px;"></i>
                     Назад
                 </button>
             </div>
         </div>
 
-        <!-- Модальное окно для выбора Лучшего Хода -->
-        <div v-if="showBestMoveModal" class="modal">
-            <div class="best-move-modal-content">
-                <h2>Лучший ход</h2>
-                <p>Выберите трех игроков:</p>
-                <div class="modal-grid">
-                    <button v-for="n in 9" :key="'bm'+n"
-                            class="modal-btn"
-                            :class="{ selected: bestMove.includes(n) }"
-                            :disabled="tableOut[n-1]?.roleKey === firstKilledPlayer"
-                            @click="toggleBestMove(n); window.haptic.selection();">
-                        {{ n }}
-                    </button>
-                    <button v-if="tableOut.length >= 10"
-                            class="modal-btn"
-                            :class="{ selected: bestMove.includes(10) }"
-                            :disabled="tableOut[9]?.roleKey === firstKilledPlayer"
-                            @click="toggleBestMove(10); window.haptic.selection();">
-                        10
-                    </button>
-                </div>
-                <div class="modal-actions">
-                    <button class="glass-btn btn-primary" @click="confirmBestMove(); window.haptic.notification('success');">Принять ЛХ</button>
-                </div>
-            </div>
-        </div>
-        
         <!-- Модальное окно выбора победителя -->
         <div v-if="showWinnerModal" class="modal">
             <div class="modal-content">
@@ -1056,6 +1203,22 @@ if (window.Telegram && window.Telegram.WebApp) {
                                 </div>
                             </div>
 
+                            <!-- Ряд: Ночные проверки (для Дона / Шерифа) -->
+                            <div v-if="(playerData.role === 'don' || playerData.role === 'sheriff') && getNightCheckHistoryFor(playerData.roleKey).length > 0" class="dashboard-cell full-width">
+                                <div class="cell-label">
+                                    {{ playerData.role === 'don' ? '🔍 Проверки Дона' : '🔍 Проверки Шерифа' }}
+                                </div>
+                                <div class="info-list">
+                                    <div v-for="(check, ci) in getNightCheckHistoryFor(playerData.roleKey)" :key="'nch'+ci" class="info-item">
+                                        <span style="color: rgba(255,255,255,0.45);">Ночь {{ check.night }}</span>
+                                        <div class="flex align-center">
+                                            <span style="margin-right:6px;">→ №{{ check.target }}</span>
+                                            <span :style="{ color: check.found ? '#30d158' : '#ff453a', fontWeight: 700 }">{{ check.result }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Ряд 3: Доп | Штраф -->
                             <div class="dashboard-cell">
                                 <div class="cell-label" style="color:#4caf50;"><i class="fa fa-plus"></i> Доп</div>
@@ -1128,13 +1291,17 @@ if (window.Telegram && window.Telegram.WebApp) {
             </button>
         </div>
 
-        <!-- Таблица игроков (скрывается если выбран победитель) -->
-        <div v-else-if="tableOut?.length" class="players-list">
+        <!-- Таблица игроков (скрывается если выбран победитель или идёт раздача ролей) -->
+        <div v-else-if="tableOut?.length && rolesDistributed" class="players-list">
+            <!-- Phase label above the table (Discussion / Free Seating) -->
+            <div v-if="(gamePhase==='discussion' || gamePhase==='freeSeating') && !winnerTeam" class="phase-label-above-table">
+                {{ gamePhase==='discussion' ? 'Договорка' : 'Свободная посадка' }}
+            </div>
             <div v-for="(playerData, index) in tableOut"
                  :key="playerData.roleKey"
                  class="player-row"
                  :class="{
-                    'highlighted': highlightedPlayer === playerData.roleKey,
+                    'highlighted': highlightedPlayer === playerData.roleKey && gamePhase !== 'discussion' && gamePhase !== 'freeSeating',
                     'killed': playerData.action === 'killed',
                     'voted': playerData.action === 'voted',
                     'removed': playerData.action === 'removed',
@@ -1144,7 +1311,10 @@ if (window.Telegram && window.Telegram.WebApp) {
                     'mode-night': currentMode==='night',
                     'mode-old': currentMode==='old',
                     'foul-4': currentMode==='day' && playerData.foul===4,
-                    'player-inactive': ['removed','killed','voted','tech_fall_removed','fall_removed'].includes(playerData.action)
+                    'player-inactive': ['removed','voted','tech_fall_removed','fall_removed'].includes(playerData.action) || (playerData.action==='killed' && protocolAccepted[playerData.roleKey]),
+                    'killed-blink': playerData.action==='killed' && !protocolAccepted[playerData.roleKey],
+                    'night-don-pulse': currentMode==='night' && nightPhase==='don' && roles[playerData.roleKey]==='don',
+                    'night-sheriff-pulse': currentMode==='night' && nightPhase==='sheriff' && roles[playerData.roleKey]==='sheriff'
                  }"
                  :style="{'--i':index}"
                  onclick="void(0)"
@@ -1175,185 +1345,355 @@ if (window.Telegram && window.Telegram.WebApp) {
                     </template>
                     <div v-else class="text-ellipsis player-name">{{playerData.login}}</div>
                     <div class="role-badges-right">
-                        <!-- Кнопка Вернуть игрока для удалённого -->
+                        <!-- Удалённый/убитый игрок: кнопка Вернуть (с удержанием) -->
                         <template v-if="['removed','killed','voted','tech_fall_removed','fall_removed'].includes(playerData.action)">
-                            <button class="role-button return-player-btn" @click.stop="clearPlayerStatus(playerData.roleKey); window.haptic.impact('medium');" title="Вернуть игрока">❤️</button>
+                            <span class="day-status-label" v-if="playerData.action==='killed'">Убит</span>
+                            <span class="day-status-label" v-else-if="playerData.action==='voted'">Голосование</span>
+                            <span class="day-status-label" v-else-if="playerData.action==='fall_removed'">4 фола</span>
+                            <span class="day-status-label" v-else-if="playerData.action==='tech_fall_removed'">2 ТФ</span>
+                            <span class="day-status-label" v-else>Удалён</span>
+                            <button class="day-return-btn"
+                                    @click.stop.prevent
+                                    @touchstart.prevent.stop="startDayHold(playerData.roleKey, 'return')"
+                                    @touchend.prevent.stop="cancelDayHold()"
+                                    @touchcancel.prevent.stop="cancelDayHold()"
+                                    @mousedown.prevent.stop="startDayHold(playerData.roleKey, 'return')"
+                                    @mouseup.prevent.stop="cancelDayHold()"
+                                    @mouseleave.stop="cancelDayHold()">
+                                <i class="mdi mdi-heart"></i>
+                            </button>
                         </template>
                         <template v-else>
-                        <!-- Режим Роли -->
-                        <template v-if="currentMode==='roles'">
-                            <button class="role-button" :class="{ active: playerData.role === 'don' }" @click.stop="roleSet(playerData.roleKey, 'don'); window.haptic.impact('light');" title="Дон">Д</button>
-                            <button class="role-button" :class="{ active: playerData.role === 'black' }" @click.stop="roleSet(playerData.roleKey, 'black'); window.haptic.impact('light');" title="Мафия">М</button>
-                            <button class="role-button" :class="{ active: playerData.role === 'sheriff' }" @click.stop="roleSet(playerData.roleKey, 'sheriff'); window.haptic.impact('light');" title="Шериф">Ш</button>
-                        </template>
                         <!-- Режим День -->
                         <template v-if="currentMode==='day'">
-                            <button class="role-button day-tools" @click.stop="toggleRemove(playerData.roleKey); window.haptic.impact('medium');" :title="playerData.action==='removed'?'Вернуть':'Удалить'">
-                                <i class="fa fa-ban"></i>
+                            <!-- Фол: тап +1, удержание -1 -->
+                            <button class="day-foul-pill"
+                                    :class="{ 'foul-warn': playerData.foul >= 3, 'foul-hot': playerData.foul >= 2 }"
+                                    @click.stop.prevent
+                                    @touchstart.prevent.stop="startDayHold(playerData.roleKey, 'foul')"
+                                    @touchend.prevent.stop="cancelDayHold()"
+                                    @touchcancel.prevent.stop="cancelDayHold()"
+                                    @mousedown.prevent.stop="startDayHold(playerData.roleKey, 'foul')"
+                                    @mouseup.prevent.stop="cancelDayHold()"
+                                    @mouseleave.stop="cancelDayHold()">
+                                <span class="pill-label">Ф</span><span class="pill-count">{{playerData.foul}}</span>
                             </button>
-                            <button class="role-button day-tools" @click.stop="toggleTechFoul(playerData.roleKey); window.haptic.impact('light');" :title="playerData.techFoul===0?'Тех.фол':'ТФ'+playerData.techFoul">
-                                ⚡<span v-if="playerData.techFoul>0">{{playerData.techFoul}}</span>
+                            <!-- Тех.фол: тап +1, удержание -1 -->
+                            <button class="day-techfoul-pill"
+                                    :class="{ 'tf-warn': playerData.techFoul >= 1 }"
+                                    @click.stop.prevent
+                                    @touchstart.prevent.stop="startDayHold(playerData.roleKey, 'techfoul')"
+                                    @touchend.prevent.stop="cancelDayHold()"
+                                    @touchcancel.prevent.stop="cancelDayHold()"
+                                    @mousedown.prevent.stop="startDayHold(playerData.roleKey, 'techfoul')"
+                                    @mouseup.prevent.stop="cancelDayHold()"
+                                    @mouseleave.stop="cancelDayHold()">
+                                <span class="pill-label">ТФ</span><span class="pill-count">{{playerData.techFoul}}</span>
                             </button>
-                            <button class="role-button day-tools" @click.stop="toggleFoul(playerData.roleKey); window.haptic.impact('light');" :title="'Фол ('+playerData.foul+')'">
-                                ⚠️<span v-if="playerData.foul>0">{{playerData.foul}}</span>
+                            <!-- Удалить: только удержание -->
+                            <button class="day-remove-btn"
+                                    @click.stop.prevent
+                                    @touchstart.prevent.stop="startDayHold(playerData.roleKey, 'remove')"
+                                    @touchend.prevent.stop="cancelDayHold()"
+                                    @touchcancel.prevent.stop="cancelDayHold()"
+                                    @mousedown.prevent.stop="startDayHold(playerData.roleKey, 'remove')"
+                                    @mouseup.prevent.stop="cancelDayHold()"
+                                    @mouseleave.stop="cancelDayHold()">
+                                <i class="mdi mdi-account-remove"></i>
                             </button>
                         </template>
                         <!-- Режим Ночь -->
                         <template v-if="currentMode==='night'">
-                            <button class="role-button night-tools" @click.stop="actionSet(playerData.roleKey, 'killed', { nightKill: true }); window.haptic.impact('heavy');" :class="{active: playerData.action==='killed'}" title="Убить">
-                                <i class="mdi mdi-crosshairs-gps"></i>
+                            <button class="night-kill-btn" @click.stop="actionSet(playerData.roleKey, 'killed', { nightKill: true }); window.haptic.impact('heavy');" :class="{active: playerData.action==='killed'}">
+                                Убить
                             </button>
                         </template>
                         </template>
                     </div>
                 </div>
                 <transition name="slide-fade">
-                    <div v-if="highlightedPlayer === playerData.roleKey" class="candidate-menu" @click.stop @touchstart.stop>
-                        <!-- Таймер секция (теперь доступна всем) -->
-                        <div class="timer-section">
-                            <div class="timer-display" :class="{ 
-                                running: getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused,
-                                warning: getTimerDisplay(playerData.roleKey).timeLeft <= 10 && getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused
-                            }">
-                                {{ formatTimerTime(getTimerDisplay(playerData.roleKey).timeLeft) }}
+                    <div v-if="highlightedPlayer === playerData.roleKey && gamePhase !== 'discussion' && gamePhase !== 'freeSeating'" class="candidate-menu" @click.stop @touchstart.stop>
+
+                        <!-- ============ НОЧНАЯ ПРОВЕРКА (Дон / Шериф) ============ -->
+                        <div v-if="currentMode==='night' && (roles[playerData.roleKey]==='don' || roles[playerData.roleKey]==='sheriff')" class="night-check-section">
+                            <div class="section-title" style="margin-bottom:8px;">
+                                {{ roles[playerData.roleKey]==='don' ? '🔍 Проверка Дона' : '🔍 Проверка Шерифа' }}
                             </div>
-                            <div class="timer-controls">
-                                <button 
-                                    class="timer-btn timer-start"
-                                    :disabled="getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused"
-                                    @click.stop="handleTimerStart(playerData.roleKey); window.haptic.impact('light');"
-                                    :title="getTimerDisplay(playerData.roleKey).isPaused ? 'Продолжить' : 'Старт'">
-                                    <i class="fa fa-play"></i>
-                                </button>
-                                <button 
-                                    class="timer-btn timer-pause"
-                                    :disabled="!getTimerDisplay(playerData.roleKey).isRunning || getTimerDisplay(playerData.roleKey).isPaused"
-                                    @click.stop="pausePlayerTimer(playerData.roleKey); window.haptic.impact('light');"
-                                    title="Пауза">
-                                    <i class="fa fa-pause"></i>
-                                </button>
-                                <button 
-                                    class="timer-btn timer-add"
-                                    :class="{ disabled: !isAddTimeButtonAvailable(playerData.roleKey) }"
-                                    :disabled="!isAddTimeButtonAvailable(playerData.roleKey)"
-                                    @click.stop="addThirtySecondsToTimer(playerData.roleKey); window.haptic.impact('light');"
-                                    title="Добавить 30 секунд">
-                                    +30
-                                </button>
-                                <button 
-                                    class="timer-btn timer-stop"
-                                    @click.stop="stopPlayerTimer(playerData.roleKey); window.haptic.impact('light');"
-                                    title="Стоп">
-                                    <i class="fa fa-stop"></i>
-                                </button>
+                            <!-- Если Дон/Шериф убит на ПРЕДЫДУЩИХ ночах — показываем сообщение -->
+                            <div v-if="_wasKilledBeforeThisNight(playerData.roleKey)" class="night-check-dead-msg">
+                                <i class="mdi mdi-skull" style="margin-right:6px;"></i>
+                                {{ roles[playerData.roleKey]==='don' ? 'Дон убит' : 'Шериф убит' }} — проверка невозможна
                             </div>
-                        </div>
-                        
-                        <!-- Сетка кандидатов (только для живых игроков) -->
-                        <div v-if="playerData.action !== 'killed'" class="candidate-grid">
-                            <button v-for="n in tableOut.length"
-                                    :key="'cand'+n"
-                                    class="candidate-btn"
-                                    :class="candidateButtonClass(playerData.roleKey, n)"
-                                    :disabled="isCandidateButtonDisabled(playerData.roleKey, n)"
-                                    @click.stop="toggleNomination(playerData.roleKey, n); window.haptic.selection();">
-                                {{ n }}
-                            </button>
-                        </div>
-                        <div v-if="playerData.action !== 'killed' && nominations[playerData.roleKey] && nominations[playerData.roleKey].length" class="text-center text-accent font-bold text-large mt-md">
-                            Выставлен: <span style="font-size:1.18em;">{{ nominations[playerData.roleKey][0] }}</span>
+                            <template v-else>
+                                <div v-if="!nightChecks[playerData.roleKey]" class="night-check-grid">
+                                    <button v-for="n in tableOut.length" :key="'nc'+n"
+                                            class="night-check-btn"
+                                            @click.stop="performNightCheck(playerData.roleKey, n); window.haptic.impact('medium');">
+                                        {{ n }}
+                                    </button>
+                                </div>
+                                <div v-else class="night-check-result" :class="{ positive: nightChecks[playerData.roleKey].result.includes('✅') }">
+                                    <div class="night-check-target">Игрок {{ nightChecks[playerData.roleKey].target }}</div>
+                                    <div class="night-check-answer">{{ nightChecks[playerData.roleKey].result }}</div>
+                                </div>
+                            </template>
                         </div>
 
-                        <!-- Секция Протокол и Мнение для убитых игроков -->
-                        <div v-if="playerData.action === 'killed'" class="protocol-opinion-section">
-                            <div class="protocol-section">
-                                <div class="section-title">Протокол</div>
-                                <div class="protocol-grid">
-                                    <button v-for="n in tableOut.length"
-                                            :key="'prot'+n"
-                                            class="protocol-btn"
-                                            :class="getProtocolRoleClass(playerData.roleKey, n)"
-                                            @click.stop="toggleProtocolRole(playerData.roleKey, n); window.haptic.selection();">
-                                        <span class="player-num">{{ n }}</span>
-                                        <span class="role-label">{{ getProtocolRoleLabel(playerData.roleKey, n) }}</span>
+                        <!-- ============ ЖИВОЙ ИГРОК: Таймер + Кандидаты (только День) ============ -->
+                        <template v-if="playerData.action !== 'killed' && currentMode==='day'">
+                            <div class="timer-section">
+                                <div class="timer-display" :class="{
+                                    running: getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused,
+                                    warning: getTimerDisplay(playerData.roleKey).timeLeft <= 10 && getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused
+                                }">
+                                    {{ formatTimerTime(getTimerDisplay(playerData.roleKey).timeLeft) }}
+                                </div>
+                                <div class="timer-controls">
+                                    <button class="timer-btn timer-start"
+                                        :disabled="getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused"
+                                        @click.stop="handleTimerStart(playerData.roleKey); window.haptic.impact('light');">
+                                        <i class="fa fa-play"></i>
+                                    </button>
+                                    <button class="timer-btn timer-pause"
+                                        :disabled="!getTimerDisplay(playerData.roleKey).isRunning || getTimerDisplay(playerData.roleKey).isPaused"
+                                        @click.stop="pausePlayerTimer(playerData.roleKey); window.haptic.impact('light');">
+                                        <i class="fa fa-pause"></i>
+                                    </button>
+                                    <button class="timer-btn timer-add"
+                                        :class="{ disabled: !isAddTimeButtonAvailable(playerData.roleKey) }"
+                                        :disabled="!isAddTimeButtonAvailable(playerData.roleKey)"
+                                        @click.stop="addThirtySecondsToTimer(playerData.roleKey); window.haptic.impact('light');">
+                                        +30
+                                    </button>
+                                    <button class="timer-btn timer-stop"
+                                        @click.stop="stopPlayerTimer(playerData.roleKey); window.haptic.impact('light');">
+                                        <i class="fa fa-stop"></i>
                                     </button>
                                 </div>
                             </div>
+                            <div class="candidate-grid">
+                                <button v-for="n in tableOut.length" :key="'cand'+n"
+                                        class="candidate-btn"
+                                        :class="candidateButtonClass(playerData.roleKey, n)"
+                                        :disabled="isCandidateButtonDisabled(playerData.roleKey, n)"
+                                        @click.stop="toggleNomination(playerData.roleKey, n); window.haptic.selection();">
+                                    {{ n }}
+                                </button>
+                            </div>
+                            <div v-if="nominations[playerData.roleKey] && nominations[playerData.roleKey].length" class="text-center text-accent font-bold text-large mt-md">
+                                Выставлен: <span style="font-size:1.18em;">{{ nominations[playerData.roleKey][0] }}</span>
+                            </div>
+                        </template>
 
-                            <div class="opinion-section">
-                                <div class="section-title">Мнение</div>
-                                <div class="opinion-grid">
-                                    <button v-for="n in tableOut.length"
-                                            :key="'opin'+n"
-                                            class="opinion-btn"
-                                            :class="getOpinionRoleClass(playerData.roleKey, n)"
-                                            @click.stop="toggleOpinionRole(playerData.roleKey, n); window.haptic.selection();">
-                                        <span class="player-num">{{ n }}</span>
-                                        <span class="role-label">{{ getOpinionRoleLabel(playerData.roleKey, n) }}</span>
+                        <!-- ============ УБИТЫЙ ИГРОК: Фазовый UI ============ -->
+                        <template v-if="playerData.action === 'killed'">
+
+                            <!-- ФАЗА: Лучший ход (только первый убитый) -->
+                            <div v-if="killedCardPhase[playerData.roleKey] === 'bm' && firstKilledPlayer === playerData.roleKey" class="killed-phase-section">
+                                <div class="section-title" style="margin-bottom:8px;">🎯 Лучший ход</div>
+                                <div class="bm-grid">
+                                    <button v-for="n in tableOut.length" :key="'bm2'+n"
+                                            class="bm-btn"
+                                            :class="{ selected: bestMove.includes(n) }"
+                                            :disabled="tableOut[n-1]?.roleKey === firstKilledPlayer"
+                                            @click.stop="toggleBestMove(n); window.haptic.selection();">
+                                        {{ n }}
                                     </button>
                                 </div>
-                                <textarea
-                                    class="opinion-text"
-                                    placeholder="Введите мнение..."
-                                    :value="opinionText && opinionText[playerData.roleKey]"
-                                    @input="updateOpinionText(playerData.roleKey, $event.target.value)"
-                                    @click.stop
-                                    @touchstart.stop
-                                ></textarea>
+                                <div v-if="bestMove.length" class="text-center text-accent font-bold mt-md" style="font-size:1.1em;">
+                                    ЛХ: {{ bestMove.join(', ') }}
+                                </div>
+                                <button class="killed-hold-btn accept-btn"
+                                        @click.stop.prevent
+                                        @touchstart.prevent.stop="startBestMoveHold(playerData.roleKey)"
+                                        @touchend.prevent.stop="cancelProtocolHold()"
+                                        @touchcancel.prevent.stop="cancelProtocolHold()"
+                                        @mousedown.prevent.stop="startBestMoveHold(playerData.roleKey)"
+                                        @mouseup.prevent.stop="cancelProtocolHold()"
+                                        @mouseleave.stop="cancelProtocolHold()">
+                                    <i class="fa fa-check" style="margin-right:6px;"></i> Принять ЛХ
+                                    <div class="hold-progress" :class="{ active: dayHoldActive && _dayHoldType === 'accept_bm' }"></div>
+                                </button>
+                                <div class="hold-hint">Удерживайте для подтверждения</div>
                             </div>
-                        </div>
+
+                            <!-- ФАЗА: Таймер + кнопка "Протокол/Мнение" -->
+                            <div v-if="killedCardPhase[playerData.roleKey] === 'timer'" class="killed-phase-section">
+                                <!-- Кнопка редактирования ЛХ (только первый убитый) -->
+                                <button v-if="firstKilledPlayer === playerData.roleKey && bestMoveAccepted" class="killed-hold-btn edit-btn"
+                                        @click.stop.prevent
+                                        @touchstart.prevent.stop="startEditBestMoveHold(playerData.roleKey)"
+                                        @touchend.prevent.stop="cancelProtocolHold()"
+                                        @touchcancel.prevent.stop="cancelProtocolHold()"
+                                        @mousedown.prevent.stop="startEditBestMoveHold(playerData.roleKey)"
+                                        @mouseup.prevent.stop="cancelProtocolHold()"
+                                        @mouseleave.stop="cancelProtocolHold()">
+                                    <i class="fa fa-pencil-alt" style="margin-right:6px;"></i> Изменить ЛХ
+                                    <div class="hold-progress" :class="{ active: dayHoldActive && _dayHoldType === 'edit_bm' }"></div>
+                                </button>
+
+                                <div class="timer-section">
+                                    <div class="timer-display" :class="{
+                                        running: getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused,
+                                        warning: getTimerDisplay(playerData.roleKey).timeLeft <= 10 && getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused
+                                    }">
+                                        {{ formatTimerTime(getTimerDisplay(playerData.roleKey).timeLeft) }}
+                                    </div>
+                                    <div class="timer-controls">
+                                        <button class="timer-btn timer-start"
+                                            :disabled="getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused"
+                                            @click.stop="handleTimerStart(playerData.roleKey); window.haptic.impact('light');">
+                                            <i class="fa fa-play"></i>
+                                        </button>
+                                        <button class="timer-btn timer-pause"
+                                            :disabled="!getTimerDisplay(playerData.roleKey).isRunning || getTimerDisplay(playerData.roleKey).isPaused"
+                                            @click.stop="pausePlayerTimer(playerData.roleKey); window.haptic.impact('light');">
+                                            <i class="fa fa-pause"></i>
+                                        </button>
+                                        <button class="timer-btn timer-add"
+                                            :class="{ disabled: !isAddTimeButtonAvailable(playerData.roleKey) }"
+                                            :disabled="!isAddTimeButtonAvailable(playerData.roleKey)"
+                                            @click.stop="addThirtySecondsToTimer(playerData.roleKey); window.haptic.impact('light');">
+                                            +30
+                                        </button>
+                                        <button class="timer-btn timer-stop"
+                                            @click.stop="stopPlayerTimer(playerData.roleKey); window.haptic.impact('light');">
+                                            <i class="fa fa-stop"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button class="killed-hold-btn protocol-open-btn" @click.stop="openProtocolForKilled(playerData.roleKey); window.haptic.impact('light');">
+                                    <i class="fa fa-file-alt" style="margin-right:6px;"></i> Протокол / Мнение
+                                </button>
+                            </div>
+
+                            <!-- ФАЗА: Протокол и Мнение -->
+                            <div v-if="killedCardPhase[playerData.roleKey] === 'protocol'" class="killed-phase-section">
+                                <div class="protocol-section">
+                                    <div class="section-title">Протокол</div>
+                                    <div class="protocol-grid">
+                                        <button v-for="n in tableOut.length" :key="'prot'+n"
+                                                class="protocol-btn"
+                                                :class="getProtocolRoleClass(playerData.roleKey, n)"
+                                                @click.stop="toggleProtocolRole(playerData.roleKey, n); window.haptic.selection();">
+                                            <span class="player-num">{{ n }}</span>
+                                            <span class="role-label">{{ getProtocolRoleLabel(playerData.roleKey, n) }}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="opinion-section">
+                                    <div class="section-title">Мнение</div>
+                                    <div class="opinion-grid">
+                                        <button v-for="n in tableOut.length" :key="'opin'+n"
+                                                class="opinion-btn"
+                                                :class="getOpinionRoleClass(playerData.roleKey, n)"
+                                                @click.stop="toggleOpinionRole(playerData.roleKey, n); window.haptic.selection();">
+                                            <span class="player-num">{{ n }}</span>
+                                            <span class="role-label">{{ getOpinionRoleLabel(playerData.roleKey, n) }}</span>
+                                        </button>
+                                    </div>
+                                    <textarea class="opinion-text" placeholder="Введите мнение..."
+                                        :value="opinionText && opinionText[playerData.roleKey]"
+                                        @input="updateOpinionText(playerData.roleKey, $event.target.value)"
+                                        @click.stop @touchstart.stop></textarea>
+                                </div>
+                                <button class="killed-hold-btn accept-btn"
+                                        @click.stop.prevent
+                                        @touchstart.prevent.stop="startProtocolHold(playerData.roleKey)"
+                                        @touchend.prevent.stop="cancelProtocolHold()"
+                                        @touchcancel.prevent.stop="cancelProtocolHold()"
+                                        @mousedown.prevent.stop="startProtocolHold(playerData.roleKey)"
+                                        @mouseup.prevent.stop="cancelProtocolHold()"
+                                        @mouseleave.stop="cancelProtocolHold()">
+                                    <i class="fa fa-check" style="margin-right:6px;"></i> Принять Протокол
+                                    <div class="hold-progress" :class="{ active: dayHoldActive && _dayHoldType === 'accept_protocol' }"></div>
+                                </button>
+                                <div class="hold-hint">Удерживайте для подтверждения</div>
+                            </div>
+
+                            <!-- ФАЗА: Готово (только кнопки редактирования) -->
+                            <div v-if="killedCardPhase[playerData.roleKey] === 'done'" class="killed-phase-section killed-done-phase">
+                                <button v-if="firstKilledPlayer === playerData.roleKey" class="killed-hold-btn edit-btn"
+                                        @click.stop.prevent
+                                        @touchstart.prevent.stop="startEditBestMoveHold(playerData.roleKey)"
+                                        @touchend.prevent.stop="cancelProtocolHold()"
+                                        @touchcancel.prevent.stop="cancelProtocolHold()"
+                                        @mousedown.prevent.stop="startEditBestMoveHold(playerData.roleKey)"
+                                        @mouseup.prevent.stop="cancelProtocolHold()"
+                                        @mouseleave.stop="cancelProtocolHold()">
+                                    <i class="fa fa-pencil-alt" style="margin-right:6px;"></i> Изменить ЛХ
+                                    <div class="hold-progress" :class="{ active: dayHoldActive && _dayHoldType === 'edit_bm' }"></div>
+                                </button>
+                                <button class="killed-hold-btn edit-btn"
+                                        @click.stop.prevent
+                                        @touchstart.prevent.stop="startEditProtocolHold(playerData.roleKey)"
+                                        @touchend.prevent.stop="cancelProtocolHold()"
+                                        @touchcancel.prevent.stop="cancelProtocolHold()"
+                                        @mousedown.prevent.stop="startEditProtocolHold(playerData.roleKey)"
+                                        @mouseup.prevent.stop="cancelProtocolHold()"
+                                        @mouseleave.stop="cancelProtocolHold()">
+                                    <i class="fa fa-pencil-alt" style="margin-right:6px;"></i> Изменить Протокол / Мнение
+                                    <div class="hold-progress" :class="{ active: dayHoldActive && _dayHoldType === 'edit_protocol' }"></div>
+                                </button>
+                            </div>
+
+                            <!-- Fallback: если фаза не установлена — показать кнопку для начала -->
+                            <div v-if="!killedCardPhase[playerData.roleKey]" class="killed-phase-section">
+                                <button class="killed-hold-btn protocol-open-btn" @click.stop="openProtocolForKilled(playerData.roleKey); window.haptic.impact('light');">
+                                    <i class="fa fa-file-alt" style="margin-right:6px;"></i> Протокол / Мнение
+                                </button>
+                            </div>
+
+                        </template>
                     </div>
                 </transition>
             </div>
+            <!-- Кнопка Промах (внутри списка игроков, под 10 игроком) -->
+            <div v-if="currentMode==='night' && !winnerTeam && rolesDistributed && (!nightPhase || nightPhase==='kill') && !nightMisses[nightNumber]"
+                 class="player-row night-miss-row"
+                 @click.stop="setNightMiss(); window.haptic.notification('warning');">
+                <div class="player-row-content night-miss-row-content">
+                    <i class="mdi mdi-close-circle-outline night-miss-row-icon"></i>
+                    <span class="night-miss-row-label">Промах</span>
+                </div>
+            </div>
         </div>
 
-        <!-- Заголовок голосования -->
-        <div v-if="tableOut?.length && !winnerTeam" class="text-center font-bold text-large" style="margin:18px 0 6px 0;">Голосование</div>
-
-        <!-- Кнопки истории и начала голосования -->
-        <div v-if="tableOut?.length" class="modal-actions-row" style="justify-content:center; padding:0 16px; margin-bottom:18px; box-sizing:border-box;">
-            <button class="glass-btn flex-1" @click="showVotingHistory = true; activeVotingTab = Math.max(0, votingHistory.length - 1); window.haptic.impact('light');" style="min-width:0;">
-                <i class="fa fa-history" style="margin-right:8px;"></i>
-                История
-            </button>
-            <button v-if="!winnerTeam" class="glass-btn flex-1 btn-primary" @click="startVoting(); window.haptic.impact('medium');" style="min-width:0;">
-                <i class="fa fa-thumbs-up" style="margin-right:8px;"></i>
-                Начать
-            </button>
-        </div>
-
-        <!-- Заголовок победителей -->
-        <div v-if="tableOut?.length && !winnerTeam" class="text-center font-bold text-large" style="margin:18px 0 6px 0;">Завершение</div>
-
-        <!-- Кнопки победившей команды -->
-        <div v-if="tableOut?.length && !winnerTeam" class="winner-team-row">
-            <button class="glass-btn btn-wide btn-primary" @click="showWinnerModal = true; window.haptic.impact('medium');">
-                <i class="fa fa-flag-checkered" style="margin-right:8px;"></i>
-                Завершить игру
+        <!-- Кнопка голосования (под таблицей игроков) -->
+        <div v-if="tableOut?.length && !winnerTeam && rolesDistributed && gamePhase==='day'" class="voting-btn-container">
+            <button class="glass-btn game-voting-btn" @click="openVotingScreen(); window.haptic.impact('medium');">
+                <i class="fa fa-gavel" style="margin-right: 8px;"></i>
+                Голосование
             </button>
         </div>
 
-        <!-- Кнопки настроек трансляции и выхода -->
-        <div class="game-actions-container" v-if="tableOut?.length">
+        <!-- Кнопки настроек трансляции, завершения и выхода -->
+        <div class="game-actions-container" v-if="tableOut?.length && rolesDistributed">
             <button class="glass-btn game-broadcast-btn" @click="openBroadcastSettings(); window.haptic.impact('light');">
                 <i class="fa fa-sliders-h" style="margin-right: 8px;"></i>
                 Настройки трансляции
             </button>
-            <button class="exit-hold-btn"
-                    @touchstart.prevent="startExitHold()"
-                    @touchend.prevent="cancelExitHold()"
-                    @touchcancel.prevent="cancelExitHold()"
-                    @mousedown.prevent="startExitHold()"
-                    @mouseup.prevent="cancelExitHold()"
-                    @mouseleave="cancelExitHold()">
-                <i class="fa fa-sign-out-alt" style="margin-right: 6px;"></i>
-                <span>Выход</span>
-                <div class="exit-hold-progress" :class="{ active: exitHoldActive }"></div>
-            </button>
+            <div class="game-actions-row">
+                <button v-if="!winnerTeam && (gamePhase==='day' || gamePhase==='night')" class="glass-btn game-finish-btn" @click="showWinnerModal = true; window.haptic.impact('medium');">
+                    <i class="fa fa-flag-checkered" style="margin-right: 6px;"></i>
+                    <span>Завершить</span>
+                </button>
+                <button class="exit-hold-btn"
+                        @touchstart.prevent="startExitHold()"
+                        @touchend.prevent="cancelExitHold()"
+                        @touchcancel.prevent="cancelExitHold()"
+                        @mousedown.prevent="startExitHold()"
+                        @mouseup.prevent="cancelExitHold()"
+                        @mouseleave="cancelExitHold()">
+                    <i class="fa fa-sign-out-alt" style="margin-right: 6px;"></i>
+                    <span>Выход</span>
+                    <div class="exit-hold-progress" :class="{ active: exitHoldActive }"></div>
+                </button>
+            </div>
         </div>
 
         <!-- Панель выбора игры (только для ручного режима) -->
-        <div v-if="tableOut?.length && manualMode" class="game-table-panel">
+        <div v-if="tableOut?.length && manualMode && rolesDistributed" class="game-table-panel">
             <div class="flex">
                 <!-- Карточка Игры -->
                 <div class="game-option-card">
@@ -1442,302 +1782,301 @@ if (window.Telegram && window.Telegram.WebApp) {
             </div>
         </div>
 
-        <!-- Модальное окно голосования -->
-        <div v-if="showVotingModal" class="modal">
-            <div class="voting-modal-content">
-                <div class="voting-header w-100">
-                    <div class="voting-header-title">Выставлены:</div>
-                    <div class="voting-header-order">
-                        <span v-for="(candidate, idx) in votingOrder" :key="candidate"
-                              :class="['voting-header-candidate', {active: votingCurrentIndex === idx}]">
-                            {{ candidate }}
-                        </span>
-                    </div>
+        <!-- ============ ПОЛНОЭКРАННАЯ СТРАНИЦА ГОЛОСОВАНИЯ ============ -->
+        <div v-if="showVotingScreen" class="voting-fullscreen-page">
+
+            <!-- ===== ВКЛАДКА: ГОЛОСОВАНИЕ ===== -->
+            <div v-if="votingScreenTab === 'voting'" class="voting-screen-content voting-screen-content--no-scroll">
+
+                <!-- Состояние: нет выставленных кандидатур и нет активного голосования -->
+                <div v-if="!showVotingModal && !hasNominatedCandidates()" class="voting-empty-state">
+                    <div class="voting-empty-icon">🗳️</div>
+                    <div class="voting-empty-title">Нет кандидатур</div>
+                    <div class="voting-empty-text">На голосование не выставлена ни одна кандидатура</div>
+                    <button class="glass-btn btn-primary voting-empty-night-btn" @click="goToNightFromVoting(); window.haptic.impact('medium');">
+                        <i class="mdi mdi-moon-waning-crescent" style="margin-right:8px;"></i>
+                        Перейти в ночь
+                    </button>
                 </div>
-                <div class="voting-question" v-if="!votingTieTimerActive">
-                    <template v-if="votingStage === 'main'">
-                        Кто голосует за <b>№{{ votingOrder[votingCurrentIndex] }}</b>
+
+                <!-- Состояние: активное голосование -->
+                <div v-if="showVotingModal" class="voting-active-content voting-active-content--compact">
+
+                    <!-- === ЭКРАН: Основное/повторное голосование (выбор голосов) === -->
+                    <template v-if="!votingFinished && !votingTieTimerActive">
+                        <!-- Выставленные кандидаты -->
+                        <div class="voting-header-compact">
+                            <div class="voting-header-order voting-header-order--large">
+                                <span v-for="(candidate, idx) in votingOrder" :key="candidate"
+                                      :class="['voting-header-candidate', 'voting-header-candidate--lg', {active: votingCurrentIndex === idx}]">
+                                    {{ candidate }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Вопрос -->
+                        <div class="voting-question-compact">
+                            <template v-if="votingStage === 'main' || votingStage === 'tie'">
+                                <span v-if="votingStage === 'tie'" class="voting-stage-badge">Повторное</span>
+                                Кто голосует за <b>№{{ votingOrder[votingCurrentIndex] }}</b>
+                            </template>
+                            <template v-else-if="votingStage === 'lift'">
+                                Кто за подъем кандидатов?
+                            </template>
+                        </div>
+
+                        <!-- Кнопки игроков (main/tie) -->
+                        <div v-if="votingStage === 'main' || votingStage === 'tie'" class="voting-keypad">
+                            <div class="voting-keypad-row">
+                                <button v-for="n in [1,2,3]" :key="'vote'+n" :class="getVotingButtonClass(n)" :disabled="!isVotingButtonEnabled(n)" @click="toggleVotingSelection(n); window.haptic.selection();">{{ n }}</button>
+                            </div>
+                            <div class="voting-keypad-row">
+                                <button v-for="n in [4,5,6]" :key="'vote'+n" :class="getVotingButtonClass(n)" :disabled="!isVotingButtonEnabled(n)" @click="toggleVotingSelection(n); window.haptic.selection();">{{ n }}</button>
+                            </div>
+                            <div class="voting-keypad-row">
+                                <button v-for="n in [7,8,9]" :key="'vote'+n" :class="getVotingButtonClass(n)" :disabled="!isVotingButtonEnabled(n)" @click="toggleVotingSelection(n); window.haptic.selection();">{{ n }}</button>
+                            </div>
+                            <div class="voting-keypad-row voting-keypad-row--center">
+                                <button :class="getVotingButtonClass(10)" :disabled="!isVotingButtonEnabled(10)" @click="toggleVotingSelection(10); window.haptic.selection();">10</button>
+                            </div>
+                        </div>
+
+                        <!-- Кнопки игроков (lift) -->
+                        <div v-else-if="votingStage === 'lift'" class="voting-keypad">
+                            <div class="voting-keypad-row">
+                                <button v-for="n in [1,2,3]" :key="'lift'+n" :class="getLiftVotingButtonClass(n)" :disabled="!isLiftVotingButtonEnabled(n)" @click="toggleLiftVotingSelection(n); window.haptic.selection();">{{ n }}</button>
+                            </div>
+                            <div class="voting-keypad-row">
+                                <button v-for="n in [4,5,6]" :key="'lift'+n" :class="getLiftVotingButtonClass(n)" :disabled="!isLiftVotingButtonEnabled(n)" @click="toggleLiftVotingSelection(n); window.haptic.selection();">{{ n }}</button>
+                            </div>
+                            <div class="voting-keypad-row">
+                                <button v-for="n in [7,8,9]" :key="'lift'+n" :class="getLiftVotingButtonClass(n)" :disabled="!isLiftVotingButtonEnabled(n)" @click="toggleLiftVotingSelection(n); window.haptic.selection();">{{ n }}</button>
+                            </div>
+                            <div class="voting-keypad-row voting-keypad-row--center">
+                                <button :class="getLiftVotingButtonClass(10)" :disabled="!isLiftVotingButtonEnabled(10)" @click="toggleLiftVotingSelection(10); window.haptic.selection();">10</button>
+                            </div>
+                        </div>
+
+                        <!-- Уведомления -->
+                        <div v-if="votingNotification" class="text-center font-bold" style="color:var(--status-error);font-size:0.85em;">{{ votingNotification }}</div>
+
+                        <!-- Кнопки действий: Назад + Принять -->
+                        <div class="voting-actions-row">
+                            <button v-if="votingCurrentIndex > 0 || votingStage === 'lift'" class="glass-btn voting-action-btn voting-action-btn--secondary" @click="prevVoting(); window.haptic.impact('light');">
+                                <i class="fa fa-arrow-left" style="margin-right:6px;"></i> Назад
+                            </button>
+                            <button class="glass-btn voting-action-btn voting-action-btn--primary" @click="acceptCurrentCandidateVotes(); window.haptic.impact('medium');" :disabled="acceptDisabled">
+                                Принять
+                            </button>
+                        </div>
                     </template>
-                    <template v-else-if="votingStage === 'tie'">
-                        <span class="text-large font-bold">Повторное голосование</span><br>
-                        Кто голосует за <b>№{{ votingOrder[votingCurrentIndex] }}</b>
+
+                    <!-- === ЭКРАН: Ничья — карточки игроков с таймером === -->
+                    <template v-if="votingTieTimerActive && votingTiePlayers.length > 1">
+                        <div class="voting-tie-result-screen">
+                            <div class="voting-tie-title">⚖️ Ничья</div>
+                            <div class="voting-tie-cards">
+                                <div v-for="player in votingTiePlayers" :key="'tie_'+player" class="voting-player-card" :class="{ 'card-active': votingTiePlayers[votingTieTimerPlayerIndex] === player }">
+                                    <div class="voting-player-card-num">{{ player }}</div>
+                                    <div class="voting-player-card-votes">{{ getVotesForCandidate(player) }} гол.</div>
+                                </div>
+                            </div>
+                            <!-- Таймер -->
+                            <div class="voting-tie-timer-block">
+                                <div class="voting-timer-title-compact">
+                                    ⏱ Игрок №{{ votingTiePlayers[votingTieTimerPlayerIndex] }}
+                                </div>
+                                <div class="voting-timer-display voting-timer-display--compact" :class="{
+                                    'running': votingTieTimerRunning && !votingTieTimerPaused,
+                                    'warning': votingTieTimerTimeLeft <= 10 && votingTieTimerRunning && !votingTieTimerPaused
+                                }">
+                                    {{ formatVotingTimerTime(votingTieTimerTimeLeft) }}
+                                </div>
+                                <div class="voting-timer-controls">
+                                    <button class="timer-btn timer-start" :disabled="votingTieTimerRunning && !votingTieTimerPaused" @click.stop="playVotingTieTimer(); window.haptic.impact('light');">
+                                        <i class="fa fa-play"></i>
+                                    </button>
+                                    <button class="timer-btn timer-pause" :disabled="!votingTieTimerRunning || votingTieTimerPaused" @click.stop="pauseVotingTieTimer(); window.haptic.impact('light');">
+                                        <i class="fa fa-pause"></i>
+                                    </button>
+                                    <button class="timer-btn timer-stop" @click.stop="stopVotingTieTimer(); window.haptic.impact('light');">
+                                        <i class="fa fa-stop"></i>
+                                    </button>
+                                </div>
+                                <div class="voting-timer-nav">
+                                    <button class="glass-btn" :disabled="votingTieTimerPlayerIndex <= 0" @click.stop="prevVotingTieTimerPlayer(); window.haptic.impact('light');">
+                                        ◀ Пред.
+                                    </button>
+                                    <span class="voting-timer-player-indicator">
+                                        {{ votingTieTimerPlayerIndex + 1 }} / {{ votingTiePlayers.length }}
+                                    </span>
+                                    <button class="glass-btn" :disabled="votingTieTimerPlayerIndex >= votingTiePlayers.length - 1" @click.stop="nextVotingTieTimerPlayer(); window.haptic.impact('light');">
+                                        След. ▶
+                                    </button>
+                                </div>
+                            </div>
+                            <button class="glass-btn voting-action-btn voting-action-btn--primary" @click.stop="skipVotingTieTimer(); startTieVoting(); window.haptic.impact('medium');">
+                                Повторное голосование
+                            </button>
+                        </div>
                     </template>
-                    <template v-else-if="votingStage === 'lift'">
-                        Кто за подъем кандидатов?
+
+                    <!-- === ЭКРАН: Результат — заголосованные игроки / ночь === -->
+                    <template v-if="votingFinished">
+                        <div class="voting-finish-screen">
+                            <!-- Карточки заголосованных игроков с таймером -->
+                            <template v-if="votingWinners && votingWinners.length">
+                                <div class="voting-finish-title">Заголосованы</div>
+                                <div class="voting-winner-cards">
+                                    <div v-for="winner in votingWinners" :key="'win_'+winner" class="voting-player-card card-voted" :class="{ 'card-active': votingWinners[votingLastSpeechPlayerIndex] === winner }">
+                                        <div class="voting-player-card-num">{{ winner }}</div>
+                                    </div>
+                                </div>
+                                <!-- Таймер крайней речи -->
+                                <div v-if="votingLastSpeechTimerActive" class="voting-tie-timer-block">
+                                    <div class="voting-timer-title-compact">
+                                        🎤 Крайняя речь — №{{ votingWinners[votingLastSpeechPlayerIndex] }}
+                                    </div>
+                                    <div class="voting-timer-display voting-timer-display--compact" :class="{
+                                        'running': votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused,
+                                        'warning': votingLastSpeechTimerTimeLeft <= 10 && votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused
+                                    }">
+                                        {{ formatVotingTimerTime(votingLastSpeechTimerTimeLeft) }}
+                                    </div>
+                                    <div class="voting-timer-controls">
+                                        <button class="timer-btn timer-start" :disabled="votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused" @click.stop="playVotingLastSpeechTimer(); window.haptic.impact('light');">
+                                            <i class="fa fa-play"></i>
+                                        </button>
+                                        <button class="timer-btn timer-pause" :disabled="!votingLastSpeechTimerRunning || votingLastSpeechTimerPaused" @click.stop="pauseVotingLastSpeechTimer(); window.haptic.impact('light');">
+                                            <i class="fa fa-pause"></i>
+                                        </button>
+                                        <button class="timer-btn timer-stop" @click.stop="stopVotingLastSpeechTimer(); window.haptic.impact('light');">
+                                            <i class="fa fa-stop"></i>
+                                        </button>
+                                    </div>
+                                    <div v-if="votingWinners.length > 1" class="voting-timer-nav">
+                                        <button class="glass-btn" :disabled="votingLastSpeechPlayerIndex <= 0" @click.stop="prevVotingLastSpeechPlayer(); window.haptic.impact('light');">
+                                            ◀ Пред.
+                                        </button>
+                                        <span class="voting-timer-player-indicator">
+                                            {{ votingLastSpeechPlayerIndex + 1 }} / {{ votingWinners.length }}
+                                        </span>
+                                        <button class="glass-btn" :disabled="votingLastSpeechPlayerIndex >= votingWinners.length - 1" @click.stop="nextVotingLastSpeechPlayer(); window.haptic.impact('light');">
+                                            След. ▶
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Кнопка перейти в ночь -->
+                                <button class="glass-btn voting-action-btn voting-action-btn--primary" @click="finishVotingAndGoToNight(); window.haptic.notification('success');">
+                                    <i class="mdi mdi-moon-waning-crescent" style="margin-right:8px;"></i> Перейти в ночь
+                                </button>
+                            </template>
+
+                            <!-- Никого не заголосовали (lift не прошел) — Начать ночь -->
+                            <template v-else>
+                                <div class="voting-finish-title">Никого не заголосовали</div>
+                                <button class="glass-btn voting-action-btn voting-action-btn--primary" @click="finishVotingNoWinnersAndGoToNight(); window.haptic.notification('warning');">
+                                    <i class="mdi mdi-moon-waning-crescent" style="margin-right:8px;"></i> Начать ночь
+                                </button>
+                            </template>
+                        </div>
                     </template>
-                </div>
-                <div v-if="!votingTieTimerActive && (votingStage === 'main' || votingStage === 'tie')" class="modal-grid">
-                    <button v-for="n in 10"
-                            :key="'vote'+n"
-                            :class="getVotingButtonClass(n)"
-                            :disabled="!isVotingButtonEnabled(n)"
-                            @click="toggleVotingSelection(n); window.haptic.selection();">
-                        {{ n }}
-                    </button>
-                </div>
-                <div v-else-if="!votingTieTimerActive && votingStage === 'lift'" class="modal-grid">
-                    <button v-for="n in 10"
-                            :key="'lift'+n"
-                            :class="getLiftVotingButtonClass(n)"
-                            :disabled="!isLiftVotingButtonEnabled(n)"
-                            @click="toggleLiftVotingSelection(n); window.haptic.selection();">
-                        {{ n }}
-                    </button>
-                </div>
-                <div v-if="votingNotification" class="text-center font-bold" style="color:var(--status-error);margin-bottom:8px;">{{ votingNotification }}</div>
 
-                <!-- Таймер ничьей (дополнительное время для кандидатов при ничьей) -->
-                <div v-if="votingTieTimerActive && votingTiePlayers.length > 1" class="voting-timer-section">
-                    <div class="voting-timer-tie-info">
-                        ⚖️ Ничья среди: {{ votingTiePlayers.join(', ') }}
-                    </div>
-                    <div class="voting-timer-title">
-                        ⏱ Дополнительное время — Игрок №{{ votingTiePlayers[votingTieTimerPlayerIndex] }}
-                    </div>
-                    <div class="voting-timer-display" :class="{
-                        'running': votingTieTimerRunning && !votingTieTimerPaused,
-                        'warning': votingTieTimerTimeLeft <= 10 && votingTieTimerRunning && !votingTieTimerPaused
-                    }">
-                        {{ formatVotingTimerTime(votingTieTimerTimeLeft) }}
-                    </div>
-                    <div class="voting-timer-controls">
-                        <button class="timer-btn timer-start"
-                                :disabled="votingTieTimerRunning && !votingTieTimerPaused"
-                                @click.stop="playVotingTieTimer(); window.haptic.impact('light');"
-                                :title="votingTieTimerPaused ? 'Продолжить' : 'Старт'">
-                            <i class="fa fa-play"></i>
-                        </button>
-                        <button class="timer-btn timer-pause"
-                                :disabled="!votingTieTimerRunning || votingTieTimerPaused"
-                                @click.stop="pauseVotingTieTimer(); window.haptic.impact('light');"
-                                title="Пауза">
-                            <i class="fa fa-pause"></i>
-                        </button>
-                        <button class="timer-btn timer-stop"
-                                @click.stop="stopVotingTieTimer(); window.haptic.impact('light');"
-                                title="Сброс">
-                            <i class="fa fa-stop"></i>
-                        </button>
-                    </div>
-                    <div class="voting-timer-nav">
-                        <button class="glass-btn"
-                                :disabled="votingTieTimerPlayerIndex <= 0"
-                                @click.stop="prevVotingTieTimerPlayer(); window.haptic.impact('light');">
-                            ◀ Пред.
-                        </button>
-                        <span class="voting-timer-player-indicator">
-                            {{ votingTieTimerPlayerIndex + 1 }} / {{ votingTiePlayers.length }}
-                        </span>
-                        <button class="glass-btn"
-                                :disabled="votingTieTimerPlayerIndex >= votingTiePlayers.length - 1"
-                                @click.stop="nextVotingTieTimerPlayer(); window.haptic.impact('light');">
-                            След. ▶
-                        </button>
-                    </div>
-                    <button class="glass-btn btn-primary w-full"
-                            @click.stop="skipVotingTieTimer(); startTieVoting(); window.haptic.impact('medium');">
-                        Перейти к повторному голосованию
-                    </button>
-                </div>
-
-                <div class="modal-actions" v-if="!votingTieTimerActive && !votingFinished">
-                    <button v-if="votingCurrentIndex > 0 || votingStage === 'lift'" class="glass-btn" @click="prevVoting(); window.haptic.impact('light');">
-                        Назад
-                    </button>
-                    <button class="glass-btn btn-primary" @click="acceptCurrentCandidateVotes(); window.haptic.impact('medium');" :disabled="acceptDisabled">
-                        Принять
-                    </button>
-                </div>
-                <div v-if="votingFinished" class="w-100 mt-md">
-                    <!-- Таймер крайней речи -->
-                    <div v-if="votingLastSpeechTimerActive && votingWinners && votingWinners.length" class="voting-timer-section">
-                        <div class="voting-timer-title">
-                            🎤 Крайняя речь — Игрок №{{ votingWinners[votingLastSpeechPlayerIndex] }}
-                        </div>
-                        <div class="voting-timer-display" :class="{
-                            'running': votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused,
-                            'warning': votingLastSpeechTimerTimeLeft <= 10 && votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused
-                        }">
-                            {{ formatVotingTimerTime(votingLastSpeechTimerTimeLeft) }}
-                        </div>
-                        <div class="voting-timer-controls">
-                            <button class="timer-btn timer-start"
-                                    :disabled="votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused"
-                                    @click.stop="playVotingLastSpeechTimer(); window.haptic.impact('light');"
-                                    :title="votingLastSpeechTimerPaused ? 'Продолжить' : 'Старт'">
-                                <i class="fa fa-play"></i>
-                            </button>
-                            <button class="timer-btn timer-pause"
-                                    :disabled="!votingLastSpeechTimerRunning || votingLastSpeechTimerPaused"
-                                    @click.stop="pauseVotingLastSpeechTimer(); window.haptic.impact('light');"
-                                    title="Пауза">
-                                <i class="fa fa-pause"></i>
-                            </button>
-                            <button class="timer-btn timer-stop"
-                                    @click.stop="stopVotingLastSpeechTimer(); window.haptic.impact('light');"
-                                    title="Сброс">
-                                <i class="fa fa-stop"></i>
-                            </button>
-                        </div>
-                        <div v-if="votingWinners.length > 1" class="voting-timer-nav">
-                            <button class="glass-btn"
-                                    :disabled="votingLastSpeechPlayerIndex <= 0"
-                                    @click.stop="prevVotingLastSpeechPlayer(); window.haptic.impact('light');">
-                                ◀ Пред.
-                            </button>
-                            <span class="voting-timer-player-indicator">
-                                {{ votingLastSpeechPlayerIndex + 1 }} / {{ votingWinners.length }}
-                            </span>
-                            <button class="glass-btn"
-                                    :disabled="votingLastSpeechPlayerIndex >= votingWinners.length - 1"
-                                    @click.stop="nextVotingLastSpeechPlayer(); window.haptic.impact('light');">
-                                След. ▶
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Если есть победители - показываем кнопку завершения -->
-                    <button v-if="votingWinners && votingWinners.length"
-                            class="glass-btn w-full btn-primary"
-                            @click="closeVotingModalAndApplyResults(); window.haptic.notification('success');">
-                        Завершить голосование
-                    </button>
-
-                    <!-- Если никто не получил голосов -->
-                    <button v-else
-                            class="glass-btn w-full btn-danger"
-                            @click="closeVotingModalAndApplyResults(); window.haptic.notification('warning');">
-                        Завершить голосование (никого не заголосовали)
-                    </button>
-                </div>
-                <div class="voting-result">
-                    <div v-if="votingWinners && votingWinners.length">
-                        Заголосовали: {{ votingWinners.join(', ') }}
-                    </div>
-                    <div v-else-if="votingStage !== 'main' && votingTiePlayers && votingTiePlayers.length > 1">
-                        {{ votingStage === 'tie' ? 'Повторное голосование' : 'Голосование за подъем' }} среди: {{ votingTiePlayers.join(', ') }}
-                    </div>
-                    <div v-else>
-                        Никого не заголосовали
-                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Модальное окно истории голосования -->
-        <div v-if="showVotingHistory" class="modal">
-            <div class="modal-content">
-                <h2>История голосований</h2>
-
-                <div v-if="votingHistory && votingHistory.length" class="w-100">
-                    <!-- Вкладки для каждого голосования -->
-                    <div class="voting-tabs-container">
-                        <div class="voting-tabs">
-                            <button
-                                v-for="(voting, index) in votingHistory"
-                                :key="'tab_' + index"
-                                @click="activeVotingTab = index; window.haptic.selection();"
-                                :class="['voting-tab', { 'active': activeVotingTab === index }]"
-                            >
-                                <span class="tab-title">#{{ voting.votingNumber }}</span>
-                            </button>
-                        </div>
+            <!-- ===== ВКЛАДКА: ИСТОРИЯ ===== -->
+            <div v-if="votingScreenTab === 'history'" class="voting-screen-content voting-history-screen">
+                <div v-if="votingHistory && votingHistory.length" class="voting-history-container">
+                    <!-- Фильтр по дням -->
+                    <div class="vh-day-tabs">
+                        <button :class="['vh-day-tab', { active: votingHistoryDayFilter === 0 }]"
+                                @click="votingHistoryDayFilter = 0; window.haptic.selection();">
+                            Все
+                        </button>
+                        <button v-for="day in getVotingHistoryDays()" :key="'day_' + day"
+                                :class="['vh-day-tab', { active: votingHistoryDayFilter === day }]"
+                                @click="votingHistoryDayFilter = day; window.haptic.selection();">
+                            День {{ day }}
+                        </button>
                     </div>
-                    <!-- Содержимое активной вкладки -->
-                    <div class="modal-scroll" v-if="votingHistory[activeVotingTab]">
-                        <div class="voting-session">
-                            <h3 class="text-accent text-center mb-20">
-                                Голосование {{ votingHistory[activeVotingTab].votingNumber }}
-                            </h3>
 
-                            <!-- Список выставленных кандидатов -->
-                            <div v-if="votingHistory[activeVotingTab].nominees && votingHistory[activeVotingTab].nominees.length"
-                                 class="voting-nominees-box">
-                                <h4 class="text-accent font-bold" style="margin-bottom: 8px; font-size: 1em;">
-                                    📋 Выставленные кандидаты:
-                                </h4>
-                                <div style="color: #fff; font-size: 1.1em; font-weight: 500;">
-                                    {{ votingHistory[activeVotingTab].nominees.join(', ') }}
-                                </div>
+                    <!-- Список голосований -->
+                    <div class="vh-list">
+                        <div v-for="(voting, vIdx) in getFilteredVotingHistory()" :key="'vh_' + vIdx" class="vh-card">
+                            <!-- Шапка карточки -->
+                            <div class="vh-card-header">
+                                <span class="vh-card-day">День {{ voting.dayNumber }}</span>
+                                <span :class="['vh-card-result-badge', (voting.finalWinners && voting.finalWinners.length) ? 'badge-voted' : 'badge-none']">
+                                    <template v-if="voting.finalWinners && voting.finalWinners.length">
+                                        Заголосованы: {{ voting.finalWinners.join(', ') }}
+                                    </template>
+                                    <template v-else>Никого не заголосовали</template>
+                                </span>
                             </div>
 
-                            <!-- Перебираем все этапы голосования -->
-                            <div v-for="(stage, stageIndex) in votingHistory[activeVotingTab].stages" :key="'stage_' + stageIndex" class="voting-stage">
-                                <h4 class="text-secondary font-bold" style="font-size: 1.2em; margin-bottom: 15px; display: flex; align-items: center;">
-                                    <span style="margin-right: 10px;">{{ stage.stageName }}</span>
-                                    <span style="background: rgba(174,140,255,0.3); padding: 4px 8px; border-radius: 12px; font-size: 0.8em;">
-                                        Этап {{ stageIndex + 1 }}
-                                    </span>
-                                </h4>
-
-                                <!-- Результаты голосования (для main и tie) -->
-                                <div v-if="stage.type !== 'lift'" style="margin-left: 10px;">
-                                    <div v-for="candidate in stage.order" :key="'candidate_' + candidate" style="margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                            <strong class="text-accent" style="font-size: 1.1em;">Игрок №{{ candidate }}</strong>
-                                            <span style="background: rgba(174,140,255,0.3); padding: 2px 8px; border-radius: 10px; font-size: 0.9em; color: white;">
-                                                {{ stage.results[candidate] ? stage.results[candidate].length : 0 }} голосов
-                                            </span>
-                                        </div>
-                                        <div style="color: #fff; font-size: 0.95em;">
-                                            <span class="text-secondary">Голосовали:</span>
-                                            {{ stage.results[candidate] && stage.results[candidate].length ? stage.results[candidate].join(', ') : 'Никто' }}
-                                        </div>
-                                        <!-- Показываем, если этот кандидат победил на данном этапе -->
-                                        <div v-if="stage.winners && stage.winners.includes(candidate)" style="margin-top: 8px; color: var(--status-success); font-weight: 600; font-size: 0.9em;">
-                                            ✓ Заголосованный игрок
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Результаты голосования за подъем -->
-                                <div v-else style="margin-left: 10px;">
-                                    <div style="padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                            <strong class="text-accent" style="font-size: 1.1em;">Голосование за подъем</strong>
-                                            <span style="background: rgba(174,140,255,0.3); padding: 2px 8px; border-radius: 10px; font-size: 0.9em; color: white;">
-                                                {{ stage.liftResults ? stage.liftResults.length : 0 }} голосов
-                                            </span>
-                                        </div>
-                                        <div style="color: #fff; font-size: 0.95em;">
-                                            <span class="text-secondary">За подъем голосовали:</span>
-                                            {{ stage.liftResults && stage.liftResults.length ? stage.liftResults.join(', ') : 'Никто' }}
-                                        </div>
-                                        <!-- Показываем результат голосования за подъем -->
-                                        <div v-if="stage.winners && stage.winners.length" style="margin-top: 8px; color: var(--status-success); font-weight: 600; font-size: 0.9em;">
-                                            ✓ Игроки {{ stage.order.join(', ') }} заголосованы
-                                        </div>
-                                        <div v-else style="margin-top: 8px; color: var(--status-error); font-weight: 600; font-size: 0.9em;">
-                                            ✗ Игроки {{ stage.order.join(', ') }} остаются в игре
-                                        </div>
-                                    </div>
-                                </div>
+                            <!-- Кандидаты -->
+                            <div v-if="voting.nominees && voting.nominees.length" class="vh-nominees">
+                                Кандидаты: <b>{{ voting.nominees.join(', ') }}</b>
                             </div>
 
-                            <!-- Финальный результат голосования -->
-                            <div :class="['final-result', (votingHistory[activeVotingTab].finalWinners && votingHistory[activeVotingTab].finalWinners.length) ? 'result-success' : 'result-error']">
-                                <h4>
-                                    🏆 ИТОГОВЫЙ РЕЗУЛЬТАТ
-                                </h4>
-                                <div v-if="votingHistory[activeVotingTab].finalWinners && votingHistory[activeVotingTab].finalWinners.length"
-                                     style="color: #fff; font-weight: 600; font-size: 1.1em;">
-                                    Заголосованы игроки: {{ votingHistory[activeVotingTab].finalWinners.join(', ') }}
+                            <!-- Этапы -->
+                            <div v-for="(stage, sIdx) in voting.stages" :key="'st_' + sIdx" class="vh-stage">
+                                <div class="vh-stage-name">
+                                    <span v-if="stage.type === 'main'">Голосование</span>
+                                    <span v-else-if="stage.type === 'tie'">Повторное</span>
+                                    <span v-else-if="stage.type === 'lift'">Подъем</span>
                                 </div>
-                                <div v-else style="color: #fff; font-weight: 600; font-size: 1.1em;">
-                                    Никого не заголосовали
-                                </div>
+
+                                <!-- main / tie результаты -->
+                                <template v-if="stage.type !== 'lift'">
+                                    <div v-for="candidate in stage.order" :key="'c_' + candidate" class="vh-candidate-row">
+                                        <span class="vh-cand-num" :class="{ 'vh-cand-winner': stage.winners && stage.winners.includes(Number(candidate)) }">{{ candidate }}</span>
+                                        <span class="vh-cand-votes">{{ stage.results[candidate] ? stage.results[candidate].length : 0 }}</span>
+                                        <span class="vh-cand-voters">{{ stage.results[candidate] && stage.results[candidate].length ? stage.results[candidate].join(', ') : '—' }}</span>
+                                    </div>
+                                </template>
+
+                                <!-- lift результаты -->
+                                <template v-else>
+                                    <div class="vh-lift-row">
+                                        <span class="vh-lift-label">За подъем:</span>
+                                        <span class="vh-lift-count">{{ stage.liftResults ? stage.liftResults.length : 0 }}</span>
+                                        <span class="vh-lift-voters">{{ stage.liftResults && stage.liftResults.length ? stage.liftResults.join(', ') : '—' }}</span>
+                                    </div>
+                                    <div class="vh-lift-result" :class="stage.winners && stage.winners.length ? 'lift-pass' : 'lift-fail'">
+                                        {{ stage.winners && stage.winners.length ? '✓ Заголосованы' : '✗ Остаются в игре' }}
+                                    </div>
+                                </template>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div v-else class="text-center text-secondary" style="padding: 40px;">
-                    <div style="font-size: 3em; margin-bottom: 15px; opacity: 0.5;">📋</div>
-                    <div style="font-size: 1.2em;">История голосований пуста</div>
-                    <div style="font-size: 0.9em; margin-top: 8px; opacity: 0.7;">Проведите первое голосование, и оно появится здесь</div>
+                <div v-else class="voting-empty-state">
+                    <div class="voting-empty-icon">📋</div>
+                    <div class="voting-empty-title">История пуста</div>
+                    <div class="voting-empty-text">Проведите голосование, и оно появится здесь</div>
                 </div>
-                <div class="modal-actions">
-                    <button class="glass-btn btn-primary" @click="showVotingHistory = false">Закрыть</button>
+            </div>
+
+            <!-- ===== НИЖНИЙ НАВИГАЦИОННЫЙ БАР ГОЛОСОВАНИЯ ===== -->
+            <div class="voting-bottom-bar">
+                <div class="voting-bottom-bar-tabs">
+                    <button :class="['game-nav-item', { active: votingScreenTab === 'voting' }]"
+                            @click="votingScreenTab = 'voting'; window.haptic.selection();">
+                        <i class="fa fa-gavel"></i>
+                        <span>Голосование</span>
+                    </button>
+                    <button :class="['game-nav-item', { active: votingScreenTab === 'history' }]"
+                            @click="votingScreenTab = 'history'; activeVotingTab = Math.max(0, votingHistory.length - 1); window.haptic.selection();">
+                        <i class="fa fa-history"></i>
+                        <span>История</span>
+                    </button>
                 </div>
+                <button class="voting-bottom-close-btn" @click="closeVotingScreen(); window.haptic.impact('light');" :disabled="showVotingModal">
+                    <i class="fa fa-times"></i>
+                    <span>Закрыть</span>
+                </button>
             </div>
         </div>
     </div>
@@ -1767,15 +2106,132 @@ if (window.Telegram && window.Telegram.WebApp) {
     </div>
 
     <!-- Фиксированная нижняя панель режимов (для игры) -->
-    <div v-if="tableOut?.length && !winnerTeam" id="bottom-bar" class="glass-content glass-content--nav">
-        <button :class="['glass-item', { 'glass-item--active': currentMode==='roles' }]" @click="setMode('roles'); window.haptic.selection();">
-            <span>Роли</span>
+    <!-- Экран раздачи ролей (показывается после выбора стола, до подтверждения раздачи) -->
+    <div v-if="tableOut?.length && !winnerTeam && !rolesDistributed && !showMainMenu && !showModal && !showGameTableModal" class="roles-distribution-overlay">
+        <div class="roles-distribution-safe-top"></div>
+        <div class="roles-distribution-header">
+            <i class="mdi mdi-cards-playing-outline" style="font-size: 1.4em; margin-right: 8px; color: var(--maf-accent-color, #ae8cff);"></i>
+            Раздача ролей
+        </div>
+        <div class="roles-distribution-hint">Назначьте роли игрокам. Все без назначения — мирные.</div>
+
+        <!-- Лейблы ролей -->
+        <div class="roles-distribution-summary">
+            <span class="roles-summary-tag" :class="{ valid: validateRolesDistribution().donCount === 1 }">
+                Дон
+            </span>
+            <span class="roles-summary-tag" :class="{ valid: validateRolesDistribution().blackCount === 2, half: validateRolesDistribution().blackCount === 1 }">
+                Мафия
+            </span>
+            <span class="roles-summary-tag" :class="{ valid: validateRolesDistribution().sheriffCount === 1 }">
+                Шериф
+            </span>
+        </div>
+
+        <div class="roles-distribution-list">
+            <div v-for="(playerData, index) in tableOut"
+                 :key="'rd-'+playerData.roleKey"
+                 class="roles-distribution-row">
+                <b class="flex-fixed player-num">{{index + 1}}</b>
+                <div class="avatar-uploader flex-fixed">
+                    <div class="avatar" :style="{backgroundImage: playerData.avatarCss}"></div>
+                </div>
+                <div class="text-ellipsis player-name" style="flex:1;">{{playerData.login}}</div>
+                <div class="role-badges-right">
+                    <button class="role-button" :class="{ active: playerData.role === 'don' }" @click.stop="roleSet(playerData.roleKey, 'don'); window.haptic.impact('light');" title="Дон">Д</button>
+                    <button class="role-button" :class="{ active: playerData.role === 'black' }" @click.stop="roleSet(playerData.roleKey, 'black'); window.haptic.impact('light');" title="Мафия">М</button>
+                    <button class="role-button" :class="{ active: playerData.role === 'sheriff' }" @click.stop="roleSet(playerData.roleKey, 'sheriff'); window.haptic.impact('light');" title="Шериф">Ш</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ошибка валидации -->
+        <div v-if="rolesValidationError" class="roles-validation-error">
+            <i class="fa fa-exclamation-triangle" style="margin-right: 6px;"></i>
+            Проверьте роли
+        </div>
+
+        <!-- Кнопка сохранения с удержанием -->
+        <div class="roles-save-bar">
+            <button class="roles-hold-btn"
+                    :class="{ disabled: !validateRolesDistribution().valid }"
+                    @touchstart.prevent="startRolesHold()"
+                    @touchend.prevent="cancelRolesHold()"
+                    @touchcancel.prevent="cancelRolesHold()"
+                    @mousedown.prevent="startRolesHold()"
+                    @mouseup.prevent="cancelRolesHold()"
+                    @mouseleave="cancelRolesHold()">
+                <span><i class="fa fa-check" style="margin-right: 8px;"></i>Сохранить раздачу</span>
+                <small class="roles-hold-hint-inline">Удерживайте</small>
+                <div class="roles-hold-progress" :class="{ active: rolesHoldActive }"></div>
+            </button>
+        </div>
+        <div class="roles-distribution-safe-bottom"></div>
+    </div>
+
+    <!-- ============ DISCUSSION / FREE SEATING PHASE (unified block) ============ -->
+    <div v-if="rolesDistributed && (gamePhase==='discussion' || gamePhase==='freeSeating') && !winnerTeam" id="bottom-bar" class="phase-unified-bar">
+        <!-- Timer section -->
+        <div class="phase-timer-box">
+            <div class="timer-section phase-timer-section">
+                <div class="timer-display" :class="{
+                    warning: (gamePhase==='discussion' ? discussionTimeLeft : freeSeatingTimeLeft) <= 10 && (gamePhase==='discussion' ? discussionRunning : freeSeatingRunning)
+                }">
+                    {{ Math.floor((gamePhase==='discussion' ? discussionTimeLeft : freeSeatingTimeLeft) / 60).toString().padStart(2, '0') }}:{{ String((gamePhase==='discussion' ? discussionTimeLeft : freeSeatingTimeLeft) % 60).padStart(2, '0') }}
+                </div>
+                <div class="timer-controls">
+                    <button class="timer-btn timer-start"
+                        v-if="gamePhase==='discussion'"
+                        :disabled="discussionRunning"
+                        @click.stop="startDiscussionTimer(); window.haptic.impact('light');">
+                        <i class="fa fa-play"></i>
+                    </button>
+                    <button class="timer-btn timer-start"
+                        v-if="gamePhase==='freeSeating'"
+                        :disabled="freeSeatingRunning"
+                        @click.stop="startFreeSeatingTimer(); window.haptic.impact('light');">
+                        <i class="fa fa-play"></i>
+                    </button>
+                    <button class="timer-btn timer-pause"
+                        v-if="gamePhase==='discussion'"
+                        :disabled="!discussionRunning"
+                        @click.stop="stopDiscussionTimer(); window.haptic.impact('light');">
+                        <i class="fa fa-pause"></i>
+                    </button>
+                    <button class="timer-btn timer-pause"
+                        v-if="gamePhase==='freeSeating'"
+                        :disabled="!freeSeatingRunning"
+                        @click.stop="stopFreeSeatingTimer(); window.haptic.impact('light');">
+                        <i class="fa fa-pause"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Skip phase button -->
+        <button class="game-nav-item skip-phase-btn phase-unified-skip-btn"
+                @click.stop.prevent
+                @touchstart.prevent.stop="gamePhase==='discussion' ? startSkipDiscussionHold() : startSkipFreeSeatingHold()"
+                @touchend.prevent.stop="cancelSkipHold()"
+                @touchcancel.prevent.stop="cancelSkipHold()"
+                @mousedown.prevent.stop="gamePhase==='discussion' ? startSkipDiscussionHold() : startSkipFreeSeatingHold()"
+                @mouseup.prevent.stop="cancelSkipHold()"
+                @mouseleave.stop="cancelSkipHold()">
+            <i class="mdi mdi-skip-forward"></i>
+            <span>{{ gamePhase==='discussion' ? 'Пропустить договорку' : 'Пропустить свободную посадку' }}</span>
+            <div class="skip-hold-progress" :class="{ active: skipHoldActive }"></div>
         </button>
-        <button :class="['glass-item', { 'glass-item--active': currentMode==='day' }]" @click="setMode('day'); window.haptic.selection();">
-            <span>День</span>
+    </div>
+
+    <!-- ============ DAY / NIGHT NAVIGATION ============ -->
+    <div v-if="tableOut?.length && !winnerTeam && rolesDistributed && (gamePhase==='day' || gamePhase==='night') && !showVotingScreen" id="bottom-bar" class="game-nav-bar">
+        <button class="game-nav-item" :class="{ active: currentMode==='day', 'blink-pulse': dayButtonBlink && currentMode!=='day' }" @click="setMode('day'); window.haptic.selection();">
+            <i class="mdi mdi-white-balance-sunny"></i>
+            <span>День {{ dayNumber }}</span>
+            <small v-if="getDaySubtitle() && currentMode==='day'" class="nav-subtitle">{{ getDaySubtitle() }}</small>
         </button>
-        <button :class="['glass-item', { 'glass-item--active': currentMode==='night' }]" @click="setMode('night'); window.haptic.selection();">
-            <span>Ночь</span>
+        <button class="game-nav-item" :class="{ active: currentMode==='night' }" @click="setMode('night'); window.haptic.selection();">
+            <i class="mdi mdi-moon-waning-crescent"></i>
+            <span>Ночь {{ currentMode==='night' ? nightNumber : nightNumber + 1 }}</span>
         </button>
     </div>
 

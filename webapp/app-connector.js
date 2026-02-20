@@ -200,7 +200,155 @@ class GoMafiaConnector {
             console.error('❌ Ошибка загрузки турнира:', error);
             return undefined;
         }
-    }    async playersGet(logins) {
+    }    /**
+     * Загружает список турниров с gomafia.pro/tournaments
+     * @param {Object} filters - Фильтры { period, type, fsm, search, page }
+     * @returns {Object} { tournaments: [], totalCount: number, hasMore: boolean }
+     */
+    async getTournamentsList(filters = {}) {
+        console.log('🌐 Загружаем список турниров с фильтрами:', filters);
+
+        const params = new URLSearchParams();
+        params.set('za', '1');
+        if (filters.period) params.set('period', filters.period);
+        if (filters.type) params.set('type', filters.type);
+        if (filters.fsm) params.set('fsm', filters.fsm);
+        if (filters.search) params.set('search', filters.search);
+        if (filters.page && filters.page > 1) params.set('page', filters.page);
+
+        try {
+            const response = await fetch(`${this.apiUrl}tournaments-list.php?${params.toString()}`);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('📨 Ответ от tournaments-list.php:', data);
+
+            // Логируем ELO debug info
+            if (data._eloTournaments) {
+                console.log(`🏆 Турниры с ELO (рассадкой): ${data._eloCount} шт из ${data._totalTournamentLinks || '?'} ссылок:`, data._eloTournaments);
+                console.log('🔍 Debug: eloValues sample:', data._debug_eloValues, 'chunks:', data._debug_chunks);
+            }
+
+            if (!data.success) {
+                throw new Error(data.error || 'Unknown error');
+            }
+
+            // Извлекаем турниры из serverData
+            const serverData = data.data?.serverData || data.data;
+            let tournaments = [];
+            let totalCount = 0;
+
+            // GoMafia может возвращать данные в разных форматах
+            if (serverData?.tournaments) {
+                tournaments = serverData.tournaments;
+                totalCount = serverData.totalCount || serverData.total || tournaments.length;
+            } else if (serverData?.items) {
+                tournaments = serverData.items;
+                totalCount = serverData.totalCount || serverData.total || tournaments.length;
+            } else if (Array.isArray(serverData)) {
+                tournaments = serverData;
+                totalCount = tournaments.length;
+            } else {
+                // Пробуем найти массив турниров в любом ключе
+                for (const key of Object.keys(serverData || {})) {
+                    if (Array.isArray(serverData[key]) && serverData[key].length > 0) {
+                        const first = serverData[key][0];
+                        if (first && (first.id || first.tournamentId || first.name || first.title)) {
+                            tournaments = serverData[key];
+                            break;
+                        }
+                    }
+                }
+                totalCount = serverData?.totalCount || serverData?.total || tournaments.length;
+            }
+
+            console.log(`✅ Найдено ${tournaments.length} турниров (всего: ${totalCount})`);
+
+            // Дамп первого турнира для отладки полей
+            if (tournaments.length > 0) {
+                console.log('🔍 Первый турнир — все поля:', JSON.stringify(tournaments[0], null, 2));
+                console.log('🔍 Ключи первого турнира:', Object.keys(tournaments[0]));
+                // Показываем поля связанные с рассадкой
+                const t0 = tournaments[0];
+                console.log('🪑 Поля рассадки первого турнира:', {
+                    _hasSeating: t0._hasSeating,
+                    _elo: t0._elo,
+                    elo: t0.elo,
+                    rating: t0.rating,
+                    eloRating: t0.eloRating,
+                    games: t0.games,
+                    gamesCount: t0.gamesCount,
+                    games_count: t0.games_count,
+                    tablesCount: t0.tablesCount
+                });
+                // Подсчитываем сколько с рассадкой
+                const withSeating = tournaments.filter(t => t._hasSeating).length;
+                console.log(`🪑 Турниров с _hasSeating: ${withSeating} из ${tournaments.length}`);
+            }
+
+            return {
+                tournaments: tournaments,
+                totalCount: totalCount,
+                hasMore: tournaments.length > 0 && tournaments.length < totalCount,
+                buildId: data.buildId || ''
+            };
+        } catch (error) {
+            console.error('❌ Ошибка загрузки списка турниров:', error);
+
+            // Fallback: пробуем загрузить через основной get.php прокси
+            try {
+                console.log('🔄 Пробуем загрузить через get.php...');
+                const fd = new FormData();
+                let url = 'https://gomafia.pro/tournaments';
+                const queryParams = [];
+                if (filters.period) queryParams.push(`period=${encodeURIComponent(filters.period)}`);
+                if (filters.type) queryParams.push(`type=${encodeURIComponent(filters.type)}`);
+                if (filters.fsm) queryParams.push(`fsm=${encodeURIComponent(filters.fsm)}`);
+                if (filters.search) queryParams.push(`search=${encodeURIComponent(filters.search)}`);
+                if (filters.page && filters.page > 1) queryParams.push(`page=${filters.page}`);
+                if (queryParams.length) url += '?' + queryParams.join('&');
+
+                fd.set('url', url);
+                const resp = await fetch(`${this.apiUrl}get.php${this.apiSuffix}`, { method: 'POST', body: fd });
+                const text = await resp.text();
+
+                const match = text.match(/<script id="__NEXT_DATA__" type="application\/json">(.*)<\/script>/);
+                if (match && match[1]) {
+                    const nextData = JSON.parse(match[1]);
+                    const sd = nextData?.props?.pageProps?.serverData || nextData?.props?.pageProps;
+                    let tournaments = [];
+
+                    if (sd) {
+                        for (const key of Object.keys(sd)) {
+                            if (Array.isArray(sd[key]) && sd[key].length > 0) {
+                                const first = sd[key][0];
+                                if (first && (first.id || first.tournamentId || first.name || first.title)) {
+                                    tournaments = sd[key];
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    return {
+                        tournaments: tournaments,
+                        totalCount: tournaments.length,
+                        hasMore: false,
+                        buildId: nextData?.buildId || ''
+                    };
+                }
+            } catch (e2) {
+                console.error('❌ Fallback также не удался:', e2);
+            }
+
+            return { tournaments: [], totalCount: 0, hasMore: false, buildId: '' };
+        }
+    }
+
+    async playersGet(logins) {
         const fd = new FormData();
         logins.forEach(playerLogin => fd.append('playerLogin[]', playerLogin));
         

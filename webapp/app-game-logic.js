@@ -11,6 +11,181 @@ if (!window.app.methods) window.app.methods = {};
 
 // Принудительно добавляем основные игровые методы
 Object.assign(window.app.methods, {
+
+    // =====================================================
+    // Tournament Browser Methods
+    // =====================================================
+
+    // Открыть браузер турниров
+    openTournamentBrowser() {
+        console.log('🏆 Открываем браузер турниров');
+        this.showModal = false;
+        this.showTournamentBrowser = true;
+        this.tournamentsPage = 1;
+        this.tournamentsList = [];
+        this.tournamentsError = '';
+        this.tournamentsFilters = {
+            period: '',
+            type: '',
+            fsm: '',
+            search: ''
+        };
+        this.fetchTournaments();
+    },
+
+    // Закрыть браузер турниров
+    closeTournamentBrowser() {
+        this.showTournamentBrowser = false;
+        this.tournamentsList = [];
+        this.tournamentsError = '';
+        this.showModal = true;
+        this.newGameStep = 'gomafia';
+    },
+
+    // Загрузить турниры с текущими фильтрами
+    async fetchTournaments(append = false) {
+        if (this.tournamentsLoading) return;
+
+        this.tournamentsLoading = true;
+        this.tournamentsError = '';
+
+        if (!append) {
+            this.tournamentsPage = 1;
+        }
+
+        try {
+            const result = await goMafia.getTournamentsList({
+                period: this.tournamentsFilters.period,
+                type: this.tournamentsFilters.type,
+                fsm: this.tournamentsFilters.fsm,
+                search: this.tournamentsFilters.search,
+                page: this.tournamentsPage
+            });
+
+            if (append) {
+                this.tournamentsList = [...this.tournamentsList, ...result.tournaments];
+            } else {
+                this.tournamentsList = result.tournaments;
+            }
+
+            this.tournamentsTotalCount = result.totalCount;
+            this.tournamentsHasMore = result.hasMore;
+
+            console.log(`✅ Загружено ${this.tournamentsList.length} турниров`);
+        } catch (error) {
+            console.error('❌ Ошибка загрузки турниров:', error);
+            this.tournamentsError = 'Не удалось загрузить список турниров';
+        } finally {
+            this.tournamentsLoading = false;
+        }
+    },
+
+    // Загрузить ещё турниров (пагинация)
+    loadMoreTournaments() {
+        if (this.tournamentsLoading || !this.tournamentsHasMore) return;
+        this.tournamentsPage++;
+        this.fetchTournaments(true);
+    },
+
+    // Применить фильтр турниров
+    applyTournamentFilter(filterName, value) {
+        console.log(`🔍 Фильтр: ${filterName} = ${value}`);
+        this.$set(this.tournamentsFilters, filterName, value);
+        this.tournamentsPage = 1;
+        this.tournamentsList = [];
+        this.fetchTournaments();
+    },
+
+    // Проверить, доступна ли рассадка в турнире
+    // Рассадка доступна если у турнира на gomafia.pro указан ELO (3-4 значное число).
+    // PHP proxy парсит ELO из HTML и ставит _hasSeating=true, _elo=число.
+    isTournamentSeatingReady(tournament) {
+        if (!tournament) return false;
+
+        // _hasSeating и _elo инжектируются PHP proxy из HTML gomafia.pro
+        if (tournament._hasSeating === true && typeof tournament._elo === 'number' && tournament._elo >= 100) {
+            return true;
+        }
+
+        return false;
+    },
+
+    // Выбрать турнир из браузера
+    selectTournamentFromBrowser(tournament) {
+        if (!this.isTournamentSeatingReady(tournament)) {
+            console.log('⚠️ Турнир без рассадки, пропускаем');
+            return;
+        }
+
+        const tid = tournament.id || tournament.tournamentId;
+        if (!tid) {
+            console.error('❌ Не удалось определить ID турнира:', tournament);
+            return;
+        }
+
+        console.log('🏆 Выбран турнир:', tid, tournament.name || tournament.title);
+        this.tournamentId = String(tid);
+        this.showTournamentBrowser = false;
+        this.loadTournament();
+    },
+
+    // Получить отображаемую дату турнира
+    formatTournamentDate(tournament) {
+        const dateStr = tournament.date || tournament.startDate || tournament.dateStart || tournament.created_at;
+        if (!dateStr) return '';
+
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+
+            const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+            const day = d.getDate();
+            const month = months[d.getMonth()];
+            const year = d.getFullYear();
+            const now = new Date();
+
+            if (year === now.getFullYear()) {
+                return `${day} ${month}`;
+            }
+            return `${day} ${month} ${year}`;
+        } catch (e) {
+            return dateStr;
+        }
+    },
+
+    // Получить город турнира
+    getTournamentCity(tournament) {
+        return tournament.city || tournament.cityName || tournament.location || '';
+    },
+
+    // Получить количество игроков
+    getTournamentPlayersCount(tournament) {
+        return tournament.playersCount || tournament.players_count || tournament.participantsCount || tournament.membersCount || '';
+    },
+
+    // Получить статус турнира (цвет бейджа)
+    getTournamentStatus(tournament) {
+        const status = tournament.status || tournament.state || '';
+        if (status === 'active' || status === 'registration' || status === 'open') {
+            return { text: 'Регистрация', class: 'status-active' };
+        }
+        if (status === 'started' || status === 'in_progress' || status === 'playing') {
+            return { text: 'Идёт', class: 'status-playing' };
+        }
+        if (status === 'finished' || status === 'completed' || status === 'closed') {
+            return { text: 'Завершён', class: 'status-finished' };
+        }
+        return { text: '', class: '' };
+    },
+
+    // Debounce поиска турниров
+    onTournamentSearchInput(value) {
+        clearTimeout(this._tournamentSearchTimeout);
+        this._tournamentSearchTimeout = setTimeout(() => {
+            this.applyTournamentFilter('search', value);
+        }, 400);
+    },
+
     // Загрузка турнира
     loadTournament() {
         if (!this.tournamentId) {
@@ -426,6 +601,82 @@ Object.assign(window.app.methods, {
         this.saveCurrentSession();
     },
 
+    // Валидация раздачи ролей: 1 дон, 2 мафии, 1 шериф
+    validateRolesDistribution() {
+        const roleValues = Object.values(this.roles);
+        const donCount = roleValues.filter(r => r === 'don').length;
+        const blackCount = roleValues.filter(r => r === 'black').length;
+        const sheriffCount = roleValues.filter(r => r === 'sheriff').length;
+
+        const errors = [];
+        if (donCount !== 1) errors.push('Дон: ' + donCount + ' из 1');
+        if (blackCount !== 2) errors.push('Мафия: ' + blackCount + ' из 2');
+        if (sheriffCount !== 1) errors.push('Шериф: ' + sheriffCount + ' из 1');
+
+        return { valid: errors.length === 0, donCount, blackCount, sheriffCount, errors };
+    },
+
+    // Начало удержания кнопки "Сохранить раздачу"
+    startRolesHold() {
+        const validation = this.validateRolesDistribution();
+        if (!validation.valid) {
+            this.rolesValidationError = 'Необходимо: 1 Дон, 2 Мафии, 1 Шериф.\n' + validation.errors.join(', ');
+            window.haptic && window.haptic.notification('error');
+            clearTimeout(this._rolesValidationTimeout);
+            this._rolesValidationTimeout = setTimeout(() => {
+                this.rolesValidationError = '';
+            }, 3000);
+            return;
+        }
+        this.rolesHoldActive = true;
+        this.rolesHoldTimer = setTimeout(() => {
+            if (this.rolesHoldActive) {
+                this.rolesHoldActive = false;
+                this.rolesDistributed = true;
+                this.gamePhase = 'discussion';
+                this.currentMode = 'discussion';
+                this.dayNumber = 0;
+                this.nightNumber = 0;
+                this.sendFullState();
+                this.saveCurrentSession();
+                window.haptic && window.haptic.notification('success');
+            }
+        }, 1500);
+    },
+
+    // Отмена удержания кнопки "Сохранить раздачу"
+    cancelRolesHold() {
+        if (this.rolesHoldTimer) {
+            clearTimeout(this.rolesHoldTimer);
+            this.rolesHoldTimer = null;
+        }
+        if (this.rolesHoldActive) {
+            this.rolesHoldActive = false;
+            // Короткий тап — показать подсказку
+            const validation = this.validateRolesDistribution();
+            if (validation.valid) {
+                this.showAlert('Удерживайте кнопку для сохранения раздачи');
+            }
+        }
+    },
+
+    // Подтверждение раздачи ролей — переход к дню/ночи (оставлен для совместимости)
+    confirmRolesDistribution() {
+        const validation = this.validateRolesDistribution();
+        if (!validation.valid) {
+            this.rolesValidationError = 'Необходимо: 1 Дон, 2 Мафии, 1 Шериф.\n' + validation.errors.join(', ');
+            window.haptic && window.haptic.notification('error');
+            return;
+        }
+        this.rolesDistributed = true;
+        this.gamePhase = 'discussion';
+        this.currentMode = 'discussion';
+        this.dayNumber = 0;
+        this.nightNumber = 0;
+        this.sendFullState();
+        this.saveCurrentSession();
+    },
+
     // Работа со статусами игроков
     isPlayerActive(roleKey) {
         const action = this.playersActions[roleKey];
@@ -460,28 +711,48 @@ Object.assign(window.app.methods, {
             console.log(`✅ actionSet: Устанавливаем действие ${action} для игрока ${roleKey}`);
             this.$set(this.playersActions, roleKey, action);
             
-            // Логика для показа модального окна "Лучший ход" при первом убийстве
+            // Логика для показа карточки убитого и лучшего хода
             if (action === 'killed') {
+                // Clear miss for this night since a kill happened
+                if (this.nightMisses && this.nightMisses[this.nightNumber]) {
+                    this.$delete(this.nightMisses, this.nightNumber);
+                }
+
                 // Проверяем, есть ли уже убитые игроки (исключая текущего)
                 const otherKilledPlayers = Object.entries(this.playersActions)
                     .filter(([key, value]) => key !== roleKey && value === 'killed');
                 
-                // Если это первое убийство в игре и лучший ход еще не был подтвержден и модальное окно еще не показано
-                if (otherKilledPlayers.length === 0 && !this.bestMoveSelected && !this.showBestMoveModal) {
+                // Первое убийство за всю игру — показываем ЛХ (если разрешено)
+                const isFirstKillEver = otherKilledPlayers.length === 0 && !this.firstKilledEver;
+                if (isFirstKillEver && !this.bestMoveAccepted && this.canShowBestMove()) {
                     console.log(`🎯 Первое убийство! Игрок ${roleKey} установлен как firstKilledPlayer`);
                     this.firstKilledPlayer = roleKey;
-                    this.showBestMoveModal = true;
+                    this.firstKilledEver = true;
                     this.bestMoveSelected = false;
                     this.bestMove = [];
-                    
-                    // Сохраняем состояние лучшего хода
-                    this.saveRoomStateIncremental({
-                        firstKilledPlayer: roleKey,
-                        showBestMoveModal: true,
-                        bestMoveSelected: false,
-                        bestMove: []
-                    });
+                    this.bestMoveAccepted = false;
+                    this.$set(this.killedCardPhase, roleKey, 'bm');
+                } else {
+                    if (isFirstKillEver) this.firstKilledEver = true;
+                    // Последующие убийства или ЛХ запрещён — сразу таймер
+                    this.$set(this.killedCardPhase, roleKey, 'timer');
                 }
+
+                // Пометка на пульсирование днём
+                this.$set(this.killedPlayerBlink, roleKey, true);
+
+                // Начинаем ночную последовательность: Убийство → Дон → Шериф → День
+                this.startNightSequence();
+
+                this.saveRoomStateIncremental({
+                    firstKilledPlayer: this.firstKilledPlayer,
+                    bestMoveSelected: false,
+                    bestMoveAccepted: this.bestMoveAccepted,
+                    bestMove: this.bestMove,
+                    killedCardPhase: this.killedCardPhase,
+                    killedPlayerBlink: this.killedPlayerBlink,
+                    nightPhase: this.nightPhase
+                });
             }
         }
         
@@ -981,6 +1252,642 @@ Object.assign(window.app.methods, {
         this.saveCurrentSession();
     },
 
+    // =============================================
+    // New Day Mode interactions (tap / hold)
+    // =============================================
+
+    // Tap to add one foul
+    tapAddFoul(roleKey) {
+        if (!this.fouls) this.fouls = {};
+        let val = this.fouls[roleKey] || 0;
+        if (val >= 4) return; // already at max
+        val++;
+        this.$set(this.fouls, roleKey, val);
+        if (val === 4) {
+            this.setRemoved(roleKey, 'fall_removed');
+            this.saveRoomStateIncremental({ fouls: this.fouls, removed: this.removed, playersActions: this.playersActions });
+            this.sendToRoom({ type: "foulChange", roleKey, value: val });
+            this.sendToRoom({ type: "removeChange", roleKey, value: 'fall_removed' });
+            this.sendToRoom({ type: "actionChange", roleKey, action: 'fall_removed' });
+        } else {
+            this.saveRoomStateIncremental({ fouls: this.fouls });
+            this.sendToRoom({ type: "foulChange", roleKey, value: val });
+        }
+        if (this.updateTimerFouls) this.updateTimerFouls(roleKey, val);
+        this.sendFullState();
+        this.$forceUpdate();
+        this.saveCurrentSession();
+    },
+
+    // Tap to add one tech foul
+    tapAddTechFoul(roleKey) {
+        if (!this.techFouls) this.techFouls = {};
+        let val = this.techFouls[roleKey] || 0;
+        if (val >= 2) return;
+        val++;
+        this.$set(this.techFouls, roleKey, val);
+        if (val === 2) {
+            this.setRemoved(roleKey, 'tech_fall_removed');
+            this.saveRoomStateIncremental({ techFouls: this.techFouls, removed: this.removed, playersActions: this.playersActions });
+            this.sendToRoom({ type: "techFoulChange", roleKey, value: val });
+            this.sendToRoom({ type: "removeChange", roleKey, value: 'tech_fall_removed' });
+            this.sendToRoom({ type: "actionChange", roleKey, action: 'tech_fall_removed' });
+        } else {
+            this.saveRoomStateIncremental({ techFouls: this.techFouls });
+            this.sendToRoom({ type: "techFoulChange", roleKey, value: val });
+        }
+        this.sendFullState();
+        this.$forceUpdate();
+        this.saveCurrentSession();
+    },
+
+    // Generic hold start for day actions
+    startDayHold(roleKey, type) {
+        this._dayHoldTarget = roleKey;
+        this._dayHoldType = type;
+        this.dayHoldActive = true;
+        this._dayHoldTimestamp = Date.now();
+        this._dayHoldTimer = setTimeout(() => {
+            if (this.dayHoldActive && this._dayHoldTarget === roleKey && this._dayHoldType === type) {
+                this.dayHoldActive = false;
+                this._executeDayHold(roleKey, type);
+            }
+        }, 600);
+    },
+
+    cancelDayHold() {
+        if (this._dayHoldTimer) {
+            clearTimeout(this._dayHoldTimer);
+            this._dayHoldTimer = null;
+        }
+        if (this.dayHoldActive) {
+            this.dayHoldActive = false;
+            this._dayHoldTimestamp = Date.now();
+            const type = this._dayHoldType;
+            const roleKey = this._dayHoldTarget;
+            // Short tap — execute tap action
+            if (type === 'foul') {
+                this.tapAddFoul(roleKey);
+                window.haptic && window.haptic.impact('light');
+            } else if (type === 'techfoul') {
+                this.tapAddTechFoul(roleKey);
+                window.haptic && window.haptic.impact('light');
+            } else if (type === 'remove') {
+                this.showAlert('Удерживайте для удаления игрока');
+            } else if (type === 'return') {
+                this.showAlert('Удерживайте для возврата игрока');
+            }
+        }
+        this._dayHoldTarget = null;
+        this._dayHoldType = null;
+    },
+
+    _executeDayHold(roleKey, type) {
+        if (type === 'foul') {
+            // Hold = subtract one foul
+            if (!this.fouls) this.fouls = {};
+            let val = this.fouls[roleKey] || 0;
+            if (val <= 0) return;
+            val--;
+            this.$set(this.fouls, roleKey, val);
+            // If was removed by fouls, undo that
+            if (this.playersActions[roleKey] === 'fall_removed') {
+                this.$set(this.removed, roleKey, false);
+                this.$delete(this.playersActions, roleKey);
+                this.sendToRoom({ type: "removeChange", roleKey, value: false });
+                this.sendToRoom({ type: "actionChange", roleKey, action: null });
+            }
+            this.saveRoomStateIncremental({ fouls: this.fouls, removed: this.removed, playersActions: this.playersActions });
+            this.sendToRoom({ type: "foulChange", roleKey, value: val });
+            if (this.updateTimerFouls) this.updateTimerFouls(roleKey, val);
+            window.haptic && window.haptic.notification('warning');
+        } else if (type === 'techfoul') {
+            if (!this.techFouls) this.techFouls = {};
+            let val = this.techFouls[roleKey] || 0;
+            if (val <= 0) return;
+            val--;
+            this.$set(this.techFouls, roleKey, val);
+            if (this.playersActions[roleKey] === 'tech_fall_removed') {
+                this.$set(this.removed, roleKey, false);
+                this.$delete(this.playersActions, roleKey);
+                this.sendToRoom({ type: "removeChange", roleKey, value: false });
+                this.sendToRoom({ type: "actionChange", roleKey, action: null });
+            }
+            this.saveRoomStateIncremental({ techFouls: this.techFouls, removed: this.removed, playersActions: this.playersActions });
+            this.sendToRoom({ type: "techFoulChange", roleKey, value: val });
+            window.haptic && window.haptic.notification('warning');
+        } else if (type === 'remove') {
+            // Hold = remove player
+            this.$set(this.removed, roleKey, true);
+            this.$set(this.playersActions, roleKey, 'removed');
+            this.saveRoomStateIncremental({ removed: this.removed, playersActions: this.playersActions });
+            this.sendToRoom({ type: "removeChange", roleKey, value: true });
+            this.sendToRoom({ type: "actionChange", roleKey, action: 'removed' });
+            window.haptic && window.haptic.notification('error');
+        } else if (type === 'return') {
+            // Hold = return player
+            this.resetPlayerStatus(roleKey, false);
+            window.haptic && window.haptic.notification('success');
+        }
+        this.sendFullState();
+        this.$forceUpdate();
+        this.saveCurrentSession();
+    },
+
+    // =============================================
+    // Game Phase System
+    // =============================================
+
+    // --- Discussion Phase (Договорка) ---
+    startDiscussionTimer() {
+        if (this.discussionTimerId) return; // already running
+        this.discussionRunning = true;
+        this.discussionTimerId = setInterval(() => {
+            this.discussionTimeLeft--;
+            if (this.discussionTimeLeft <= 0) {
+                this.stopDiscussionTimer();
+                this.advanceFromDiscussion();
+            }
+        }, 1000);
+    },
+
+    stopDiscussionTimer() {
+        if (this.discussionTimerId) {
+            clearInterval(this.discussionTimerId);
+            this.discussionTimerId = null;
+        }
+        this.discussionRunning = false;
+    },
+
+    // Hold-to-skip discussion
+    startSkipDiscussionHold() {
+        this.skipHoldActive = true;
+        this.skipHoldTimer = setTimeout(() => {
+            if (this.skipHoldActive) {
+                this.skipHoldActive = false;
+                this.stopDiscussionTimer();
+                this.advanceFromDiscussion();
+                window.haptic && window.haptic.notification('success');
+            }
+        }, 800);
+    },
+
+    cancelSkipHold() {
+        if (this.skipHoldTimer) {
+            clearTimeout(this.skipHoldTimer);
+            this.skipHoldTimer = null;
+        }
+        if (this.skipHoldActive) {
+            this.skipHoldActive = false;
+            this.showAlert('Удерживайте для пропуска');
+        }
+    },
+
+    advanceFromDiscussion() {
+        this.stopDiscussionTimer();
+        this.gamePhase = 'freeSeating';
+        this.currentMode = 'freeSeating';
+        this.freeSeatingTimeLeft = 40;
+        this.saveRoomStateIncremental({ gamePhase: 'freeSeating', currentMode: 'freeSeating', freeSeatingTimeLeft: 40 });
+        this.sendFullState();
+        this.saveCurrentSession();
+    },
+
+    // --- Free Seating Phase (Свободная посадка) ---
+    startFreeSeatingTimer() {
+        if (this.freeSeatingTimerId) return;
+        this.freeSeatingRunning = true;
+        this.freeSeatingTimerId = setInterval(() => {
+            this.freeSeatingTimeLeft--;
+            if (this.freeSeatingTimeLeft <= 0) {
+                this.stopFreeSeatingTimer();
+                this.advanceFromFreeSeating();
+            }
+        }, 1000);
+    },
+
+    stopFreeSeatingTimer() {
+        if (this.freeSeatingTimerId) {
+            clearInterval(this.freeSeatingTimerId);
+            this.freeSeatingTimerId = null;
+        }
+        this.freeSeatingRunning = false;
+    },
+
+    startSkipFreeSeatingHold() {
+        this.skipHoldActive = true;
+        this.skipHoldTimer = setTimeout(() => {
+            if (this.skipHoldActive) {
+                this.skipHoldActive = false;
+                this.stopFreeSeatingTimer();
+                this.advanceFromFreeSeating();
+                window.haptic && window.haptic.notification('success');
+            }
+        }, 800);
+    },
+
+    advanceFromFreeSeating() {
+        this.stopFreeSeatingTimer();
+        this.gamePhase = 'day';
+        this.currentMode = 'day';
+        this.dayNumber = 1;
+        this.saveRoomStateIncremental({ gamePhase: 'day', currentMode: 'day', dayNumber: 1 });
+        this.sendFullState();
+        this.saveCurrentSession();
+    },
+
+    // --- Night Miss (Промах) ---
+    setNightMiss() {
+        if (!this.nightMisses) this.nightMisses = {};
+        this.$set(this.nightMisses, this.nightNumber, true);
+
+        // Trigger day transition sequence (skip Don/Sheriff if no kill)
+        this.nightPhase = 'done';
+        this.dayButtonBlink = true;
+        this.highlightedPlayer = null;
+
+        // Clear any auto-close timers
+        if (this.nightAutoCloseTimer) {
+            clearTimeout(this.nightAutoCloseTimer);
+            this.nightAutoCloseTimer = null;
+        }
+
+        window.haptic && window.haptic.notification('warning');
+        this.saveRoomStateIncremental({
+            nightMisses: this.nightMisses,
+            nightPhase: 'done',
+            dayButtonBlink: true
+        });
+        this.sendFullState();
+        this.saveCurrentSession();
+    },
+
+    // --- BM (Best Move) Eligibility ---
+    canShowBestMove() {
+        // ЛХ показывается только первому убитому при условии:
+        // 1. На нулевом круге (день 0) никого не заголосовали
+        // 2. Это действительно первое убийство за всю игру
+        if (this.dayVoteOuts && this.dayVoteOuts[0]) {
+            // На нулевом круге был голосованием удалён игрок → ЛХ нет
+            return false;
+        }
+        // ЛХ доступен для первого убитого
+        return true;
+    },
+
+    // --- Phase label helpers ---
+    getPhaseLabel() {
+        if (this.gamePhase === 'discussion') return 'Договорка';
+        if (this.gamePhase === 'freeSeating') return 'Свободная посадка';
+        if (this.gamePhase === 'day' || this.currentMode === 'day') {
+            if (this.dayNumber === 0) return 'День 0';
+            return 'День ' + this.dayNumber;
+        }
+        if (this.gamePhase === 'night' || this.currentMode === 'night') {
+            return 'Ночь ' + this.nightNumber;
+        }
+        return '';
+    },
+
+    getDaySubtitle() {
+        // Subtitle for day (e.g., "Девятка", "Десятка")
+        if (this.dayNumber === 1) {
+            // Check if Night 1 was a miss
+            if (this.nightMisses && this.nightMisses[1]) {
+                return 'Десятка';
+            }
+            return 'Девятка';
+        }
+        if (this.dayNumber === 0) return 'Нулевой круг';
+        return '';
+    },
+
+    // =============================================
+    // Night Sequence: Kill → Don → Sheriff → Day
+    // =============================================
+
+    // Find the roleKey for a player with a given role (alive or dead — they still hold the role)
+    _findRoleKey(role) {
+        return Object.entries(this.roles).find(([k, v]) => v === role)?.[0] || null;
+    },
+
+    // Check if a role holder was killed BEFORE the current night (i.e. not freshly killed this night)
+    _wasKilledBeforeThisNight(roleKey) {
+        // If the player is killed AND this is NOT the first time we're entering the night phase for them
+        // We track this by checking: if the kill happened this night, they can still check.
+        // The kill always happens at the START of the night sequence (before Don/Sheriff phases).
+        // So on the SAME night they die, they can still check.
+        // On SUBSEQUENT nights, they cannot.
+        // We use nightNumber: if they were killed and the phase was already processed,
+        // they were killed on a previous night.
+        if (!this.playersActions[roleKey] || this.playersActions[roleKey] !== 'killed') return false;
+        // Player is killed. Check if killed this night (fresh kill) or before.
+        // If this night's kill target includes this roleKey, they were killed NOW and can still check.
+        // We store _freshlyKilledThisNight during the kill sequence.
+        return !this._freshlyKilledThisNight || !this._freshlyKilledThisNight.includes(roleKey);
+    },
+
+    startNightSequence() {
+        // Clear any previous auto-close timer
+        if (this.nightAutoCloseTimer) {
+            clearTimeout(this.nightAutoCloseTimer);
+            this.nightAutoCloseTimer = null;
+        }
+
+        // Track freshly killed players this night
+        this._freshlyKilledThisNight = Object.entries(this.playersActions)
+            .filter(([k, v]) => v === 'killed')
+            .map(([k]) => k);
+
+        const donKey = this._findRoleKey('don');
+        const sheriffKey = this._findRoleKey('sheriff');
+
+        // Check if Don/Sheriff were killed before this night
+        const donDead = donKey && this._wasKilledBeforeThisNight(donKey);
+        const sheriffDead = sheriffKey && this._wasKilledBeforeThisNight(sheriffKey);
+
+        // Close any open card first
+        this.highlightedPlayer = null;
+
+        if (donKey && !donDead) {
+            this.nightPhase = 'don';
+            this.$nextTick(() => {
+                this.highlightedPlayer = donKey;
+                this.$nextTick(() => {
+                    this._scrollToPlayer && this._scrollToPlayer(donKey);
+                });
+            });
+        } else if (sheriffKey && !sheriffDead) {
+            this.nightPhase = 'sheriff';
+            this.$nextTick(() => {
+                this.highlightedPlayer = sheriffKey;
+                this.$nextTick(() => {
+                    this._scrollToPlayer && this._scrollToPlayer(sheriffKey);
+                });
+            });
+        } else {
+            // No Don or Sheriff available — go straight to day blink
+            this.nightPhase = 'done';
+            this.dayButtonBlink = true;
+        }
+    },
+
+    advanceNightPhase() {
+        if (this.nightAutoCloseTimer) {
+            clearTimeout(this.nightAutoCloseTimer);
+            this.nightAutoCloseTimer = null;
+        }
+
+        const sheriffKey = this._findRoleKey('sheriff');
+        const sheriffDead = sheriffKey && this._wasKilledBeforeThisNight(sheriffKey);
+
+        if (this.nightPhase === 'don') {
+            // Don done → move to Sheriff
+            if (sheriffKey && !sheriffDead) {
+                this.nightPhase = 'sheriff';
+                this.highlightedPlayer = null;
+                this.$nextTick(() => {
+                    this.highlightedPlayer = sheriffKey;
+                    this.$nextTick(() => {
+                        this._scrollToPlayer && this._scrollToPlayer(sheriffKey);
+                    });
+                });
+            } else {
+                // No sheriff available
+                this.nightPhase = 'done';
+                this.highlightedPlayer = null;
+                this.dayButtonBlink = true;
+            }
+        } else if (this.nightPhase === 'sheriff') {
+            // Sheriff done → day blink
+            this.nightPhase = 'done';
+            this.highlightedPlayer = null;
+            this.dayButtonBlink = true;
+        }
+
+        this.saveRoomStateIncremental({ nightPhase: this.nightPhase, dayButtonBlink: this.dayButtonBlink });
+        this.$forceUpdate();
+    },
+
+    // =============================================
+    // Night Check (Don & Sheriff)
+    // =============================================
+    performNightCheck(checkerRoleKey, targetNum) {
+        // Find checker's role
+        const checkerRole = this.roles[checkerRoleKey];
+        if (!checkerRole || (checkerRole !== 'don' && checkerRole !== 'sheriff')) return;
+
+        // Already checked THIS night (one check per night per role)
+        if (this.nightChecks[checkerRoleKey]) {
+            window.haptic && window.haptic.notification('error');
+            return;
+        }
+
+        // Find target's roleKey
+        const targetPlayer = this.tableOut[targetNum - 1];
+        if (!targetPlayer) return;
+        const targetRole = this.roles[targetPlayer.roleKey] || null;
+
+        let result = '';
+        let found = false;
+        if (checkerRole === 'don') {
+            // Don checks for sheriff
+            found = (targetRole === 'sheriff');
+            result = found ? 'Шериф ✅' : 'Не шериф ❌';
+        } else if (checkerRole === 'sheriff') {
+            // Sheriff checks for mafia. IMPORTANT: Don shows as "Мафия"
+            found = (targetRole === 'black' || targetRole === 'don');
+            result = found ? 'Мафия ✅' : 'Мирный ❌';
+        }
+
+        // Save current night check (for UI display — one per night)
+        this.$set(this.nightChecks, checkerRoleKey, { target: targetNum, result: result });
+
+        // Record to persistent history
+        if (!this.nightCheckHistory) this.nightCheckHistory = [];
+        this.nightCheckHistory.push({
+            night: this.nightNumber || 1,
+            checker: checkerRoleKey,
+            checkerRole: checkerRole,
+            target: targetNum,
+            targetLogin: targetPlayer.login || ('Игрок ' + targetNum),
+            result: result,
+            found: found
+        });
+
+        window.haptic && window.haptic.notification('success');
+        this.saveRoomStateIncremental({
+            nightChecks: this.nightChecks,
+            nightCheckHistory: this.nightCheckHistory
+        });
+        this.sendFullState();
+        this.saveCurrentSession();
+
+        // Auto-close card after 5 seconds and advance to next phase
+        if (this.nightAutoCloseTimer) {
+            clearTimeout(this.nightAutoCloseTimer);
+        }
+        this.nightAutoCloseTimer = setTimeout(() => {
+            this.nightAutoCloseTimer = null;
+            this.advanceNightPhase();
+        }, 5000);
+    },
+
+    clearNightChecks() {
+        this.nightChecks = {};
+        this.nightNumber = (this.nightNumber || 0) + 1;
+        this.saveRoomStateIncremental({ nightChecks: {}, nightNumber: this.nightNumber });
+    },
+
+    // Get night check history for a specific checker (Don or Sheriff)
+    getNightCheckHistoryFor(roleKey) {
+        if (!this.nightCheckHistory || !Array.isArray(this.nightCheckHistory)) return [];
+        return this.nightCheckHistory.filter(h => h.checker === roleKey);
+    },
+
+    // =============================================
+    // Protocol/Opinion Acceptance (Hold-protected)
+    // =============================================
+    validateProtocolOpinion(roleKey) {
+        const protocol = this.protocolData[roleKey] || {};
+        const opinion = this.opinionData[roleKey] || {};
+        const pVals = Object.values(protocol).filter(v => v);
+        const oVals = Object.values(opinion).filter(v => v);
+
+        const pDon = pVals.filter(r => r === 'don').length;
+        const pSheriff = pVals.filter(r => r === 'sheriff').length;
+        const oDon = oVals.filter(r => r === 'don').length;
+        const oSheriff = oVals.filter(r => r === 'sheriff').length;
+
+        const errors = [];
+        // Протокол: допускается 0 или 1 шериф, 0 или 1 дон (не больше 1)
+        if (pDon > 1) errors.push('Протокол: Дон ' + pDon + ' (макс. 1)');
+        if (pSheriff > 1) errors.push('Протокол: Шериф ' + pSheriff + ' (макс. 1)');
+        // Мнение: допускается 0 или 1 шериф, 0 или 1 дон (не больше 1), независимо от протокола
+        if (oDon > 1) errors.push('Мнение: Дон ' + oDon + ' (макс. 1)');
+        if (oSheriff > 1) errors.push('Мнение: Шериф ' + oSheriff + ' (макс. 1)');
+
+        return { valid: errors.length === 0, errors };
+    },
+
+    startProtocolHold(roleKey) {
+        const validation = this.validateProtocolOpinion(roleKey);
+        if (!validation.valid) {
+            this.showAlert(validation.errors.join(', '));
+            window.haptic && window.haptic.notification('error');
+            return;
+        }
+        this._dayHoldTarget = roleKey;
+        this._dayHoldType = 'accept_protocol';
+        this.dayHoldActive = true;
+        this._dayHoldTimestamp = Date.now();
+        this._dayHoldTimer = setTimeout(() => {
+            if (this.dayHoldActive && this._dayHoldType === 'accept_protocol') {
+                this.dayHoldActive = false;
+                this.$set(this.protocolAccepted, roleKey, true);
+                this.$set(this.killedCardPhase, roleKey, 'done');
+                // Закрываем карточку и убираем пульсирование
+                this.$set(this.killedPlayerBlink, roleKey, false);
+                this.highlightedPlayer = null;
+                window.haptic && window.haptic.notification('success');
+                this.saveRoomStateIncremental({
+                    protocolAccepted: this.protocolAccepted,
+                    killedCardPhase: this.killedCardPhase,
+                    killedPlayerBlink: this.killedPlayerBlink
+                });
+                this.sendFullState();
+                this.saveCurrentSession();
+            }
+        }, 800);
+    },
+
+    startEditProtocolHold(roleKey) {
+        this._dayHoldTarget = roleKey;
+        this._dayHoldType = 'edit_protocol';
+        this.dayHoldActive = true;
+        this._dayHoldTimestamp = Date.now();
+        this._dayHoldTimer = setTimeout(() => {
+            if (this.dayHoldActive && this._dayHoldType === 'edit_protocol') {
+                this.dayHoldActive = false;
+                this.$set(this.protocolAccepted, roleKey, false);
+                this.$set(this.killedCardPhase, roleKey, 'protocol');
+                window.haptic && window.haptic.notification('warning');
+                this.saveRoomStateIncremental({ protocolAccepted: this.protocolAccepted, killedCardPhase: this.killedCardPhase });
+                this.sendFullState();
+                this.saveCurrentSession();
+            }
+        }, 800);
+    },
+
+    // =============================================
+    // Best Move Acceptance (Hold-protected)
+    // =============================================
+    startBestMoveHold(roleKey) {
+        this._dayHoldTarget = roleKey;
+        this._dayHoldType = 'accept_bm';
+        this.dayHoldActive = true;
+        this._dayHoldTimestamp = Date.now();
+        this._dayHoldTimer = setTimeout(() => {
+            if (this.dayHoldActive && this._dayHoldType === 'accept_bm') {
+                this.dayHoldActive = false;
+                this.bestMoveAccepted = true;
+                this.bestMoveSelected = true;
+                this.$set(this.killedCardPhase, roleKey, 'timer');
+                window.haptic && window.haptic.notification('success');
+                this.saveRoomStateIncremental({
+                    bestMoveAccepted: true, bestMoveSelected: true, bestMove: this.bestMove,
+                    killedCardPhase: this.killedCardPhase
+                });
+                this.sendFullState();
+                this.saveCurrentSession();
+            }
+        }, 800);
+    },
+
+    startEditBestMoveHold(roleKey) {
+        this._dayHoldTarget = roleKey;
+        this._dayHoldType = 'edit_bm';
+        this.dayHoldActive = true;
+        this._dayHoldTimestamp = Date.now();
+        this._dayHoldTimer = setTimeout(() => {
+            if (this.dayHoldActive && this._dayHoldType === 'edit_bm') {
+                this.dayHoldActive = false;
+                this.bestMoveAccepted = false;
+                this.$set(this.killedCardPhase, roleKey, 'bm');
+                window.haptic && window.haptic.notification('warning');
+                this.saveRoomStateIncremental({ bestMoveAccepted: false, killedCardPhase: this.killedCardPhase });
+                this.sendFullState();
+                this.saveCurrentSession();
+            }
+        }, 800);
+    },
+
+    // Переход к протоколу/мнению из таймера
+    openProtocolForKilled(roleKey) {
+        this.$set(this.killedCardPhase, roleKey, 'protocol');
+        this.saveRoomStateIncremental({ killedCardPhase: this.killedCardPhase });
+        this.sendFullState();
+    },
+
+    // Cancel any hold (reuses cancelDayHold logic for protocol/bm holds)
+    cancelProtocolHold() {
+        if (this._dayHoldTimer) {
+            clearTimeout(this._dayHoldTimer);
+            this._dayHoldTimer = null;
+        }
+        if (this.dayHoldActive) {
+            this.dayHoldActive = false;
+            const type = this._dayHoldType;
+            if (type === 'accept_protocol' || type === 'accept_bm') {
+                this.showAlert('Удерживайте для подтверждения');
+            } else if (type === 'edit_protocol' || type === 'edit_bm') {
+                this.showAlert('Удерживайте для редактирования');
+            }
+        }
+        this._dayHoldTarget = null;
+        this._dayHoldType = null;
+    },
+
     resetPlayerStatus(roleKey, fullRestore = false) {
         const wasKilled = this.playersActions[roleKey] === 'killed';
         
@@ -1197,23 +2104,6 @@ Object.assign(window.app.methods, {
             default: nextRole = '';
         }
         
-        // Проверка ограничений: только один шериф и один дон
-        if (nextRole === 'sheriff') {
-            // Сбрасываем шерифа у других игроков в протоколе этого убитого
-            Object.keys(this.protocolData[roleKey]).forEach(idx => {
-                if (this.protocolData[roleKey][idx] === 'sheriff') {
-                    this.$set(this.protocolData[roleKey], idx, '');
-                }
-            });
-        } else if (nextRole === 'don') {
-            // Сбрасываем дона у других игроков в протоколе этого убитого
-            Object.keys(this.protocolData[roleKey]).forEach(idx => {
-                if (this.protocolData[roleKey][idx] === 'don') {
-                    this.$set(this.protocolData[roleKey], idx, '');
-                }
-            });
-        }
-        
         this.$set(this.protocolData[roleKey], playerIndex, nextRole);
         this.saveRoomStateIncremental({ protocolData: this.protocolData });
         this.sendFullState();
@@ -1238,23 +2128,7 @@ Object.assign(window.app.methods, {
             default: nextRole = '';
         }
         
-        // Проверка ограничений: только один шериф и один дон
-        if (nextRole === 'sheriff') {
-            // Сбрасываем шерифа у других игроков в мнении этого убитого
-            Object.keys(this.opinionData[roleKey]).forEach(idx => {
-                if (this.opinionData[roleKey][idx] === 'sheriff') {
-                    this.$set(this.opinionData[roleKey], idx, '');
-                }
-            });
-        } else if (nextRole === 'don') {
-            // Сбрасываем дона у других игроков в мнении этого убитого
-            Object.keys(this.opinionData[roleKey]).forEach(idx => {
-                if (this.opinionData[roleKey][idx] === 'don') {
-                    this.$set(this.opinionData[roleKey], idx, '');
-                }
-            });
-        }
-        
+
         this.$set(this.opinionData[roleKey], playerIndex, nextRole);
         this.saveRoomStateIncremental({ opinionData: this.opinionData });
         this.sendFullState();

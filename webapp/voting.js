@@ -1,6 +1,9 @@
 // ОБНОВЛЕНО v2: полностью исправлена работа с playersActions (объект вместо Map)
 window.votingMixin = {    data() {
         return {
+            showVotingScreen: false,
+            votingScreenTab: 'voting', // 'voting' | 'history'
+            votingHistoryDayFilter: 0, // 0 = все дни
             showVotingModal: false,
             showVotingHistory: false,
             votingOrder: [],
@@ -46,7 +49,93 @@ window.votingMixin = {    data() {
             const action = this.playersActions[roleKey];
             // Игрок неактивен если он убит, заголосован, удален или удален по нарушениям
             return !action || !['killed', 'voted', 'removed', 'tech_fall_removed', 'fall_removed'].includes(action);
-        },        startVoting() {
+        },        // Открыть экран голосования
+        openVotingScreen() {
+            this.showVotingScreen = true;
+            this.votingScreenTab = 'voting';
+            // Автостарт голосования если есть выставленные кандидатуры
+            if (this.hasNominatedCandidates() && !this.showVotingModal) {
+                this.$nextTick(() => { this.startVoting(); });
+            }
+        },
+
+        // Закрыть экран голосования
+        closeVotingScreen() {
+            // Если идет активное голосование, не закрываем экран
+            if (this.showVotingModal) {
+                return;
+            }
+            this.showVotingScreen = false;
+        },
+
+        // Получить уникальные дни из истории голосований
+        getVotingHistoryDays() {
+            if (!this.votingHistory || !this.votingHistory.length) return [];
+            const days = [...new Set(this.votingHistory.map(v => v.dayNumber))];
+            return days.sort((a, b) => a - b);
+        },
+
+        // Получить отфильтрованную историю по дню
+        getFilteredVotingHistory() {
+            if (!this.votingHistory || !this.votingHistory.length) return [];
+            if (this.votingHistoryDayFilter === 0) return this.votingHistory;
+            return this.votingHistory.filter(v => v.dayNumber === this.votingHistoryDayFilter);
+        },
+
+        // Проверить, есть ли выставленные кандидатуры
+        hasNominatedCandidates() {
+            const nominatedCandidates = Object.entries(this.nominations || {})
+                .filter(([_, nums]) => nums && nums.length)
+                .map(([roleKey, nums]) => nums[0])
+                .filter((num, idx, arr) => arr.indexOf(num) === idx);
+            return nominatedCandidates.length > 0;
+        },
+
+        // Получить количество голосов за кандидата
+        getVotesForCandidate(candidate) {
+            if (!this.votingResults || !this.votingResults[candidate]) return 0;
+            return this.votingResults[candidate].length;
+        },
+
+        // Проверить, были ли непроголосовавшие автоматически добавлены к последнему кандидату
+        hasAutoVotedPlayers() {
+            if (this.votingStage !== 'main' && this.votingStage !== 'tie') return false;
+            if (this.votingCurrentIndex !== this.votingOrder.length - 1) return false;
+            const alivePlayers = this.tableOut
+                .map((p, idx) => ({ num: idx + 1, roleKey: p.roleKey }))
+                .filter(p => this.isPlayerActive(p.roleKey))
+                .map(p => p.num);
+            const allVoted = [].concat(...Object.values(this.votingResults)).filter((v, i, arr) => arr.indexOf(v) === i);
+            const notVoted = alivePlayers.filter(num => !allVoted.includes(num));
+            return notVoted.length > 0;
+        },
+
+        // Перейти в ночь из экрана голосования
+        goToNightFromVoting() {
+            this.showVotingScreen = false;
+            this.showVotingModal = false;
+            this.setMode('night');
+        },
+
+        // Завершить голосование, применить результаты и перейти в ночь
+        finishVotingAndGoToNight() {
+            this.closeVotingModalAndApplyResults();
+            this.$nextTick(() => {
+                this.showVotingScreen = false;
+                this.setMode('night');
+            });
+        },
+
+        // Завершить голосование без заголосованных и перейти в ночь
+        finishVotingNoWinnersAndGoToNight() {
+            this.closeVotingModalAndApplyResults();
+            this.$nextTick(() => {
+                this.showVotingScreen = false;
+                this.setMode('night');
+            });
+        },
+
+        startVoting() {
             // Проверяем, есть ли выставленные кандидатуры
             const nominatedCandidates = Object.entries(this.nominations)
                 .filter(([_, nums]) => nums && nums.length)
@@ -647,6 +736,7 @@ window.votingMixin = {    data() {
             // Создаем объект голосования для истории
             const newVoting = {
                 votingNumber: this.votingHistory.length + 1,
+                dayNumber: this.dayNumber,
                 nominees: [...this.currentVotingSession.nominationsAll], // Список кандидатов
                 stages: [],
                 finalWinners: [...this.currentVotingSession.finalWinners],
@@ -730,6 +820,10 @@ window.votingMixin = {    data() {
                         this.setStatus(roleKey, 'voted');
                     }
                 });
+                // Track that a player was voted out on this day (for BM eligibility)
+                if (!this.dayVoteOuts) this.dayVoteOuts = {};
+                this.$set(this.dayVoteOuts, this.dayNumber, true);
+                this.saveRoomStateIncremental({ dayVoteOuts: this.dayVoteOuts });
             }
             
             // Сбросить выставленные кандидатуры и разблокировать выставления
@@ -749,6 +843,9 @@ window.votingMixin = {    data() {
             this.votingTieTimerActive = false;
             this.votingLastSpeechTimerActive = false;
             this.showVotingModal = false;
+            // Переключаемся на вкладку истории после завершения
+            this.votingScreenTab = 'history';
+            this.activeVotingTab = Math.max(0, this.votingHistory.length - 1);
             this.sendToRoom({ type: "votingClose" });
             this.sendFullState();
         },toggleHistoryWinner(roundIdx, number, substage) {
@@ -800,6 +897,7 @@ window.votingMixin = {    data() {
                 }
             });
             this.showVotingHistory = false;
+            this.votingScreenTab = 'voting';
             this.sendToRoom({ type: "votingHistoryApply", history: this.votingHistory });
             this.sendFullState();        },
 

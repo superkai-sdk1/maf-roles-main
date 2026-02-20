@@ -26,6 +26,7 @@ window.app = new Vue({
         avatarsFromServer: {}, // Добавляем поле для аватаров с сервера
         showModal: true,        tournamentId: '',
         inputMode: 'gomafia',
+        newGameStep: 'modes',   // 'modes' | 'gomafia' | 'manual'
         manualMode: false,
         manualPlayersCount: 10,
         manualPlayers: [], // Добавляем массив игроков для ручного режима
@@ -74,6 +75,31 @@ window.app = new Vue({
         // Long-press exit
         exitHoldTimer: null,
         exitHoldActive: false,
+        // Long-press roles confirm
+        rolesHoldTimer: null,
+        rolesHoldActive: false,
+        rolesValidationError: '',
+        // Day mode hold interactions
+        _dayHoldTimer: null,
+        _dayHoldTarget: null,
+        _dayHoldType: null,
+        dayHoldActive: false,
+        // Night checks (Don/Sheriff)
+        nightChecks: {},          // { roleKey: { target: playerNum, result: 'string' } } — current night only
+        nightCheckHistory: [],    // [{ night: N, checker: roleKey, checkerRole: 'don'|'sheriff', target: playerNum, result: 'string', found: bool }]
+        nightNumber: 0,           // tracks which night we're on
+        nightPhase: null,         // null | 'kill' | 'don' | 'sheriff' | 'done'
+        nightAutoCloseTimer: null,
+        // Protocol/Opinion acceptance per killed player
+        protocolAccepted: {},     // { roleKey: true/false }
+        // Killed card UI phase: 'bm' | 'timer' | 'protocol' | 'done'
+        killedCardPhase: {},
+        // Best move accepted flag
+        bestMoveAccepted: false,
+        // Day button blink after night
+        dayButtonBlink: false,
+        // Killed player row blink
+        killedPlayerBlink: {},
         userEditedAdditionalInfo: false,
         sendFullStateTimer: null, // Таймер для дебаунсинга sendFullState
         activeVotingTab: 0, // Индекс активной вкладки в истории голосований
@@ -133,8 +159,27 @@ window.app = new Vue({
         playerScores: {}, // {roleKey: {bonus: 0, penalty: 0, reveal: false}}
         editVotingHistory: false,
         currentMode: 'roles',
+        rolesDistributed: false, // флаг: роли раздали и сохранили
         fouls: {}, // {roleKey: 0-4}
-        
+
+        // ===== Game Phase System =====
+        gamePhase: 'roles',       // 'roles' | 'discussion' | 'freeSeating' | 'day' | 'night'
+        dayNumber: 0,             // 0 = нулевой круг, 1 = первый день, ...
+        dayVoteOuts: {},          // { dayNumber: true } — был ли голосованием удалён игрок на конкретном дне
+        nightMisses: {},          // { nightNumber: true } — промахи мафии по ночам
+        firstKilledEver: false,   // было ли хотя бы одно убийство за всю игру
+        // Discussion timer
+        discussionTimeLeft: 60,
+        discussionTimerId: null,
+        discussionRunning: false,
+        // Free seating timer
+        freeSeatingTimeLeft: 40,
+        freeSeatingTimerId: null,
+        freeSeatingRunning: false,
+        // Hold-to-skip
+        skipHoldTimer: null,
+        skipHoldActive: false,
+
         // Telegram Web App integration
         tg: null,
         isTelegramApp: false,
@@ -147,6 +192,21 @@ window.app = new Vue({
         showSessionRestoreModal: false,
         previousSession: null,        sessionRestoreChecked: false,
         isRestoringSession: false,
+
+        // === Tournament Browser ===
+        showTournamentBrowser: false,
+        tournamentsList: [],
+        tournamentsLoading: false,
+        tournamentsError: '',
+        tournamentsFilters: {
+            period: '',      // '' = ближайшие 30 дней (default), 'past' = прошедшие, etc.
+            type: '',        // '' = все, 'online', 'offline'
+            fsm: '',         // '' = все, 'fsm' = в рейтинге ФСМ
+            search: ''       // поиск по названию
+        },
+        tournamentsPage: 1,
+        tournamentsHasMore: false,
+        tournamentsTotalCount: 0,
     },
     
     // Базовые computed свойства - будут расширены в других модулях
