@@ -38,6 +38,34 @@ class GoMafiaConnector {
             
             const match = text.match(/<script id="__NEXT_DATA__" type="application\/json">(.*)<\/script>/);
             
+            // Извлекаем название турнира из HTML GoMafia (несколько стратегий)
+            let pageTitle = '';
+
+            // Стратегия 1: класс содержит "tournament" и "title"
+            const s1 = text.match(/class="[^"]*tournament[^"]*title[^"]*"[^>]*>([^<]+)</i);
+            // Стратегия 2: класс содержит "top-left-title"
+            const s2 = text.match(/class="[^"]*top-left-title[^"]*"[^>]*>([^<]+)</i);
+            // Стратегия 3: og:title meta-тег
+            const s3 = text.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i)
+                     || text.match(/<meta[^>]*content="([^"]+)"[^>]*property="og:title"/i);
+            // Стратегия 4: <title> тег
+            const s4 = text.match(/<title[^>]*>([^<]+)<\/title>/i);
+            // Стратегия 5: _tid класс
+            const s5 = text.match(/class="[^"]*_tid[^"]*"[^>]*>([^<]{2,100})</);
+
+            if (s1) pageTitle = s1[1].trim();
+            else if (s2) pageTitle = s2[1].trim();
+            else if (s3) pageTitle = s3[1].trim();
+            else if (s4) {
+                // Очищаем title от суффиксов GoMafia
+                pageTitle = s4[1].replace(/\s*[\|–—-]\s*gomafia.*$/i, '').trim();
+                if (/^gomafia/i.test(pageTitle)) pageTitle = '';
+            }
+            else if (s5) pageTitle = s5[1].trim();
+
+            console.log('📝 Название турнира из HTML:', pageTitle || '(не найдено)',
+                '| Стратегии:', { s1: !!s1, s2: !!s2, s3: !!s3, s4: !!s4, s5: !!s5 });
+
             if (!match || !match[1]) {
                 console.error('❌ Не найден __NEXT_DATA__ в ответе');
                 console.log('Начало ответа:', text.substring(0, 500));
@@ -45,8 +73,25 @@ class GoMafiaConnector {
             }            console.log('✅ Найдены данные турнира, парсим JSON...');
             const tournamentData = JSON.parse(match[1]);
             console.log('✅ JSON успешно спарсен');
-            console.log('🔍 Полная структура tournamentData:', tournamentData);
-            
+
+            // Логируем serverData для отладки названия
+            const sd = tournamentData?.props?.pageProps?.serverData;
+            if (sd) {
+                const sdKeys = Object.keys(sd);
+                console.log('🔍 serverData keys:', sdKeys);
+                // Показываем все строковые поля serverData (потенциальные названия)
+                const stringFields = {};
+                for (const k of sdKeys) {
+                    if (typeof sd[k] === 'string' && sd[k].length > 0 && sd[k].length < 300) {
+                        stringFields[k] = sd[k];
+                    }
+                }
+                console.log('🔍 serverData строковые поля:', stringFields);
+            } else {
+                console.warn('⚠️ serverData не найден в ответе');
+                console.log('🔍 pageProps keys:', Object.keys(tournamentData?.props?.pageProps || {}));
+            }
+
             // Извлекаем buildId из данных
             if (tournamentData.buildId) {
                 console.log('✅ buildId найден:', tournamentData.buildId);
@@ -64,6 +109,92 @@ class GoMafiaConnector {
                 }
             }
             
+            // Сохраняем title из HTML-заголовка страницы
+            // Если HTML-стратегии не нашли название, пробуем из serverData
+            if (!pageTitle && sd) {
+                pageTitle = sd.name || sd.title || sd.tournamentName || sd.tournament_name || '';
+                if (pageTitle) {
+                    console.log('📝 Название из serverData:', pageTitle);
+                }
+            }
+
+            // Рекурсивный поиск поля name/title во всей структуре pageProps
+            if (!pageTitle) {
+                const pp = tournamentData?.props?.pageProps;
+                if (pp) {
+                    // Ищем поле name или title на первых двух уровнях вложенности
+                    const findName = (obj, depth) => {
+                        if (!obj || depth > 2 || typeof obj !== 'object') return '';
+                        // Приоритет: name > title > tournament_name
+                        if (typeof obj.name === 'string' && obj.name.length > 1 && obj.name.length < 200
+                            && !obj.name.startsWith('http') && !/^\d+$/.test(obj.name)) return obj.name;
+                        if (typeof obj.title === 'string' && obj.title.length > 1 && obj.title.length < 200
+                            && !obj.title.startsWith('http')) return obj.title;
+                        if (typeof obj.tournament_name === 'string' && obj.tournament_name.length > 1) return obj.tournament_name;
+                        if (typeof obj.tournamentName === 'string' && obj.tournamentName.length > 1) return obj.tournamentName;
+                        for (const k of Object.keys(obj)) {
+                            if (k === 'games' || k === 'landingData' || Array.isArray(obj[k])) continue;
+                            if (typeof obj[k] === 'object' && obj[k] !== null) {
+                                const found = findName(obj[k], depth + 1);
+                                if (found) return found;
+                            }
+                        }
+                        return '';
+                    };
+                    pageTitle = findName(pp, 0);
+                    if (pageTitle) {
+                        console.log('📝 Название найдено рекурсивным поиском:', pageTitle);
+                    }
+                }
+            }
+
+            if (pageTitle) {
+                tournamentData._pageTitle = pageTitle;
+                console.log('📝 Итоговое название турнира:', pageTitle);
+            } else {
+                console.warn('⚠️ Название турнира не найдено в HTML и serverData, пробуем _next/data API...');
+
+                // Пробуем загрузить через Next.js JSON API (_next/data)
+                const buildId = tournamentData.buildId;
+                if (buildId) {
+                    try {
+                        const fd2 = new FormData();
+                        fd2.set('url', `https://gomafia.pro/_next/data/${buildId}/tournament/${tournamentID}.json`);
+                        const resp2 = await fetch(`${this.apiUrl}get.php${this.apiSuffix}`, { method: 'POST', body: fd2 });
+                        if (resp2.ok) {
+                            const json2 = await resp2.json();
+                            const sd2 = json2?.pageProps?.serverData;
+                            console.log('🔍 _next/data API serverData keys:', sd2 ? Object.keys(sd2) : 'null');
+                            if (sd2) {
+                                const stringFields2 = {};
+                                for (const k of Object.keys(sd2)) {
+                                    if (typeof sd2[k] === 'string' && sd2[k].length > 0 && sd2[k].length < 300) {
+                                        stringFields2[k] = sd2[k];
+                                    }
+                                }
+                                console.log('🔍 _next/data API строковые поля:', stringFields2);
+                                pageTitle = sd2.name || sd2.title || sd2.tournamentName || sd2.tournament_name || '';
+                            }
+                            if (pageTitle) {
+                                tournamentData._pageTitle = pageTitle;
+                                console.log('📝 Название из _next/data API:', pageTitle);
+                            }
+                        }
+                    } catch (e2) {
+                        console.warn('⚠️ _next/data API запрос не удался:', e2.message);
+                    }
+                }
+
+                if (!pageTitle) {
+                    // Последний fallback — дампим всю структуру pageProps для отладки
+                    const pp = tournamentData?.props?.pageProps;
+                    if (pp) {
+                        console.log('🔍 ПОЛНЫЙ ДАМП pageProps (без games):',
+                            JSON.stringify(pp, (key, val) => key === 'games' || key === 'game' || key === 'table' ? '[...]' : val, 2)?.substring(0, 2000));
+                    }
+                }
+            }
+
             return tournamentData;
         } catch (error) {
             console.error('❌ Ошибка загрузки турнира:', error);

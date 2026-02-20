@@ -45,7 +45,8 @@ window.app = new Vue({
         firstKilledPlayer: null,
         bestMove: [],
         bestMoveSelected: false,
-        showRoomModal: true,
+        showRoomModal: false,
+        showGameTableModal: false,
         roomInput: '',
         ws: null,
         roomId: null,
@@ -53,12 +54,25 @@ window.app = new Vue({
         stateReceived: false,
         waitingForState: false,
         avatarsFromServer: null,        avatarsJustLoaded: false,
+
+        // Главное меню с историей игр
+        showMainMenu: true,
+        sessionsList: [],
+        currentSessionId: null,
         isMasterPanel: false,
         panelId: null,
         activePanelId: null,
         isActivePanel: true,
-        showSettingsModal: false,
-        showThemeModal: false,
+        showBroadcastSettings: false,
+        showProfileScreen: false,
+        showThemesScreen: false,
+        judgeNickname: '',
+        judgeAvatarUrl: '',
+        // Draft values for broadcast settings (for cancel-without-save)
+        broadcastDraft: null,
+        // Long-press exit
+        exitHoldTimer: null,
+        exitHoldActive: false,
         userEditedAdditionalInfo: false,
         sendFullStateTimer: null, // Таймер для дебаунсинга sendFullState
         activeVotingTab: 0, // Индекс активной вкладки в истории голосований
@@ -199,6 +213,20 @@ window.app = new Vue({
         // Загружаем сохраненные настройки панели
         this.loadPanelSettings();
         
+        // Загружаем никнейм судьи из localStorage
+        try {
+            const savedNickname = localStorage.getItem('maf_judge_nickname');
+            if (savedNickname) this.judgeNickname = savedNickname;
+        } catch(e) {}
+
+        // Загружаем сохраненную тему из localStorage (глобальная настройка)
+        try {
+            const savedColorScheme = localStorage.getItem('maf_color_scheme');
+            const savedBgTheme = localStorage.getItem('maf_bg_theme');
+            if (savedColorScheme) this.selectedColorScheme = savedColorScheme;
+            if (savedBgTheme) this.selectedBackgroundTheme = savedBgTheme;
+        } catch(e) {}
+
         // Защитная инициализация критических объектов
         if (!this.fouls) this.fouls = {};
         if (!this.techFouls) this.techFouls = {};
@@ -221,36 +249,36 @@ window.app = new Vue({
             if (this.initTelegramApp) {
                 this.initTelegramApp();
             }
+            // Load Telegram avatar
+            if (this.telegramUser && this.telegramUser.photo_url) {
+                this.judgeAvatarUrl = this.telegramUser.photo_url;
+            }
+            // Fallback: try auth user data
+            try {
+                const authUser = JSON.parse(localStorage.getItem('maf_auth_user') || '{}');
+                if (!this.judgeNickname && authUser.first_name) {
+                    this.judgeNickname = authUser.first_name + (authUser.last_name ? ' ' + authUser.last_name : '');
+                }
+            } catch(e) {}
         });
         
-        // Инициализация темы по умолчанию ПЕРЕД загрузкой состояния
-        this.selectedColorScheme = 'purple';
+        // Инициализация темы — применяем сохраненную тему
         if (this.applyColorScheme) {
             this.applyColorScheme(this.selectedColorScheme);
         }
-        this.selectedBackgroundTheme = 'default';
         if (this.applyBackgroundTheme) {
             this.applyBackgroundTheme(this.selectedBackgroundTheme);
         }
-          // Проверяем и показываем восстановление сессии
+          // Загружаем главное меню с историей игр
         this.$nextTick(() => {
             setTimeout(() => {
-                if (this.checkAndShowSessionRestore) {
-                    this.checkAndShowSessionRestore();
+                if (this.loadMainMenu) {
+                    this.loadMainMenu();
+                } else {
+                    // Fallback: показываем главное меню
+                    this.showMainMenu = true;
                 }
-                
-                // Для Telegram Cloud Storage логика показа стандартных модальных окон 
-                // обрабатывается в processSessionData() после асинхронного получения данных
-                if (!window.sessionManager || !window.sessionManager.hasTelegramCloudStorage || !window.sessionManager.hasTelegramCloudStorage()) {
-                    // Если не Telegram, то сразу показываем стандартные модальные окна если не восстанавливаем сессию
-                    setTimeout(() => {
-                        if (!this.showSessionRestoreModal) {
-                            this.showRoomModal = true;
-                            this.showModal = false;
-                        }
-                    }, 100);
-                }
-            }, 500); // Небольшая задержка для корректной инициализации
+            }, 500);
         });
         
         this.roomId = null;
@@ -260,6 +288,11 @@ window.app = new Vue({
         }
         
         window.addEventListener('beforeunload', () => {
+            // Сохраняем текущую сессию при закрытии страницы
+            if (this.saveCurrentSession && this.currentSessionId) {
+                this.saveCurrentSession();
+            }
+
             if (this.isMasterPanel) {
                 localStorage.removeItem('maf-master-panel');
             }

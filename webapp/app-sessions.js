@@ -1,9 +1,10 @@
 // =====================================================
 // Методы для работы с сессиями и восстановлением данных
 // Часть 3 из 5: app-sessions.js
+// Версия 2: Главное меню с историей игр
 // =====================================================
 
-console.log('📦 Загружается app-sessions.js...');
+console.log('📦 Загружается app-sessions.js v2...');
 
 // Расширяем Vue приложение методами для работы с сессиями
 window.app = window.app || {};
@@ -11,98 +12,207 @@ if (!window.app.methods) window.app.methods = {};
 
 // Принудительно добавляем методы для работы с сессиями
 Object.assign(window.app.methods, {
-    // Методы для работы с сессиями
-    checkAndShowSessionRestore() {
-        console.log('🔍 checkAndShowSessionRestore: Начинаем проверку');
-        
-        if (this.sessionRestoreChecked) {
-            console.log('🔍 checkAndShowSessionRestore: Проверка уже проводилась');
-            return;
-        }
-        
-        this.sessionRestoreChecked = true;
-        
+
+    // =============================================
+    // Главное меню с историей игр
+    // =============================================
+
+    loadMainMenu() {
+        console.log('🏠 loadMainMenu: Загружаем главное меню с историей игр');
+
+        const self = this;
+
         if (!window.sessionManager) {
-            console.log('🔍 checkAndShowSessionRestore: sessionManager недоступен');
+            console.log('🏠 loadMainMenu: sessionManager недоступен, показываем пустое меню');
+            this.sessionsList = [];
+            this.showMainMenu = true;
             return;
         }
-        
-        // Проверяем, если мы в Telegram, используем асинхронный вызов
+
+        // Функция фильтрации и применения сессий к UI
+        function applySessionsList(sessions) {
+            self.sessionsList = (sessions || []).filter(s =>
+                window.sessionManager.hasSignificantData(s) || s.roomId || s.tournamentId
+            );
+            console.log('🏠 loadMainMenu: Показано сессий:', self.sessionsList.length);
+            self.showMainMenu = true;
+            self.showRoomModal = false;
+            self.showModal = false;
+            self.showSessionRestoreModal = false;
+        }
+
+        // Функция фоновой серверной синхронизации
+        function doServerSync() {
+            if (window.sessionManager.syncFromServer) {
+                window.sessionManager.syncFromServer(function(error, mergedSessions) {
+                    if (!error && mergedSessions) {
+                        applySessionsList(mergedSessions);
+                        console.log('🏠 loadMainMenu: Обновлено после серверной синхронизации');
+                    }
+                });
+            }
+        }
+
+        // Проверяем Telegram Cloud Storage (асинхронный путь)
         if (window.sessionManager.hasTelegramCloudStorage && window.sessionManager.hasTelegramCloudStorage()) {
-            console.log('🔍 checkAndShowSessionRestore: Используем Telegram Cloud Storage (асинхронно)');
-            
-            window.sessionManager.getSession((error, sessionData) => {
+            console.log('🏠 loadMainMenu: Используем Telegram Cloud Storage (асинхронно)');
+
+            window.sessionManager.getSessions((error, sessions) => {
                 if (error) {
-                    console.error('🔍 checkAndShowSessionRestore: Ошибка получения сессии из Telegram Cloud Storage:', error);
-                    return;
+                    console.error('🏠 loadMainMenu: Ошибка загрузки сессий:', error);
+                    this.sessionsList = [];
+                    this.showMainMenu = true;
+                } else {
+                    applySessionsList(sessions);
                 }
-                
-                console.log('🔍 checkAndShowSessionRestore: Получены данные сессии из Telegram Cloud Storage:', sessionData);
-                this.processSessionData(sessionData);
+                // Фоновая синхронизация с сервером
+                doServerSync();
             });
         } else {
             // Синхронный вызов для localStorage
-            console.log('🔍 checkAndShowSessionRestore: Используем localStorage (синхронно)');
-            const sessionData = window.sessionManager.getSession();
-            console.log('🔍 checkAndShowSessionRestore: Получены данные сессии из localStorage:', sessionData);
-            this.processSessionData(sessionData);
+            console.log('🏠 loadMainMenu: Используем localStorage (синхронно)');
+            const sessions = window.sessionManager.getSessions() || [];
+            applySessionsList(sessions);
+            // Фоновая синхронизация с сервером
+            doServerSync();
         }
     },
     
-    processSessionData(sessionData) {
-        console.log('🔍 processSessionData: Обрабатываем данные сессии:', sessionData);
-        
-        if (!sessionData) {
-            console.log('🔍 processSessionData: Данные сессии отсутствуют');
-            this.showDefaultModals();
+    // Открыть игру из истории
+    openSession(sessionId) {
+        console.log('📂 openSession: Открываем сессию:', sessionId);
+
+        const session = this.sessionsList.find(s => s.sessionId === sessionId);
+        if (!session) {
+            console.error('📂 openSession: Сессия не найдена:', sessionId);
             return;
         }
         
-        // Проверяем валидность сессии (3 часа)
-        const isValid = window.sessionManager.isSessionValid(sessionData);
-        console.log('🔍 processSessionData: Сессия валидна:', isValid);
-        
-        if (!isValid) {
-            // Сессия устарела, удаляем её
-            console.log('🔍 processSessionData: Сессия устарела, очищаем');
-            window.sessionManager.clearSession();
-            this.showDefaultModals();
-            return;
+        // Сохраняем текущую сессию перед переключением
+        if (this.currentSessionId && this.currentSessionId !== sessionId) {
+            if (this.roomId || this.tournamentId || this.manualMode) {
+                this.saveCurrentSession();
+            }
         }
-        
-        // Проверяем, есть ли значимые данные
-        const hasSignificant = window.sessionManager.hasSignificantData(sessionData);
-        console.log('🔍 processSessionData: Есть значимые данные:', hasSignificant);
-        
-        if (!hasSignificant) {
-            console.log('🔍 processSessionData: Нет значимых данных, не показываем диалог');
-            this.showDefaultModals();
-            return;
+
+        // Закрываем WebSocket текущей сессии
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
         }
-        
-        // Показываем модальное окно восстановления
-        console.log('🔍 processSessionData: Показываем диалог восстановления');
-        this.previousSession = sessionData;
-        this.showSessionRestoreModal = true;
-    },
-    
-    showDefaultModals() {
-        console.log('🔍 showDefaultModals: Показываем стандартные модальные окна');
-        this.showRoomModal = true;
+
+        // Сбрасываем состояние перед применением новой сессии
+        this._resetGameState();
+
+        this.isRestoringSession = true;
+        this.currentSessionId = session.sessionId;
+
+        // Восстанавливаем данные из сессии
+        this._applySessionData(session);
+
+        // Скрываем главное меню
+        this.showMainMenu = false;
+        this.showRoomModal = false;
         this.showModal = false;
+        this.showGameTableModal = false;
+        this.showSessionRestoreModal = false;
+
+        // Подключаемся к WebSocket если есть комната
+        if (session.tournamentId) {
+            console.log('📂 openSession: Загружаем турнир', session.tournamentId);
+            this.loadTournament();
+        } else if (session.roomId) {
+            console.log('📂 openSession: Подключаемся к комнате', session.roomId);
+            this.connectWS();
+        }
+        
+        // Если нет ни комнаты ни турнира
+        if (!session.roomId && !session.tournamentId) {
+            // Если ручной режим с уже созданными игроками — показываем стол
+            if (session.manualMode && session.manualPlayers && session.manualPlayers.length > 0) {
+                console.log('📂 openSession: Ручной режим с игроками, показываем стол');
+                // Стол уже восстановлен через _applySessionData
+            } else {
+                console.log('📂 openSession: Игра без комнаты, показываем выбор режима');
+                this.showModal = true;
+            }
+        }
     },
 
-    restoreSession() {
-        if (!this.previousSession) {
-            return;
+    // Начать новую игру
+    startNewGame() {
+        console.log('🆕 startNewGame: Начинаем новую игру');
+
+        // Сохраняем текущую сессию перед переключением (только если уже есть активная)
+        if (this.currentSessionId && (this.roomId || this.tournamentId || this.manualMode)) {
+            this.saveCurrentSession();
         }
         
-        // Устанавливаем флаг восстановления сессии
-        this.isRestoringSession = true;
-        
-        const session = this.previousSession;
-        
-        // Восстанавливаем основные данные комнаты и турнира
+        // Закрываем WebSocket текущей сессии
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+
+        // Сбрасываем все игровые данные (обнуляет currentSessionId)
+        this._resetGameState();
+
+        // Генерируем новый ID сессии ПОСЛЕ сброса
+        this.currentSessionId = window.sessionManager ? window.sessionManager.generateSessionId() : ('sess_' + Date.now());
+
+        // Сразу переходим к выбору режима (комната вводится в настройках трансляции)
+        this.showMainMenu = false;
+        this.showRoomModal = false;
+        this.showModal = true;
+        this.showSessionRestoreModal = false;
+    },
+
+    // Выход в главное меню
+    returnToMainMenu() {
+        console.log('🏠 returnToMainMenu: Возвращаемся в главное меню');
+
+        // Сохраняем текущую сессию только если есть данные
+        if (this.currentSessionId && (this.roomId || this.tournamentId || this.manualMode)) {
+            this.saveCurrentSession();
+        }
+
+        // Закрываем WebSocket
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+
+        // Сбрасываем новые экраны
+        this.showBroadcastSettings = false;
+        this.showProfileScreen = false;
+        this.showThemesScreen = false;
+        this.broadcastDraft = null;
+
+        // Сбрасываем состояние
+        this._resetGameState();
+
+        // Перезагружаем историю и показываем меню
+        this.loadMainMenu();
+    },
+
+    // Удалить игру из истории
+    deleteSession(sessionId) {
+        console.log('🗑️ deleteSession: Удаляем сессию:', sessionId);
+        if (window.sessionManager) {
+            window.sessionManager.removeSession(sessionId);
+        }
+        this.sessionsList = this.sessionsList.filter(s => s.sessionId !== sessionId);
+    },
+
+    // =============================================
+    // Вспомогательные методы
+    // =============================================
+
+    // Применить данные сессии к Vue-инстансу
+    _applySessionData(session) {
+        console.log('🔄 _applySessionData: Применяем данные сессии');
+
+        // Основные данные комнаты и турнира
         if (session.roomId) {
             this.roomId = session.roomId;
             this.roomInput = session.roomId;
@@ -113,7 +223,6 @@ Object.assign(window.app.methods, {
             this.inputMode = 'gomafia';
             this.manualMode = false;
             
-            // ВАЖНО: Восстанавливаем gameSelected и tableSelected ПЕРЕД загрузкой турнира
             if (session.gameSelected !== undefined) {
                 this.gameSelected = session.gameSelected;
             }
@@ -134,7 +243,7 @@ Object.assign(window.app.methods, {
             }
         }
         
-        // Восстанавливаем режимы работы
+        // Режимы работы
         if (session.inputMode) {
             this.inputMode = session.inputMode;
         }
@@ -142,109 +251,48 @@ Object.assign(window.app.methods, {
             this.editRoles = session.editRoles;
         }
         
-        // Восстанавливаем роли и статусы игроков
-        if (session.roles) {
-            this.roles = session.roles;
-        }
-        if (session.playersActions) {
-            this.playersActions = session.playersActions;
-        }
-        if (session.fouls) {
-            this.fouls = session.fouls;
-        }
-        if (session.techFouls) {
-            this.techFouls = session.techFouls;
-        }
-        if (session.removed) {
-            this.removed = session.removed;
-        }
-        
-        // Восстанавливаем информационные тексты
-        if (session.mainInfoText !== undefined) {
-            this.mainInfoText = session.mainInfoText;
-        }
-        if (session.additionalInfoText !== undefined) {
-            this.additionalInfoText = session.additionalInfoText;
-        }
-        
-        // Восстанавливаем настройки отображения
-        if (session.mainInfoVisible !== undefined) {
-            this.mainInfoVisible = session.mainInfoVisible;
-        }
-        if (session.additionalInfoVisible !== undefined) {
-            this.additionalInfoVisible = session.additionalInfoVisible;
-        }
-        if (session.hideSeating !== undefined) {
-            this.hideSeating = session.hideSeating;
-        }
-        if (session.hideLeaveOrder !== undefined) {
-            this.hideLeaveOrder = session.hideLeaveOrder;
-        }
-        if (session.hideRolesStatus !== undefined) {
-            this.hideRolesStatus = session.hideRolesStatus;
-        }
-        if (session.hideBestMove !== undefined) {
-            this.hideBestMove = session.hideBestMove;
-        }
-        if (session.showRoomNumber !== undefined) {
-            this.showRoomNumber = session.showRoomNumber;
-        }
-        
-        // Восстанавливаем лучший ход
-        if (session.highlightedPlayer !== undefined) {
-            this.highlightedPlayer = session.highlightedPlayer;
-        }
-        if (session.bestMove) {
-            this.bestMove = session.bestMove;
-        }
-        if (session.bestMoveSelected !== undefined) {
-            this.bestMoveSelected = session.bestMoveSelected;
-        }
-        if (session.firstKilledPlayer !== undefined) {
-            this.firstKilledPlayer = session.firstKilledPlayer;
-        }
-        if (session.showBestMoveModal !== undefined) {
-            this.showBestMoveModal = session.showBestMoveModal;
-        }
-        
-        // Восстанавливаем номинации и голосования
-        if (session.nominations) {
-            this.nominations = session.nominations;
-        }
-        if (session.nominationsLocked !== undefined) {
-            this.nominationsLocked = session.nominationsLocked;
-        }
-        if (session.votingOrder) {
-            this.votingOrder = session.votingOrder;
-        }
-        if (session.votingCurrentIndex !== undefined) {
-            this.votingCurrentIndex = session.votingCurrentIndex;
-        }
-        if (session.votingResults) {
-            this.votingResults = session.votingResults;
-        }
-        if (session.votingVotedPlayers) {
-            this.votingVotedPlayers = session.votingVotedPlayers;
-        }
-        if (session.votingFinished !== undefined) {
-            this.votingFinished = session.votingFinished;
-        }
-        if (session.votingWinners) {
-            this.votingWinners = session.votingWinners;
-        }
-        if (session.votingStage) {
-            this.votingStage = session.votingStage;
-        }
-        if (session.votingTiePlayers) {
-            this.votingTiePlayers = session.votingTiePlayers;
-        }
-        if (session.votingLiftResults) {
-            this.votingLiftResults = session.votingLiftResults;
-        }
-        if (session.votingHistory) {
-            this.votingHistory = session.votingHistory;
-        }
-          // Восстанавливаем тему
+        // Роли и статусы игроков
+        if (session.roles) this.roles = session.roles;
+        if (session.playersActions) this.playersActions = session.playersActions;
+        if (session.fouls) this.fouls = session.fouls;
+        if (session.techFouls) this.techFouls = session.techFouls;
+        if (session.removed) this.removed = session.removed;
+
+        // Информационные тексты
+        if (session.mainInfoText !== undefined) this.mainInfoText = session.mainInfoText;
+        if (session.additionalInfoText !== undefined) this.additionalInfoText = session.additionalInfoText;
+
+        // Настройки отображения
+        if (session.mainInfoVisible !== undefined) this.mainInfoVisible = session.mainInfoVisible;
+        if (session.additionalInfoVisible !== undefined) this.additionalInfoVisible = session.additionalInfoVisible;
+        if (session.hideSeating !== undefined) this.hideSeating = session.hideSeating;
+        if (session.hideLeaveOrder !== undefined) this.hideLeaveOrder = session.hideLeaveOrder;
+        if (session.hideRolesStatus !== undefined) this.hideRolesStatus = session.hideRolesStatus;
+        if (session.hideBestMove !== undefined) this.hideBestMove = session.hideBestMove;
+        if (session.showRoomNumber !== undefined) this.showRoomNumber = session.showRoomNumber;
+
+        // Лучший ход
+        if (session.highlightedPlayer !== undefined) this.highlightedPlayer = session.highlightedPlayer;
+        if (session.bestMove) this.bestMove = session.bestMove;
+        if (session.bestMoveSelected !== undefined) this.bestMoveSelected = session.bestMoveSelected;
+        if (session.firstKilledPlayer !== undefined) this.firstKilledPlayer = session.firstKilledPlayer;
+        if (session.showBestMoveModal !== undefined) this.showBestMoveModal = session.showBestMoveModal;
+
+        // Номинации и голосования
+        if (session.nominations) this.nominations = session.nominations;
+        if (session.nominationsLocked !== undefined) this.nominationsLocked = session.nominationsLocked;
+        if (session.votingOrder) this.votingOrder = session.votingOrder;
+        if (session.votingCurrentIndex !== undefined) this.votingCurrentIndex = session.votingCurrentIndex;
+        if (session.votingResults) this.votingResults = session.votingResults;
+        if (session.votingVotedPlayers) this.votingVotedPlayers = session.votingVotedPlayers;
+        if (session.votingFinished !== undefined) this.votingFinished = session.votingFinished;
+        if (session.votingWinners) this.votingWinners = session.votingWinners;
+        if (session.votingStage) this.votingStage = session.votingStage;
+        if (session.votingTiePlayers) this.votingTiePlayers = session.votingTiePlayers;
+        if (session.votingLiftResults) this.votingLiftResults = session.votingLiftResults;
+        if (session.votingHistory) this.votingHistory = session.votingHistory;
+
+        // Тема
         if (session.selectedColorScheme) {
             this.selectedColorScheme = session.selectedColorScheme;
             if (this.applyColorScheme) {
@@ -258,61 +306,126 @@ Object.assign(window.app.methods, {
             }
         }
         
-        // Восстанавливаем победителей и режимы
-        if (session.winnerTeam !== undefined) {
-            this.winnerTeam = session.winnerTeam;
-        }
-        if (session.currentMode) {
-            this.currentMode = session.currentMode;
-        }
-        
-        // Восстанавливаем аватары и дополнительные данные
-        if (session.avatarsFromServer) {
-            this.avatarsFromServer = session.avatarsFromServer;
-        }
-        if (session.avatarsJustLoaded !== undefined) {
-            this.avatarsJustLoaded = session.avatarsJustLoaded;
-        }
-        
-        // Скрываем модальные окна
-        this.showSessionRestoreModal = false;
+        // Победители и режимы
+        if (session.winnerTeam !== undefined) this.winnerTeam = session.winnerTeam;
+        if (session.currentMode) this.currentMode = session.currentMode;
+
+        // Аватары
+        if (session.avatarsFromServer) this.avatarsFromServer = session.avatarsFromServer;
+        if (session.avatarsJustLoaded !== undefined) this.avatarsJustLoaded = session.avatarsJustLoaded;
+
+        // Протокол и мнения
+        if (session.protocolData) this.protocolData = session.protocolData;
+        if (session.opinionData) this.opinionData = session.opinionData;
+        if (session.opinionText) this.opinionText = session.opinionText;
+
+        // Баллы
+        if (session.playerScores) this.playerScores = session.playerScores;
+    },
+
+    // Сбросить игровое состояние
+    _resetGameState() {
+        console.log('🔄 _resetGameState: Сбрасываем игровые данные');
+
+        this.currentSessionId = null;
+        this.tournament = undefined;
+        this.gameSelected = undefined;
+        this.tableSelected = undefined;
+        this.playersData = new Map();
+        this.roles = {};
+        this.playersAvatarEx = new Map();
+        this.playersActions = {};
+        this.protocolData = {};
+        this.opinionData = {};
+        this.opinionText = {};
+        this.playersDataOnline = new Map();
+        this.avatarsFromServer = null;
+        this.tournamentId = '';
+        this.inputMode = 'gomafia';
+        this.manualMode = false;
+        this.manualPlayersCount = 10;
+        this.manualPlayers = [];
+        this.manualGames = [];
+        this.manualGameSelected = 1;
+        this.editRoles = true;
+        this.mainInfoText = '';
+        this.additionalInfoText = '';
+        this.highlightedPlayer = null;
+        this.showBestMoveModal = false;
+        this.firstKilledPlayer = null;
+        this.bestMove = [];
+        this.bestMoveSelected = false;
+        this.roomInput = '';
+        this.roomId = null;
+        this.showGameTableModal = false;
+        this.stateReceived = false;
+        this.waitingForState = false;
+        this.avatarsJustLoaded = false;
+        this.winnerTeam = null;
+        this.showWinnerModal = false;
+        this.playerScores = {};
+        this.currentMode = 'roles';
+        this.fouls = {};
+        this.techFouls = {};
+        this.removed = {};
+        this.isRestoringSession = false;
+
+        // Номинации и голосования
+        if (this.nominations !== undefined) this.nominations = {};
+        if (this.nominationsLocked !== undefined) this.nominationsLocked = false;
+        if (this.votingOrder !== undefined) this.votingOrder = [];
+        if (this.votingCurrentIndex !== undefined) this.votingCurrentIndex = 0;
+        if (this.votingResults !== undefined) this.votingResults = {};
+        if (this.votingVotedPlayers !== undefined) this.votingVotedPlayers = [];
+        if (this.votingFinished !== undefined) this.votingFinished = false;
+        if (this.votingWinners !== undefined) this.votingWinners = [];
+        if (this.votingStage !== undefined) this.votingStage = null;
+        if (this.votingTiePlayers !== undefined) this.votingTiePlayers = [];
+        if (this.votingLiftResults !== undefined) this.votingLiftResults = [];
+        if (this.votingHistory !== undefined) this.votingHistory = [];
+    },
+
+    // =============================================
+    // Старые методы (обратная совместимость)
+    // =============================================
+
+    checkAndShowSessionRestore() {
+        // Перенаправляем на новую систему
+        this.loadMainMenu();
+    },
+
+    processSessionData(sessionData) {
+        // Перенаправляем на новую систему
+        this.loadMainMenu();
+    },
+
+    showDefaultModals() {
+        this.showMainMenu = true;
         this.showRoomModal = false;
         this.showModal = false;
-        
-        console.log('🔄 restoreSession: Сессия восстановлена, подключаемся к WebSocket для отправки данных');
-        
-        // Если есть tournamentId, загружаем турнир
-        if (session.tournamentId) {
-            console.log('🔄 restoreSession: Загружаем турнир', session.tournamentId);
-            this.loadTournament();
-        } else if (session.roomId) {
-            // Подключаемся к комнате (как для ручного режима, так и для обычного)
-            console.log('🔄 restoreSession: Подключаемся к комнате', session.roomId);
-            this.connectWS();
-        }
+    },
+
+    restoreSession() {
+        if (!this.previousSession) return;
+        this.openSession(this.previousSession.sessionId);
     },
     
     skipSessionRestore() {
-        // Очищаем старую сессию
         if (window.sessionManager) {
-            window.sessionManager.clearSession();
+            // Не очищаем все сессии, просто переходим к новой игре
         }
-        
-        // Сбрасываем флаг восстановления
         this.isRestoringSession = false;
-        
-        // Скрываем модальное окно восстановления
         this.showSessionRestoreModal = false;
-        
-        // Показываем стандартные модальные окна
-        this.showRoomModal = true;
-        this.showModal = false;
+        this.startNewGame();
     },
-    
+
+    // =============================================
+    // Сохранение и WebSocket sync
+    // =============================================
+
     sendRestoredDataToRoles(session) {
         console.log('🔄 sendRestoredDataToRoles: Отправляем восстановленные данные на roles.html');
         
-        // Проверяем, что WebSocket подключен
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
             console.log('❌ sendRestoredDataToRoles: WebSocket не подключен, повторяем через 500ms');
             setTimeout(() => this.sendRestoredDataToRoles(session), 500);
@@ -321,15 +434,13 @@ Object.assign(window.app.methods, {
         
         // Отправляем роли
         if (session.roles && Object.keys(session.roles).length > 0) {
-            console.log('📤 Отправляем роли:', Object.keys(session.roles));
             Object.entries(session.roles).forEach(([roleKey, role]) => {
                 this.sendToRoom({ type: "roleChange", roleKey, role });
             });
         }
         
-        // Отправляем статусы игроков (actions)
+        // Отправляем статусы игроков
         if (session.playersActions && Object.keys(session.playersActions).length > 0) {
-            console.log('📤 Отправляем статусы игроков:', Object.keys(session.playersActions));
             Object.entries(session.playersActions).forEach(([roleKey, action]) => {
                 this.sendToRoom({ type: "actionChange", roleKey, action });
             });
@@ -337,7 +448,6 @@ Object.assign(window.app.methods, {
         
         // Отправляем фолы
         if (session.fouls && Object.keys(session.fouls).length > 0) {
-            console.log('📤 Отправляем фолы:', Object.keys(session.fouls));
             Object.entries(session.fouls).forEach(([roleKey, value]) => {
                 if (value > 0) {
                     this.sendToRoom({ type: "foulChange", roleKey, value });
@@ -347,7 +457,6 @@ Object.assign(window.app.methods, {
         
         // Отправляем техфолы
         if (session.techFouls && Object.keys(session.techFouls).length > 0) {
-            console.log('📤 Отправляем техфолы:', Object.keys(session.techFouls));
             Object.entries(session.techFouls).forEach(([roleKey, value]) => {
                 if (value > 0) {
                     this.sendToRoom({ type: "techFoulChange", roleKey, value });
@@ -357,7 +466,6 @@ Object.assign(window.app.methods, {
         
         // Отправляем статусы удаления
         if (session.removed && Object.keys(session.removed).length > 0) {
-            console.log('📤 Отправляем статусы удаления:', Object.keys(session.removed));
             Object.entries(session.removed).forEach(([roleKey, value]) => {
                 if (value) {
                     this.sendToRoom({ type: "removeChange", roleKey, value });
@@ -367,13 +475,11 @@ Object.assign(window.app.methods, {
         
         // Отправляем выделенного игрока
         if (session.highlightedPlayer !== undefined && session.highlightedPlayer !== null) {
-            console.log('📤 Отправляем выделенного игрока:', session.highlightedPlayer);
             this.sendToRoom({ type: "highlight", roleKey: session.highlightedPlayer });
         }
         
         // Отправляем лучший ход
         if (session.bestMove && session.bestMove.length > 0) {
-            console.log('📤 Отправляем лучший ход:', session.bestMove);
             this.sendToRoom({
                 type: "bestMoveChange",
                 bestMove: session.bestMove,
@@ -381,9 +487,7 @@ Object.assign(window.app.methods, {
             });
         }
         
-        // Отправляем подтверждение лучшего хода
         if (session.bestMoveSelected) {
-            console.log('📤 Отправляем подтверждение лучшего хода');
             this.sendToRoom({
                 type: "bestMoveConfirm",
                 bestMove: session.bestMove || [],
@@ -392,7 +496,6 @@ Object.assign(window.app.methods, {
         }
         
         // Отправляем состояние панели
-        console.log('📤 Отправляем состояние панели');
         this.sendToRoom({
             type: "panelStateChange",
             panelState: {
@@ -412,26 +515,32 @@ Object.assign(window.app.methods, {
             }
         });
         
-        // Отправляем команду победителей
+        // Победители
         if (session.winnerTeam) {
-            console.log('📤 Отправляем команду победителей:', session.winnerTeam);
             this.sendToRoom({ type: "winnerTeamChange", winnerTeam: session.winnerTeam });
         }
         
-        // В конце отправляем полное состояние
+        // Полное состояние
         setTimeout(() => {
-            console.log('📤 Отправляем полное состояние');
             this.sendFullState();
             console.log('✅ Все восстановленные данные отправлены на roles.html');
         }, 300);
     },
     
     saveCurrentSession() {
-        if (!window.sessionManager || !this.roomId) {
-            return;
+        if (!window.sessionManager) return;
+
+        // Не сохраняем если нет значимых данных
+        if (!this.roomId && !this.tournamentId && !this.manualMode) return;
+
+        // Генерируем sessionId если его ещё нет
+        if (!this.currentSessionId) {
+            this.currentSessionId = window.sessionManager.generateSessionId();
         }
         
         const sessionData = {
+            sessionId: this.currentSessionId,
+
             // Основные данные комнаты и турнира
             roomId: this.roomId,
             tournamentId: this.tournamentId,
@@ -495,27 +604,30 @@ Object.assign(window.app.methods, {
             winnerTeam: this.winnerTeam,
             currentMode: this.currentMode,
             
-            // Аватары и дополнительные данные
+            // Аватары
             avatarsFromServer: this.avatarsFromServer,
-            avatarsJustLoaded: this.avatarsJustLoaded
+            avatarsJustLoaded: this.avatarsJustLoaded,
+
+            // Протокол и мнения
+            protocolData: this.protocolData,
+            opinionData: this.opinionData,
+            opinionText: this.opinionText,
+
+            // Баллы
+            playerScores: this.playerScores
         };
         
-        // Безопасное сохранение сессии
         try {
-            if (window.sessionManager) {
-                window.sessionManager.saveSession(sessionData);
-            } else {
-                console.warn('Session manager недоступен, используем localStorage напрямую');
-                localStorage.setItem('maf-session', JSON.stringify({
-                    ...sessionData,
-                    timestamp: Date.now()
-                }));
-            }
+            window.sessionManager.addOrUpdateSession(sessionData);
         } catch (error) {
             console.error('Ошибка сохранения сессии:', error);
         }
     },
     
+    // =============================================
+    // Утилиты отображения
+    // =============================================
+
     formatSessionTime(timestamp) {
         const date = new Date(timestamp);
         const now = new Date();
@@ -534,7 +646,48 @@ Object.assign(window.app.methods, {
                 return `${diffHours} ч ${remainingMinutes} мин назад`;
             }
         }
+    },
+
+    getSessionDisplayName(session) {
+        if (session.mainInfoText && session.mainInfoText.trim() && session.mainInfoText.trim() !== 'Название турнира') {
+            return session.mainInfoText;
+        }
+        if (session.tournamentId) {
+            return 'Турнир #' + session.tournamentId;
+        }
+        if (session.manualMode) {
+            const count = session.manualPlayers ? session.manualPlayers.length : 0;
+            return 'Ручная игра (' + count + ' игроков)';
+        }
+        if (session.roomId) {
+            return 'Комната ' + session.roomId;
+        }
+        return 'Игра';
+    },
+
+    getSessionStatusText(session) {
+        if (session.winnerTeam === 'civilians') return '🔴 Победа мирных';
+        if (session.winnerTeam === 'mafia') return '⚫ Победа мафии';
+        if (session.winnerTeam === 'draw') return '⚪ Ничья';
+
+        const playersCount = session.manualPlayers ? session.manualPlayers.length : 0;
+        const rolesCount = session.roles ? Object.keys(session.roles).length : 0;
+
+        if (rolesCount > 0) return '🎮 В процессе';
+        if (playersCount > 0) return '📋 Подготовка';
+        return '🆕 Новая';
+    },
+
+    getSessionModeText(session) {
+        if (session.tournamentId) return 'GoMafia';
+        if (session.manualMode) return 'GoРучками';
+        return '';
+    },
+
+    getSessionRoomText(session) {
+        if (session.roomId) return 'Комната: ' + session.roomId;
+        return 'Без комнаты';
     }
 });
 
-console.log('✅ app-sessions.js загружен, методы добавлены в window.app.methods');
+console.log('✅ app-sessions.js v2 загружен, методы добавлены в window.app.methods');

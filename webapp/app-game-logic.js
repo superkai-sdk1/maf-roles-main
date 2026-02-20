@@ -47,76 +47,45 @@ Object.assign(window.app.methods, {
                 if (games && games.length > 0) {
                     console.log('🎯 Первая игра:', games[0]);
                     
-                    // При восстановлении сессии не переопределяем выбранную игру и стол
+                    // Устанавливаем значения по умолчанию (первая игра, первый стол)
                     if (!this.isRestoringSession) {
                         this.gameSelected = Number(games[0].gameNum);
                         const tables = games[0].game;
-                        console.log('🪑 Столы в первой игре:', tables);
-                        
                         if (tables && tables.length > 0) {
                             this.tableSelected = Number(tables[0].tableNum);
-                            console.log('✅ Выбрана игра:', this.gameSelected, 'стол:', this.tableSelected);
                         } else {
                             this.tableSelected = undefined;
-                            console.warn('⚠️ Нет столов в первой игре');
                         }
-                    } else {
-                        console.log('🔄 loadTournament: Восстановление сессии - сохраняем gameSelected:', this.gameSelected, 'tableSelected:', this.tableSelected);
                     }
                 } else {
                     console.error('❌ В турнире нет доступных игр');
                     this.gameSelected = undefined;
-                    this.tableSelected = undefined;                    this.showAlert('В турнире нет доступных игр');
-                    return;                }
-
-                this.showModal = false;
-                this.editRoles = true;
-                
-                // При восстановлении сессии не сбрасываем лучший ход
-                if (!this.isRestoringSession) {
-                    this.resetBestMove();
+                    this.tableSelected = undefined;
+                    this.showAlert('В турнире нет доступных игр');
+                    return;
                 }
-                
-                // Обновляем информационные тексты только если не восстанавливаем сессию
-                if (!this.isRestoringSession) {
-                    this.mainInfoText = this.tournamentName || "Название турнира";
-                    let tableCount = games && games[0]?.game?.length || 1;
-                    let gameCount = games?.length || 1;
-                    let currentGame = this.gameSelected || 1;
-                    let tableNum = this.tableSelected || 1;
-                    let additional = "";
-                    if (tableCount > 1) {
-                        additional += `Номер стола: ${tableNum} | `;
-                    }
-                    additional += `Игра ${currentGame} из ${gameCount}`;
-                    this.additionalInfoText = additional;
+
+                // Сохраняем название турнира
+                const serverData = value.props?.pageProps?.serverData;
+                const tName = value._pageTitle
+                    || serverData?.name
+                    || serverData?.title
+                    || serverData?.tournamentName
+                    || serverData?.tournament_name
+                    || '';
+                this._tournamentDisplayName = tName || ('Турнир #' + this.tournamentId);
+
+                if (this.isRestoringSession) {
+                    // При восстановлении — сразу в игру
+                    console.log('🔄 loadTournament: Восстановление сессии — пропускаем выбор стола');
+                    this._finalizeTournamentLoad();
                 } else {
-                    console.log('🔄 loadTournament: Восстановление сессии - сохраняем информационные тексты');
+                    // Показываем экран выбора игры и стола
+                    console.log('🎯 loadTournament: Показываем выбор игры и стола');
+                    this.showModal = false;
+                    this.showRoomModal = false;
+                    this.showGameTableModal = true;
                 }
-
-                // Отправляем состояние только если WebSocket подключен и метод доступен
-                if (this.sendFullState && this.ws && this.ws.readyState === WebSocket.OPEN) {
-                    this.sendFullState();
-                }
-                
-                // Сохраняем сессию после успешной загрузки турнира
-                this.saveCurrentSession();
-                
-                // Если мы восстанавливаем сессию, подключаемся к WebSocket для отправки данных
-                if (this.isRestoringSession && this.roomId) {
-                    console.log('🔄 loadTournament: Турнир загружен при восстановлении сессии, подключаемся к WebSocket');
-                    this.connectWS();
-                }                  console.log('✅ Турнир успешно загружен');
-                
-                // Автоматически загружаем аватары игроков после загрузки турнира
-                console.log('🔄 Автоматическая загрузка аватаров игроков...');
-                this.playersLoad();
-                
-                // Принудительно обновляем Vue для отображения данных
-                this.$forceUpdate();
-                this.$nextTick(() => {
-                    console.log('🔄 Vue обновлён, проверяем tableOut:', this.tableOut?.length || 0, 'игроков');
-                });
             } else {
                 console.error('❌ Неверная структура данных турнира');
                 console.log('Полученные данные:', value);
@@ -125,6 +94,72 @@ Object.assign(window.app.methods, {
         }).catch(error => {
             console.error('❌ Ошибка загрузки турнира:', error);
             this.showAlert('Ошибка при загрузке турнира: ' + error.message);
+        });
+    },
+
+    // Подтверждение выбора игры и стола
+    confirmGameTable() {
+        console.log('✅ confirmGameTable: Игра:', this.gameSelected, 'Стол:', this.tableSelected);
+        this.showGameTableModal = false;
+        this._finalizeTournamentLoad();
+    },
+
+    // Финализация загрузки турнира (общая для обычной и восстановленной сессии)
+    _finalizeTournamentLoad() {
+        const value = this.tournament;
+        const games = value?.props?.pageProps?.serverData?.games;
+
+        this.showModal = false;
+        this.showMainMenu = false;
+        this.showGameTableModal = false;
+        this.editRoles = true;
+
+        // При восстановлении сессии не сбрасываем лучший ход
+        if (!this.isRestoringSession) {
+            this.resetBestMove();
+        }
+
+        // Обновляем информационные тексты только если не восстанавливаем сессию
+        if (!this.isRestoringSession) {
+            this.mainInfoText = this._tournamentDisplayName || ('Турнир #' + this.tournamentId);
+            let tableCount = games && games[0]?.game?.length || 1;
+            let gameCount = games?.length || 1;
+            let currentGame = this.gameSelected || 1;
+            let tableNum = this.tableSelected || 1;
+            let additional = "";
+            if (tableCount > 1) {
+                additional += `Номер стола: ${tableNum} | `;
+            }
+            additional += `Игра ${currentGame} из ${gameCount}`;
+            this.additionalInfoText = additional;
+        }
+
+        // Отправляем состояние только если WebSocket подключен
+        if (this.sendFullState && this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.sendFullState();
+        }
+
+        // Сохраняем сессию
+        this.saveCurrentSession();
+
+        // Если восстанавливаем сессию, подключаемся к WebSocket
+        if (this.isRestoringSession && this.roomId) {
+            console.log('🔄 _finalizeTournamentLoad: Подключаемся к WebSocket');
+            this.connectWS();
+        }
+
+        console.log('✅ Турнир загружен, игра:', this.gameSelected, 'стол:', this.tableSelected);
+
+        // Загружаем аватары игроков
+        this.playersLoad();
+
+        // Автоматически загружаем аватарки при открытии игрового интерфейса
+        this.loadAvatarsAuto();
+
+        // Обновляем Vue
+        this.$forceUpdate();
+        this.$nextTick(() => {
+            console.log('🔄 Vue обновлён, tableOut:', this.tableOut?.length || 0, 'игроков');
         });
     },    // Загрузка данных игроков
     playersLoad() {
@@ -145,7 +180,142 @@ Object.assign(window.app.methods, {
                     console.error('❌ playersLoad: Ошибка загрузки данных игроков:', error);
                 });
         }
-    },    async playersLoadOnline() {
+    },
+
+    // Автоматическая загрузка аватарок при открытии игрового интерфейса.
+    // Сначала пробует глобальный кэш (30 дней), затем загружает недостающие с GoMafia.
+    async loadAvatarsAuto() {
+        console.log('🖼️ loadAvatarsAuto: Начинаем автоматическую загрузку аватарок...');
+
+        // Собираем логины всех игроков турнира
+        const allPlayers = this.tournament?.props?.pageProps?.serverData?.games[0]?.game
+            ?.map(g => g.table).flat(2) || [];
+        const logins = allPlayers.map(p => p.login).filter(Boolean);
+
+        if (!logins.length) {
+            console.warn('⚠️ loadAvatarsAuto: Нет логинов игроков');
+            return;
+        }
+
+        // 1. Запрашиваем кэшированные аватарки с нашего сервера (через POST — надёжнее с кириллицей)
+        let cached = {};
+        try {
+            const res = await fetch('/api/avatars-cache.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `za=1&action=get&logins=${encodeURIComponent(JSON.stringify(logins))}`
+            });
+            if (res.ok) {
+                const ct = res.headers.get('content-type');
+                if (ct && ct.includes('application/json')) {
+                    cached = await res.json();
+                }
+            } else {
+                console.warn('⚠️ loadAvatarsAuto: Сервер вернул статус', res.status, 'для кэша аватаров');
+            }
+        } catch (e) {
+            console.warn('⚠️ loadAvatarsAuto: Ошибка получения кэша аватаров:', e.message);
+        }
+
+        const cachedCount = Object.keys(cached).length;
+        console.log(`🖼️ loadAvatarsAuto: Из кэша получено ${cachedCount}/${logins.length} аватаров`);
+
+        // 2. Определяем, какие логины остались без аватарки
+        const missingLogins = logins.filter(l => !cached[l]);
+
+        // Если все аватарки найдены в кэше — применяем сразу
+        if (missingLogins.length === 0) {
+            console.log('✅ loadAvatarsAuto: Все аватарки найдены в кэше!');
+            this.avatarsFromServer = cached;
+            this.$forceUpdate();
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.sendFullState();
+            }
+            // Также сохраняем в room-файл для obs
+            await this.saveAvatarsToServer(cached);
+            return;
+        }
+
+        // 3. Применяем уже найденные из кэша (чтобы пользователь видел их быстро)
+        if (cachedCount > 0) {
+            this.avatarsFromServer = { ...cached };
+            this.$forceUpdate();
+            console.log('🖼️ loadAvatarsAuto: Показываем закэшированные аватарки, догружаем остальные...');
+        }
+
+        // 4. Загружаем недостающие с GoMafia
+        const buildId = this.buildId;
+        if (!buildId) {
+            console.warn('⚠️ loadAvatarsAuto: buildId не найден, не можем загрузить аватарки с GoMafia');
+            return;
+        }
+
+        // Собираем id игроков, чьи аватарки не закэшированы
+        const missingLoginsSet = new Set(missingLogins);
+        const missingPlayerIds = allPlayers
+            .filter(p => p.id && missingLoginsSet.has(p.login))
+            .map(p => p.id);
+
+        if (!missingPlayerIds.length) {
+            console.warn('⚠️ loadAvatarsAuto: Нет id для загрузки недостающих аватаров');
+            return;
+        }
+
+        console.log(`🔄 loadAvatarsAuto: Загружаем ${missingPlayerIds.length} аватаров с GoMafia...`);
+
+        try {
+            const usersData = await goMafia.getUsersData(buildId, missingPlayerIds);
+            const processedValue = usersData
+                .map(i => i?.user)
+                .filter(i => !!i)
+                .reduce((m, current) => m.set(current.login, current), new Map());
+
+            // Обновляем playersDataOnline
+            processedValue.forEach((v, k) => {
+                this.playersDataOnline.set(k, v);
+            });
+
+            // Собираем новые аватарки
+            const newAvatars = {};
+            processedValue.forEach((v, k) => {
+                if (v.avatar_link) newAvatars[k] = v.avatar_link;
+            });
+
+            console.log(`🖼️ loadAvatarsAuto: Загружено ${Object.keys(newAvatars).length} новых аватаров с GoMafia`);
+
+            // Сохраняем новые аватарки в глобальный кэш на сервере
+            if (Object.keys(newAvatars).length > 0) {
+                try {
+                    await fetch('/api/avatars-cache.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `za=1&avatars=${encodeURIComponent(JSON.stringify(newAvatars))}`
+                    });
+                    console.log('✅ loadAvatarsAuto: Новые аватарки сохранены в глобальный кэш');
+                } catch (e) {
+                    console.warn('⚠️ loadAvatarsAuto: Ошибка сохранения в кэш:', e.message);
+                }
+            }
+
+            // Объединяем кэшированные + новые
+            const allAvatars = { ...cached, ...newAvatars };
+            this.avatarsFromServer = allAvatars;
+            this.$forceUpdate();
+
+            // Сохраняем в room-файл для obs
+            await this.saveAvatarsToServer(allAvatars);
+
+            console.log('✅ loadAvatarsAuto: Все аватарки загружены:', Object.keys(allAvatars).length);
+
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.sendFullState();
+            }
+        } catch (error) {
+            console.error('❌ loadAvatarsAuto: Ошибка загрузки аватаров с GoMafia:', error);
+        }
+    },
+
+    async playersLoadOnline() {
         console.log('🔄 playersLoadOnline: Начинаем загрузку аватарок...');
         
         let playersId = this.tournament?.props?.pageProps?.serverData?.games[0]?.game?.map(g => g.table).flat(2).map(p => p.id);
@@ -180,6 +350,20 @@ Object.assign(window.app.methods, {
                     
                     console.log('🎭 playersLoadOnline: Собранные аватары:', avatars);
                     
+                    // Сохраняем в глобальный кэш на 30 дней
+                    if (Object.keys(avatars).length > 0) {
+                        try {
+                            await fetch('/api/avatars-cache.php', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: `za=1&avatars=${encodeURIComponent(JSON.stringify(avatars))}`
+                            });
+                            console.log('✅ playersLoadOnline: Аватарки сохранены в глобальный кэш');
+                        } catch (e) {
+                            console.warn('⚠️ playersLoadOnline: Ошибка сохранения в глобальный кэш:', e.message);
+                        }
+                    }
+
                     await this.saveAvatarsToServer(avatars);
                     this.avatarsFromServer = avatars;
                     this.$forceUpdate();
@@ -928,7 +1112,13 @@ Object.assign(window.app.methods, {
         
         this.showModal = false;
         this.showRoomModal = false;
-        
+        this.showMainMenu = false;
+
+        // Генерируем sessionId если его ещё нет
+        if (!this.currentSessionId && window.sessionManager) {
+            this.currentSessionId = window.sessionManager.generateSessionId();
+        }
+
         // Сохраняем сессию после создания ручного стола
         this.saveCurrentSession();
     },
@@ -980,9 +1170,10 @@ Object.assign(window.app.methods, {
         this.showModal = true;
         this.showSettingsModal = false;
         
-        // Очищаем сессию при сбросе ручного режима
-        if (window.sessionManager) {
-            window.sessionManager.clearSession();
+        // Удаляем только текущую сессию при сбросе ручного режима
+        if (window.sessionManager && this.currentSessionId) {
+            window.sessionManager.removeSession(this.currentSessionId);
+            this.currentSessionId = null;
         }
     },
 

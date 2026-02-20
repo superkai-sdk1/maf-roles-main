@@ -3,8 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Maf roles control panel</title>
     <script>
+        // Cache-busting: уникальный параметр для каждой загрузки страницы
+        window.__v = Date.now();
+
         // Обработка ошибок Telegram WebApp
         window.addEventListener('error', (e) => {
             if (e.filename && e.filename.includes('telegram-web-app.js')) {
@@ -16,10 +22,20 @@
     <script src="https://telegram.org/js/telegram-web-app.js" onerror="console.warn('⚠️ Не удалось загрузить Telegram WebApp скрипт')"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
-    <link rel="stylesheet" href="../assets/font-akrobat/css.css">
-    <link rel="stylesheet" href="../assets/flex.css">
-    <link rel="stylesheet" href="./styles-panel.css">
-    <link rel="stylesheet" href="./login/auth.css">
+    <script>
+        // Динамическая загрузка локальных CSS с cache-busting
+        [
+            '../assets/font-akrobat/css.css',
+            '../assets/flex.css',
+            './styles-panel.css',
+            './login/auth.css'
+        ].forEach(function(href) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href + '?v=' + window.__v;
+            document.head.appendChild(link);
+        });
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.materialdesignicons.com/7.2.96/css/materialdesignicons.min.css">
     
@@ -590,7 +606,7 @@ if (window.Telegram && window.Telegram.WebApp) {
     };
 }
 </script>
-<script src="./login/auth.js"></script>
+<script>document.write('<script src="./login/auth.js?v=' + window.__v + '"><\/script>');</script>
 <div id="app" :class="{ 'obs-cef': isObs }">
     <!-- Баннер о неактивной панели -->
     <div v-if="!isActivePanel && activePanelId && roomId" class="top-banner">
@@ -601,61 +617,165 @@ if (window.Telegram && window.Telegram.WebApp) {
     </div>
     
     <div :class="{ 'content-shifted': (!isActivePanel && activePanelId && roomId) }">
-        <!-- Модальное окно восстановления сессии -->
-        <div v-if="showSessionRestoreModal" class="modal z-high">
-            <div class="modal-content">
-                <h2 class="mb-10">Восстановить сессию?</h2>
-                <div class="text-secondary text-center mb-20 text-large">
-                    Обнаружена сессия от {{ formatSessionTime(previousSession.timestamp) }}
+        <!-- Главное меню с историей игр (полноэкранный интерфейс) -->
+        <div v-if="showMainMenu" class="main-menu-screen">
+            <div class="main-menu-container">
+                <div class="main-menu-header">
+                    <div class="main-menu-logo">
+                        <i class="mdi mdi-cards-playing-outline"></i>
+                    </div>
+                    <h1 class="main-menu-title">MafBoard</h1>
+                    <p class="main-menu-subtitle">Панель управления мафией</p>
                 </div>
-                <div v-if="previousSession.roomId" class="session-data-box">
-                    <div class="font-bold text-center mb-10 text-white-bold">Данные сессии:</div>
-                    <div class="text-secondary text-center">Комната: <span class="text-white-bold">{{ previousSession.roomId }}</span></div>
-                    <div v-if="previousSession.tournamentId" class="text-secondary text-center">Турнир: <span class="text-white-bold">{{ previousSession.tournamentId }}</span></div>
-                    <div v-if="previousSession.gameSelected" class="text-secondary text-center">Игра: <span class="text-white-bold">{{ previousSession.gameSelected }}</span></div>
+
+                <!-- Кнопка новой игры -->
+                <button class="glass-btn w-full btn-primary main-menu-new-game-btn" @click="startNewGame(); window.haptic.impact('medium');">
+                    <i class="fa fa-plus" style="margin-right: 8px;"></i>
+                    Новая игра
+                </button>
+
+                <!-- Кнопки Профиль и Темы -->
+                <div class="main-menu-actions-row">
+                    <button class="glass-btn main-menu-action-btn" @click="showProfileScreen = true; window.haptic.impact('light');">
+                        <i class="fa fa-user" style="margin-right: 8px;"></i>
+                        Профиль
+                    </button>
+                    <button class="glass-btn main-menu-action-btn" @click="showThemesScreen = true; window.haptic.impact('light');">
+                        <i class="fa fa-palette" style="margin-right: 8px;"></i>
+                        Темы
+                    </button>
                 </div>
-                <div class="modal-actions">
-                    <button class="glass-btn btn-primary" @click="restoreSession(); window.haptic.notification('success');">
-                        <i class="fa fa-undo" style="margin-right:8px;"></i>
-                        Да, восстановить
-                    </button>
-                    <button class="glass-btn btn-danger" @click="skipSessionRestore(); window.haptic.impact('light');">
-                        <i class="fa fa-times" style="margin-right:8px;"></i>
-                        Нет, начать заново
-                    </button>
+
+                <!-- История игр -->
+                <div v-if="sessionsList && sessionsList.length > 0" class="main-menu-history">
+                    <div class="main-menu-history-title">
+                        <i class="fa fa-history" style="margin-right: 6px; opacity: 0.6;"></i>
+                        История игр <span class="main-menu-history-count">{{ sessionsList.length }}</span>
+                    </div>
+
+                    <div class="main-menu-sessions-list">
+                        <div v-for="session in sessionsList"
+                             :key="session.sessionId"
+                             class="main-menu-session-card"
+                             @click="openSession(session.sessionId); window.haptic.impact('light');">
+
+                            <div class="session-card-header">
+                                <div class="session-card-name">{{ getSessionDisplayName(session) }}</div>
+                                <div class="session-card-time">{{ formatSessionTime(session.timestamp) }}</div>
+                            </div>
+
+                            <div class="session-card-details">
+                                <span class="session-card-status">{{ getSessionStatusText(session) }}</span>
+                                <span v-if="getSessionModeText(session)" class="session-card-mode">{{ getSessionModeText(session) }}</span>
+                                <span class="session-card-room">{{ getSessionRoomText(session) }}</span>
+                            </div>
+
+                            <button class="session-card-delete"
+                                    @click.stop="deleteSession(session.sessionId); window.haptic.impact('light');"
+                                    title="Удалить">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Пустое состояние -->
+                <div v-else class="main-menu-empty">
+                    <div class="main-menu-empty-icon">🎲</div>
+                    <div class="main-menu-empty-text">Нет сохранённых игр</div>
+                    <div class="main-menu-empty-hint">
+                        Создайте новую игру — она сохранится автоматически
+                    </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Модальное окно выбора комнаты -->
-        <div v-if="showRoomModal" class="modal">
-            <div class="modal-content">
-                <h2>Введите код комнаты</h2>
-                <div class="selection-card" style="cursor: default; background: rgba(255,255,255,0.03);">
-                    <div class="selection-icon">
-                        <i class="mdi mdi-door-open" style="color: var(--accent-color);"></i>
-                    </div>
-                    <div class="selection-info" style="flex-grow: 1;">
-                        <input
-                            type="text"
-                            inputmode="numeric"
-                            pattern="[0-9]*"
-                            v-model="roomInput"
-                            maxlength="4"
-                            placeholder="1234"
-                            class="text-center-input"
-                            style="background: transparent; border: none; box-shadow: none; padding: 0; font-size: 1.5em; font-weight: 800;"
-                            @keydown.enter="joinRoom(); window.haptic.impact('medium');"
-                            @input="roomInput = roomInput.replace(/[^0-9]/g, '')"
-                        />
-                    </div>
+
+        <!-- Экран Профиль (полноэкранный) -->
+        <div v-if="showProfileScreen" class="fullscreen-page">
+            <div class="fullscreen-page-container">
+                <div class="fullscreen-page-header">
+                    <button class="fullscreen-back-btn" @click="showProfileScreen = false; window.haptic.impact('light');">
+                        <i class="fa fa-arrow-left"></i>
+                    </button>
+                    <h1 class="fullscreen-page-title">Профиль</h1>
+                    <div style="width: 40px;"></div>
                 </div>
-                <button class="glass-btn w-full mt-16 btn-primary" @click="joinRoom(); window.haptic.impact('medium');">Войти в комнату</button>
+
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar" :style="judgeAvatarUrl ? {backgroundImage: 'url(' + judgeAvatarUrl + ')'} : {}">
+                        <i v-if="!judgeAvatarUrl" class="fa fa-user profile-avatar-placeholder"></i>
+                    </div>
+                    <div class="profile-avatar-hint">Аватар из Telegram</div>
+                </div>
+
+                <div class="profile-field">
+                    <label class="profile-field-label">Никнейм</label>
+                    <input type="text" class="profile-field-input" v-model="judgeNickname" placeholder="Введите никнейм" maxlength="50">
+                    <div class="profile-field-hint">Отображается при отправке результатов игры в Телеграм</div>
+                </div>
+
+                <button class="glass-btn w-full btn-primary mt-20" @click="saveJudgeNickname(); window.haptic.notification('success');">
+                    <i class="fa fa-check" style="margin-right: 8px;"></i>
+                    Сохранить
+                </button>
             </div>
         </div>
-        
+
+        <!-- Экран Темы (полноэкранный) -->
+        <div v-if="showThemesScreen" class="fullscreen-page">
+            <div class="fullscreen-page-container">
+                <div class="fullscreen-page-header">
+                    <button class="fullscreen-back-btn" @click="showThemesScreen = false; window.haptic.impact('light');">
+                        <i class="fa fa-arrow-left"></i>
+                    </button>
+                    <h1 class="fullscreen-page-title">Темы</h1>
+                    <div style="width: 40px;"></div>
+                </div>
+
+                <div class="text-center text-secondary font-bold text-large mb-10" style="letter-spacing:.02em;">
+                    {{ colorSchemes.find(s=>s.key===selectedColorScheme)?.name || '' }}
+                </div>
+                <div class="theme-grid">
+                    <div v-for="scheme in colorSchemes"
+                         :key="scheme.key"
+                         :title="scheme.name"
+                         class="theme-preview-item"
+                         @click="applyColorSchemeGlobal(scheme.key); window.haptic.selection();"
+                         :style="{
+                            border: selectedColorScheme === scheme.key ? '4px solid #fff' : '2px solid var(--maf-accent-color)',
+                            background: scheme.preview,
+                            outline: selectedColorScheme === scheme.key ? '3px solid ' + scheme.accent : 'none',
+                            outlineOffset: selectedColorScheme === scheme.key ? '2px' : '0'
+                         }">
+                        <span>{{scheme.icon || '★'}}</span>
+                        <span v-if="selectedColorScheme === scheme.key" class="check">✔</span>
+                    </div>
+                </div>
+
+                <div class="text-center text-secondary font-bold text-large" style="margin:24px 0 12px 0;">
+                    Фон панели
+                </div>
+                <div class="theme-grid">
+                    <div v-for="theme in backgroundThemes"
+                         :key="theme.key"
+                         :title="theme.name"
+                         class="theme-preview-item"
+                         @click="applyBackgroundThemeGlobal(theme.key); window.haptic.selection();"
+                         :style="{
+                            border: selectedBackgroundTheme === theme.key ? '4px solid #fff' : '2px solid var(--maf-accent-color)',
+                            background: theme.bgMain,
+                            outline: selectedBackgroundTheme === theme.key ? '3px solid var(--maf-accent-color)' : 'none',
+                            outlineOffset: selectedBackgroundTheme === theme.key ? '2px' : '0'
+                         }">
+                        <span>{{theme.icon}}</span>
+                        <span v-if="selectedBackgroundTheme === theme.key" class="check">✔</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Модальное окно выбора режима -->
-        <div v-else-if="showModal" class="modal">
+        <div v-if="showModal && !showMainMenu && !showGameTableModal" class="modal">
             <div class="modal-content">
                 <h2>Добро пожаловать!</h2>
                 <div class="mode-select-buttons">
@@ -728,9 +848,86 @@ if (window.Telegram && window.Telegram.WebApp) {
                     </div>
                     <button class="glass-btn w-full btn-primary" @click="createManualTable(); window.haptic.impact('medium');">Создать стол</button>
                 </div>
+
+                <button class="glass-btn w-full mt-16" style="opacity: 0.5; font-size: 0.9em;" @click="showModal = false; returnToMainMenu(); window.haptic.impact('light');">
+                    <i class="fa fa-arrow-left" style="margin-right:8px;"></i>
+                    Назад в главное меню
+                </button>
             </div>
         </div>
-        
+
+        <!-- Модальное окно выбора игры и стола -->
+        <div v-if="showGameTableModal && !showMainMenu" class="modal">
+            <div class="modal-content">
+                <h2 style="margin-bottom: 4px;">
+                    <i class="mdi mdi-table-furniture" style="margin-right: 8px; color: var(--maf-accent-color, #ae8cff);"></i>
+                    Выбор стола
+                </h2>
+                <div v-if="tournamentName" class="text-secondary" style="font-size: 0.85em; margin-bottom: 16px; text-align: center;">
+                    {{ tournamentName }}
+                </div>
+
+                <!-- Выбор игры -->
+                <div class="selection-card" style="cursor: pointer; background: rgba(255,255,255,0.03); position: relative; overflow: hidden;">
+                    <div class="selection-icon">
+                        <i class="mdi mdi-gamepad-variant-outline" style="color: #ffd700;"></i>
+                    </div>
+                    <div class="selection-info" style="flex-grow: 1;">
+                        <div style="font-size: 0.75em; color: rgba(255,255,255,0.5); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Игра</div>
+                        <div style="font-size: 1.2em; font-weight: 700; color: #fff;">Игра {{ gameSelected }}</div>
+                    </div>
+                    <i class="mdi mdi-chevron-down" style="color: rgba(255,255,255,0.4); font-size: 1.4em;"></i>
+                    <select
+                        v-model.number="gameSelected"
+                        @change="onGameSelectChange($event)"
+                        style="position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; font-size: 16px;">
+                        <option v-for="game in games" :value="game.gameNum" style="background: #1a1640; color: #fff;">
+                            Игра {{ game.gameNum }}
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Выбор стола -->
+                <div v-if="gameSelectedObject && gameSelectedObject.length > 1" class="selection-card mt-10" style="cursor: pointer; background: rgba(255,255,255,0.03); position: relative; overflow: hidden;">
+                    <div class="selection-icon">
+                        <i class="mdi mdi-table-chair" style="color: var(--maf-accent-color, #ae8cff);"></i>
+                    </div>
+                    <div class="selection-info" style="flex-grow: 1;">
+                        <div style="font-size: 0.75em; color: rgba(255,255,255,0.5); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Стол</div>
+                        <div style="font-size: 1.2em; font-weight: 700; color: #fff;">Стол {{ tableSelected }}</div>
+                    </div>
+                    <i class="mdi mdi-chevron-down" style="color: rgba(255,255,255,0.4); font-size: 1.4em;"></i>
+                    <select
+                        v-model.number="tableSelected"
+                        style="position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; font-size: 16px;">
+                        <option v-for="tableEl in gameSelectedObject" :value="Number(tableEl.tableNum)" style="background: #1a1640; color: #fff;">
+                            Стол {{ tableEl.tableNum }}
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Инфо: один стол -->
+                <div v-if="gameSelectedObject && gameSelectedObject.length === 1" class="selection-card mt-10" style="cursor: default; background: rgba(255,255,255,0.03); opacity: 0.7;">
+                    <div class="selection-icon">
+                        <i class="mdi mdi-table-chair" style="color: var(--maf-accent-color, #ae8cff);"></i>
+                    </div>
+                    <div class="selection-info">
+                        <div style="font-weight: 700; font-size: 1em;">Стол {{ gameSelectedObject[0]?.tableNum }}</div>
+                        <div style="font-size: 0.8em; color: rgba(255,255,255,0.4);">Единственный стол в этой игре</div>
+                    </div>
+                </div>
+
+                <button class="glass-btn w-full mt-16 btn-primary" @click="confirmGameTable(); window.haptic.impact('medium');">
+                    <i class="fa fa-check" style="margin-right: 8px;"></i>
+                    Начать
+                </button>
+                <button class="glass-btn w-full mt-10" style="opacity: 0.5; font-size: 0.9em;" @click="showGameTableModal = false; tournament = undefined; showModal = true; window.haptic.impact('light');">
+                    <i class="fa fa-arrow-left" style="margin-right: 8px;"></i>
+                    Назад
+                </button>
+            </div>
+        </div>
+
         <!-- Модальное окно для выбора Лучшего Хода -->
         <div v-if="showBestMoveModal" class="modal">
             <div class="best-move-modal-content">
@@ -1148,34 +1345,32 @@ if (window.Telegram && window.Telegram.WebApp) {
             </button>
         </div>
 
-        <!-- Кнопки настроек и тем -->
-        <div class="settings-btn-container" v-if="tableOut?.length">
-            <button class="settings-btn" @click="showSettingsModal = true; window.haptic.impact('light');" title="Настройки">
-                <i class="fa fa-cog"></i>
+        <!-- Кнопки настроек трансляции и выхода -->
+        <div class="game-actions-container" v-if="tableOut?.length">
+            <button class="glass-btn game-broadcast-btn" @click="openBroadcastSettings(); window.haptic.impact('light');">
+                <i class="fa fa-sliders-h" style="margin-right: 8px;"></i>
+                Настройки трансляции
             </button>
-            <button class="themes-btn" @click="showThemeModal = true; window.haptic.impact('light');" title="Темы">
-                <i class="fa fa-palette"></i>
+            <button class="exit-hold-btn"
+                    @touchstart.prevent="startExitHold()"
+                    @touchend.prevent="cancelExitHold()"
+                    @touchcancel.prevent="cancelExitHold()"
+                    @mousedown.prevent="startExitHold()"
+                    @mouseup.prevent="cancelExitHold()"
+                    @mouseleave="cancelExitHold()">
+                <i class="fa fa-sign-out-alt" style="margin-right: 6px;"></i>
+                <span>Выход</span>
+                <div class="exit-hold-progress" :class="{ active: exitHoldActive }"></div>
             </button>
         </div>
 
-        <!-- Панель выбора игры и стола -->
-        <div v-if="tableOut?.length" class="game-table-panel">
+        <!-- Панель выбора игры (только для ручного режима) -->
+        <div v-if="tableOut?.length && manualMode" class="game-table-panel">
             <div class="flex">
-                <!-- Карточка Стола -->
-                <div v-if="!manualMode && gameSelectedObject && gameSelectedObject.length" class="game-option-card">
-                    <div class="label">Стол</div>
-                    <select v-model.number="tableSelected">
-                        <option v-for="(tableEl, index) in gameSelectedObject" :value="Number(tableEl.tableNum)">
-                            {{tableEl.tableNum}}
-                        </option>
-                    </select>
-                </div>
-
                 <!-- Карточка Игры -->
                 <div class="game-option-card">
                     <div class="label">Игра</div>
                     <select
-                        v-if="manualMode"
                         v-model.number="manualGameSelected"
                         @change="onGameSelectChange($event)">
                         <option v-for="game in manualGames" :value="game.num">
@@ -1183,138 +1378,79 @@ if (window.Telegram && window.Telegram.WebApp) {
                         </option>
                         <option value="new">+ Новая</option>
                     </select>
-                    <select
-                        v-else
-                        v-model.number="gameSelected"
-                        @change="onGameSelectChange($event)">
-                        <option v-for="game in games" :value="game.gameNum">
-                            {{game.gameNum}}
-                        </option>
-                    </select>
                 </div>
             </div>
         </div>
 
-        <!-- Модальное окно настроек -->
-        <div v-if="showSettingsModal" class="modal" @click.self="showSettingsModal = false">
-            <div class="settings-modal-content">
-                <h2>Настройки</h2>
-                <div class="settings-modal-scroll">
+        <!-- Экран Настройки трансляции (полноэкранный) -->
+        <div v-if="showBroadcastSettings" class="fullscreen-page">
+            <div class="fullscreen-page-container">
+                <div class="fullscreen-page-header">
+                    <button class="fullscreen-back-btn" @click="cancelBroadcastSettings(); window.haptic.impact('light');">
+                        <i class="fa fa-arrow-left"></i>
+                    </button>
+                    <h1 class="fullscreen-page-title">Настройки трансляции</h1>
+                    <div style="width: 40px;"></div>
+                </div>
+
+                <div class="broadcast-settings-body">
+                    <div class="broadcast-section-title">Отображение на трансляции</div>
                     <div class="switches-bottom">
                         <label class="m3e-switch">
-                            <input type="checkbox" v-model="mainInfoVisible" @change="panelStateChanged; window.haptic.selection();">
+                            <input type="checkbox" v-model="mainInfoVisible">
                             <span class="slider"></span>
                             <span>Основная информация</span>
                         </label>
                         <label class="m3e-switch">
-                            <input type="checkbox" v-model="additionalInfoVisible" @change="panelStateChanged; window.haptic.selection();">
+                            <input type="checkbox" v-model="additionalInfoVisible">
                             <span class="slider"></span>
                             <span>Доп. информация</span>
                         </label>
                         <label class="m3e-switch">
-                            <input type="checkbox" v-model="hideSeating" @change="panelStateChanged; window.haptic.selection();">
+                            <input type="checkbox" v-model="hideSeating">
                             <span class="slider"></span>
                             <span>Скрыть рассадку</span>
                         </label>
                         <label class="m3e-switch">
-                            <input type="checkbox" v-model="hideLeaveOrder" @change="panelStateChanged; window.haptic.selection();">
+                            <input type="checkbox" v-model="hideLeaveOrder">
                             <span class="slider"></span>
                             <span>Скрыть порядок ухода</span>
                         </label>
                         <label class="m3e-switch">
-                            <input type="checkbox" v-model="hideRolesStatus" @change="panelStateChanged; window.haptic.selection();">
+                            <input type="checkbox" v-model="hideRolesStatus">
                             <span class="slider"></span>
                             <span>Скрыть роли и статус</span>
                         </label>
                         <label class="m3e-switch">
-                            <input type="checkbox" v-model="hideBestMove" @change="panelStateChanged; window.haptic.selection();">
+                            <input type="checkbox" v-model="hideBestMove">
                             <span class="slider"></span>
                             <span>Скрыть ЛХ</span>
                         </label>
                         <label class="m3e-switch">
-                            <input type="checkbox" v-model="showRoomNumber" @change="panelStateChanged; window.haptic.selection();">
+                            <input type="checkbox" v-model="showRoomNumber">
                             <span class="slider"></span>
                             <span>Показать номер комнаты</span>
                         </label>
                     </div>
-                    <div class="modal-actions">
-                        <button class="glass-btn" @click="playersLoad(); window.haptic.impact('light');">
-                            <i class="fa fa-users" style="margin-right:8px;"></i>
-                            Загрузить игроков
-                        </button>
-                        <button class="glass-btn" @click="playersLoadOnline(); window.haptic.impact('light');">
-                            <i class="fa fa-sync" style="margin-right:8px;"></i>
-                            Обновить аватары
-                        </button>
-                        <button class="glass-btn" @click="refreshPage(); window.haptic.impact('medium');">
-                            <i class="fa fa-redo" style="margin-right:8px;"></i>
-                            Обновить страницу
-                        </button>
-                        <button class="glass-btn btn-danger" @click="reset(); window.haptic.notification('warning');">
-                            <i class="fa fa-trash" style="margin-right:8px;"></i>
-                            Сбросить всё
-                        </button>
-                    </div>
-                    <div v-if="tableOut?.length && manualMode" class="modal-actions">
-                        <button class="glass-btn" @click="resetManualMode(); window.haptic.impact('medium');">
-                            <i class="fa fa-exchange-alt" style="margin-right:8px;"></i>
-                            Сменить режим
-                        </button>
-                    </div>
-                </div>
-                <button class="glass-btn w-full mt-16" @click="showSettingsModal = false">Закрыть</button>
-            </div>
-        </div>
 
-        <!-- Модальное окно Темы -->
-        <div v-if="showThemeModal" class="modal z-max" @click.self="showThemeModal = false">
-            <div class="theme-modal-content">
-                <h2>Темы оформления</h2>
-                <div class="text-center text-secondary font-bold text-large mb-10" style="letter-spacing:.02em;">
-                    {{ colorSchemes.find(s=>s.key===selectedColorScheme)?.name || '' }}
-                </div>
-                <div class="theme-modal-scroll">
-                    <div class="theme-grid">
-                        <div v-for="scheme in colorSchemes"
-                             :key="scheme.key"
-                             :title="scheme.name"
-                             class="theme-preview-item"
-                             @click="applyColorSchemeAndSave(scheme.key); window.haptic.selection();"
-                             :style="{
-                                border: selectedColorScheme === scheme.key ? '4px solid #fff' : '2px solid var(--maf-accent-color)',
-                                background: scheme.preview,
-                                outline: selectedColorScheme === scheme.key ? '3px solid ' + scheme.accent : 'none',
-                                outlineOffset: selectedColorScheme === scheme.key ? '2px' : '0'
-                             }">
-                            <span>{{scheme.icon || '★'}}</span>
-                            <span v-if="selectedColorScheme === scheme.key" class="check">✔</span>
-                        </div>
+                    <div class="broadcast-section-title" style="margin-top: 24px;">Привязка к трансляции</div>
+                    <div class="broadcast-room-field">
+                        <label class="profile-field-label">Номер комнаты</label>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" class="profile-field-input"
+                               v-model="roomInput" maxlength="4" placeholder="1234"
+                               @input="roomInput = roomInput.replace(/[^0-9]/g, '')">
+                        <div class="profile-field-hint">Для привязки игровой панели к roles.html</div>
                     </div>
                 </div>
-                <div class="text-center text-secondary font-bold text-large" style="margin:18px 0 8px 0;">
-                    Фон панели
-                </div>
-                <div class="theme-modal-scroll">
-                    <div class="theme-grid">
-                        <div v-for="theme in backgroundThemes"
-                             :key="theme.key"
-                             :title="theme.name"
-                             class="theme-preview-item"
-                             @click="applyBackgroundThemeAndSave(theme.key); window.haptic.selection();"
-                             :style="{
-                                border: selectedBackgroundTheme === theme.key ? '4px solid #fff' : '2px solid var(--maf-accent-color)',
-                                background: theme.bgMain,
-                                outline: selectedBackgroundTheme === theme.key ? '3px solid var(--maf-accent-color)' : 'none',
-                                outlineOffset: selectedBackgroundTheme === theme.key ? '2px' : '0'
-                             }">
-                            <span>{{theme.icon}}</span>
-                            <span v-if="selectedBackgroundTheme === theme.key" class="check">✔</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-actions">
-                    <button class="glass-btn btn-primary" @click="showThemeModal = false">Готово</button>
-                </div>
+
+                <button class="glass-btn w-full btn-primary mt-20" @click="saveBroadcastSettings(); window.haptic.notification('success');">
+                    <i class="fa fa-check" style="margin-right: 8px;"></i>
+                    Сохранить
+                </button>
+                <button class="glass-btn w-full mt-10" style="opacity: 0.6;" @click="cancelBroadcastSettings(); window.haptic.impact('light');">
+                    <i class="fa fa-arrow-left" style="margin-right: 8px;"></i>
+                    Назад
+                </button>
             </div>
         </div>
 
@@ -1633,19 +1769,23 @@ if (window.Telegram && window.Telegram.WebApp) {
 
 </div>
 <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
-<script src="./voting.js"></script>
-<script src="./timer.js"></script>
-<script src="./session-manager.js"></script>
-
-<!-- Модульная система приложения - загружаем в правильном порядке -->
-<script src="./app-connector.js"></script>
-<script src="./app-data.js"></script>
-<script src="./app-sessions.js"></script>
-<script src="./app-game-logic.js"></script>
-<script src="./app-ui-integration.js"></script>
-<script src="./app-core.js"></script>
-
-<script src="./assets/panel-notification.js"></script>
+<script>
+// Динамическая загрузка локальных JS с cache-busting
+[
+    './voting.js',
+    './timer.js',
+    './session-manager.js',
+    './app-connector.js',
+    './app-data.js',
+    './app-sessions.js',
+    './app-game-logic.js',
+    './app-ui-integration.js',
+    './app-core.js',
+    './assets/panel-notification.js'
+].forEach(function(src) {
+    document.write('<script src="' + src + '?v=' + window.__v + '"><\/script>');
+});
+</script>
 <script>
 // Гарантируем, что editVotingHistory определён в основном Vue-инстансе
 if (window.app && typeof window.app.editVotingHistory === 'undefined') {

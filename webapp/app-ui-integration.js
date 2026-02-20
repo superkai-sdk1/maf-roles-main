@@ -67,32 +67,43 @@ Object.assign(window.app.methods, {
     setupTelegramBackButton() {
         if (!this.tg) return;
           this.tg.BackButton.onClick(() => {
-            if (this.showBestMoveModal || this.showSettingsModal || this.showThemeModal || this.showWinnerModal) {
-                // Закрываем модальные окна
+            if (this.showBestMoveModal || this.showBroadcastSettings || this.showWinnerModal) {
+                // Закрываем модальные окна / экраны
                 this.showBestMoveModal = false;
-                this.showSettingsModal = false;
-                this.showThemeModal = false;
+                if (this.showBroadcastSettings) this.cancelBroadcastSettings();
                 this.showWinnerModal = false;
                 this.sendTelegramHapticFeedback('light');
-            } else if (this.showModal && !this.showRoomModal) {
-                // Возвращаемся к выбору комнаты
-                this.showModal = false;
-                this.showRoomModal = true;
+            } else if (this.showProfileScreen) {
+                this.showProfileScreen = false;
                 this.sendTelegramHapticFeedback('light');
-            } else if (this.roomId && !this.showRoomModal) {
-                // Показываем подтверждение выхода из комнаты
-                this.showConfirm('Вы уверены, что хотите покинуть комнату?', (confirmed) => {
+            } else if (this.showThemesScreen) {
+                this.showThemesScreen = false;
+                this.sendTelegramHapticFeedback('light');
+            } else if (this.showGameTableModal) {
+                // Из выбора стола возвращаемся к выбору режима
+                this.showGameTableModal = false;
+                this.tournament = undefined;
+                this.showModal = true;
+                this.sendTelegramHapticFeedback('light');
+            } else if (this.showModal) {
+                // Из выбора режима возвращаемся в главное меню
+                this.showModal = false;
+                this.returnToMainMenu();
+                this.tg.BackButton.hide();
+                this.sendTelegramHapticFeedback('light');
+            } else if (this.roomId && !this.showMainMenu) {
+                // Показываем подтверждение выхода в главное меню
+                this.showConfirm('Выйти в главное меню?', (confirmed) => {
                     if (confirmed) {
-                        this.showRoomModal = true;
-                        this.roomId = null;
-                        if (this.ws) {
-                            this.ws.close();
-                        }
+                        this.returnToMainMenu();
                         this.tg.BackButton.hide();
                         this.hideTelegramMainButton();
                         this.sendTelegramHapticFeedback('medium');
                     }
                 });
+            } else if (this.showMainMenu) {
+                // Закрываем приложение
+                this.tg.close();
             } else {
                 // Закрываем приложение
                 this.tg.close();
@@ -161,6 +172,11 @@ Object.assign(window.app.methods, {
         // --- Формирование сообщения ---
         let message = `🏆 <b>Результаты игры</b>\n`;
         
+        // Никнейм судьи
+        if (this.judgeNickname) {
+            message += `👤 Судья: <b>${this.judgeNickname.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</b>\n`;
+        }
+
         // Инфо о турнире/игре
         if (this.mainInfoText) {
              message += `📅 <b>${this.mainInfoText}</b>\n`;
@@ -357,12 +373,14 @@ Object.assign(window.app.methods, {
                     this.waitingForState = false;
                     this.showModal = true;
                     this.showRoomModal = false;
+                    this.showMainMenu = false;
                 } else {
                     this.applyFullState(data);
                     this.stateReceived = true;
                     this.waitingForState = false;
                     this.showModal = false;
                     this.showRoomModal = false;
+                    this.showMainMenu = false;
                     if (data.avatars && typeof data.avatars === 'object') {
                         this.avatarsFromServer = data.avatars;
                     }
@@ -387,6 +405,11 @@ Object.assign(window.app.methods, {
 
         this.ws.onclose = () => {
             if (this.pingInterval) clearInterval(this.pingInterval);
+            // Не переподключаемся если мы в главном меню или нет комнаты
+            if (this.showMainMenu || !this.roomId) {
+                console.log('🔌 WebSocket закрыт, переподключение отменено (главное меню или нет комнаты)');
+                return;
+            }
             setTimeout(() => {
                 this.connectWS();
             }, 2000);
@@ -790,13 +813,19 @@ Object.assign(window.app.methods, {
 
         this.roomId = this.roomInput.trim();
         
+        // Генерируем sessionId если его ещё нет
+        if (!this.currentSessionId && window.sessionManager) {
+            this.currentSessionId = window.sessionManager.generateSessionId();
+        }
+
         // ВАЖНО: Сбрасываем флаг stateReceived для новой комнаты
         // чтобы можно было загрузить начальное состояние из JSON
         this.stateReceived = false;
         console.log(`🔄 joinRoom: Подключаемся к комнате ${this.roomId}, сброшен флаг stateReceived`);
         
         this.showRoomModal = false;
-        
+        this.showMainMenu = false;
+
         // Сохраняем сессию при подключении к комнате
         this.saveCurrentSession();
         
@@ -971,6 +1000,213 @@ Object.assign(window.app.methods, {
         });
         this.sendFullState();
         this.saveCurrentSession();
+    },
+
+    // =============================================
+    // Profile Screen
+    // =============================================
+    saveJudgeNickname() {
+        try {
+            localStorage.setItem('maf_judge_nickname', this.judgeNickname || '');
+            console.log('💾 Никнейм судьи сохранён:', this.judgeNickname);
+        } catch(e) {}
+        this.showProfileScreen = false;
+    },
+
+    // =============================================
+    // Themes Screen (Main Menu)
+    // =============================================
+    applyColorSchemeGlobal(schemeKey) {
+        this.selectedColorScheme = schemeKey;
+        this.applyColorScheme(schemeKey);
+        try {
+            localStorage.setItem('maf_color_scheme', schemeKey);
+        } catch(e) {}
+        // If in a game room, also sync to roles.html
+        if (this.roomId) {
+            this.sendToRoom({
+                type: "panelStateChange",
+                panelState: {
+                    mainInfoText: this.mainInfoText,
+                    additionalInfoText: this.additionalInfoText,
+                    mainInfoVisible: this.mainInfoVisible,
+                    additionalInfoVisible: this.additionalInfoVisible,
+                    hideSeating: this.hideSeating,
+                    hideLeaveOrder: this.hideLeaveOrder,
+                    hideRolesStatus: this.hideRolesStatus,
+                    hideBestMove: this.hideBestMove,
+                    showRoomNumber: this.showRoomNumber,
+                    colorScheme: schemeKey,
+                    backgroundTheme: this.selectedBackgroundTheme,
+                    gameSelected: this.gameSelected,
+                    tableSelected: this.tableSelected
+                }
+            });
+            this.sendFullState();
+        }
+        this.saveCurrentSession();
+    },
+
+    applyBackgroundThemeGlobal(themeKey) {
+        this.selectedBackgroundTheme = themeKey;
+        this.applyBackgroundTheme(themeKey);
+        try {
+            localStorage.setItem('maf_bg_theme', themeKey);
+        } catch(e) {}
+        // If in a game room, also sync to roles.html
+        if (this.roomId) {
+            this.sendToRoom({
+                type: "panelStateChange",
+                panelState: {
+                    mainInfoText: this.mainInfoText,
+                    additionalInfoText: this.additionalInfoText,
+                    mainInfoVisible: this.mainInfoVisible,
+                    additionalInfoVisible: this.additionalInfoVisible,
+                    hideSeating: this.hideSeating,
+                    hideLeaveOrder: this.hideLeaveOrder,
+                    hideRolesStatus: this.hideRolesStatus,
+                    hideBestMove: this.hideBestMove,
+                    showRoomNumber: this.showRoomNumber,
+                    colorScheme: this.selectedColorScheme,
+                    backgroundTheme: themeKey,
+                    gameSelected: this.gameSelected,
+                    tableSelected: this.tableSelected
+                }
+            });
+            this.sendFullState();
+        }
+        this.saveCurrentSession();
+    },
+
+    // =============================================
+    // Broadcast Settings (Full Screen)
+    // =============================================
+    openBroadcastSettings() {
+        // Save current values as draft for cancel
+        this.broadcastDraft = {
+            mainInfoVisible: this.mainInfoVisible,
+            additionalInfoVisible: this.additionalInfoVisible,
+            hideSeating: this.hideSeating,
+            hideLeaveOrder: this.hideLeaveOrder,
+            hideRolesStatus: this.hideRolesStatus,
+            hideBestMove: this.hideBestMove,
+            showRoomNumber: this.showRoomNumber,
+            roomInput: this.roomInput || ''
+        };
+        this.showBroadcastSettings = true;
+    },
+
+    saveBroadcastSettings() {
+        // Check if room changed
+        const oldRoom = this.broadcastDraft ? this.broadcastDraft.roomInput : '';
+        const newRoom = (this.roomInput || '').trim();
+        const roomChanged = newRoom !== oldRoom;
+
+        this.broadcastDraft = null;
+        this.showBroadcastSettings = false;
+
+        // Save panel settings
+        try {
+            const panelState = {
+                mainInfoVisible: this.mainInfoVisible,
+                additionalInfoVisible: this.additionalInfoVisible,
+                hideSeating: this.hideSeating,
+                hideLeaveOrder: this.hideLeaveOrder,
+                hideRolesStatus: this.hideRolesStatus,
+                hideBestMove: this.hideBestMove,
+                showRoomNumber: this.showRoomNumber
+            };
+            localStorage.setItem('maf-panel-settings', JSON.stringify(panelState));
+        } catch(e) {}
+
+        // If room number was entered/changed, connect to WebSocket
+        if (roomChanged && newRoom) {
+            this.roomId = newRoom;
+            this.stateReceived = false;
+            if (!this.currentSessionId && window.sessionManager) {
+                this.currentSessionId = window.sessionManager.generateSessionId();
+            }
+            // Show Telegram back button
+            if (this.isTelegramApp && this.tg) {
+                this.tg.BackButton.show();
+                this.showTelegramMainButton();
+            }
+            this.connectWS();
+        } else if (roomChanged && !newRoom) {
+            // Room cleared
+            if (this.ws) {
+                this.ws.close();
+                this.ws = null;
+            }
+            this.roomId = null;
+        }
+
+        // Sync to roles.html
+        this.sendToRoom({
+            type: "panelStateChange",
+            panelState: {
+                mainInfoText: this.mainInfoText,
+                additionalInfoText: this.additionalInfoText,
+                mainInfoVisible: this.mainInfoVisible,
+                additionalInfoVisible: this.additionalInfoVisible,
+                hideSeating: this.hideSeating,
+                hideLeaveOrder: this.hideLeaveOrder,
+                hideRolesStatus: this.hideRolesStatus,
+                hideBestMove: this.hideBestMove,
+                showRoomNumber: this.showRoomNumber,
+                colorScheme: this.selectedColorScheme,
+                backgroundTheme: this.selectedBackgroundTheme,
+                gameSelected: this.gameSelected,
+                tableSelected: this.tableSelected
+            }
+        });
+        this.sendFullState();
+        this.saveCurrentSession();
+    },
+
+    cancelBroadcastSettings() {
+        // Revert to draft values
+        if (this.broadcastDraft) {
+            this.mainInfoVisible = this.broadcastDraft.mainInfoVisible;
+            this.additionalInfoVisible = this.broadcastDraft.additionalInfoVisible;
+            this.hideSeating = this.broadcastDraft.hideSeating;
+            this.hideLeaveOrder = this.broadcastDraft.hideLeaveOrder;
+            this.hideRolesStatus = this.broadcastDraft.hideRolesStatus;
+            this.hideBestMove = this.broadcastDraft.hideBestMove;
+            this.showRoomNumber = this.broadcastDraft.showRoomNumber;
+            this.broadcastDraft = null;
+        }
+        this.showBroadcastSettings = false;
+    },
+
+    // =============================================
+    // Long-press Exit to Menu
+    // =============================================
+    startExitHold() {
+        this.exitHoldActive = true;
+        this.exitHoldTimer = setTimeout(() => {
+            if (this.exitHoldActive) {
+                this.exitHoldActive = false;
+                this.returnToMainMenu();
+                if (this.isTelegramApp && this.tg) {
+                    this.tg.BackButton.hide();
+                    this.hideTelegramMainButton();
+                }
+                window.haptic && window.haptic.notification('success');
+            }
+        }, 1500);
+    },
+
+    cancelExitHold() {
+        if (this.exitHoldTimer) {
+            clearTimeout(this.exitHoldTimer);
+            this.exitHoldTimer = null;
+        }
+        if (this.exitHoldActive) {
+            this.exitHoldActive = false;
+            // Short tap — show alert
+            this.showAlert('Удерживайте кнопку для выхода в меню');
+        }
     },
 
     // Утилитарные функции
@@ -1243,22 +1479,11 @@ Object.assign(window.app, {
         },
 
         // Следим за модальными окнами для управления кнопкой назад в Telegram
-        showRoomModal(newVal) {
-            if (this.isTelegramApp && this.tg) {
-                if (newVal) {
-                    this.tg.BackButton.hide();
-                    this.hideTelegramMainButton();
-                } else {
-                    this.tg.BackButton.show();
-                    this.showTelegramMainButton();
-                }
-            }
-        },
         showModal(newVal) {
             if (this.isTelegramApp && this.tg) {
                 if (newVal) {
                     this.tg.BackButton.show();
-                } else if (!this.showRoomModal) {
+                } else {
                     this.tg.BackButton.show();
                 }
             }        },
@@ -1267,12 +1492,17 @@ Object.assign(window.app, {
                 this.tg.BackButton.show();
             }
         },
-        showSettingsModal(newVal) {
+        showBroadcastSettings(newVal) {
             if (this.isTelegramApp && this.tg && newVal) {
                 this.tg.BackButton.show();
             }
         },
-        showThemeModal(newVal) {
+        showProfileScreen(newVal) {
+            if (this.isTelegramApp && this.tg && newVal) {
+                this.tg.BackButton.show();
+            }
+        },
+        showThemesScreen(newVal) {
             if (this.isTelegramApp && this.tg && newVal) {
                 this.tg.BackButton.show();
             }
@@ -1373,7 +1603,10 @@ Object.assign(window.app.computed, {
         return result;
     },
     tournamentName() {
-        return this.tournament?.props?.pageProps?.serverData?.name || '';
+        const sd = this.tournament?.props?.pageProps?.serverData;
+        return this.tournament?._pageTitle
+            || sd?.name || sd?.title || sd?.tournamentName || sd?.tournament_name
+            || '';
     },
     
     manualPlayers() {
