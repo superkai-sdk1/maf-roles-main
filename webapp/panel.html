@@ -628,33 +628,18 @@ if (window.Telegram && window.Telegram.WebApp) {
                     <p class="main-menu-subtitle">Панель управления мафией</p>
                 </div>
 
-                <!-- Кнопка новой игры -->
-                <button class="glass-btn w-full btn-primary main-menu-new-game-btn" @click="startNewGame(); window.haptic.impact('medium');">
-                    <i class="fa fa-plus" style="margin-right: 8px;"></i>
-                    Новая игра
-                </button>
-
-                <!-- Кнопки Профиль и Темы -->
-                <div class="main-menu-actions-row">
-                    <button class="glass-btn main-menu-action-btn" @click="showProfileScreen = true; window.haptic.impact('light');">
-                        <i class="fa fa-user" style="margin-right: 8px;"></i>
-                        Профиль
-                    </button>
-                    <button class="glass-btn main-menu-action-btn" @click="showThemesScreen = true; window.haptic.impact('light');">
-                        <i class="fa fa-palette" style="margin-right: 8px;"></i>
-                        Темы
-                    </button>
-                </div>
-
-                <!-- История игр -->
+                <!-- Список игр -->
                 <div v-if="sessionsList && sessionsList.length > 0" class="main-menu-history">
                     <div class="main-menu-history-title">
                         <i class="fa fa-history" style="margin-right: 6px; opacity: 0.6;"></i>
-                        История игр <span class="main-menu-history-count">{{ sessionsList.length }}</span>
+                        {{ activeHistoryTab === 'active' ? 'Активные игры' : 'История игр' }}
+                        <span class="main-menu-history-count">
+                            {{ activeHistoryTab === 'active' ? getActiveSessions().length : getHistorySessions().length }}
+                        </span>
                     </div>
 
                     <div class="main-menu-sessions-list">
-                        <div v-for="session in sessionsList"
+                        <div v-for="session in (activeHistoryTab === 'active' ? getActiveSessions() : getHistorySessions())"
                              :key="session.sessionId"
                              class="main-menu-session-card"
                              @click="openSession(session.sessionId); window.haptic.impact('light');">
@@ -670,16 +655,22 @@ if (window.Telegram && window.Telegram.WebApp) {
                                 <span class="session-card-room">{{ getSessionRoomText(session) }}</span>
                             </div>
 
-                            <button class="session-card-delete"
+                            <!-- Кнопка удаления только для активных игр (в истории удалять нельзя) -->
+                            <button v-if="activeHistoryTab === 'active'" class="session-card-delete"
                                     @click.stop="deleteSession(session.sessionId); window.haptic.impact('light');"
                                     title="Удалить">
                                 <i class="fa fa-trash"></i>
                             </button>
                         </div>
+
+                        <!-- Пустое состояние для текущей вкладки -->
+                        <div v-if="(activeHistoryTab === 'active' ? getActiveSessions() : getHistorySessions()).length === 0" class="main-menu-empty-tab">
+                            <div class="main-menu-empty-text">Нет {{ activeHistoryTab === 'active' ? 'активных' : 'завершенных' }} игр</div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Пустое состояние -->
+                <!-- Пустое состояние (если вообще нет сессий) -->
                 <div v-else class="main-menu-empty">
                     <div class="main-menu-empty-icon">🎲</div>
                     <div class="main-menu-empty-text">Нет сохранённых игр</div>
@@ -694,11 +685,11 @@ if (window.Telegram && window.Telegram.WebApp) {
         <div v-if="showProfileScreen" class="fullscreen-page">
             <div class="fullscreen-page-container">
                 <div class="fullscreen-page-header">
-                    <button class="fullscreen-back-btn" @click="showProfileScreen = false; window.haptic.impact('light');">
+                    <button v-if="!isTelegramApp" class="fullscreen-back-btn" @click="showProfileScreen = false; window.haptic.impact('light');">
                         <i class="fa fa-arrow-left"></i>
                     </button>
                     <h1 class="fullscreen-page-title">Профиль</h1>
-                    <div style="width: 40px;"></div>
+                    <div v-if="!isTelegramApp" style="width: 40px;"></div>
                 </div>
 
                 <div class="profile-avatar-section">
@@ -725,11 +716,11 @@ if (window.Telegram && window.Telegram.WebApp) {
         <div v-if="showThemesScreen" class="fullscreen-page">
             <div class="fullscreen-page-container">
                 <div class="fullscreen-page-header">
-                    <button class="fullscreen-back-btn" @click="showThemesScreen = false; window.haptic.impact('light');">
+                    <button v-if="!isTelegramApp" class="fullscreen-back-btn" @click="showThemesScreen = false; window.haptic.impact('light');">
                         <i class="fa fa-arrow-left"></i>
                     </button>
                     <h1 class="fullscreen-page-title">Темы</h1>
-                    <div style="width: 40px;"></div>
+                    <div v-if="!isTelegramApp" style="width: 40px;"></div>
                 </div>
 
                 <div class="text-center text-secondary font-bold text-large mb-10" style="letter-spacing:.02em;">
@@ -771,6 +762,11 @@ if (window.Telegram && window.Telegram.WebApp) {
                         <span v-if="selectedBackgroundTheme === theme.key" class="check">✔</span>
                     </div>
                 </div>
+
+                <button class="glass-btn w-full btn-primary mt-20" @click="showThemesScreen = false; activeHistoryTab = 'active'; window.haptic.notification('success');">
+                    <i class="fa fa-check" style="margin-right: 8px;"></i>
+                    Сохранить
+                </button>
             </div>
         </div>
 
@@ -1560,7 +1556,7 @@ if (window.Telegram && window.Telegram.WebApp) {
                         Принять
                     </button>
                 </div>
-                <div v-if="shouldShowFinishButton" class="w-100 mt-md">
+                <div v-if="votingFinished" class="w-100 mt-md">
                     <!-- Таймер крайней речи -->
                     <div v-if="votingLastSpeechTimerActive && votingWinners && votingWinners.length" class="voting-timer-section">
                         <div class="voting-timer-title">
@@ -1754,7 +1750,31 @@ if (window.Telegram && window.Telegram.WebApp) {
         </div>
     </div>
     
-    <!-- Фиксированная нижняя панель режимов -->
+    <!-- Новая навигация главного меню -->
+    <div v-if="showMainMenu && !showProfileScreen && !showThemesScreen" id="main-nav-bar" class="main-nav-bar">
+        <button class="nav-item" :class="{ active: activeHistoryTab === 'active' }" @click="activeHistoryTab = 'active'; window.haptic.selection();">
+            <i class="mdi mdi-play-circle-outline"></i>
+            <span>Активные</span>
+        </button>
+        <button class="nav-item" :class="{ active: activeHistoryTab === 'history' }" @click="activeHistoryTab = 'history'; window.haptic.selection();">
+            <i class="mdi mdi-history"></i>
+            <span>История</span>
+        </button>
+        <button class="nav-item nav-item--primary" @click="startNewGame(); window.haptic.impact('medium');">
+            <i class="mdi mdi-plus"></i>
+            <span>Новая</span>
+        </button>
+        <button class="nav-item" @click="showThemesScreen = true; window.haptic.impact('light');">
+            <i class="mdi mdi-palette-outline"></i>
+            <span>Темы</span>
+        </button>
+        <button class="nav-item" @click="showProfileScreen = true; window.haptic.impact('light');">
+            <i class="mdi mdi-account-outline"></i>
+            <span>Профиль</span>
+        </button>
+    </div>
+
+    <!-- Фиксированная нижняя панель режимов (для игры) -->
     <div v-if="tableOut?.length && !winnerTeam" id="bottom-bar" class="glass-content glass-content--nav">
         <button :class="['glass-item', { 'glass-item--active': currentMode==='roles' }]" @click="setMode('roles'); window.haptic.selection();">
             <span>Роли</span>

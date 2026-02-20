@@ -5,7 +5,8 @@
  */
 window.sessionManager = (function() {
     const SESSIONS_KEY = 'maf-sessions';
-    const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 часа в миллисекундах
+    // Увеличиваем срок хранения до 365 дней, так как теперь есть история игр
+    const SESSION_DURATION = 365 * 24 * 60 * 60 * 1000; 
     const MAX_SESSIONS = 50; // Максимум сессий в истории
     const SYNC_DEBOUNCE_MS = 5000; // Debounce для sync на сервер (5 сек)
     const SYNC_API_URL = './api/sessions-sync.php';
@@ -47,7 +48,7 @@ window.sessionManager = (function() {
         }
     }
 
-    // Очистка сессий старше 24 часов
+    // Очистка сессий старше SESSION_DURATION
     function cleanExpiredSessions(sessions) {
         const now = Date.now();
         return sessions.filter(s => s.timestamp && (now - s.timestamp) < SESSION_DURATION);

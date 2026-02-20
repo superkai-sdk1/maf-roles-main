@@ -58,6 +58,7 @@ window.app = new Vue({
         // Главное меню с историей игр
         showMainMenu: true,
         sessionsList: [],
+        activeHistoryTab: 'active', // 'active' или 'history'
         currentSessionId: null,
         isMasterPanel: false,
         panelId: null,

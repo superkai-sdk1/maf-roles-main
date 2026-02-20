@@ -687,6 +687,50 @@ Object.assign(window.app.methods, {
     getSessionRoomText(session) {
         if (session.roomId) return 'Комната: ' + session.roomId;
         return 'Без комнаты';
+    },
+
+    // =============================================
+    // Фильтрация сессий для разделов
+    // =============================================
+    
+    getActiveSessions() {
+        if (!this.sessionsList) return [];
+        
+        const now = Date.now();
+        const oneDay = 24 * 60 * 60 * 1000;
+        
+        return this.sessionsList.filter(s => {
+            // Игра завершена, если есть победитель
+            const isFinished = !!s.winnerTeam;
+            
+            // Если игра завершена, она не активна
+            if (isFinished) return false;
+            
+            // Если прошло больше 24 часов, игра считается завершенной автоматически
+            if (s.timestamp && (now - s.timestamp) > oneDay) return false;
+            
+            return true;
+        });
+    },
+    
+    getHistorySessions() {
+        if (!this.sessionsList) return [];
+        
+        const now = Date.now();
+        const oneDay = 24 * 60 * 60 * 1000;
+        
+        return this.sessionsList.filter(s => {
+            // Игра завершена, если есть победитель
+            const isFinished = !!s.winnerTeam;
+            
+            // Если игра завершена, она в истории
+            if (isFinished) return true;
+            
+            // Если прошло больше 24 часов, игра автоматически попадает в историю
+            if (s.timestamp && (now - s.timestamp) > oneDay) return true;
+            
+            return false;
+        });
     }
 });
 
