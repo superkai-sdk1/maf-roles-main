@@ -685,11 +685,7 @@ if (window.Telegram && window.Telegram.WebApp) {
         <div v-if="showProfileScreen" class="fullscreen-page">
             <div class="fullscreen-page-container">
                 <div class="fullscreen-page-header">
-                    <button v-if="!isTelegramApp" class="fullscreen-back-btn" @click="showProfileScreen = false; window.haptic.impact('light');">
-                        <i class="fa fa-arrow-left"></i>
-                    </button>
                     <h1 class="fullscreen-page-title">Профиль</h1>
-                    <div v-if="!isTelegramApp" style="width: 40px;"></div>
                 </div>
 
                 <div class="profile-avatar-section">
@@ -716,11 +712,7 @@ if (window.Telegram && window.Telegram.WebApp) {
         <div v-if="showThemesScreen" class="fullscreen-page">
             <div class="fullscreen-page-container">
                 <div class="fullscreen-page-header">
-                    <button v-if="!isTelegramApp" class="fullscreen-back-btn" @click="showThemesScreen = false; window.haptic.impact('light');">
-                        <i class="fa fa-arrow-left"></i>
-                    </button>
                     <h1 class="fullscreen-page-title">Темы</h1>
-                    <div v-if="!isTelegramApp" style="width: 40px;"></div>
                 </div>
 
                 <div class="text-center text-secondary font-bold text-large mb-10" style="letter-spacing:.02em;">
@@ -763,8 +755,8 @@ if (window.Telegram && window.Telegram.WebApp) {
                     </div>
                 </div>
 
-                <button class="glass-btn w-full btn-primary mt-20" @click="showThemesScreen = false; activeHistoryTab = 'active'; window.haptic.notification('success');">
-                    <i class="fa fa-check" style="margin-right: 8px;"></i>
+                <button class="theme-save-btn" @click="showThemesScreen = false; activeHistoryTab = 'active'; window.haptic.notification('success');">
+                    <i class="mdi mdi-check-circle-outline" style="margin-right: 8px; font-size: 1.2em;"></i>
                     Сохранить
                 </button>
             </div>
@@ -1751,12 +1743,12 @@ if (window.Telegram && window.Telegram.WebApp) {
     </div>
     
     <!-- Новая навигация главного меню -->
-    <div v-if="showMainMenu && !showProfileScreen && !showThemesScreen" id="main-nav-bar" class="main-nav-bar">
-        <button class="nav-item" :class="{ active: activeHistoryTab === 'active' }" @click="activeHistoryTab = 'active'; window.haptic.selection();">
+    <div v-if="showMainMenu" id="main-nav-bar" class="main-nav-bar">
+        <button class="nav-item" :class="{ active: activeHistoryTab === 'active' && !showProfileScreen && !showThemesScreen }" @click="showProfileScreen = false; showThemesScreen = false; activeHistoryTab = 'active'; window.haptic.selection();">
             <i class="mdi mdi-play-circle-outline"></i>
             <span>Активные</span>
         </button>
-        <button class="nav-item" :class="{ active: activeHistoryTab === 'history' }" @click="activeHistoryTab = 'history'; window.haptic.selection();">
+        <button class="nav-item" :class="{ active: activeHistoryTab === 'history' && !showProfileScreen && !showThemesScreen }" @click="showProfileScreen = false; showThemesScreen = false; activeHistoryTab = 'history'; window.haptic.selection();">
             <i class="mdi mdi-history"></i>
             <span>История</span>
         </button>
@@ -1764,11 +1756,11 @@ if (window.Telegram && window.Telegram.WebApp) {
             <i class="mdi mdi-plus"></i>
             <span>Новая</span>
         </button>
-        <button class="nav-item" @click="showThemesScreen = true; window.haptic.impact('light');">
+        <button class="nav-item" :class="{ active: showThemesScreen }" @click="showProfileScreen = false; showThemesScreen = true; window.haptic.impact('light');">
             <i class="mdi mdi-palette-outline"></i>
             <span>Темы</span>
         </button>
-        <button class="nav-item" @click="showProfileScreen = true; window.haptic.impact('light');">
+        <button class="nav-item" :class="{ active: showProfileScreen }" @click="showThemesScreen = false; showProfileScreen = true; window.haptic.impact('light');">
             <i class="mdi mdi-account-outline"></i>
             <span>Профиль</span>
         </button>

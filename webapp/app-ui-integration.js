@@ -368,12 +368,28 @@ Object.assign(window.app.methods, {
             }
             if (data.type === "state") {
                 if (!Array.isArray(data.tableOut) || data.tableOut.length === 0) {
-                    this.resetAllState();
-                    this.stateReceived = false;
-                    this.waitingForState = false;
-                    this.showModal = true;
-                    this.showRoomModal = false;
-                    this.showMainMenu = false;
+                    // ИСПРАВЛЕНИЕ: Если панель уже имеет загруженную игру (турнир или ручной режим с игроками),
+                    // НЕ сбрасываем состояние при получении пустого state от комнаты.
+                    // Панель является источником истины — она отправит свои данные в комнату.
+                    const hasActiveGame = (this.tournament && this.tableOut && this.tableOut.length > 0)
+                        || (this.manualMode && this.manualPlayers && this.manualPlayers.length > 0);
+
+                    if (hasActiveGame) {
+                        console.log('🛡️ connectWS: Получен пустой state от комнаты, но панель уже имеет активную игру — игнорируем сброс');
+                        this.stateReceived = true;
+                        this.waitingForState = false;
+                        // Отправляем наше текущее состояние в комнату, чтобы roles.html получил данные
+                        this.$nextTick(() => {
+                            this.sendFullState();
+                        });
+                    } else {
+                        this.resetAllState();
+                        this.stateReceived = false;
+                        this.waitingForState = false;
+                        this.showModal = true;
+                        this.showRoomModal = false;
+                        this.showMainMenu = false;
+                    }
                 } else {
                     this.applyFullState(data);
                     this.stateReceived = true;
@@ -1498,14 +1514,10 @@ Object.assign(window.app, {
             }
         },
         showProfileScreen(newVal) {
-            if (this.isTelegramApp && this.tg && newVal) {
-                this.tg.BackButton.show();
-            }
+            // Навигация через нижнюю панель, BackButton не нужен
         },
         showThemesScreen(newVal) {
-            if (this.isTelegramApp && this.tg && newVal) {
-                this.tg.BackButton.show();
-            }
+            // Навигация через нижнюю панель, BackButton не нужен
         },
         showWinnerModal(newVal) {
             if (this.isTelegramApp && this.tg && newVal) {

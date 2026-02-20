@@ -1696,6 +1696,7 @@ input:focus, select:focus, .input-compact:focus {
   flex-direction: column;
   gap: 10px;
   width: 100%;
+  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
 }
 
 .main-menu-session-card {
@@ -2671,14 +2672,17 @@ input:focus, select:focus, .input-compact:focus {
 .fullscreen-page {
   position: fixed;
   inset: 0;
-  z-index: 2500;
+  z-index: 2050;
   display: flex;
   flex-direction: column;
   align-items: center;
   background: var(--bg-main, #23232a);
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: 0 0 env(safe-area-inset-bottom, 0) 0;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: env(safe-area-inset-top, 0) 0 calc(120px + env(safe-area-inset-bottom, 0px)) 0;
   animation: fadeIn 0.25s ease;
 }
 
@@ -2689,13 +2693,13 @@ input:focus, select:focus, .input-compact:focus {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 100%;
+  flex-shrink: 0;
 }
 
 .fullscreen-page-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   width: 100%;
   padding: 8px 0 20px 0;
   gap: 12px;
@@ -3024,3 +3028,44 @@ input:focus, select:focus, .input-compact:focus {
     font-size: 24px;
   }
 }
+
+/* ============================================= */
+/*  Theme Save Button                            */
+/* ============================================= */
+
+.theme-save-btn {
+  width: 100%;
+  margin-top: 28px;
+  padding: 16px 24px;
+  border-radius: 18px;
+  border: none;
+  background: var(--accent-color, #ae8cff);
+  color: #fff;
+  font-size: 1.1em;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: transform 0.15s var(--ease-spring, ease),
+              box-shadow 0.2s,
+              background-color 0.2s;
+  box-shadow:
+    0 4px 20px rgba(174, 140, 255, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.3px;
+  touch-action: manipulation;
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-save-btn:active {
+  transform: scale(0.97);
+  box-shadow:
+    0 2px 10px rgba(174, 140, 255, 0.25),
+    0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
