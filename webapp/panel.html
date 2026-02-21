@@ -675,32 +675,102 @@ if (window.Telegram && window.Telegram.WebApp) {
                     </div>
 
                     <div class="main-menu-sessions-list">
-                        <div v-for="session in (activeHistoryTab === 'active' ? getActiveSessions() : getHistorySessions())"
-                             :key="session.sessionId"
-                             class="main-menu-session-card"
-                             @click="openSession(session.sessionId); window.haptic.impact('light');">
+                        <template v-for="group in (activeHistoryTab === 'active' ? getGroupedActiveSessions() : getGroupedHistorySessions())">
 
-                            <div class="session-card-header">
-                                <div class="session-card-name">{{ getSessionDisplayName(session) }}</div>
-                                <div class="session-card-time">{{ formatSessionTime(session.timestamp) }}</div>
+                            <!-- Турнирная карточка (группа) -->
+                            <div v-if="group.isTournament" :key="'tg-'+group.tournamentId" class="tournament-group-card">
+                                <div class="tournament-group-header" @click="toggleTournamentExpanded(group.tournamentId); window.haptic.selection();">
+                                    <div class="tournament-group-icon">
+                                        <i :class="group.tournamentId && group.tournamentId.toString().startsWith('funky_') ? 'mdi mdi-cards-playing-outline' : 'mdi mdi-trophy-outline'"></i>
+                                    </div>
+                                    <div class="tournament-group-info">
+                                        <div class="tournament-group-name">{{ group.tournamentName }}</div>
+                                        <div class="tournament-group-meta">
+                                            <span class="tournament-game-count">{{ group.finishedGamesCount }}/{{ group.gamesCount }} {{ group.gamesCount === 1 ? 'игра' : (group.gamesCount < 5 ? 'игры' : 'игр') }}</span>
+                                            <span v-if="group.hasActiveGame" class="tournament-status-badge active">В процессе</span>
+                                            <span v-else-if="group.allGamesFinished && activeHistoryTab === 'active'" class="tournament-status-badge ready">Все игры завершены</span>
+                                        </div>
+                                    </div>
+                                    <div class="tournament-group-chevron" :class="{ expanded: isTournamentExpanded(group.tournamentId) }">
+                                        <i class="mdi mdi-chevron-down"></i>
+                                    </div>
+                                </div>
+
+                                <!-- Раскрытое содержимое турнира -->
+                                <div v-if="isTournamentExpanded(group.tournamentId)" class="tournament-group-body">
+                                    <div class="tournament-games-list">
+                                        <div v-for="session in group.sessions" :key="session.sessionId"
+                                             class="tournament-game-row"
+                                             :class="{ finished: !!session.winnerTeam, active: !session.winnerTeam }"
+                                             @click="openSession(session.sessionId); window.haptic.impact('light');">
+                                            <div class="tournament-game-num">
+                                                <span class="game-num-label">Игра {{ session.gameSelected || '?' }}</span>
+                                                <span v-if="session.tableSelected" class="game-table-label">Стол {{ session.tableSelected }}</span>
+                                            </div>
+                                            <div class="tournament-game-result">
+                                                {{ getGameResultText(session) }}
+                                            </div>
+                                            <div class="tournament-game-time">
+                                                {{ formatSessionTime(session.timestamp) }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Кнопки действий турнира -->
+                                    <div class="tournament-actions" v-if="activeHistoryTab === 'active'">
+                                        <button class="tournament-action-btn next-game-btn"
+                                                @click.stop="startNextTournamentGame(group.tournamentId, group.sessions[group.sessions.length - 1].tableSelected || 1); window.haptic.impact('medium');">
+                                            <i class="mdi mdi-plus-circle-outline" style="margin-right: 6px;"></i>
+                                            Новая игра
+                                        </button>
+                                        <button class="tournament-action-btn summary-btn"
+                                                @click.stop="funkyBuildSummary(group.tournamentId); window.haptic.impact('medium');">
+                                            <i class="mdi mdi-chart-bar" style="margin-right: 6px;"></i>
+                                            Подвести итоги
+                                        </button>
+                                        <button class="tournament-action-btn finish-tournament-btn"
+                                                @click.stop="finishTournament(group.tournamentId); window.haptic.notification('success');">
+                                            <i class="mdi mdi-flag-checkered" style="margin-right: 6px;"></i>
+                                            Завершить турнир
+                                        </button>
+                                    </div>
+                                    <!-- Кнопка итогов в истории -->
+                                    <div class="tournament-actions" v-if="activeHistoryTab === 'history'">
+                                        <button class="tournament-action-btn summary-btn"
+                                                @click.stop="funkyBuildSummary(group.tournamentId); window.haptic.impact('medium');">
+                                            <i class="mdi mdi-chart-bar" style="margin-right: 6px;"></i>
+                                            Посмотреть итоги
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="session-card-details">
-                                <span class="session-card-status">{{ getSessionStatusText(session) }}</span>
-                                <span v-if="getSessionModeText(session)" class="session-card-mode">{{ getSessionModeText(session) }}</span>
-                                <span class="session-card-room">{{ getSessionRoomText(session) }}</span>
-                            </div>
+                            <!-- Обычная карточка (не турнир) -->
+                            <div v-else :key="group.sessions[0].sessionId"
+                                 class="main-menu-session-card"
+                                 @click="openSession(group.sessions[0].sessionId); window.haptic.impact('light');">
 
-                            <!-- Кнопка удаления только для активных игр (в истории удалять нельзя) -->
-                            <button v-if="activeHistoryTab === 'active'" class="session-card-delete"
-                                    @click.stop="deleteSession(session.sessionId); window.haptic.impact('light');"
-                                    title="Удалить">
-                                <i class="fa fa-trash"></i>
-                            </button>
-                        </div>
+                                <div class="session-card-header">
+                                    <div class="session-card-name">{{ getSessionDisplayName(group.sessions[0]) }}</div>
+                                    <div class="session-card-time">{{ formatSessionTime(group.sessions[0].timestamp) }}</div>
+                                </div>
+
+                                <div class="session-card-details">
+                                    <span class="session-card-status">{{ getSessionStatusText(group.sessions[0]) }}</span>
+                                    <span v-if="getSessionModeText(group.sessions[0])" class="session-card-mode">{{ getSessionModeText(group.sessions[0]) }}</span>
+                                    <span class="session-card-room">{{ getSessionRoomText(group.sessions[0]) }}</span>
+                                </div>
+
+                                <button v-if="activeHistoryTab === 'active'" class="session-card-delete"
+                                        @click.stop="deleteSession(group.sessions[0].sessionId); window.haptic.impact('light');"
+                                        title="Удалить">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </div>
+                        </template>
 
                         <!-- Пустое состояние для текущей вкладки -->
-                        <div v-if="(activeHistoryTab === 'active' ? getActiveSessions() : getHistorySessions()).length === 0" class="main-menu-empty-tab">
+                        <div v-if="(activeHistoryTab === 'active' ? getGroupedActiveSessions() : getGroupedHistorySessions()).length === 0" class="main-menu-empty-tab">
                             <div class="main-menu-empty-text">Нет {{ activeHistoryTab === 'active' ? 'активных' : 'завершенных' }} игр</div>
                         </div>
                     </div>
@@ -837,14 +907,14 @@ if (window.Telegram && window.Telegram.WebApp) {
                             <span class="ng-soon-badge">скоро</span>
                         </div>
 
-                        <!-- Фанки (скоро) -->
-                        <div class="ng-card ng-card-soon">
+                        <!-- Фанки -->
+                        <div class="ng-card" @click="startFunkyMode(); window.haptic.impact('medium');">
                             <div class="ng-card-icon-placeholder"><i class="mdi mdi-cards-playing-outline"></i></div>
                             <div class="ng-card-body">
                                 <div class="ng-card-title">Фанки</div>
                                 <div class="ng-card-desc">Свободная игра</div>
                             </div>
-                            <span class="ng-soon-badge">скоро</span>
+                            <i class="mdi mdi-chevron-right ng-card-arrow"></i>
                         </div>
                     </div>
 
@@ -900,6 +970,94 @@ if (window.Telegram && window.Telegram.WebApp) {
                         <i class="fa fa-arrow-left" style="margin-right:8px;"></i>
                         Назад
                     </button>
+                </template>
+
+                <!-- ─── Шаг Фанки: ввод игроков ─── -->
+                <template v-if="newGameStep === 'funky'">
+                    <div class="ng-step-header">
+                        <div class="ng-card-icon-placeholder" style="background: rgba(174,140,255,0.12); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                            <i class="mdi mdi-cards-playing-outline" style="color: var(--maf-accent-color, #ae8cff); font-size:1.3em;"></i>
+                        </div>
+                        <div>
+                            <h2 class="ng-step-title">Фанки</h2>
+                            <div class="ng-step-subtitle">{{ mainInfoText }} · Игра {{ funkyGameNumber }}</div>
+                        </div>
+                    </div>
+
+                    <div class="funky-players-list">
+                        <div v-for="(player, index) in funkyPlayers" :key="'fp-'+index" class="funky-player-slot" :class="{ filled: player !== null }">
+                            <div class="funky-player-num">{{ index + 1 }}</div>
+
+                            <div class="funky-player-input-wrap" v-if="player === null">
+                                <input
+                                    type="text"
+                                    class="funky-player-input"
+                                    :data-index="index"
+                                    :value="funkyPlayerInputs[index]"
+                                    :placeholder="'Игрок ' + (index + 1)"
+                                    @input="$set(funkyPlayerInputs, index, $event.target.value); funkyOnInput(index)"
+                                    @focus="funkyActiveInput = index"
+                                    @keydown.enter="funkySetManualPlayer(index)"
+                                    autocomplete="off"
+                                >
+                                <!-- Индикатор загрузки -->
+                                <div v-if="funkyActiveInput === index && funkySearchLoading" class="funky-search-loading">
+                                    <i class="mdi mdi-loading mdi-spin"></i> Поиск...
+                                </div>
+                                <!-- Результаты поиска -->
+                                <div v-if="funkyActiveInput === index && funkySearchResults.length > 0 && !funkySearchLoading" class="funky-search-dropdown">
+                                    <div v-for="result in funkySearchResults" :key="result.login"
+                                         class="funky-search-item"
+                                         @mousedown.prevent="funkySelectPlayer(index, result); window.haptic && window.haptic.selection();"
+                                         @touchstart.prevent="funkySelectPlayer(index, result); window.haptic && window.haptic.selection();">
+                                        <div class="funky-search-avatar" :style="result.avatar_link ? {backgroundImage: 'url(' + result.avatar_link + ')'} : {}">
+                                            <i v-if="!result.avatar_link" class="mdi mdi-account" style="opacity:0.4;"></i>
+                                        </div>
+                                        <div class="funky-search-info">
+                                            <div class="funky-search-name">{{ result.login }}</div>
+                                            <div v-if="result.title" class="funky-search-title">{{ result.title }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Выбранный игрок -->
+                            <div class="funky-player-selected" v-else>
+                                <div class="funky-selected-avatar" :style="player.avatar_link ? {backgroundImage: 'url(' + player.avatar_link + ')'} : {}">
+                                    <i v-if="!player.avatar_link" class="mdi mdi-account" style="opacity:0.4; font-size:1.2em;"></i>
+                                </div>
+                                <div class="funky-selected-name">{{ player.login }}</div>
+                                <button class="funky-clear-btn" @click.stop="funkyClearPlayer(index); window.haptic.impact('light');">
+                                    <i class="mdi mdi-close"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="funky-filled-counter">
+                        {{ funkyPlayers.filter(p => p !== null).length }} / 10 игроков
+                    </div>
+
+                    <div class="funky-actions-container">
+                        <button class="glass-btn funky-shuffle-btn"
+                                :disabled="!funkyAllPlayersFilled()"
+                                @click="funkyShufflePlayers(); window.haptic.impact('medium');">
+                            <i class="mdi mdi-shuffle-variant" style="margin-right:8px;"></i>
+                            Рассадить
+                        </button>
+                        <div class="game-actions-row">
+                            <button class="glass-btn funky-back-btn" @click="newGameStep = 'modes'; returnToMainMenu(); window.haptic.impact('light');">
+                                <i class="fa fa-arrow-left" style="margin-right:6px;"></i>
+                                <span>Назад</span>
+                            </button>
+                            <button class="glass-btn game-finish-btn"
+                                    :disabled="!funkyAllPlayersFilled()"
+                                    @click="funkyConfirmPlayers(); window.haptic.notification('success');">
+                                <i class="mdi mdi-check-circle-outline" style="margin-right:6px;"></i>
+                                <span>Начать игру</span>
+                            </button>
+                        </div>
+                    </div>
                 </template>
             </div>
         </div>
@@ -1280,15 +1438,16 @@ if (window.Telegram && window.Telegram.WebApp) {
                 </transition>
             </div>
 
-            <button class="glass-btn w-full btn-primary mt-20" @click="sendResultsToTelegram(); window.haptic.notification('success');">
-                <i class="fa fa-paper-plane" style="margin-right:8px;"></i>
-                Отправить результаты в Телеграм
-            </button>
-
-            <button class="glass-btn w-full btn-danger mt-10" @click="setWinnerTeam(null); window.haptic.impact('light');">
-                <i class="fa fa-arrow-left" style="margin-right:8px;"></i>
-                Вернуться к игре
-            </button>
+            <div class="game-actions-row" style="margin-top:20px;">
+                <button class="glass-btn funky-back-btn" @click="setWinnerTeam(null); window.haptic.impact('light');">
+                    <i class="fa fa-arrow-left" style="margin-right:6px;"></i>
+                    <span>Назад</span>
+                </button>
+                <button class="glass-btn game-finish-btn" @click="funkySaveGameResults(); window.haptic.notification('success');">
+                    <i class="mdi mdi-content-save-outline" style="margin-right:6px;"></i>
+                    <span>Сохранить</span>
+                </button>
+            </div>
         </div>
 
         <!-- Таблица игроков (скрывается если выбран победитель или идёт раздача ролей) -->
@@ -1332,7 +1491,7 @@ if (window.Telegram && window.Telegram.WebApp) {
                             <input type="file" accept="image/*" @change="onAvatarExUpload($event, playerData.roleKey)" ref="fileInputs" />
                         </div>
                     </div>
-                    <template v-if="manualMode">
+                    <template v-if="manualMode && !funkyMode">
                         <template v-if="manualGameSelected === 1">
                             <input class="input-compact" v-model="manualPlayers[index].login" placeholder="Имя игрока">
                         </template>
@@ -1446,7 +1605,7 @@ if (window.Telegram && window.Telegram.WebApp) {
                                     running: getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused,
                                     warning: getTimerDisplay(playerData.roleKey).timeLeft <= 10 && getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused
                                 }">
-                                    {{ formatTimerTime(getTimerDisplay(playerData.roleKey).timeLeft) }}
+                                    {{ Math.floor((gamePhase==='discussion' ? discussionTimeLeft : freeSeatingTimeLeft) / 60).toString().padStart(2, '0') }}:{{ String((gamePhase==='discussion' ? discussionTimeLeft : freeSeatingTimeLeft) % 60).padStart(2, '0') }}
                                 </div>
                                 <div class="timer-controls">
                                     <button class="timer-btn timer-start"
@@ -1693,7 +1852,7 @@ if (window.Telegram && window.Telegram.WebApp) {
         </div>
 
         <!-- Панель выбора игры (только для ручного режима) -->
-        <div v-if="tableOut?.length && manualMode && rolesDistributed" class="game-table-panel">
+        <div v-if="tableOut?.length && manualMode && !funkyMode && rolesDistributed" class="game-table-panel">
             <div class="flex">
                 <!-- Карточка Игры -->
                 <div class="game-option-card">
@@ -1903,7 +2062,7 @@ if (window.Telegram && window.Telegram.WebApp) {
                                         <i class="fa fa-stop"></i>
                                     </button>
                                 </div>
-                                <div class="voting-timer-nav">
+                                <div v-if="votingTiePlayers.length > 1" class="voting-timer-nav">
                                     <button class="glass-btn" :disabled="votingTieTimerPlayerIndex <= 0" @click.stop="prevVotingTieTimerPlayer(); window.haptic.impact('light');">
                                         ◀ Пред.
                                     </button>
@@ -2233,6 +2392,311 @@ if (window.Telegram && window.Telegram.WebApp) {
             <i class="mdi mdi-moon-waning-crescent"></i>
             <span>Ночь {{ currentMode==='night' ? nightNumber : nightNumber + 1 }}</span>
         </button>
+    </div>
+
+    <!-- ============ Итоги Фанки-вечера ============ -->
+    <div v-if="showFunkySummary" class="funky-summary-overlay" style="display:flex; flex-direction:column; height:100vh; height:var(--tg-viewport-height, 100vh);">
+        <div class="funky-summary-safe-top"></div>
+        <div class="funky-summary-header">
+            <i class="mdi mdi-chart-bar" style="font-size: 1.3em; margin-right: 8px; color: var(--maf-accent-color, #ae8cff);"></i>
+            Итоги вечера
+        </div>
+        <div class="funky-summary-subtitle">{{ funkySummaryTournamentName }}</div>
+
+        <!-- ===== Контент вкладок (скроллируемая область) ===== -->
+        <div style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:80px;">
+
+            <!-- ===== ВКЛАДКА: ОБЩАЯ ===== -->
+            <div v-if="funkySummaryTab === 'overall'">
+                <div class="funky-summary-list">
+                    <div v-for="(player, rank) in funkySummaryData" :key="'fs-'+player.login"
+                         class="score-card"
+                         :class="{ 'highlighted': funkySummaryExpanded === player.login }"
+                         @click="funkySummaryExpanded = (funkySummaryExpanded === player.login ? null : player.login); window.haptic.selection();">
+
+                        <div class="player-row-content">
+                            <b class="flex-fixed player-num" :style="rank < 3 ? {color: ['#ffd700','#c0c0c0','#cd7f32'][rank]} : {}">{{ rank + 1 }}</b>
+                            <div class="avatar-uploader flex-fixed">
+                                <div class="avatar" :style="player.avatar_link ? {backgroundImage: 'url(' + player.avatar_link + ')'} : {}"></div>
+                            </div>
+                            <div class="text-ellipsis player-name">{{ player.login }}</div>
+                            <div class="role-badges-right">
+                                <span class="funky-summary-games-badge">{{ player.games }} {{ player.games === 1 ? 'игра' : (player.games < 5 ? 'игры' : 'игр') }}</span>
+                                <b style="font-size: 1.2em; margin-left: 8px; min-width: 36px; text-align: right;">{{ player.totalScore }}</b>
+                            </div>
+                        </div>
+
+                        <transition name="slide-fade">
+                            <div v-if="funkySummaryExpanded === player.login" class="score-content" @click.stop>
+                                <div class="score-dashboard-grid">
+                                    <div class="dashboard-cell"><div class="cell-label">🎮 Игры</div><div class="funky-stat-value">{{ player.games }}</div></div>
+                                    <div class="dashboard-cell"><div class="cell-label">🏆 Победы</div><div class="funky-stat-value" style="color:#30d158;">{{ player.wins }}</div></div>
+                                    <div class="dashboard-cell"><div class="cell-label" style="color:#4caf50;"><i class="fa fa-plus"></i> Доп баллы</div><div class="funky-stat-value">{{ player.bonusTotal }}</div></div>
+                                    <div class="dashboard-cell"><div class="cell-label" style="color:#f44336;"><i class="fa fa-minus"></i> Штрафы</div><div class="funky-stat-value">{{ player.penaltyTotal }}</div></div>
+                                    <div class="dashboard-cell"><div class="cell-label">🎯 ПУ (первый убитый)</div><div class="funky-stat-value">{{ player.firstKilled }}</div></div>
+                                    <div class="dashboard-cell"><div class="cell-label">💀 Убит ночью</div><div class="funky-stat-value">{{ player.killed }} <span v-if="player.selfKills" style="color:#ff453a; font-size:0.8em;">({{ player.selfKills }} сам.)</span></div></div>
+                                    <div class="dashboard-cell"><div class="cell-label">🔴 Мирный</div><div class="funky-stat-value">{{ player.peacePlayed }} <span class="funky-wins-inline">/ {{ player.peaceWins }} W</span></div></div>
+                                    <div class="dashboard-cell"><div class="cell-label">⚫ Мафия</div><div class="funky-stat-value">{{ player.mafiaPlayed }} <span class="funky-wins-inline">/ {{ player.mafiaWins }} W</span></div></div>
+                                    <div class="dashboard-cell"><div class="cell-label">🎩 Дон</div><div class="funky-stat-value">{{ player.donPlayed }} <span class="funky-wins-inline">/ {{ player.donWins }} W</span></div></div>
+                                    <div class="dashboard-cell"><div class="cell-label">⭐ Шериф</div><div class="funky-stat-value">{{ player.sheriffPlayed }} <span class="funky-wins-inline">/ {{ player.sheriffWins }} W</span></div></div>
+                                    <div class="dashboard-cell"><div class="cell-label">⚠️ Фолы</div><div class="funky-stat-value">{{ player.foulsTotal }}</div></div>
+                                    <div class="dashboard-cell"><div class="cell-label">🔧 Тех. фолы</div><div class="funky-stat-value">{{ player.techFoulsTotal }}</div></div>
+                                    <div class="dashboard-cell"><div class="cell-label">🚫 Удаления</div><div class="funky-stat-value">{{ player.removals }}</div></div>
+                                    <div class="dashboard-cell" style="background: rgba(var(--maf-accent-color-rgb), 0.05); border-color: rgba(var(--maf-accent-color-rgb), 0.2);">
+                                        <div class="cell-label" style="color: var(--maf-accent-color);">Итого баллов</div>
+                                        <div class="funky-stat-value" style="font-size: 1.5em; color: var(--maf-accent-color);">{{ player.totalScore }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </transition>
+                    </div>
+                </div>
+
+                <div style="padding: 16px 20px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                    <button class="glass-btn funky-shuffle-btn" style="width: 100%; max-width: 400px;"
+                            :disabled="funkySummarySharing"
+                            @click="funkyShareSummary(); window.haptic.impact('medium');">
+                        <template v-if="funkySummarySharing">
+                            <i class="mdi mdi-loading mdi-spin" style="margin-right: 6px;"></i>
+                            <span>Сохранение...</span>
+                        </template>
+                        <template v-else-if="funkySummaryShareUrl">
+                            <i class="mdi mdi-share-variant-outline" style="margin-right: 6px;"></i>
+                            <span>Поделиться ещё раз</span>
+                        </template>
+                        <template v-else>
+                            <i class="mdi mdi-share-variant-outline" style="margin-right: 6px;"></i>
+                            <span>Поделиться</span>
+                        </template>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ===== ВКЛАДКА: ПО ИГРАМ ===== -->
+            <div v-if="funkySummaryTab === 'games'">
+                <div style="padding: 0 12px;">
+                    <div v-for="game in funkySummaryGames" :key="'sg-'+game.gameNumber" class="score-card" style="margin-bottom: 12px;">
+                        <!-- Заголовок игры -->
+                        <div class="player-row-content" style="cursor:pointer;" @click="funkySummaryGameExpanded = (funkySummaryGameExpanded === game.gameNumber ? null : game.gameNumber); funkySummaryPlayerExpanded = null; window.haptic.selection();">
+                            <div style="display:flex; align-items:center; flex:1; gap:10px;">
+                                <div style="width:36px; height:36px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1em; flex-shrink:0;"
+                                     :style="{background: game.winnerTeam === 'civilians' ? 'rgba(255,82,82,0.15)' : (game.winnerTeam === 'mafia' ? 'rgba(79,195,247,0.15)' : 'rgba(255,255,255,0.08)'), color: game.winnerTeam === 'civilians' ? '#ff5252' : (game.winnerTeam === 'mafia' ? '#4fc3f7' : '#fff')}">
+                                    {{ game.gameNumber }}
+                                </div>
+                                <div>
+                                    <div style="font-weight:700; font-size:0.95em;">Игра {{ game.gameNumber }}</div>
+                                    <div style="font-size:0.8em; color:rgba(255,255,255,0.5);">
+                                        Победа: <span :style="{color: game.winnerTeam === 'civilians' ? '#ff5252' : (game.winnerTeam === 'mafia' ? '#4fc3f7' : '#fff')}">
+                                            {{ game.winnerTeam === 'civilians' ? 'Мирных' : (game.winnerTeam === 'mafia' ? 'Мафии' : 'Ничья') }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <i class="mdi" :class="funkySummaryGameExpanded === game.gameNumber ? 'mdi-chevron-up' : 'mdi-chevron-down'" style="font-size:1.4em; color:rgba(255,255,255,0.4);"></i>
+                        </div>
+
+                        <!-- Содержимое раскрытой игры -->
+                        <transition name="slide-fade">
+                            <div v-if="funkySummaryGameExpanded === game.gameNumber" style="padding:0;">
+                                <!-- Лучший ход -->
+                                <div v-if="game.bestMove && game.bestMove.length" style="padding:8px 16px; background:rgba(0,0,0,0.1); border-top:1px solid rgba(255,255,255,0.06); font-size:0.85em; color:rgba(255,255,255,0.6);">
+                                    🎯 Лучший ход: <b style="color:#fff;">{{ game.bestMove.join(', ') }}</b>
+                                </div>
+
+                                <!-- Список игроков -->
+                                <div v-for="p in game.players" :key="'sgp-'+p.roleKey" style="border-top:1px solid rgba(255,255,255,0.06);">
+                                    <div class="player-row-content" style="cursor:pointer;" @click.stop="funkySummaryPlayerExpanded = (funkySummaryPlayerExpanded === p.roleKey ? null : p.roleKey); window.haptic.selection();">
+                                        <b class="flex-fixed player-num" style="min-width:24px;">{{ p.num }}</b>
+                                        <div class="avatar-uploader flex-fixed">
+                                            <div class="avatar" :style="p.avatar_link ? {backgroundImage: 'url(' + p.avatar_link + ')'} : {}"></div>
+                                        </div>
+                                        <div class="text-ellipsis player-name" :style="p.action === 'killed' || p.action === 'voted' || p.action === 'removed' || p.action === 'tech_fall_removed' || p.action === 'fall_removed' ? {opacity:0.5, textDecoration:'line-through'} : {}">{{ p.login }}</div>
+                                        <div class="role-badges-right">
+                                            <span class="role-tag" :class="getSummaryRoleClass(p.role)">{{ getRoleLabel(p.role) }}</span>
+                                            <b style="font-size: 1.1em; margin-left: 8px; min-width: 30px; text-align: right;">{{ p.totalScore }}</b>
+                                        </div>
+                                    </div>
+
+                                    <!-- Раскрытая карточка игрока -->
+                                    <transition name="slide-fade">
+                                        <div v-if="funkySummaryPlayerExpanded === p.roleKey" class="score-content" @click.stop>
+                                            <div class="score-dashboard-grid">
+                                                <!-- Протокол -->
+                                                <div class="dashboard-cell">
+                                                    <div class="cell-label">Протокол</div>
+                                                    <div class="info-list">
+                                                        <template v-if="p.protocolResults">
+                                                            <div v-for="(res, idx) in p.protocolResults" :key="'prt'+idx" class="info-item">
+                                                                <span>#{{ idx }}</span>
+                                                                <div class="flex align-center">
+                                                                    <span :class="'text-' + res.role" style="margin-right:4px;">{{ getRoleLabel(res.role) }}</span>
+                                                                    <i :class="res.correct ? 'fa fa-check check-icon' : 'fa fa-times cross-icon'"></i>
+                                                                </div>
+                                                            </div>
+                                                        </template>
+                                                        <div v-else class="empty-data">Пусто</div>
+                                                    </div>
+                                                </div>
+                                                <!-- Мнение -->
+                                                <div class="dashboard-cell">
+                                                    <div class="cell-label">Мнение</div>
+                                                    <div class="info-list">
+                                                        <template v-if="p.opinionResults">
+                                                            <div v-for="(res, idx) in p.opinionResults" :key="'opn'+idx" class="info-item">
+                                                                <span>#{{ idx }}</span>
+                                                                <div class="flex align-center">
+                                                                    <span :class="'text-' + res.role" style="margin-right:4px;">{{ getRoleLabel(res.role) }}</span>
+                                                                    <i :class="res.correct ? 'fa fa-check check-icon' : 'fa fa-times cross-icon'"></i>
+                                                                </div>
+                                                            </div>
+                                                        </template>
+                                                        <div v-else class="empty-data">Пусто</div>
+                                                    </div>
+                                                </div>
+                                                <!-- Текст мнения -->
+                                                <div v-if="p.opinionText" class="dashboard-cell full-width">
+                                                    <div class="cell-label">Текст мнения</div>
+                                                    <div class="info-text-mini">"{{ p.opinionText }}"</div>
+                                                </div>
+                                                <!-- Ночные проверки -->
+                                                <div v-if="p.nightChecks && p.nightChecks.length" class="dashboard-cell full-width">
+                                                    <div class="cell-label">{{ p.role === 'don' ? '🔍 Проверки Дона' : '🔍 Проверки Шерифа' }}</div>
+                                                    <div class="info-list">
+                                                        <div v-for="(check, ci) in p.nightChecks" :key="'nch2'+ci" class="info-item">
+                                                            <span style="color: rgba(255,255,255,0.45);">Ночь {{ check.night }}</span>
+                                                            <div class="flex align-center">
+                                                                <span style="margin-right:6px;">→ №{{ check.target }}</span>
+                                                                <span :style="{ color: check.found ? '#30d158' : '#ff453a', fontWeight: 700 }">{{ check.result }}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!-- Доп / Штраф -->
+                                                <div class="dashboard-cell">
+                                                    <div class="cell-label" style="color:#4caf50;"><i class="fa fa-plus"></i> Доп</div>
+                                                    <div class="funky-stat-value">{{ p.bonus }}</div>
+                                                </div>
+                                                <div class="dashboard-cell">
+                                                    <div class="cell-label" style="color:#f44336;"><i class="fa fa-minus"></i> Штраф</div>
+                                                    <div class="funky-stat-value">{{ p.penalty }}</div>
+                                                </div>
+                                                <!-- Статус / Итого -->
+                                                <div class="dashboard-cell">
+                                                    <div class="cell-label">Статус</div>
+                                                    <div class="status-content">
+                                                        <div class="status-row">
+                                                            <span class="status-text">Вскрытие</span>
+                                                            <span :style="{color: p.reveal ? '#30d158' : 'rgba(255,255,255,0.4)', fontWeight:700}">{{ p.reveal ? 'Да' : 'Нет' }}</span>
+                                                        </div>
+                                                        <div v-if="p.isSelfKill" class="self-kill-status">
+                                                            <i class="mdi mdi-skull" style="margin-right: 6px;"></i> САМОСТРЕЛ
+                                                        </div>
+                                                        <div v-if="p.isFirstKilled" style="font-size:0.8em; color:#ffd700; margin-top:4px;">🎯 Первый убитый</div>
+                                                        <div style="font-size:0.8em; margin-top:2px; color:rgba(255,255,255,0.4);">
+                                                            Ф: {{ p.foul }} · ТФ: {{ p.techFoul }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="dashboard-cell" style="background: rgba(var(--maf-accent-color-rgb), 0.05); border-color: rgba(var(--maf-accent-color-rgb), 0.2);">
+                                                    <div class="cell-label" style="color: var(--maf-accent-color);">Итого</div>
+                                                    <div class="total-content">
+                                                        <span class="total-value">{{ p.totalScore }}</span>
+                                                        <div v-if="p.won" class="win-badge">+1 Победа</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </transition>
+                                </div>
+
+                                <!-- ===== Хронология ночей ===== -->
+                                <div v-if="buildGameNightTimeline(game).length" style="border-top:1px solid rgba(255,255,255,0.08); padding:12px 16px;">
+                                    <div style="font-weight:700; font-size:0.85em; margin-bottom:10px; color:rgba(255,255,255,0.6);">
+                                        <i class="mdi mdi-moon-waning-crescent" style="margin-right:4px;"></i> Хронология ночей
+                                    </div>
+                                    <div v-for="nightItem in buildGameNightTimeline(game)" :key="'nt-'+nightItem.night" style="margin-bottom:8px;">
+                                        <div style="font-size:0.75em; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.3); margin-bottom:4px;">Ночь {{ nightItem.night }}</div>
+                                        <div v-for="(evt, ei) in nightItem.events" :key="'ne-'+ei" class="info-item" style="margin-bottom:3px;">
+                                            <span>{{ evt.icon }}</span>
+                                            <span style="flex:1; margin-left:8px; font-size:0.85em;">{{ evt.text }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ===== История голосования ===== -->
+                                <div v-if="game.votingHistory && game.votingHistory.length" style="border-top:1px solid rgba(255,255,255,0.08); padding:12px 16px;">
+                                    <div style="font-weight:700; font-size:0.85em; margin-bottom:10px; color:rgba(255,255,255,0.6);">
+                                        <i class="fa fa-gavel" style="margin-right:6px;"></i> История голосования
+                                    </div>
+                                    <div v-for="(voting, vIdx) in game.votingHistory" :key="'gvh-'+vIdx" class="vh-card" style="margin-bottom:8px;">
+                                        <div class="vh-card-header">
+                                            <span class="vh-card-day">День {{ voting.dayNumber || vIdx + 1 }}</span>
+                                            <span :class="['vh-card-result-badge', (voting.finalWinners && voting.finalWinners.length) ? 'badge-voted' : 'badge-none']">
+                                                <template v-if="voting.finalWinners && voting.finalWinners.length">Заголосованы: {{ voting.finalWinners.join(', ') }}</template>
+                                                <template v-else>Никого не заголосовали</template>
+                                            </span>
+                                        </div>
+                                        <div v-if="voting.nominees && voting.nominees.length" class="vh-nominees">
+                                            Кандидаты: <b>{{ voting.nominees.join(', ') }}</b>
+                                        </div>
+                                        <div v-for="(stage, sIdx) in voting.stages" :key="'gst-'+sIdx" class="vh-stage">
+                                            <div class="vh-stage-name">
+                                                <span v-if="stage.type === 'main'">Голосование</span>
+                                                <span v-else-if="stage.type === 'tie'">Повторное</span>
+                                                <span v-else-if="stage.type === 'lift'">Подъем</span>
+                                            </div>
+                                            <template v-if="stage.type !== 'lift'">
+                                                <div v-for="candidate in stage.order" :key="'gc-'+candidate" class="vh-candidate-row">
+                                                    <span class="vh-cand-num" :class="{ 'vh-cand-winner': stage.winners && stage.winners.includes(Number(candidate)) }">{{ candidate }}</span>
+                                                    <span class="vh-cand-votes">{{ stage.results[candidate] ? stage.results[candidate].length : 0 }}</span>
+                                                    <span class="vh-cand-voters">{{ stage.results[candidate] && stage.results[candidate].length ? stage.results[candidate].join(', ') : '—' }}</span>
+                                                </div>
+                                            </template>
+                                            <template v-else>
+                                                <div class="vh-lift-row">
+                                                    <span class="vh-lift-label">За подъем:</span>
+                                                    <span class="vh-lift-count">{{ stage.liftResults ? stage.liftResults.length : 0 }}</span>
+                                                    <span class="vh-lift-voters">{{ stage.liftResults && stage.liftResults.length ? stage.liftResults.join(', ') : '—' }}</span>
+                                                </div>
+                                                <div class="vh-lift-result" :class="stage.winners && stage.winners.length ? 'lift-pass' : 'lift-fail'">
+                                                    {{ stage.winners && stage.winners.length ? '✓ Заголосованы' : '✗ Остаются в игре' }}
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </transition>
+                    </div>
+
+                    <!-- Пустое состояние -->
+                    <div v-if="!funkySummaryGames || !funkySummaryGames.length" style="text-align:center; padding:40px 20px; color:rgba(255,255,255,0.3);">
+                        <div style="font-size:2em; margin-bottom:8px;">🎲</div>
+                        Нет завершённых игр
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Нижний навигационный бар итогов ===== -->
+        <div class="voting-bottom-bar">
+            <div class="voting-bottom-bar-tabs">
+                <button :class="['game-nav-item', { active: funkySummaryTab === 'overall' }]"
+                        @click="funkySummaryTab = 'overall'; window.haptic.selection();">
+                    <i class="mdi mdi-podium"></i>
+                    <span>Общая</span>
+                </button>
+                <button :class="['game-nav-item', { active: funkySummaryTab === 'games' }]"
+                        @click="funkySummaryTab = 'games'; window.haptic.selection();">
+                    <i class="mdi mdi-format-list-numbered"></i>
+                    <span>По играм</span>
+                </button>
+            </div>
+            <button class="voting-bottom-close-btn" @click="showFunkySummary = false; showMainMenu = true; funkySummaryShareUrl = ''; window.haptic.impact('light');">
+                <i class="fa fa-times"></i>
+                <span>Закрыть</span>
+            </button>
+        </div>
     </div>
 
 </div>

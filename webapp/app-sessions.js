@@ -35,6 +35,17 @@ Object.assign(window.app.methods, {
                 window.sessionManager.hasSignificantData(s) || s.roomId || s.tournamentId
             );
             console.log('🏠 loadMainMenu: Показано сессий:', self.sessionsList.length);
+
+            // Не сбрасываем UI, если пользователь уже в активном режиме
+            // (Фанки, загруженный турнир, ручной режим, открытый модал, итоги)
+            if (self.funkyMode || self.tournamentId || self.manualMode ||
+                self.showFunkySummary ||
+                (self.newGameStep && self.newGameStep !== 'modes') ||
+                (!self.showMainMenu && self.showModal)) {
+                console.log('🏠 loadMainMenu: Пользователь в активном режиме, не сбрасываем UI');
+                return;
+            }
+
             self.showMainMenu = true;
             self.showRoomModal = false;
             self.showModal = false;
@@ -61,7 +72,12 @@ Object.assign(window.app.methods, {
                 if (error) {
                     console.error('🏠 loadMainMenu: Ошибка загрузки сессий:', error);
                     this.sessionsList = [];
-                    this.showMainMenu = true;
+                    // Не сбрасываем UI если пользователь уже в активном режиме
+                    if (!this.funkyMode && !this.tournamentId && !this.manualMode &&
+                        (!this.newGameStep || this.newGameStep === 'modes') &&
+                        (this.showMainMenu || !this.showModal)) {
+                        this.showMainMenu = true;
+                    }
                 } else {
                     applySessionsList(sessions);
                 }
@@ -119,8 +135,26 @@ Object.assign(window.app.methods, {
 
         // Подключаемся к WebSocket если есть комната
         if (session.tournamentId) {
-            console.log('📂 openSession: Загружаем турнир', session.tournamentId);
-            this.loadTournament();
+            if (session.funkyMode) {
+                // Funky mode: не загружаем турнир с gomafia
+                console.log('📂 openSession: Фанки-режим, турнир', session.tournamentId);
+                this.isRestoringSession = false;
+                // Игроки подтверждены, если есть manualGames с игроками или manualMode уже включён
+                const hasConfirmedPlayers = (session.manualGames && session.manualGames.length > 0 && session.manualGames[0].players && session.manualGames[0].players.length > 0)
+                    || (session.manualMode && session.manualPlayers && session.manualPlayers.length > 0);
+                if (hasConfirmedPlayers) {
+                    // Игроки уже подтверждены — показываем стол
+                    console.log('📂 openSession: Фанки с игроками, показываем стол');
+                } else {
+                    // Показываем экран ввода игроков
+                    console.log('📂 openSession: Фанки без игроков, показываем ввод');
+                    this.showModal = true;
+                    this.newGameStep = 'funky';
+                }
+            } else {
+                console.log('📂 openSession: Загружаем турнир', session.tournamentId);
+                this.loadTournament();
+            }
         } else if (session.roomId) {
             console.log('📂 openSession: Подключаемся к комнате', session.roomId);
             this.connectWS();
@@ -220,9 +254,36 @@ Object.assign(window.app.methods, {
         
         if (session.tournamentId) {
             this.tournamentId = session.tournamentId;
-            this.inputMode = 'gomafia';
-            this.manualMode = false;
-            
+
+            if (session.tournamentName) {
+                this._tournamentDisplayName = session.tournamentName;
+            }
+            if (session.tournamentFinishedFlag !== undefined) {
+                this._tournamentFinishedFlag = session.tournamentFinishedFlag;
+            }
+
+            // Funky mode restoration
+            if (session.funkyMode) {
+                this.inputMode = 'funky';
+                this.funkyMode = true;
+                this.manualMode = session.manualMode || false;
+                if (session.funkyPlayers) this.funkyPlayers = session.funkyPlayers;
+                if (session.funkyPlayerInputs) this.funkyPlayerInputs = session.funkyPlayerInputs;
+                if (session.funkyGameNumber) this.funkyGameNumber = session.funkyGameNumber;
+                if (session.funkyTableNumber) this.funkyTableNumber = session.funkyTableNumber;
+                // manualPlayers — computed, пишем в manualGames
+                if (session.manualGames) {
+                    this.manualGames = session.manualGames;
+                } else if (session.manualPlayers && session.manualPlayers.length > 0) {
+                    // Обратная совместимость: старые сессии хранили manualPlayers напрямую
+                    this.manualGames = [{ num: session.funkyGameNumber || 1, players: session.manualPlayers }];
+                }
+                if (session.manualGameSelected) this.manualGameSelected = session.manualGameSelected;
+            } else {
+                this.inputMode = 'gomafia';
+                this.manualMode = false;
+            }
+
             if (session.gameSelected !== undefined) {
                 this.gameSelected = session.gameSelected;
             }
@@ -354,6 +415,9 @@ Object.assign(window.app.methods, {
 
         this.currentSessionId = null;
         this.tournament = undefined;
+        this._tournamentDisplayName = '';
+        this._tournamentFinishedFlag = false;
+        this._isNextGameLoad = false;
         this.gameSelected = undefined;
         this.tableSelected = undefined;
         this.playersData = new Map();
@@ -372,6 +436,17 @@ Object.assign(window.app.methods, {
         this.manualPlayers = [];
         this.manualGames = [];
         this.manualGameSelected = 1;
+
+        // Funky mode reset
+        this.funkyMode = false;
+        this.funkyPlayers = [];
+        this.funkyPlayerInputs = [];
+        this.funkySearchResults = [];
+        this.funkyActiveInput = -1;
+        this.funkySearchLoading = false;
+        this.funkyGameNumber = 1;
+        this.funkyTableNumber = 1;
+
         this.editRoles = true;
         this.mainInfoText = '';
         this.additionalInfoText = '';
@@ -606,6 +681,8 @@ Object.assign(window.app.methods, {
             // Основные данные комнаты и турнира
             roomId: this.roomId,
             tournamentId: this.tournamentId,
+            tournamentName: this._tournamentDisplayName || this.mainInfoText || '',
+            tournamentFinishedFlag: this._tournamentFinishedFlag || false,
             gameSelected: this.gameSelected,
             tableSelected: this.tableSelected,
             
@@ -615,6 +692,13 @@ Object.assign(window.app.methods, {
             manualGames: this.manualGames,
             manualGameSelected: this.manualGameSelected,
             inputMode: this.inputMode,
+
+            // Funky mode
+            funkyMode: this.funkyMode || false,
+            funkyPlayers: this.funkyPlayers || [],
+            funkyPlayerInputs: this.funkyPlayerInputs || [],
+            funkyGameNumber: this.funkyGameNumber || 1,
+            funkyTableNumber: this.funkyTableNumber || 1,
             editRoles: this.editRoles,
             
             // Роли и статусы игроков
@@ -729,6 +813,9 @@ Object.assign(window.app.methods, {
         if (session.mainInfoText && session.mainInfoText.trim() && session.mainInfoText.trim() !== 'Название турнира') {
             return session.mainInfoText;
         }
+        if (session.tournamentName) {
+            return session.tournamentName;
+        }
         if (session.tournamentId) {
             return 'Турнир #' + session.tournamentId;
         }
@@ -756,6 +843,7 @@ Object.assign(window.app.methods, {
     },
 
     getSessionModeText(session) {
+        if (session.funkyMode) return 'Фанки';
         if (session.tournamentId) return 'GoMafia';
         if (session.manualMode) return 'GoРучками';
         return '';
@@ -777,13 +865,14 @@ Object.assign(window.app.methods, {
         const oneDay = 24 * 60 * 60 * 1000;
         
         return this.sessionsList.filter(s => {
-            // Игра завершена, если есть победитель
+            // Турнирные сессии: остаются активными пока турнир не завершён
+            if (s.tournamentId) {
+                return !s.tournamentFinishedFlag;
+            }
+
+            // Не-турнирные сессии: старое поведение
             const isFinished = !!s.winnerTeam;
-            
-            // Если игра завершена, она не активна
             if (isFinished) return false;
-            
-            // Если прошло больше 24 часов, игра считается завершенной автоматически
             if (s.timestamp && (now - s.timestamp) > oneDay) return false;
             
             return true;
@@ -797,17 +886,278 @@ Object.assign(window.app.methods, {
         const oneDay = 24 * 60 * 60 * 1000;
         
         return this.sessionsList.filter(s => {
-            // Игра завершена, если есть победитель
+            // Турнирные сессии: попадают в историю только когда турнир явно завершён
+            if (s.tournamentId) {
+                return !!s.tournamentFinishedFlag;
+            }
+
+            // Не-турнирные: старое поведение
             const isFinished = !!s.winnerTeam;
-            
-            // Если игра завершена, она в истории
             if (isFinished) return true;
-            
-            // Если прошло больше 24 часов, игра автоматически попадает в историю
             if (s.timestamp && (now - s.timestamp) > oneDay) return true;
             
             return false;
         });
+    },
+
+    // =============================================
+    // Группировка сессий по турнирам
+    // =============================================
+
+    getGroupedSessions(sessions) {
+        if (!sessions || !sessions.length) return [];
+
+        const tournamentGroups = {};
+        const nonTournamentSessions = [];
+
+        sessions.forEach(s => {
+            if (s.tournamentId) {
+                if (!tournamentGroups[s.tournamentId]) {
+                    tournamentGroups[s.tournamentId] = {
+                        tournamentId: s.tournamentId,
+                        tournamentName: s.tournamentName || s.mainInfoText || ('Турнир #' + s.tournamentId),
+                        sessions: [],
+                        latestTimestamp: 0,
+                        isTournament: true
+                    };
+                }
+                const group = tournamentGroups[s.tournamentId];
+                group.sessions.push(s);
+                if ((s.timestamp || 0) > group.latestTimestamp) {
+                    group.latestTimestamp = s.timestamp || 0;
+                }
+                // Обновляем название турнира если есть более свежее
+                if (s.tournamentName && s.tournamentName !== ('Турнир #' + s.tournamentId)) {
+                    group.tournamentName = s.tournamentName;
+                }
+            } else {
+                nonTournamentSessions.push({
+                    tournamentId: null,
+                    tournamentName: null,
+                    sessions: [s],
+                    latestTimestamp: s.timestamp || 0,
+                    isTournament: false
+                });
+            }
+        });
+
+        // Сортируем игры внутри каждого турнира по номеру игры
+        Object.values(tournamentGroups).forEach(group => {
+            group.sessions.sort((a, b) => (a.gameSelected || 0) - (b.gameSelected || 0));
+            group.hasActiveGame = group.sessions.some(s => !s.winnerTeam);
+            group.allGamesFinished = group.sessions.every(s => !!s.winnerTeam);
+            group.gamesCount = group.sessions.length;
+            group.finishedGamesCount = group.sessions.filter(s => !!s.winnerTeam).length;
+        });
+
+        // Объединяем и сортируем по времени
+        const allGroups = [...Object.values(tournamentGroups), ...nonTournamentSessions];
+        allGroups.sort((a, b) => (b.latestTimestamp || 0) - (a.latestTimestamp || 0));
+
+        return allGroups;
+    },
+
+    getGroupedActiveSessions() {
+        return this.getGroupedSessions(this.getActiveSessions());
+    },
+
+    getGroupedHistorySessions() {
+        return this.getGroupedSessions(this.getHistorySessions());
+    },
+
+    toggleTournamentExpanded(tournamentId) {
+        if (!this.expandedTournaments) this.expandedTournaments = {};
+        this.$set(this.expandedTournaments, tournamentId, !this.expandedTournaments[tournamentId]);
+    },
+
+    isTournamentExpanded(tournamentId) {
+        return !!(this.expandedTournaments && this.expandedTournaments[tournamentId]);
+    },
+
+    // Получить результат игры для отображения в карточке
+    getGameResultText(session) {
+        if (!session.winnerTeam) return '🎮 В процессе';
+        if (session.winnerTeam === 'civilians') return '🔴 Мирные';
+        if (session.winnerTeam === 'mafia') return '⚫ Мафия';
+        if (session.winnerTeam === 'draw') return '⚪ Ничья';
+        return '';
+    },
+
+    // =============================================
+    // Турнирный lifecycle
+    // =============================================
+
+    // Начать следующую игру в турнире
+    startNextTournamentGame(tournamentId, tableNum) {
+        console.log('🏆 startNextTournamentGame: Турнир', tournamentId, 'Стол', tableNum);
+
+        // Проверяем, не фанки ли это турнир
+        const isFunky = String(tournamentId).startsWith('funky_');
+        if (isFunky) {
+            // Находим имя турнира из существующих сессий
+            const existingSession = (this.sessionsList || []).find(s => s.tournamentId === tournamentId);
+            const tournamentName = existingSession?.tournamentName || this._tournamentDisplayName;
+
+            // Определяем следующий номер игры
+            const tournamentSessions = (this.sessionsList || []).filter(s => s.tournamentId === tournamentId);
+            let maxGame = 0;
+            tournamentSessions.forEach(s => {
+                const gn = Number(s.gameSelected) || 0;
+                if (gn > maxGame) maxGame = gn;
+            });
+
+            // Сохраняем текущую
+            if (this.currentSessionId) {
+                this.saveCurrentSession();
+            }
+
+            // Закрываем WebSocket
+            if (this.ws) {
+                this.ws.close();
+                this.ws = null;
+            }
+
+            // Сбрасываем состояние
+            this._resetGameState();
+
+            // Восстанавливаем турнирные данные для нового фанки-гейма
+            this.currentSessionId = window.sessionManager ? window.sessionManager.generateSessionId() : ('sess_' + Date.now());
+            this.funkyMode = true;
+            this.manualMode = false;
+            this.inputMode = 'funky';
+            this.tournamentId = String(tournamentId);
+            this._tournamentDisplayName = tournamentName;
+            this.mainInfoText = tournamentName;
+            this.funkyGameNumber = maxGame + 1;
+            this.funkyTableNumber = 1;
+            this.gameSelected = maxGame + 1;
+            this.tableSelected = 1;
+
+            // Инициализируем 10 слотов — предзаполняем из последней игры
+            const lastSession = tournamentSessions.sort((a, b) => (b.gameSelected || 0) - (a.gameSelected || 0))[0];
+            const prevPlayers = lastSession?.funkyPlayers || [];
+            this.funkyPlayers = [];
+            this.funkyPlayerInputs = [];
+            this.funkySearchResults = [];
+            this.funkyActiveInput = -1;
+            for (let i = 0; i < 10; i++) {
+                if (prevPlayers[i]) {
+                    // Копируем игрока из предыдущей игры (без roleKey — он будет новый)
+                    this.funkyPlayers.push({
+                        login: prevPlayers[i].login,
+                        avatar_link: prevPlayers[i].avatar_link || null,
+                        id: prevPlayers[i].id || null,
+                        title: prevPlayers[i].title || null,
+                        roleKey: `${maxGame + 1}-1-${i + 1}`,
+                        num: i + 1
+                    });
+                    this.funkyPlayerInputs.push(prevPlayers[i].login || '');
+                } else {
+                    this.funkyPlayers.push(null);
+                    this.funkyPlayerInputs.push('');
+                }
+            }
+
+            // Показываем экран ввода игроков
+            this.showModal = true;
+            this.showMainMenu = false;
+            this.showRoomModal = false;
+            this.showGameTableModal = false;
+            this.newGameStep = 'funky';
+
+            this.saveCurrentSession();
+            return;
+        }
+
+        // Сохраняем текущую сессию
+        if (this.currentSessionId) {
+            this.saveCurrentSession();
+        }
+
+        // Находим максимальный номер игры для этого турнира и стола
+        const tournamentSessions = (this.sessionsList || []).filter(
+            s => s.tournamentId === tournamentId
+        );
+        let maxGame = 0;
+        tournamentSessions.forEach(s => {
+            const gn = Number(s.gameSelected) || 0;
+            if (gn > maxGame) maxGame = gn;
+        });
+        const nextGameNum = maxGame + 1;
+
+        console.log('🎮 Следующая игра:', nextGameNum, 'для стола', tableNum);
+
+        // Закрываем WebSocket текущей сессии
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+
+        // Сбрасываем состояние
+        this._resetGameState();
+
+        // Генерируем новый ID сессии
+        this.currentSessionId = window.sessionManager ? window.sessionManager.generateSessionId() : ('sess_' + Date.now());
+
+        // Устанавливаем данные турнира
+        this.tournamentId = String(tournamentId);
+        this.gameSelected = nextGameNum;
+        this.tableSelected = Number(tableNum);
+        this.inputMode = 'gomafia';
+        this.manualMode = false;
+
+        // Скрываем главное меню
+        this.showMainMenu = false;
+        this.showRoomModal = false;
+        this.showModal = false;
+        this.showGameTableModal = false;
+
+        // Загружаем турнир (пропустит экран выбора стола, т.к. мы уже знаем стол и игру)
+        this._isNextGameLoad = true;
+        this.isRestoringSession = true;
+        this.loadTournament();
+    },
+
+    // Завершить турнир — все игры турнира уходят в историю
+    finishTournament(tournamentId) {
+        console.log('🏁 finishTournament: Завершаем турнир', tournamentId);
+
+        if (!this.sessionsList) return;
+
+        // Помечаем все сессии этого турнира как завершённые
+        this.sessionsList.forEach(s => {
+            if (s.tournamentId === tournamentId) {
+                s.tournamentFinishedFlag = true;
+            }
+        });
+
+        // Если текущая сессия принадлежит этому турниру, помечаем тоже
+        if (this.tournamentId === tournamentId) {
+            this._tournamentFinishedFlag = true;
+        }
+
+        // Сохраняем все изменённые сессии
+        if (window.sessionManager) {
+            this.sessionsList.forEach(s => {
+                if (s.tournamentId === tournamentId) {
+                    try {
+                        window.sessionManager.addOrUpdateSession(s);
+                    } catch (e) {
+                        console.error('Ошибка сохранения сессии при завершении турнира:', e);
+                    }
+                }
+            });
+        }
+
+        // Сворачиваем карточку турнира
+        if (this.expandedTournaments) {
+            this.$set(this.expandedTournaments, tournamentId, false);
+        }
+
+        console.log('✅ Турнир', tournamentId, 'завершён');
+
+        // Обновляем UI
+        this.$forceUpdate();
     }
 });
 

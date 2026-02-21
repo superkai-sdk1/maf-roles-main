@@ -26,12 +26,35 @@ window.app = new Vue({
         avatarsFromServer: {}, // Добавляем поле для аватаров с сервера
         showModal: true,        tournamentId: '',
         inputMode: 'gomafia',
-        newGameStep: 'modes',   // 'modes' | 'gomafia' | 'manual'
+        newGameStep: 'modes',   // 'modes' | 'gomafia' | 'manual' | 'funky'
         manualMode: false,
         manualPlayersCount: 10,
         manualPlayers: [], // Добавляем массив игроков для ручного режима
         manualGames: [],
         manualGameSelected: 1,        editRoles: true,
+        
+        // Funky mode
+        funkyMode: false,
+        funkyPlayers: [],           // [{login, avatar_link, id, title, roleKey, num}, ...]  — 10 игроков
+        funkyPlayerInputs: [],      // ['', '', ...] — текстовые значения 10 инпутов
+        funkySearchResults: [],     // результаты поиска для текущего инпута
+        funkyActiveInput: -1,       // индекс активного инпута (0–9)
+        funkySearchLoading: false,
+        funkyGameNumber: 1,         // текущий номер игры в фанки-турнире
+        funkyTableNumber: 1,        // номер стола (всегда 1)
+
+        // Funky итоги вечера
+        showFunkySummary: false,
+        funkySummaryData: [],       // [{login, avatar_link, totalScore, games, wins, ...}]
+        funkySummaryExpanded: null,  // login раскрытой карточки
+        funkySummaryTournamentName: '',
+        funkySummarySharing: false,  // идёт ли сохранение для шеринга
+        funkySummaryShareUrl: '',    // URL для шеринга итогов
+        funkySummaryTab: 'overall',  // 'overall' | 'games'
+        funkySummaryGames: [],       // [{gameNumber, winnerTeam, players: [...], votingHistory, nightCheckHistory, bestMove, ...}]
+        funkySummaryGameExpanded: null, // gameNumber раскрытой карточки игры
+        funkySummaryPlayerExpanded: null, // roleKey раскрытого игрока внутри игры
+
         isObs: false, // Добавляем переменную isObs
         mainInfoText: "",
         additionalInfoText: "",
@@ -61,6 +84,7 @@ window.app = new Vue({
         sessionsList: [],
         activeHistoryTab: 'active', // 'active' или 'history'
         currentSessionId: null,
+        expandedTournaments: {}, // { tournamentId: true/false } — раскрытые турнирные карточки
         isMasterPanel: false,
         panelId: null,
         activePanelId: null,

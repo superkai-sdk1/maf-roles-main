@@ -1829,6 +1829,249 @@ input:focus, select:focus, .input-compact:focus {
   transform: translateY(-50%) scale(0.9);
 }
 
+/* ============================================= */
+/*  Tournament Group Cards                       */
+/* ============================================= */
+
+.tournament-group-card {
+  position: relative;
+  width: 100%;
+  background: var(--glass-layer-1);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.2s var(--ease-spring);
+  backdrop-filter: var(--blur-light);
+  -webkit-backdrop-filter: var(--blur-light);
+  box-shadow: var(--glass-shadow-sm);
+}
+
+.tournament-group-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--glass-specular-subtle);
+  pointer-events: none;
+  opacity: 0.5;
+  border-radius: 20px;
+}
+
+.tournament-group-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: background 0.2s;
+  position: relative;
+  z-index: 1;
+  gap: 12px;
+}
+
+.tournament-group-header:active {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tournament-group-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(174, 140, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--maf-accent-color, #ae8cff);
+  font-size: 1.3em;
+}
+
+.tournament-group-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tournament-group-name {
+  font-weight: 700;
+  font-size: 1.05em;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.2px;
+  margin-bottom: 4px;
+}
+
+.tournament-group-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tournament-game-count {
+  font-size: 0.8em;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 600;
+}
+
+.tournament-status-badge {
+  font-size: 0.7em;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tournament-status-badge.active {
+  background: rgba(76, 175, 80, 0.15);
+  color: #66bb6a;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+.tournament-status-badge.ready {
+  background: rgba(174, 140, 255, 0.12);
+  color: var(--maf-accent-color, #ae8cff);
+  border: 1px solid rgba(174, 140, 255, 0.2);
+}
+
+.tournament-group-chevron {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 1.4em;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tournament-group-chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.tournament-group-body {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tournament-games-list {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tournament-game-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tournament-game-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tournament-game-row:active {
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tournament-game-row.finished {
+  opacity: 0.85;
+}
+
+.tournament-game-row.active {
+  background: rgba(76, 175, 80, 0.06);
+  border: 1px solid rgba(76, 175, 80, 0.12);
+}
+
+.tournament-game-num {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 70px;
+}
+
+.game-num-label {
+  font-weight: 700;
+  font-size: 0.9em;
+  color: #fff;
+}
+
+.game-table-label {
+  font-size: 0.7em;
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 500;
+}
+
+.tournament-game-result {
+  flex: 1;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tournament-game-time {
+  font-size: 0.72em;
+  color: rgba(255, 255, 255, 0.25);
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.tournament-actions {
+  padding: 10px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tournament-action-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9em;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  outline: none;
+  letter-spacing: 0.3px;
+}
+
+.tournament-action-btn:active {
+  transform: scale(0.97);
+}
+
+.next-game-btn {
+  background: rgba(174, 140, 255, 0.12);
+  color: var(--maf-accent-color, #ae8cff);
+  border-color: rgba(174, 140, 255, 0.25);
+}
+
+.next-game-btn:hover {
+  background: rgba(174, 140, 255, 0.2);
+  border-color: rgba(174, 140, 255, 0.4);
+  box-shadow: 0 4px 16px rgba(174, 140, 255, 0.15);
+}
+
+.finish-tournament-btn {
+  background: rgba(255, 69, 58, 0.06);
+  color: rgba(255, 69, 58, 0.7);
+  border-color: rgba(255, 69, 58, 0.15);
+}
+
+.finish-tournament-btn:hover {
+  background: rgba(255, 69, 58, 0.12);
+  color: rgba(255, 69, 58, 0.9);
+  border-color: rgba(255, 69, 58, 0.3);
+}
+
 .main-menu-empty {
   text-align: center;
   padding: 60px 20px;
@@ -5267,6 +5510,280 @@ input:focus, select:focus, .input-compact:focus {
 }
 
 /* ============================================= */
+/*  Funky Mode — Player Input Screen             */
+/* ============================================= */
+
+.funky-players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 0;
+}
+
+.funky-player-slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.2s;
+  position: relative;
+  min-height: 48px;
+  overflow: visible;
+}
+
+.funky-player-slot.filled {
+  background: rgba(174, 140, 255, 0.06);
+  border-color: rgba(174, 140, 255, 0.15);
+}
+
+.funky-player-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.85em;
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+
+.funky-player-slot.filled .funky-player-num {
+  background: rgba(174, 140, 255, 0.15);
+  color: var(--maf-accent-color, #ae8cff);
+}
+
+.funky-player-input-wrap {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
+.funky-player-input {
+  width: 100%;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 4px 0 !important;
+  font-size: 0.95em !important;
+  font-weight: 600;
+  color: #fff;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.funky-player-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+  font-weight: 500;
+}
+
+.funky-search-dropdown {
+  position: relative;
+  z-index: 10;
+  background: rgba(30, 30, 45, 0.97);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 6px;
+  padding: 4px;
+}
+
+.funky-search-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.funky-search-item:hover,
+.funky-search-item:active {
+  background: rgba(174, 140, 255, 0.12);
+}
+
+.funky-search-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06) center/cover no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  font-size: 1.1em;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.funky-search-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.funky-search-name {
+  font-weight: 700;
+  font-size: 0.9em;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.funky-search-title {
+  font-size: 0.72em;
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.funky-search-loading {
+  position: relative;
+  z-index: 10;
+  background: rgba(30, 30, 45, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.85em;
+  font-weight: 600;
+  text-align: center;
+}
+
+.funky-player-selected {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.funky-selected-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06) center/cover no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.funky-selected-name {
+  font-weight: 700;
+  font-size: 0.9em;
+  color: #fff;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.funky-clear-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 69, 58, 0.08);
+  border: 1px solid rgba(255, 69, 58, 0.15);
+  color: rgba(255, 69, 58, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 1em;
+  transition: all 0.15s;
+  outline: none;
+}
+
+.funky-clear-btn:active {
+  background: rgba(255, 69, 58, 0.2);
+  color: #ff453a;
+  transform: scale(0.9);
+}
+
+.funky-filled-counter {
+  text-align: center;
+  font-size: 0.85em;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 8px;
+  letter-spacing: 0.5px;
+}
+
+.funky-actions-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.funky-shuffle-btn {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 16px;
+  font-size: 0.95em;
+  font-weight: 700;
+  background: rgba(174, 140, 255, 0.08);
+  border: 1px solid rgba(174, 140, 255, 0.2);
+  color: var(--maf-accent-color, #ae8cff);
+}
+
+.funky-shuffle-btn:active:not(:disabled) {
+  background: rgba(174, 140, 255, 0.18);
+}
+
+.funky-shuffle-btn:disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.funky-back-btn {
+  flex: 1;
+  padding: 14px 16px;
+  border-radius: 16px;
+  font-size: 0.95em;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.funky-back-btn:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.funky-actions-container .game-actions-row {
+  width: 100%;
+  max-width: none;
+}
+
+.funky-actions-container .game-finish-btn:disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* ============================================= */
 /*  Tournament Browser Modal                     */
 /* ============================================= */
 
@@ -5746,4 +6263,79 @@ input:focus, select:focus, .input-compact:focus {
     font-size: 1.3em !important;
   }
 }
+
+
+/* ============================================= */
+/*  Funky Summary — Итоги вечера                 */
+/* ============================================= */
+
+.funky-summary-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 2000;
+  background: var(--bg-main, #23232a);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.funky-summary-safe-top {
+  height: env(safe-area-inset-top, 0px);
+}
+
+.funky-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4em;
+  font-weight: 800;
+  padding: 18px 20px 4px;
+  letter-spacing: 0.5px;
+}
+
+.funky-summary-subtitle {
+  text-align: center;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  padding-bottom: 14px;
+}
+
+.funky-summary-list {
+  padding: 0 12px 12px;
+}
+
+.funky-summary-games-badge {
+  font-size: 0.75em;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 3px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.funky-stat-value {
+  font-size: 1.2em;
+  font-weight: 800;
+  text-align: center;
+  padding: 6px 0;
+}
+
+.funky-wins-inline {
+  font-size: 0.7em;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* Кнопка «Подвести итоги» в карточке турнира */
+.tournament-action-btn.summary-btn {
+  background: rgba(174, 140, 255, 0.08);
+  border-color: rgba(174, 140, 255, 0.25);
+  color: var(--maf-accent-color, #ae8cff);
+}
+
+.tournament-action-btn.summary-btn:active {
+  background: rgba(174, 140, 255, 0.18);
+}
+
 

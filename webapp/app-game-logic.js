@@ -283,19 +283,21 @@ Object.assign(window.app.methods, {
     _finalizeTournamentLoad() {
         const value = this.tournament;
         const games = value?.props?.pageProps?.serverData?.games;
+        const isNextGame = this._isNextGameLoad;
+        this._isNextGameLoad = false;
 
         this.showModal = false;
         this.showMainMenu = false;
         this.showGameTableModal = false;
         this.editRoles = true;
 
-        // При восстановлении сессии не сбрасываем лучший ход
-        if (!this.isRestoringSession) {
+        // При восстановлении сессии не сбрасываем лучший ход (кроме следующей игры)
+        if (!this.isRestoringSession || isNextGame) {
             this.resetBestMove();
         }
 
-        // Обновляем информационные тексты только если не восстанавливаем сессию
-        if (!this.isRestoringSession) {
+        // Обновляем информационные тексты если не восстанавливаем сессию ИЛИ если это следующая игра
+        if (!this.isRestoringSession || isNextGame) {
             this.mainInfoText = this._tournamentDisplayName || ('Турнир #' + this.tournamentId);
             let tableCount = games && games[0]?.game?.length || 1;
             let gameCount = games?.length || 1;
@@ -1990,6 +1992,749 @@ Object.assign(window.app.methods, {
         this.showReturnPlayerModal = false;
     },
 
+    // =====================================================
+    // Funky Mode — свободная игра с ручным вводом игроков
+    // =====================================================
+
+    startFunkyMode() {
+        console.log('🎉 startFunkyMode: Запускаем режим Фанки');
+
+        this.funkyMode = true;
+        this.manualMode = false;
+        this.inputMode = 'funky';
+        this.funkyGameNumber = 1;
+        this.funkyTableNumber = 1;
+
+        // Генерируем название турнира — текущая дата
+        const now = new Date();
+        const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+        const dateStr = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+        this._tournamentDisplayName = `Фанки ${dateStr}`;
+        this.mainInfoText = this._tournamentDisplayName;
+
+        // Генерируем уникальный tournamentId для фанки-турнира
+        this.tournamentId = 'funky_' + Date.now();
+
+        // Инициализируем 10 пустых слотов для игроков
+        this.funkyPlayers = [];
+        this.funkyPlayerInputs = [];
+        this.funkySearchResults = [];
+        this.funkyActiveInput = -1;
+        this.funkySearchLoading = false;
+
+        for (let i = 0; i < 10; i++) {
+            this.funkyPlayers.push(null);
+            this.funkyPlayerInputs.push('');
+        }
+
+        // Генерируем sessionId
+        if (!this.currentSessionId && window.sessionManager) {
+            this.currentSessionId = window.sessionManager.generateSessionId();
+        }
+
+        // Показываем экран ввода игроков (внутри showModal)
+        this.showModal = true;
+        this.showRoomModal = false;
+        this.showMainMenu = false;
+        this.showGameTableModal = false;
+        this.newGameStep = 'funky';
+
+        this.saveCurrentSession();
+    },
+
+    // Поиск игроков в базе данных
+    async funkySearchPlayer(index) {
+        const query = this.funkyPlayerInputs[index];
+
+        if (!query || query.trim().length < 1) {
+            this.funkySearchResults = [];
+            this.funkySearchLoading = false;
+            return;
+        }
+
+        // Показываем индикатор загрузки только если ещё нет результатов
+        // (чтобы не мигал дропдаун при обновлении результатов)
+        if (this.funkySearchResults.length === 0) {
+            this.funkySearchLoading = true;
+        }
+        this.funkyActiveInput = index;
+        console.log('🔍 funkySearchPlayer: Ищем "' + query.trim() + '" для слота', index);
+
+        try {
+            const url = `/api/players-search.php?za&q=${encodeURIComponent(query.trim())}`;
+            console.log('🔍 funkySearchPlayer: URL:', url);
+            const response = await fetch(url);
+
+            // Проверяем, не переключился ли пользователь на другой инпут пока шёл запрос
+            if (this.funkyActiveInput !== index) {
+                console.log('🔍 funkySearchPlayer: Инпут сменился, результаты не применяем');
+                return;
+            }
+
+            console.log('🔍 funkySearchPlayer: response.status:', response.status, 'ok:', response.ok);
+
+            if (response.ok) {
+                const text = await response.text();
+                console.log('🔍 funkySearchPlayer: raw response:', text.substring(0, 300));
+
+                // Повторная проверка после второго await
+                if (this.funkyActiveInput !== index) {
+                    console.log('🔍 funkySearchPlayer: Инпут сменился после text(), не применяем');
+                    return;
+                }
+
+                let results;
+                try {
+                    results = JSON.parse(text);
+                } catch (parseErr) {
+                    console.error('❌ funkySearchPlayer: JSON parse error:', parseErr.message, 'raw:', text.substring(0, 200));
+                    this.funkySearchResults = [];
+                    return;
+                }
+
+                if (Array.isArray(results)) {
+                    const selectedLogins = this.funkyPlayers
+                        .filter(p => p !== null)
+                        .map(p => p.login);
+                    this.funkySearchResults = results.filter(r => !selectedLogins.includes(r.login));
+                    console.log('🔍 funkySearchPlayer: Найдено', this.funkySearchResults.length, 'результатов');
+                } else if (results && results.error) {
+                    console.error('❌ funkySearchPlayer: API error:', results.error);
+                    this.funkySearchResults = [];
+                } else {
+                    console.warn('⚠️ funkySearchPlayer: Unexpected response format:', results);
+                    this.funkySearchResults = [];
+                }
+            } else {
+                // Логируем тело ответа даже при ошибке, чтобы видеть причину
+                try {
+                    const errText = await response.text();
+                    console.error('❌ funkySearchPlayer: HTTP error:', response.status, response.statusText, 'Body:', errText.substring(0, 500));
+                } catch(_e) {
+                    console.error('❌ funkySearchPlayer: HTTP error:', response.status, response.statusText);
+                }
+                this.funkySearchResults = [];
+            }
+        } catch (e) {
+            console.error('❌ funkySearchPlayer: Fetch error:', e.message || e);
+            this.funkySearchResults = [];
+        } finally {
+            this.funkySearchLoading = false;
+        }
+    },
+
+    // Выбор игрока из результатов поиска
+    funkySelectPlayer(index, player) {
+        console.log(`✅ funkySelectPlayer: Слот ${index + 1} = ${player.login}`);
+
+        const roleKey = `${this.funkyGameNumber}-${this.funkyTableNumber}-${index + 1}`;
+
+        this.$set(this.funkyPlayers, index, {
+            login: player.login,
+            avatar_link: player.avatar_link || null,
+            id: player.id || null,
+            title: player.title || null,
+            roleKey: roleKey,
+            num: index + 1
+        });
+
+        this.$set(this.funkyPlayerInputs, index, player.login);
+        this.funkySearchResults = [];
+        this.funkyActiveInput = -1;
+
+        // Кэшируем аватарку
+        if (player.avatar_link) {
+            if (!this.avatarsFromServer) this.avatarsFromServer = {};
+            this.$set(this.avatarsFromServer, player.login, player.avatar_link);
+        }
+
+        // Автоматически фокусируемся на следующем пустом слоте
+        this.$nextTick(() => {
+            const nextEmpty = this.funkyPlayers.findIndex(p => p === null);
+            if (nextEmpty !== -1) {
+                const nextInput = document.querySelector(`.funky-player-input[data-index="${nextEmpty}"]`);
+                if (nextInput) nextInput.focus();
+            }
+        });
+
+        this.saveCurrentSession();
+    },
+
+    // Ручной ввод имени игрока (если нет в базе)
+    funkySetManualPlayer(index) {
+        const name = this.funkyPlayerInputs[index];
+        if (!name || !name.trim()) return;
+
+        // Проверяем, не выбран ли уже этот игрок
+        const existing = this.funkyPlayers.find(p => p && p.login === name.trim());
+        if (existing) {
+            console.warn('⚠️ Игрок уже выбран:', name.trim());
+            return;
+        }
+
+        const roleKey = `${this.funkyGameNumber}-${this.funkyTableNumber}-${index + 1}`;
+
+        this.$set(this.funkyPlayers, index, {
+            login: name.trim(),
+            avatar_link: null,
+            id: null,
+            title: null,
+            roleKey: roleKey,
+            num: index + 1
+        });
+
+        this.funkySearchResults = [];
+        this.funkyActiveInput = -1;
+
+        this.saveCurrentSession();
+    },
+
+    // Очистка слота игрока
+    funkyClearPlayer(index) {
+        const player = this.funkyPlayers[index];
+        if (player && player.login && this.avatarsFromServer) {
+            // Не удаляем аватарку из кэша — она может понадобиться
+        }
+
+        this.$set(this.funkyPlayers, index, null);
+        this.$set(this.funkyPlayerInputs, index, '');
+        this.funkySearchResults = [];
+
+        this.saveCurrentSession();
+    },
+
+    // Проверка: все 10 игроков заполнены
+    funkyAllPlayersFilled() {
+        return this.funkyPlayers.length === 10 && this.funkyPlayers.every(p => p !== null);
+    },
+
+    // Подвести итоги Фанки-вечера
+    funkyBuildSummary(tournamentId) {
+        console.log('📊 funkyBuildSummary: Собираем статистику для', tournamentId);
+
+        const sessions = (this.sessionsList || []).filter(s => s.tournamentId === tournamentId);
+        if (!sessions.length) {
+            this.showAlert && this.showAlert('Нет игр для подведения итогов');
+            return;
+        }
+
+        // Собираем статистику по каждому игроку
+        const stats = {}; // { login: { ... } }
+
+        sessions.forEach(session => {
+            if (!session.winnerTeam) return; // пропускаем незавершённые
+
+            const players = session.funkyPlayers || session.manualPlayers || [];
+            const roles = session.roles || {};
+            const actions = session.playersActions || {};
+            const fouls = session.fouls || {};
+            const techFouls = session.techFouls || {};
+            const removed = session.removed || {};
+            const scores = session.playerScores || {};
+            const firstKilled = session.firstKilledPlayer || null;
+            const winnerTeam = session.winnerTeam;
+
+            players.forEach((p, i) => {
+                if (!p || !p.login) return;
+                const login = p.login;
+                const roleKey = p.roleKey || ((session.funkyGameNumber || session.gameSelected || 1) + '-' + (session.funkyTableNumber || 1) + '-' + (i + 1));
+                const role = roles[roleKey] || null; // null = мирный, 'don', 'black', 'sheriff'
+
+                if (!stats[login]) {
+                    stats[login] = {
+                        login: login,
+                        avatar_link: p.avatar_link || null,
+                        totalScore: 0,
+                        games: 0,
+                        wins: 0,
+                        bonusTotal: 0,
+                        penaltyTotal: 0,
+                        firstKilled: 0,    // ПУ
+                        killed: 0,         // убит ночью
+                        selfKills: 0,      // самострелы
+                        peacePlayed: 0, peaceWins: 0,
+                        mafiaPlayed: 0, mafiaWins: 0,
+                        donPlayed: 0, donWins: 0,
+                        sheriffPlayed: 0, sheriffWins: 0,
+                        foulsTotal: 0,
+                        techFoulsTotal: 0,
+                        removals: 0
+                    };
+                }
+                const s = stats[login];
+                if (p.avatar_link && !s.avatar_link) s.avatar_link = p.avatar_link;
+
+                s.games++;
+
+                // Роль
+                const isCivilian = !role || role === 'sheriff';
+                const isMafia = role === 'black' || role === 'don';
+                if (role === 'don') { s.donPlayed++; }
+                else if (role === 'black') { s.mafiaPlayed++; }
+                else if (role === 'sheriff') { s.sheriffPlayed++; }
+                else { s.peacePlayed++; }
+
+                // Победа
+                const won = (winnerTeam === 'civilians' && isCivilian) || (winnerTeam === 'mafia' && isMafia);
+                if (won) {
+                    s.wins++;
+                    if (role === 'don') s.donWins++;
+                    else if (role === 'black') s.mafiaWins++;
+                    else if (role === 'sheriff') s.sheriffWins++;
+                    else s.peaceWins++;
+                }
+
+                // Действия
+                const action = actions[roleKey];
+                if (action === 'killed') {
+                    s.killed++;
+                    // Самострел: мафия убита ночью
+                    if (isMafia) s.selfKills++;
+                }
+
+                // ПУ — первый убитый
+                if (firstKilled === roleKey) {
+                    s.firstKilled++;
+                }
+
+                // Фолы
+                const foulCount = Number(fouls[roleKey]) || 0;
+                s.foulsTotal += foulCount;
+                const tfCount = Number(techFouls[roleKey]) || 0;
+                s.techFoulsTotal += tfCount;
+
+                // Удаления
+                if (removed[roleKey] || action === 'removed' || action === 'tech_fall_removed' || action === 'fall_removed') {
+                    s.removals++;
+                }
+
+                // Баллы
+                let gameScore = 0;
+                if (won) gameScore += 1;
+                const bonus = parseFloat(scores[roleKey]?.bonus || 0);
+                const penalty = parseFloat(scores[roleKey]?.penalty || 0);
+                gameScore += bonus - penalty;
+                s.totalScore += gameScore;
+                s.bonusTotal += bonus;
+                s.penaltyTotal += penalty;
+            });
+        });
+
+        // Сортируем по totalScore убыванию
+        const sorted = Object.values(stats).sort((a, b) => b.totalScore - a.totalScore);
+        sorted.forEach(s => { s.totalScore = parseFloat(s.totalScore.toFixed(2)); s.bonusTotal = parseFloat(s.bonusTotal.toFixed(2)); s.penaltyTotal = parseFloat(s.penaltyTotal.toFixed(2)); });
+
+        // === Собираем данные по каждой игре для вкладки "По играм" ===
+        const perGameData = [];
+        sessions.forEach(session => {
+            if (!session.winnerTeam) return;
+
+            const players = session.funkyPlayers || session.manualPlayers || [];
+            const roles = session.roles || {};
+            const actions = session.playersActions || {};
+            const fouls = session.fouls || {};
+            const techFouls = session.techFouls || {};
+            const scores = session.playerScores || {};
+            const protocolData = session.protocolData || {};
+            const opinionData = session.opinionData || {};
+            const opinionText = session.opinionText || {};
+            const winnerTeam = session.winnerTeam;
+            const bestMove = session.bestMove || [];
+            const firstKilledPlayer = session.firstKilledPlayer || null;
+            const nightCheckHistory = session.nightCheckHistory || [];
+            const votingHistory = session.votingHistory || [];
+            const nightMisses = session.nightMisses || {};
+            const nightNumber = session.nightNumber || 1;
+
+            const gamePlayers = [];
+            players.forEach((p, i) => {
+                if (!p || !p.login) return;
+                const roleKey = p.roleKey || ((session.funkyGameNumber || session.gameSelected || 1) + '-' + (session.funkyTableNumber || 1) + '-' + (i + 1));
+                const role = roles[roleKey] || null;
+                const action = actions[roleKey] || null;
+                const isCivilian = !role || role === 'sheriff';
+                const isMafia = role === 'black' || role === 'don';
+                const won = (winnerTeam === 'civilians' && isCivilian) || (winnerTeam === 'mafia' && isMafia);
+
+                let gameScore = 0;
+                if (won) gameScore += 1;
+                const bonus = parseFloat(scores[roleKey]?.bonus || 0);
+                const penalty = parseFloat(scores[roleKey]?.penalty || 0);
+                gameScore += bonus - penalty;
+
+                // Protocol check results
+                let protocolResults = null;
+                if (protocolData[roleKey]) {
+                    const pr = {};
+                    let has = false;
+                    Object.keys(protocolData[roleKey]).forEach(idx => {
+                        const predicted = protocolData[roleKey][idx];
+                        if (predicted) {
+                            has = true;
+                            const targetIdx = parseInt(idx);
+                            const targetP = players[targetIdx - 1];
+                            const targetRoleKey = targetP?.roleKey || ((session.funkyGameNumber || session.gameSelected || 1) + '-' + (session.funkyTableNumber || 1) + '-' + targetIdx);
+                            const actualRole = roles[targetRoleKey] || null;
+                            let isCorrect = false;
+                            if (predicted === 'peace' && !actualRole) isCorrect = true;
+                            else if (predicted === 'sheriff' && actualRole === 'sheriff') isCorrect = true;
+                            else if (predicted === 'mafia' && actualRole === 'black') isCorrect = true;
+                            else if (predicted === 'don' && actualRole === 'don') isCorrect = true;
+                            pr[idx] = { role: predicted, correct: isCorrect };
+                        }
+                    });
+                    if (has) protocolResults = pr;
+                }
+
+                // Opinion check results
+                let opinionResults = null;
+                if (opinionData[roleKey]) {
+                    const or = {};
+                    let has = false;
+                    Object.keys(opinionData[roleKey]).forEach(idx => {
+                        const predicted = opinionData[roleKey][idx];
+                        if (predicted) {
+                            has = true;
+                            const targetIdx = parseInt(idx);
+                            const targetP = players[targetIdx - 1];
+                            const targetRoleKey = targetP?.roleKey || ((session.funkyGameNumber || session.gameSelected || 1) + '-' + (session.funkyTableNumber || 1) + '-' + targetIdx);
+                            const actualRole = roles[targetRoleKey] || null;
+                            let isCorrect = false;
+                            if (predicted === 'peace' && !actualRole) isCorrect = true;
+                            else if (predicted === 'sheriff' && actualRole === 'sheriff') isCorrect = true;
+                            else if (predicted === 'mafia' && actualRole === 'black') isCorrect = true;
+                            else if (predicted === 'don' && actualRole === 'don') isCorrect = true;
+                            or[idx] = { role: predicted, correct: isCorrect };
+                        }
+                    });
+                    if (has) opinionResults = or;
+                }
+
+                const playerNightChecks = nightCheckHistory.filter(h => h.checker === roleKey);
+
+                gamePlayers.push({
+                    num: i + 1,
+                    login: p.login,
+                    avatar_link: p.avatar_link || null,
+                    roleKey: roleKey,
+                    role: role,
+                    action: action,
+                    won: won,
+                    foul: Number(fouls[roleKey]) || 0,
+                    techFoul: Number(techFouls[roleKey]) || 0,
+                    bonus: parseFloat(bonus.toFixed(2)),
+                    penalty: parseFloat(penalty.toFixed(2)),
+                    reveal: scores[roleKey]?.reveal || false,
+                    totalScore: parseFloat(gameScore.toFixed(2)),
+                    isFirstKilled: firstKilledPlayer === roleKey,
+                    isSelfKill: isMafia && action === 'killed',
+                    protocolResults: protocolResults,
+                    opinionResults: opinionResults,
+                    opinionText: opinionText[roleKey] || '',
+                    nightChecks: playerNightChecks
+                });
+            });
+
+            perGameData.push({
+                gameNumber: session.funkyGameNumber || session.gameSelected || perGameData.length + 1,
+                winnerTeam: winnerTeam,
+                players: gamePlayers,
+                bestMove: bestMove,
+                firstKilledPlayer: firstKilledPlayer,
+                votingHistory: votingHistory,
+                nightCheckHistory: nightCheckHistory,
+                nightMisses: nightMisses,
+                nightNumber: nightNumber
+            });
+        });
+
+        this.funkySummaryData = sorted;
+        this.funkySummaryGames = perGameData;
+        this.funkySummaryExpanded = null;
+        this.funkySummaryGameExpanded = null;
+        this.funkySummaryPlayerExpanded = null;
+        this.funkySummaryTab = 'overall';
+        this.funkySummaryTournamentName = sessions[0]?.tournamentName || sessions[0]?.mainInfoText || 'Фанки';
+        this.funkySummarySharing = false;
+        this.funkySummaryShareUrl = '';
+        this.showFunkySummary = true;
+        this.showMainMenu = false;
+
+        console.log('📊 funkyBuildSummary: Готово,', sorted.length, 'игроков,', perGameData.length, 'игр');
+    },
+
+    // Сохранить результаты игры (кнопка «Сохранить» в интерфейсе расстановки баллов)
+    funkySaveGameResults() {
+        // Помечаем игру как завершённую с сохранёнными баллами
+        this._funkyGameSaved = true;
+
+        // Сохраняем сессию
+        this.saveCurrentSession();
+
+        // Возвращаемся в главное меню
+        this.showMainMenu = true;
+        this.showModal = false;
+        this.showRoomModal = false;
+        this.showGameTableModal = false;
+
+        console.log('💾 funkySaveGameResults: Игра сохранена');
+
+        // Если это фанки — можно создать следующую игру из меню
+        if (window.haptic) window.haptic.notification('success');
+    },
+
+    // Поделиться итогами вечера — сохраняет на сервер и копирует ссылку
+    async funkyShareSummary() {
+        if (this.funkySummarySharing) return;
+
+        // Если ссылка уже есть — сразу открываем шеринг Telegram
+        if (this.funkySummaryShareUrl) {
+            this._funkyOpenTelegramShare(this.funkySummaryShareUrl);
+            return;
+        }
+
+        this.funkySummarySharing = true;
+        try {
+            const payload = {
+                tournamentName: this.funkySummaryTournamentName || 'Фанки',
+                data: this.funkySummaryData,
+                games: this.funkySummaryGames || [],
+                createdAt: new Date().toISOString()
+            };
+
+            const res = await fetch('/api/summary-save.php?za', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                console.error('❌ funkyShareSummary: HTTP error:', res.status, text);
+                this.funkySummarySharing = false;
+                return;
+            }
+
+            const result = await res.json();
+            if (result.id) {
+                const baseUrl = window.location.origin;
+                const shareUrl = baseUrl + '/summary.html?id=' + result.id;
+                this.funkySummaryShareUrl = shareUrl;
+                console.log('📋 Ссылка создана:', shareUrl);
+
+                // Открываем интерфейс «Поделиться» в Telegram
+                this._funkyOpenTelegramShare(shareUrl);
+            } else {
+                console.error('❌ funkyShareSummary: No ID in response', result);
+            }
+        } catch (err) {
+            console.error('❌ funkyShareSummary: Error', err);
+        }
+        this.funkySummarySharing = false;
+    },
+
+    // Открыть стандартный диалог «Поделиться» в Telegram (выбор получателя)
+    _funkyOpenTelegramShare(url) {
+        const text = '📊 ' + (this.funkySummaryTournamentName || 'Итоги вечера');
+        const tg = window.Telegram && window.Telegram.WebApp;
+
+        if (tg && typeof tg.openTelegramLink === 'function') {
+            // t.me/share/url — стандартный Telegram share dialog с выбором чата
+            const shareLink = 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text);
+            tg.openTelegramLink(shareLink);
+            console.log('📤 Telegram share dialog opened');
+        } else {
+            // Fallback — копируем в буфер обмена
+            try {
+                navigator.clipboard.writeText(url);
+                console.log('📋 Ссылка скопирована (не в Telegram):', url);
+            } catch (e) {
+                prompt('Скопируйте ссылку:', url);
+            }
+        }
+    },
+
+    // Случайная рассадка игроков (перемешивание)
+    funkyShufflePlayers() {
+        if (!this.funkyAllPlayersFilled()) return;
+        console.log('🔀 funkyShufflePlayers: Перемешиваем игроков');
+
+        // Fisher-Yates shuffle
+        const players = [...this.funkyPlayers];
+        for (let i = players.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [players[i], players[j]] = [players[j], players[i]];
+        }
+
+        // Обновляем roleKey и num после перемешивания
+        for (let i = 0; i < players.length; i++) {
+            if (players[i]) {
+                players[i] = {
+                    ...players[i],
+                    num: i + 1,
+                    roleKey: `${this.funkyGameNumber}-${this.funkyTableNumber}-${i + 1}`
+                };
+            }
+        }
+
+        this.funkyPlayers = players;
+        this.funkyPlayerInputs = players.map(p => p ? p.login : '');
+        this.funkySearchResults = [];
+        this.funkyActiveInput = -1;
+    },
+
+    // Подтверждение состава и переход к раздаче ролей
+    funkyConfirmPlayers() {
+        if (!this.funkyAllPlayersFilled()) {
+            this.showAlert('Необходимо заполнить всех 10 игроков');
+            return;
+        }
+
+        console.log('🎉 funkyConfirmPlayers: Подтверждаем состав, переходим к раздаче ролей');
+
+        // Формируем массив игроков для совместимости с tableOut
+        const players = this.funkyPlayers.map((p, i) => ({
+            ...p,
+            num: i + 1,
+            roleKey: `${this.funkyGameNumber}-${this.funkyTableNumber}-${i + 1}`
+        }));
+
+        // Записываем в manualGames (manualPlayers — computed, читает из manualGames)
+        this.manualGames = [{
+            num: this.funkyGameNumber,
+            players: players
+        }];
+        this.manualGameSelected = this.funkyGameNumber;
+
+        // Включаем manualMode для совместимости с tableOut computed
+        this.manualMode = true;
+        this.gameSelected = this.funkyGameNumber;
+        this.tableSelected = this.funkyTableNumber;
+
+        // Обновляем информационный текст
+        this.additionalInfoText = `Игра ${this.funkyGameNumber} | Стол ${this.funkyTableNumber}`;
+
+        // Скрываем экран ввода, переходим к стандартному интерфейсу
+        this.showModal = false;
+        this.showMainMenu = false;
+        this.showGameTableModal = false;
+        this.editRoles = true;
+        this.newGameStep = 'modes';
+
+        // Сохраняем аватарки на сервер
+        const avatars = {};
+        this.funkyPlayers.forEach(p => {
+            if (p && p.avatar_link) {
+                avatars[p.login] = p.avatar_link;
+            }
+        });
+        if (Object.keys(avatars).length > 0) {
+            this.avatarsFromServer = { ...(this.avatarsFromServer || {}), ...avatars };
+            if (this.saveAvatarsToServer) {
+                this.saveAvatarsToServer(this.avatarsFromServer);
+            }
+        }
+
+        this.$forceUpdate();
+        this.saveCurrentSession();
+
+        if (this.sendFullState && this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.sendFullState();
+        }
+    },
+
+    // Начать следующую игру Фанки (вызывается из турнирной карточки или из UI)
+    startNextFunkyGame() {
+        console.log('🎉 startNextFunkyGame: Следующая игра Фанки');
+
+        const currentTournamentId = this.tournamentId;
+        const currentTournamentName = this._tournamentDisplayName;
+        const nextGameNum = this.funkyGameNumber + 1;
+
+        // Сохраняем текущую
+        if (this.currentSessionId) {
+            this.saveCurrentSession();
+        }
+
+        // Закрываем WebSocket
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+
+        // Сбрасываем состояние
+        this._resetGameState();
+
+        // Восстанавливаем турнирные данные
+        this.currentSessionId = window.sessionManager ? window.sessionManager.generateSessionId() : ('sess_' + Date.now());
+        this.funkyMode = true;
+        this.manualMode = false;
+        this.inputMode = 'funky';
+        this.tournamentId = currentTournamentId;
+        this._tournamentDisplayName = currentTournamentName;
+        this.mainInfoText = currentTournamentName;
+        this.funkyGameNumber = nextGameNum;
+        this.funkyTableNumber = 1;
+        this.gameSelected = nextGameNum;
+        this.tableSelected = 1;
+
+        // Инициализируем 10 пустых слотов
+        this.funkyPlayers = [];
+        this.funkyPlayerInputs = [];
+        this.funkySearchResults = [];
+        this.funkyActiveInput = -1;
+
+        for (let i = 0; i < 10; i++) {
+            this.funkyPlayers.push(null);
+            this.funkyPlayerInputs.push('');
+        }
+
+        // Показываем экран ввода игроков
+        this.showModal = true;
+        this.showMainMenu = false;
+        this.showRoomModal = false;
+        this.showGameTableModal = false;
+        this.newGameStep = 'funky';
+
+        this.saveCurrentSession();
+    },
+
+    // Debounce для поиска
+    funkyOnInput(index) {
+        // Если пользователь переключился на другой инпут — сбрасываем результаты
+        if (this.funkyActiveInput !== index) {
+            this.funkySearchResults = [];
+            this.funkySearchLoading = false;
+        }
+        this.funkyActiveInput = index;
+        console.log('🔍 funkyOnInput: index=', index, 'value=', this.funkyPlayerInputs[index]);
+
+        clearTimeout(this._funkySearchTimeout);
+
+        const query = this.funkyPlayerInputs[index];
+        if (!query || query.trim().length < 1) {
+            this.funkySearchResults = [];
+            this.funkySearchLoading = false;
+            return;
+        }
+
+        // НЕ ставим funkySearchLoading = true здесь!
+        // Это скрывало бы текущие результаты поиска при каждом нажатии клавиши.
+        // Loading будет установлен внутри funkySearchPlayer перед fetch.
+
+        this._funkySearchTimeout = setTimeout(() => {
+            this.funkySearchPlayer(index);
+        }, 300);
+    },
+
+    // Закрытие выпадающего списка (вызывается только при явных действиях)
+    funkyCloseSearch() {
+        this.funkySearchResults = [];
+        this.funkyActiveInput = -1;
+        this.funkySearchLoading = false;
+        clearTimeout(this._funkySearchTimeout);
+    },
+
     // Функции для ручного режима
     createManualTable() {
         if (!this.manualPlayersCount || this.manualPlayersCount < 1 || this.manualPlayersCount > 15) {
@@ -2326,6 +3071,69 @@ Object.assign(window.app.methods, {
             case 'black': return 'Мафия';
             default: return 'Мирный';
         }
+    },
+
+    // Получить роль-класс для тега
+    getSummaryRoleClass(role) {
+        if (role === 'don') return 'don';
+        if (role === 'black') return 'mafia';
+        if (role === 'sheriff') return 'sheriff';
+        return 'peace';
+    },
+
+    // Построить хронологию ночей для одной игры
+    buildGameNightTimeline(game) {
+        if (!game) return [];
+        const timeline = [];
+        const nch = game.nightCheckHistory || [];
+        const players = game.players || [];
+
+        // Определяем максимальную ночь
+        let maxNight = game.nightNumber || 1;
+        nch.forEach(h => { if (h.night > maxNight) maxNight = h.night; });
+
+        for (let night = 1; night <= maxNight; night++) {
+            const events = [];
+
+            // Убийство в эту ночь
+            const killedInNight = players.filter(p => {
+                // Если у нас нет точной информации о ночи убийства, восстанавливаем из контекста
+                // Первый убитый (isFirstKilled) — ночь 1
+                if (p.action === 'killed') {
+                    if (p.isFirstKilled && night === 1) return true;
+                }
+                return false;
+            });
+            // Более общий подход: ночные проверки показывают какая ночь была,
+            // а убийства привязаны к action — покажем убийство по ПУ для ночи 1
+            if (night === 1) {
+                const fk = players.find(p => p.isFirstKilled);
+                if (fk) {
+                    events.push({ type: 'kill', icon: '💀', text: '№' + fk.num + ' ' + fk.login + ' убит' + (fk.isSelfKill ? ' (самострел)' : '') });
+                }
+            }
+
+            // Промах
+            if (game.nightMisses && game.nightMisses[night]) {
+                events.push({ type: 'miss', icon: '❌', text: 'Промах' });
+            }
+
+            // Проверки Дона
+            nch.filter(h => h.night === night && h.checkerRole === 'don').forEach(h => {
+                events.push({ type: 'don-check', icon: '🎩', text: 'Дон проверил №' + h.target + ' ' + (h.targetLogin || '') + ' — ' + h.result });
+            });
+
+            // Проверки Шерифа
+            nch.filter(h => h.night === night && h.checkerRole === 'sheriff').forEach(h => {
+                events.push({ type: 'sheriff-check', icon: '⭐', text: 'Шериф проверил №' + h.target + ' ' + (h.targetLogin || '') + ' — ' + h.result });
+            });
+
+            if (events.length > 0) {
+                timeline.push({ night: night, events: events });
+            }
+        }
+
+        return timeline;
     }
 });
 
