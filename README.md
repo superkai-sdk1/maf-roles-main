@@ -446,7 +446,7 @@ GoMafia.pro  ──►  sync-players.js  ──►  players-update.php  ──�
 
 ```bash
 # На сервере — создать дамп
-mysqldump -u kai -p webrarium_mafia players > webapp/api/mafia.sql
+mysqldump --no-tablespaces -u kai -p webrarium_mafia players > webapp/api/mafia.sql
 
 # На локальной машине — скачать дамп
 scp user@ваш-сервер:/var/www/mafboard/webapp/api/mafia.sql ./webapp/api/mafia.sql

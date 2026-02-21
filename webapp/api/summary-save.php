@@ -59,6 +59,7 @@ $fileData = [
     'id' => $id,
     'tournamentName' => isset($payload['tournamentName']) ? $payload['tournamentName'] : 'Фанки',
     'data' => $payload['data'],
+    'games' => isset($payload['games']) ? $payload['games'] : [],
     'createdAt' => isset($payload['createdAt']) ? $payload['createdAt'] : date('c'),
     'savedAt' => date('c')
 ];
