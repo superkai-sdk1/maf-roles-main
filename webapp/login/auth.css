@@ -132,8 +132,8 @@
 .auth-spinner {
     width: 32px;
     height: 32px;
-    border: 3px solid rgba(174, 140, 255, 0.2);
-    border-top-color: #ae8cff;
+    border: 3px solid rgba(168, 85, 247, 0.2);
+    border-top-color: #a855f7;
     border-radius: 50%;
     animation: authSpin 0.8s linear infinite;
     margin: 12px 0;
@@ -146,14 +146,14 @@
 /* Code display */
 .auth-code-display {
     background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(174, 140, 255, 0.25);
+    border: 1px solid rgba(168, 85, 247, 0.25);
     border-radius: 16px;
     padding: 16px 32px;
     margin: 8px 0 4px;
     position: relative;
     box-shadow:
         inset 0 2px 8px rgba(0, 0, 0, 0.3),
-        0 0 24px rgba(174, 140, 255, 0.08);
+        0 0 24px rgba(168, 85, 247, 0.08);
 }
 
 #auth-code-digits {
@@ -162,7 +162,7 @@
     font-weight: 800;
     letter-spacing: 12px;
     color: #fff;
-    text-shadow: 0 0 20px rgba(174, 140, 255, 0.4);
+    text-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
     user-select: all;
     -webkit-user-select: all;
 }
@@ -174,28 +174,28 @@
     justify-content: center;
     width: 100%;
     padding: 14px 24px;
-    background: linear-gradient(135deg, rgba(174, 140, 255, 0.2) 0%, rgba(174, 140, 255, 0.1) 100%);
-    border: 1px solid rgba(174, 140, 255, 0.35);
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(168, 85, 247, 0.1) 100%);
+    border: 1px solid rgba(168, 85, 247, 0.35);
     border-radius: 14px;
-    color: #ae8cff;
+    color: #a855f7;
     font-size: 1em;
     font-weight: 700;
     text-decoration: none;
     transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     margin-top: 4px;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(174, 140, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.1);
 }
 
 .auth-bot-btn:hover {
-    background: linear-gradient(135deg, rgba(174, 140, 255, 0.3) 0%, rgba(174, 140, 255, 0.15) 100%);
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(168, 85, 247, 0.15) 100%);
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(174, 140, 255, 0.2);
+    box-shadow: 0 6px 20px rgba(168, 85, 247, 0.2);
 }
 
 .auth-bot-btn:active {
     transform: scale(0.97);
-    box-shadow: 0 2px 8px rgba(174, 140, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(168, 85, 247, 0.1);
 }
 
 /* Timer bar */
@@ -211,7 +211,7 @@
 .auth-timer-fill {
     height: 100%;
     width: 100%;
-    background: linear-gradient(90deg, #ae8cff, #7c5ce0);
+    background: linear-gradient(90deg, #a855f7, #7c5ce0);
     border-radius: 3px;
     transition: width 300s linear;
 }
@@ -243,9 +243,9 @@
 }
 
 .auth-retry-btn {
-    background: linear-gradient(135deg, rgba(174, 140, 255, 0.2), rgba(174, 140, 255, 0.1));
-    border-color: rgba(174, 140, 255, 0.3);
-    color: #ae8cff;
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(168, 85, 247, 0.1));
+    border-color: rgba(168, 85, 247, 0.3);
+    color: #a855f7;
 }
 
 /* Error */
@@ -296,4 +296,3 @@
         padding-right: max(16px, env(safe-area-inset-right));
     }
 }
-

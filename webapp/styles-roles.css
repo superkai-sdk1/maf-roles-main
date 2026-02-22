@@ -1,6 +1,6 @@
 :root {
-  --maf-accent-color: #ae8cff;
-  --maf-accent-color-rgb: 174,140,255;
+  --maf-accent-color: #a855f7;
+  --maf-accent-color-rgb: 168,85,247;
   --maf-accent-color-22: rgba(var(--maf-accent-color-rgb), 0.13);
   --maf-accent-color-24: rgba(var(--maf-accent-color-rgb), 0.14);
   --maf-accent-color-2b: rgba(var(--maf-accent-color-rgb), 0.17);
@@ -11,21 +11,21 @@
   --maf-accent-color-88: rgba(var(--maf-accent-color-rgb), 0.53);
   --maf-accent-color-99: rgba(var(--maf-accent-color-rgb), 0.60);
   --maf-accent-color-cc: rgba(var(--maf-accent-color-rgb), 0.80);
-  --maf-panel-glow: 0 0 18px 4px var(--maf-accent-color-44), 0 0 1px 0px #31225c, 0 2px 8px #0003;
-  --maf-panel-border: linear-gradient(120deg, var(--maf-accent-color, #ae8cff), #5b3e9c 60%, #ede7f6 100%);
-  --maf-panel-bg-dark: #191420e6;
-  --maf-panel-bg-dark2: #221a2b;
+  --maf-panel-glow: 0 0 18px 4px var(--maf-accent-color-44), 0 0 1px 0px #1a0f4a, 0 2px 8px #0003;
+  --maf-panel-border: linear-gradient(120deg, var(--maf-accent-color, #a855f7), #5b3e9c 60%, #ede7f6 100%);
+  --maf-panel-bg-dark: #0a0814e6;
+  --maf-panel-bg-dark2: #120e1e;
   --maf-panel-radius: 18px;
   --maf-panel-padding: 9px 18px;
-  --maf-panel-shadow: 0 0 12px 2px #ae8cff40, 0 2px 10px #0002;
+  --maf-panel-shadow: 0 0 12px 2px rgba(168,85,247,0.25), 0 2px 10px #0002;
   --maf-panel-border-width: 2.2px;
   --maf-panel-fadein: mafFadeIn 0.65s cubic-bezier(.6, 0, .3, 1);
   --maf-panel-fadeout: mafFadeOut 0.5s cubic-bezier(.6, 0, .3, 1);
-  --maf-bg-main: #23232a;
-  --maf-bg-secondary: #2c2c36;
-  --maf-bg-accent: #37374a;
+  --maf-bg-main: #040410;
+  --maf-bg-secondary: #0d0a2a;
+  --maf-bg-accent: #1a0f4a;
   --maf-text-main: #fff;
-  --maf-btn-main: #23232a;
+  --maf-btn-main: #0a0814;
 }
 
 /* Фиксируем размер экрана */
@@ -225,7 +225,7 @@ input {
   background-position: center;
   box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
   margin: 0;
-  background-color: #222;
+  background-color: rgba(10, 8, 20, 0.9);
 }
 
 .badges-wrapper {
@@ -258,14 +258,14 @@ input {
   border-radius: 60%; /* чуть больше радиус */
   border: 3px solid var(--maf-accent-color);
   box-shadow: 0 0 22px 6px var(--maf-accent-color-99), 0 3px 14px rgba(0, 0, 0, 0.16);
-  background: var(--role-bg, #1C1C1C);
-  background: linear-gradient(135deg, var(--role-bg, #1C1C1C) 80%, #2d2d2d 100%);
+  background: var(--role-bg, rgba(10, 8, 20, 0.9));
+  background: linear-gradient(135deg, var(--role-bg, rgba(10, 8, 20, 0.9)) 80%, rgba(30,28,50,0.9) 100%);
   transition: box-shadow 0.3s, background 0.2s, color 0.2s;
 }
 
 .role-badge--sheriff { --role-bg: #E63946; }
-.role-badge--mafia { --role-bg: #1C1C1C; }
-.role-badge--don { --role-bg: #1C1C1C; }
+.role-badge--mafia { --role-bg: rgba(10, 8, 20, 0.95); }
+.role-badge--don { --role-bg: rgba(10, 8, 20, 0.95); }
 
 .status-badge {
   position: absolute;
@@ -282,7 +282,7 @@ input {
   border-radius: 50%;
   border: 3px solid var(--maf-accent-color);
   box-shadow: 0 0 22px 6px var(--maf-accent-color-99), 0 3px 14px rgba(0, 0, 0, 0.16);
-  background: #1C1C1C !important;
+  background: rgba(10, 8, 20, 0.95) !important;
   animation: badge-pulse 1.8s infinite cubic-bezier(.4, 0, .6, 1), badge-glow 2.3s infinite linear;
   transition: box-shadow 0.3s, background 0.2s, color 0.2s;
 }
@@ -558,12 +558,15 @@ input {
 	overflow: visible;
 	border-radius: 22px;
 	border: 4px solid var(--maf-accent-color);
-	background: #222;
+	background: rgba(10, 8, 20, 0.85);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
 	box-shadow:
 		0 0 22px 4px var(--maf-accent-color-88),
-		0 0 38px 12px var(--maf-accent-color-33);
+		0 0 38px 12px var(--maf-accent-color-33),
+		0 8px 32px 0 rgba(0,0,0,0.8);
 	background-image:
-		linear-gradient(#222, #222),
+		linear-gradient(rgba(10, 8, 20, 0.85), rgba(10, 8, 20, 0.85)),
 		conic-gradient(from 0deg, var(--maf-accent-color), var(--maf-accent-color-80), var(--maf-accent-color) 100%);
 	background-origin: border-box;
 	background-clip: padding-box, border-box;
@@ -579,11 +582,11 @@ input {
 }
 @keyframes maf-border-glow {
 	0% { background-image:
-		linear-gradient(#222, #222),
+		linear-gradient(rgba(10, 8, 20, 0.85), rgba(10, 8, 20, 0.85)),
 		conic-gradient(from 0deg, var(--maf-accent-color), var(--maf-accent-color-80), var(--maf-accent-color) 100%);
 	}
 	100% { background-image:
-		linear-gradient(#222, #222),
+		linear-gradient(rgba(10, 8, 20, 0.85), rgba(10, 8, 20, 0.85)),
 		conic-gradient(from 360deg, var(--maf-accent-color), var(--maf-accent-color-80), var(--maf-accent-color) 100%);
 	}
 }
@@ -771,12 +774,15 @@ input {
 	overflow: visible;
 	border-radius: 22px;
 	border: 4px solid var(--maf-accent-color);
-	background: #222;
+	background: rgba(10, 8, 20, 0.85);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
 	box-shadow:
 		0 0 22px 4px var(--maf-accent-color-88),
-		0 0 38px 12px var(--maf-accent-color-33);
+		0 0 38px 12px var(--maf-accent-color-33),
+		0 8px 32px 0 rgba(0,0,0,0.8);
 	background-image:
-		linear-gradient(#222, #222),
+		linear-gradient(rgba(10, 8, 20, 0.85), rgba(10, 8, 20, 0.85)),
 		conic-gradient(from 0deg, var(--maf-accent-color), var(--maf-accent-color-80), var(--maf-accent-color) 100%);
 	background-origin: border-box;
 	background-clip: padding-box, border-box;
@@ -789,9 +795,6 @@ input {
 	padding-right: 20px;
 	padding-top: 15px;
 	padding-bottom: 15px;
-	box-shadow:
-		0 0 22px 4px #ae8cff88,
-		0 0 38px 12px #ae8cff33;
 }
 
 .statuses-info-panel {
@@ -825,15 +828,17 @@ input {
 .additional-info-panel,
 .statuses-info-panel,
 .best-move-info-panel {
-  background: var(--maf-bg-secondary) !important;
+  background: rgba(10, 8, 20, 0.85) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   color: var(--maf-text-main) !important;
   transition: background 0.2s, color 0.2s, box-shadow 0.2s;
   border-radius: 22px;
   border: 4px solid var(--maf-accent-color);
   box-shadow:
     0 0 22px 4px var(--maf-accent-color-88),
-    0 0 38px 12px var(--maf-accent-color-33);
-  /* убираем background-image и background: #222; */
+    0 0 38px 12px var(--maf-accent-color-33),
+    0 8px 32px 0 rgba(0,0,0,0.8);
 }
 
 /* Подложка под никнейм */
@@ -900,13 +905,13 @@ input {
     position: fixed;
     inset: 0;
     z-index: 99999;
-    background: rgba(24, 18, 43, 0.80);
-    backdrop-filter: blur(18px);
+    background: rgba(4, 4, 16, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     display: flex;
     align-items: center;
     justify-content: center;
     animation: winner-fade-in 0.7s cubic-bezier(.4,0,.2,1);
-    /* уменьшаем padding для экономии места */
     padding: 0 30px;
 }
 @keyframes winner-fade-in {
@@ -931,23 +936,21 @@ input {
     max-width: 100vw;
 }
 .winner-title, .loser-title {
-    font-size: 2.9em; /* увеличен размер */
+    font-size: 2.9em;
     font-weight: 900;
-    color: var(--maf-accent-color, #ae8cff);
+    color: var(--maf-accent-color, #a855f7);
     letter-spacing: 0.06em;
     margin-bottom: 16px;
-    text-shadow: 0 2px 18px var(--maf-accent-color-88), 0 1px 8px #0008;
+    text-shadow: 0 2px 18px var(--maf-accent-color-88), 0 0 40px rgba(168,85,247,0.3), 0 1px 8px #0008;
     text-align: center;
     transition: color 0.2s;
 }
 .winner-title {
-    color: var(--maf-accent-color, #ae8cff);
+    color: var(--maf-accent-color, #a855f7);
 }
 .loser-title {
-    /* Используем более тёмный вариант акцентного цвета */
-    color: #6a3fa7; /* fallback для фиолетового */
-    color: color-mix(in srgb, var(--maf-accent-color, #ae8cff) 60%, #18181d 40%);
-    /* Если color-mix не поддерживается, останется fallback */
+    color: #6a3fa7;
+    color: color-mix(in srgb, var(--maf-accent-color, #a855f7) 60%, #040410 40%);
     text-shadow: 0 2px 18px var(--maf-accent-color-44), 0 1px 8px #0008;
     transition: color 0.2s;
 }
@@ -971,11 +974,13 @@ input {
 .winner-card {
     width: 180px;
     min-height: 240px;
-    /* height: 240px; */ /* убрано фиксированное значение */
-    background: var(--maf-bg-main, #23232a);
+    background: rgba(10, 8, 20, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     color: var(--maf-text-main, #fff);
     border-radius: 24px;
-    box-shadow: 0 0 24px 4px var(--maf-accent-color-44), 0 3px 14px #0005;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 24px 4px var(--maf-accent-color-44), 0 8px 32px 0 rgba(0,0,0,0.8);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1002,13 +1007,13 @@ input {
     margin-bottom: 0;
     margin-top: 0;
     box-shadow: 0 0 12px 3px var(--maf-accent-color-44), 0 2px 8px rgba(0,0,0,0.16);
-    background-color: #222;
+    background-color: rgba(10, 8, 20, 0.9);
     display: block;
 }
 .winner-name {
-    font-size: 1.1em; /* уменьшено */
+    font-size: 1.1em;
     font-weight: 800;
-    color: var(--maf-accent-color, #ae8cff);
+    color: var(--maf-accent-color, #a855f7);
     margin-bottom: 3px;
     text-align: center;
     text-shadow: 0 1px 8px #0008;

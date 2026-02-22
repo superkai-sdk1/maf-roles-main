@@ -10,6 +10,38 @@ console.log('📦 Загружается app-sessions.js v2...');
 window.app = window.app || {};
 if (!window.app.methods) window.app.methods = {};
 
+// Хелпер: статус серии игр (турнир/фанки)
+function _getTournamentStatusText(group) {
+    if (!group || !group.sessions || !group.sessions.length) return 'Создан';
+
+    // Если турнир явно завершён
+    const isFinished = group.sessions.some(s => s.tournamentFinishedFlag);
+    if (isFinished) return 'Завершён';
+
+    // Если все игры завершены (баллы сохранены)
+    if (group.allGamesFinished) return 'Завершён';
+
+    // Если есть хотя бы одна игра в процессе
+    const hasInProgress = group.sessions.some(s => {
+        // Игра с gameFinished = true считается завершённой
+        if (s.gameFinished) return false;
+        // Обратная совместимость: старые сессии без поля gameFinished
+        if (s.winnerTeam && s.gameFinished === undefined) return false;
+        // Всё остальное — в процессе (включая winnerTeam без gameFinished — расстановка баллов)
+        if (s.winnerTeam) return true;
+        if (s.rolesDistributed) return true;
+        const rolesCount = s.roles ? Object.keys(s.roles).length : 0;
+        if (rolesCount > 0) return true;
+        return false;
+    });
+    if (hasInProgress) return 'Идёт';
+
+    // Если есть хотя бы одна завершённая игра — тоже «Идёт»
+    if (group.finishedGamesCount > 0) return 'Идёт';
+
+    return 'Создан';
+}
+
 // Принудительно добавляем методы для работы с сессиями
 Object.assign(window.app.methods, {
 
@@ -37,8 +69,7 @@ Object.assign(window.app.methods, {
             console.log('🏠 loadMainMenu: Показано сессий:', self.sessionsList.length);
 
             // Не сбрасываем UI, если пользователь уже в активном режиме
-            // (Фанки, загруженный турнир, ручной режим, открытый модал, итоги)
-            if (self.funkyMode || self.tournamentId || self.manualMode ||
+            if (self.funkyMode || self.cityMode || self.tournamentId || self.manualMode ||
                 self.showFunkySummary ||
                 (self.newGameStep && self.newGameStep !== 'modes') ||
                 (!self.showMainMenu && self.showModal)) {
@@ -64,32 +95,17 @@ Object.assign(window.app.methods, {
             }
         }
 
-        // Проверяем Telegram Cloud Storage (асинхронный путь)
-        if (window.sessionManager.hasTelegramCloudStorage && window.sessionManager.hasTelegramCloudStorage()) {
-            console.log('🏠 loadMainMenu: Используем Telegram Cloud Storage (асинхронно)');
-
-            window.sessionManager.getSessions((error, sessions) => {
-                if (error) {
-                    console.error('🏠 loadMainMenu: Ошибка загрузки сессий:', error);
-                    this.sessionsList = [];
-                    // Не сбрасываем UI если пользователь уже в активном режиме
-                    if (!this.funkyMode && !this.tournamentId && !this.manualMode &&
-                        (!this.newGameStep || this.newGameStep === 'modes') &&
-                        (this.showMainMenu || !this.showModal)) {
-                        this.showMainMenu = true;
-                    }
-                } else {
-                    applySessionsList(sessions);
-                }
+        // Единый путь: ждём готовности кэша (localStorage + Cloud Storage), потом sync с сервером
+        if (window.sessionManager.whenReady) {
+            window.sessionManager.whenReady(function(sessions) {
+                applySessionsList(sessions);
                 // Фоновая синхронизация с сервером
                 doServerSync();
             });
         } else {
-            // Синхронный вызов для localStorage
-            console.log('🏠 loadMainMenu: Используем localStorage (синхронно)');
+            // Fallback для старой версии sessionManager
             const sessions = window.sessionManager.getSessions() || [];
             applySessionsList(sessions);
-            // Фоновая синхронизация с сервером
             doServerSync();
         }
     },
@@ -151,6 +167,19 @@ Object.assign(window.app.methods, {
                     this.showModal = true;
                     this.newGameStep = 'funky';
                 }
+            } else if (session.cityMode) {
+                // City Mafia mode: не загружаем турнир с gomafia
+                console.log('📂 openSession: Городская мафия, турнир', session.tournamentId);
+                this.isRestoringSession = false;
+                const hasCityConfirmedPlayers = (session.manualGames && session.manualGames.length > 0 && session.manualGames[0].players && session.manualGames[0].players.length > 0)
+                    || (session.manualMode && session.manualPlayers && session.manualPlayers.length > 0);
+                if (hasCityConfirmedPlayers) {
+                    console.log('📂 openSession: Городская мафия с игроками, показываем стол');
+                } else {
+                    console.log('📂 openSession: Городская мафия без игроков, показываем ввод');
+                    this.showModal = true;
+                    this.newGameStep = 'city';
+                }
             } else {
                 console.log('📂 openSession: Загружаем турнир', session.tournamentId);
                 this.loadTournament();
@@ -178,7 +207,7 @@ Object.assign(window.app.methods, {
         console.log('🆕 startNewGame: Начинаем новую игру');
 
         // Сохраняем текущую сессию перед переключением (только если уже есть активная)
-        if (this.currentSessionId && (this.roomId || this.tournamentId || this.manualMode)) {
+        if (this.currentSessionId && (this.roomId || this.tournamentId || this.manualMode || this.cityMode)) {
             this.saveCurrentSession();
         }
         
@@ -205,8 +234,8 @@ Object.assign(window.app.methods, {
     returnToMainMenu() {
         console.log('🏠 returnToMainMenu: Возвращаемся в главное меню');
 
-        // Сохраняем текущую сессию только если есть данные
-        if (this.currentSessionId && (this.roomId || this.tournamentId || this.manualMode)) {
+        // Сохраняем текущую сессию только если есть данные и не было только что сохранено
+        if (!this._skipReturnSave && this.currentSessionId && (this.roomId || this.tournamentId || this.manualMode || this.cityMode)) {
             this.saveCurrentSession();
         }
 
@@ -227,6 +256,14 @@ Object.assign(window.app.methods, {
 
         // Перезагружаем историю и показываем меню
         this.loadMainMenu();
+
+        // Гарантируем показ главного меню (на случай если loadMainMenu не установил)
+        this.$nextTick(() => {
+            if (!this.showMainMenu) {
+                console.warn('🏠 returnToMainMenu: showMainMenu не установлен, принудительно показываем');
+                this.showMainMenu = true;
+            }
+        });
     },
 
     // Удалить игру из истории
@@ -261,6 +298,9 @@ Object.assign(window.app.methods, {
             if (session.tournamentFinishedFlag !== undefined) {
                 this._tournamentFinishedFlag = session.tournamentFinishedFlag;
             }
+            if (session.totalGamesInTournament) {
+                this.totalGamesInTournament = session.totalGamesInTournament;
+            }
 
             // Funky mode restoration
             if (session.funkyMode) {
@@ -271,12 +311,42 @@ Object.assign(window.app.methods, {
                 if (session.funkyPlayerInputs) this.funkyPlayerInputs = session.funkyPlayerInputs;
                 if (session.funkyGameNumber) this.funkyGameNumber = session.funkyGameNumber;
                 if (session.funkyTableNumber) this.funkyTableNumber = session.funkyTableNumber;
-                // manualPlayers — computed, пишем в manualGames
+                // manualPlayers — data перекрывает computed, ставим напрямую
                 if (session.manualGames) {
                     this.manualGames = session.manualGames;
+                    // Извлекаем players из manualGames для tableOut
+                    const activeGame = session.manualGames.find(g => g.num === (session.manualGameSelected || session.funkyGameNumber || 1));
+                    if (activeGame && activeGame.players && activeGame.players.length > 0) {
+                        this.manualPlayers = activeGame.players;
+                    }
                 } else if (session.manualPlayers && session.manualPlayers.length > 0) {
                     // Обратная совместимость: старые сессии хранили manualPlayers напрямую
                     this.manualGames = [{ num: session.funkyGameNumber || 1, players: session.manualPlayers }];
+                    this.manualPlayers = session.manualPlayers;
+                }
+                if (session.manualGameSelected) this.manualGameSelected = session.manualGameSelected;
+            } else if (session.cityMode) {
+                // City Mafia mode restoration
+                this.inputMode = 'city';
+                this.cityMode = true;
+                this.manualMode = session.manualMode || false;
+                if (session.cityPlayers) this.cityPlayers = session.cityPlayers;
+                if (session.cityPlayerInputs) this.cityPlayerInputs = session.cityPlayerInputs;
+                if (session.cityPlayersCount) this.cityPlayersCount = session.cityPlayersCount;
+                if (session.cityGameNumber) this.cityGameNumber = session.cityGameNumber;
+                if (session.cityTableNumber) this.cityTableNumber = session.cityTableNumber;
+                if (session.cityRoleToggles) this.cityRoleToggles = session.cityRoleToggles;
+                if (session.cityAssignedRoles) this.cityAssignedRoles = session.cityAssignedRoles;
+                if (session.cityStep) this.cityStep = session.cityStep;
+                if (session.manualGames) {
+                    this.manualGames = session.manualGames;
+                    const activeGame = session.manualGames.find(g => g.num === (session.manualGameSelected || session.cityGameNumber || 1));
+                    if (activeGame && activeGame.players && activeGame.players.length > 0) {
+                        this.manualPlayers = activeGame.players;
+                    }
+                } else if (session.manualPlayers && session.manualPlayers.length > 0) {
+                    this.manualGames = [{ num: session.cityGameNumber || 1, players: session.manualPlayers }];
+                    this.manualPlayers = session.manualPlayers;
                 }
                 if (session.manualGameSelected) this.manualGameSelected = session.manualGameSelected;
             } else {
@@ -293,11 +363,19 @@ Object.assign(window.app.methods, {
         } else if (session.manualMode) {
             this.inputMode = 'manual';
             this.manualMode = true;
-            if (session.manualPlayers) {
+            if (session.manualPlayers && session.manualPlayers.length > 0) {
                 this.manualPlayers = session.manualPlayers;
             }
             if (session.manualGames) {
                 this.manualGames = session.manualGames;
+                // Если manualPlayers пуст — извлекаем из manualGames
+                if (!this.manualPlayers || this.manualPlayers.length === 0) {
+                    const selNum = session.manualGameSelected || 1;
+                    const activeGame = session.manualGames.find(g => g.num === selNum);
+                    if (activeGame && activeGame.players && activeGame.players.length > 0) {
+                        this.manualPlayers = activeGame.players;
+                    }
+                }
             }
             if (session.manualGameSelected) {
                 this.manualGameSelected = session.manualGameSelected;
@@ -353,22 +431,39 @@ Object.assign(window.app.methods, {
         if (session.votingLiftResults) this.votingLiftResults = session.votingLiftResults;
         if (session.votingHistory) this.votingHistory = session.votingHistory;
 
-        // Тема
-        if (session.selectedColorScheme) {
-            this.selectedColorScheme = session.selectedColorScheme;
-            if (this.applyColorScheme) {
-                this.applyColorScheme(session.selectedColorScheme);
+        // Тема — localStorage (глобальный выбор пользователя) имеет приоритет над сессией
+        try {
+            const globalColorScheme = localStorage.getItem('maf_color_scheme');
+            const globalBgTheme = localStorage.getItem('maf_bg_theme');
+            const colorToApply = globalColorScheme || session.selectedColorScheme;
+            const bgToApply = globalBgTheme || session.selectedBackgroundTheme;
+            if (colorToApply) {
+                this.selectedColorScheme = colorToApply;
+                if (this.applyColorScheme) {
+                    this.applyColorScheme(colorToApply);
+                }
             }
-        }
-        if (session.selectedBackgroundTheme) {
-            this.selectedBackgroundTheme = session.selectedBackgroundTheme;
-            if (this.applyBackgroundTheme) {
-                this.applyBackgroundTheme(session.selectedBackgroundTheme);
+            if (bgToApply) {
+                this.selectedBackgroundTheme = bgToApply;
+                if (this.applyBackgroundTheme) {
+                    this.applyBackgroundTheme(bgToApply);
+                }
+            }
+        } catch(e) {
+            // Fallback: используем тему из сессии
+            if (session.selectedColorScheme) {
+                this.selectedColorScheme = session.selectedColorScheme;
+                if (this.applyColorScheme) this.applyColorScheme(session.selectedColorScheme);
+            }
+            if (session.selectedBackgroundTheme) {
+                this.selectedBackgroundTheme = session.selectedBackgroundTheme;
+                if (this.applyBackgroundTheme) this.applyBackgroundTheme(session.selectedBackgroundTheme);
             }
         }
         
         // Победители и режимы
         if (session.winnerTeam !== undefined) this.winnerTeam = session.winnerTeam;
+        if (session.gameFinished !== undefined) this.gameFinished = session.gameFinished;
         if (session.currentMode) this.currentMode = session.currentMode;
         if (session.rolesDistributed !== undefined) this.rolesDistributed = session.rolesDistributed;
         // Если роли раздали, но режим всё ещё 'roles' — переключаем на 'day'
@@ -388,9 +483,14 @@ Object.assign(window.app.methods, {
         // Ночные проверки
         if (session.nightCheckHistory) this.nightCheckHistory = session.nightCheckHistory;
         if (session.nightNumber !== undefined) this.nightNumber = session.nightNumber;
+        if (session.killedOnNight) this.killedOnNight = session.killedOnNight;
         if (session.killedCardPhase) this.killedCardPhase = session.killedCardPhase;
         if (session.protocolAccepted) this.protocolAccepted = session.protocolAccepted;
         if (session.bestMoveAccepted !== undefined) this.bestMoveAccepted = session.bestMoveAccepted;
+
+        // Лечение доктора
+        if (session.doctorHealHistory) this.doctorHealHistory = session.doctorHealHistory;
+        if (session.doctorLastHealTarget !== undefined) this.doctorLastHealTarget = session.doctorLastHealTarget;
 
         // Game Phase System
         if (session.gamePhase) this.gamePhase = session.gamePhase;
@@ -418,8 +518,17 @@ Object.assign(window.app.methods, {
         this._tournamentDisplayName = '';
         this._tournamentFinishedFlag = false;
         this._isNextGameLoad = false;
+        this.totalGamesInTournament = null;
+        this._lockedTableNum = null;
+        this._playedGameNums = [];
         this.gameSelected = undefined;
         this.tableSelected = undefined;
+
+        // Сбрасываем навигационные флаги — без этого loadMainMenu не покажет главное меню
+        this.newGameStep = 'modes';
+        this.showVotingScreen = false;
+        this.showFunkySummary = false;
+        this.showTournamentBrowser = false;
         this.playersData = new Map();
         this.roles = {};
         this.playersAvatarEx = new Map();
@@ -447,6 +556,21 @@ Object.assign(window.app.methods, {
         this.funkyGameNumber = 1;
         this.funkyTableNumber = 1;
 
+        // City Mafia mode reset
+        this.cityMode = false;
+        this.cityPlayers = [];
+        this.cityPlayerInputs = [];
+        this.cityPlayersCount = 10;
+        this.citySearchResults = [];
+        this.cityActiveInput = -1;
+        this.citySearchLoading = false;
+        this.cityGameNumber = 1;
+        this.cityTableNumber = 1;
+        this.cityRoleToggles = {};
+        this.cityAssignedRoles = {};
+        this.cityRolesAutoAssigned = false;
+        this.cityStep = 'count';
+
         this.editRoles = true;
         this.mainInfoText = '';
         this.additionalInfoText = '';
@@ -463,6 +587,7 @@ Object.assign(window.app.methods, {
         this.avatarsJustLoaded = false;
         this.winnerTeam = null;
         this.showWinnerModal = false;
+        this.gameFinished = false;
         this.playerScores = {};
         this.currentMode = 'roles';
         this.rolesDistributed = false;
@@ -480,11 +605,14 @@ Object.assign(window.app.methods, {
         this.nightCheckHistory = [];
         this.nightNumber = 0;
         this.nightPhase = null;
-        this._freshlyKilledThisNight = null;
+        this.killedOnNight = {};
         if (this.nightAutoCloseTimer) {
             clearTimeout(this.nightAutoCloseTimer);
             this.nightAutoCloseTimer = null;
         }
+        this.doctorHeal = null;
+        this.doctorHealHistory = [];
+        this.doctorLastHealTarget = null;
         this.protocolAccepted = {};
         this.killedCardPhase = {};
         this.bestMoveAccepted = false;
@@ -668,7 +796,7 @@ Object.assign(window.app.methods, {
         if (!window.sessionManager) return;
 
         // Не сохраняем если нет значимых данных
-        if (!this.roomId && !this.tournamentId && !this.manualMode) return;
+        if (!this.roomId && !this.tournamentId && !this.manualMode && !this.cityMode) return;
 
         // Генерируем sessionId если его ещё нет
         if (!this.currentSessionId) {
@@ -683,6 +811,7 @@ Object.assign(window.app.methods, {
             tournamentId: this.tournamentId,
             tournamentName: this._tournamentDisplayName || this.mainInfoText || '',
             tournamentFinishedFlag: this._tournamentFinishedFlag || false,
+            totalGamesInTournament: this.totalGamesInTournament || null,
             gameSelected: this.gameSelected,
             tableSelected: this.tableSelected,
             
@@ -699,6 +828,23 @@ Object.assign(window.app.methods, {
             funkyPlayerInputs: this.funkyPlayerInputs || [],
             funkyGameNumber: this.funkyGameNumber || 1,
             funkyTableNumber: this.funkyTableNumber || 1,
+
+            // City Mafia mode
+            cityMode: this.cityMode || false,
+            cityPlayers: this.cityPlayers || [],
+            cityPlayerInputs: this.cityPlayerInputs || [],
+            cityPlayersCount: this.cityPlayersCount || 10,
+            cityGameNumber: this.cityGameNumber || 1,
+            cityTableNumber: this.cityTableNumber || 1,
+            cityRoleToggles: this.cityRoleToggles || {},
+            cityAssignedRoles: this.cityAssignedRoles || {},
+            cityStep: this.cityStep || 'count',
+
+            // GoMafia players (для подведения итогов)
+            goMafiaPlayers: (this.inputMode === 'gomafia' && this.tableOut && this.tableOut.length > 0)
+                ? this.tableOut.map(p => p ? { login: p.login, avatar_link: p.avatar_link || null, id: p.id || null, title: p.title || null, roleKey: p.roleKey, num: p.num } : null)
+                : [],
+
             editRoles: this.editRoles,
             
             // Роли и статусы игроков
@@ -748,6 +894,7 @@ Object.assign(window.app.methods, {
             
             // Победители и режимы
             winnerTeam: this.winnerTeam,
+            gameFinished: this.gameFinished || false,
             currentMode: this.currentMode,
             rolesDistributed: this.rolesDistributed,
 
@@ -770,9 +917,14 @@ Object.assign(window.app.methods, {
             // Ночные проверки
             nightCheckHistory: this.nightCheckHistory,
             nightNumber: this.nightNumber,
+            killedOnNight: this.killedOnNight,
             killedCardPhase: this.killedCardPhase,
             protocolAccepted: this.protocolAccepted,
             bestMoveAccepted: this.bestMoveAccepted,
+
+            // Лечение доктора
+            doctorHealHistory: this.doctorHealHistory,
+            doctorLastHealTarget: this.doctorLastHealTarget,
 
             // Баллы
             playerScores: this.playerScores
@@ -830,19 +982,44 @@ Object.assign(window.app.methods, {
     },
 
     getSessionStatusText(session) {
-        if (session.winnerTeam === 'civilians') return '🔴 Победа мирных';
-        if (session.winnerTeam === 'mafia') return '⚫ Победа мафии';
-        if (session.winnerTeam === 'draw') return '⚪ Ничья';
+        // Игра завершена (баллы сохранены)
+        if (session.gameFinished) {
+            if (session.winnerTeam === 'civilians') return 'Победа мирных';
+            if (session.winnerTeam === 'mafia') return 'Победа мафии';
+            if (session.winnerTeam === 'draw') return 'Ничья';
+            return 'Завершена';
+        }
 
-        const playersCount = session.manualPlayers ? session.manualPlayers.length : 0;
+        // Обратная совместимость: старые сессии без gameFinished
+        if (session.winnerTeam && session.gameFinished === undefined) {
+            if (session.winnerTeam === 'civilians') return 'Победа мирных';
+            if (session.winnerTeam === 'mafia') return 'Победа мафии';
+            if (session.winnerTeam === 'draw') return 'Ничья';
+            return 'Завершена';
+        }
+
+        // Победитель выбран но баллы не сохранены
+        if (session.winnerTeam) {
+            return 'Расстановка баллов';
+        }
+
+        // Фазы игры (если роли уже розданы)
+        if (session.rolesDistributed) {
+            return 'В процессе';
+        }
+
+        // Рассадка (есть игроки или роли, но раздача не подтверждена)
         const rolesCount = session.roles ? Object.keys(session.roles).length : 0;
+        const hasPlayers = (session.manualPlayers && session.manualPlayers.length > 0)
+            || (session.funkyPlayers && session.funkyPlayers.length > 0)
+            || (session.goMafiaPlayers && session.goMafiaPlayers.length > 0);
+        if (rolesCount > 0 || hasPlayers) return 'Рассадка';
 
-        if (rolesCount > 0) return '🎮 В процессе';
-        if (playersCount > 0) return '📋 Подготовка';
-        return '🆕 Новая';
+        return 'Создана';
     },
 
     getSessionModeText(session) {
+        if (session.cityMode) return 'Городская мафия';
         if (session.funkyMode) return 'Фанки';
         if (session.tournamentId) return 'GoMafia';
         if (session.manualMode) return 'GoРучками';
@@ -870,8 +1047,8 @@ Object.assign(window.app.methods, {
                 return !s.tournamentFinishedFlag;
             }
 
-            // Не-турнирные сессии: старое поведение
-            const isFinished = !!s.winnerTeam;
+            // Не-турнирные сессии: завершена только если gameFinished
+            const isFinished = s.gameFinished || (s.winnerTeam && s.gameFinished === undefined); // обратная совместимость
             if (isFinished) return false;
             if (s.timestamp && (now - s.timestamp) > oneDay) return false;
             
@@ -891,8 +1068,8 @@ Object.assign(window.app.methods, {
                 return !!s.tournamentFinishedFlag;
             }
 
-            // Не-турнирные: старое поведение
-            const isFinished = !!s.winnerTeam;
+            // Не-турнирные: завершена если gameFinished (или обратная совместимость)
+            const isFinished = s.gameFinished || (s.winnerTeam && s.gameFinished === undefined);
             if (isFinished) return true;
             if (s.timestamp && (now - s.timestamp) > oneDay) return true;
             
@@ -943,11 +1120,57 @@ Object.assign(window.app.methods, {
 
         // Сортируем игры внутри каждого турнира по номеру игры
         Object.values(tournamentGroups).forEach(group => {
+            // Дедупликация: если несколько сессий имеют одинаковый gameSelected+tableSelected,
+            // оставляем только самую свежую (по timestamp)
+            const deduped = {};
+            group.sessions.forEach(s => {
+                const key = (s.gameSelected || '?') + '-' + (s.tableSelected || '?');
+                if (!deduped[key] || (s.timestamp || 0) > (deduped[key].timestamp || 0)) {
+                    deduped[key] = s;
+                }
+            });
+            group.sessions = Object.values(deduped);
+
             group.sessions.sort((a, b) => (a.gameSelected || 0) - (b.gameSelected || 0));
-            group.hasActiveGame = group.sessions.some(s => !s.winnerTeam);
-            group.allGamesFinished = group.sessions.every(s => !!s.winnerTeam);
+            // Игра считается завершённой только если gameFinished === true (баллы сохранены)
+            // Для обратной совместимости: если gameFinished не установлен но winnerTeam есть и нет активных данных — считаем завершённой
+            function isGameFinished(s) {
+                if (s.gameFinished) return true;
+                // Обратная совместимость: старые сессии без gameFinished
+                if (s.winnerTeam && s.gameFinished === undefined) return true;
+                return false;
+            }
+            group.hasActiveGame = group.sessions.some(s => !isGameFinished(s));
+            group.allGamesFinished = group.sessions.every(s => isGameFinished(s));
             group.gamesCount = group.sessions.length;
-            group.finishedGamesCount = group.sessions.filter(s => !!s.winnerTeam).length;
+            group.finishedGamesCount = group.sessions.filter(s => isGameFinished(s)).length;
+
+            // Дополнительные метаданные для карточки
+            group.isFunky = String(group.tournamentId).startsWith('funky_');
+
+            // Последний стол (из последней сессии)
+            const lastSession = group.sessions[group.sessions.length - 1];
+            group.tableSelected = lastSession?.tableSelected || null;
+
+            // Общее количество игр в турнире GoMafia (из любой сессии, где сохранено)
+            group.totalGamesInTournament = null;
+            for (let i = group.sessions.length - 1; i >= 0; i--) {
+                if (group.sessions[i].totalGamesInTournament) {
+                    group.totalGamesInTournament = group.sessions[i].totalGamesInTournament;
+                    break;
+                }
+            }
+
+            // Максимальный номер начатой игры
+            let maxGame = 0;
+            group.sessions.forEach(s => {
+                const gn = Number(s.gameSelected || s.funkyGameNumber || 0);
+                if (gn > maxGame) maxGame = gn;
+            });
+            group.lastStartedGameNumber = maxGame || group.gamesCount;
+
+            // Статус серии
+            group.tournamentStatusText = _getTournamentStatusText(group);
         });
 
         // Объединяем и сортируем по времени
@@ -955,6 +1178,12 @@ Object.assign(window.app.methods, {
         allGroups.sort((a, b) => (b.latestTimestamp || 0) - (a.latestTimestamp || 0));
 
         return allGroups;
+    },
+
+    // Статус серии (турнир/фанки)
+    // Вынесено для вызова из getGroupedSessions
+    getTournamentStatusText(group) {
+        return _getTournamentStatusText(group);
     },
 
     getGroupedActiveSessions() {
@@ -976,11 +1205,29 @@ Object.assign(window.app.methods, {
 
     // Получить результат игры для отображения в карточке
     getGameResultText(session) {
-        if (!session.winnerTeam) return '🎮 В процессе';
-        if (session.winnerTeam === 'civilians') return '🔴 Мирные';
-        if (session.winnerTeam === 'mafia') return '⚫ Мафия';
-        if (session.winnerTeam === 'draw') return '⚪ Ничья';
-        return '';
+        // Игра завершена (баллы сохранены)
+        if (session.gameFinished) {
+            if (session.winnerTeam === 'civilians') return 'Победа мирных';
+            if (session.winnerTeam === 'mafia') return 'Победа мафии';
+            if (session.winnerTeam === 'draw') return 'Ничья';
+            return 'Завершена';
+        }
+
+        // Победитель выбран но баллы ещё не сохранены
+        if (session.winnerTeam) {
+            return 'Расстановка баллов';
+        }
+
+        // Игра в процессе
+        if (session.rolesDistributed) {
+            return 'В процессе';
+        }
+
+        // Роли назначаются
+        const rolesCount = session.roles ? Object.keys(session.roles).length : 0;
+        if (rolesCount > 0) return 'Рассадка';
+
+        return 'Создана';
     },
 
     // =============================================
@@ -991,15 +1238,55 @@ Object.assign(window.app.methods, {
     startNextTournamentGame(tournamentId, tableNum) {
         console.log('🏆 startNextTournamentGame: Турнир', tournamentId, 'Стол', tableNum);
 
+        // Перечитываем сессии из хранилища (sessionsList может быть устаревшим)
+        const freshSessions = (window.sessionManager && window.sessionManager.getSessions)
+            ? window.sessionManager.getSessions() || []
+            : this.sessionsList || [];
+
+        // Проверяем, есть ли незавершённая игра в этом турнире (только активные, не перемещённые в историю)
+        // Дедупликация: если есть несколько сессий с одним gameSelected, берём только самую свежую
+        const allTournamentSessions = freshSessions.filter(s => s.tournamentId === tournamentId && !s.tournamentFinishedFlag);
+        const dedupedMap = {};
+        allTournamentSessions.forEach(s => {
+            const key = (s.gameSelected || s.funkyGameNumber || '?') + '-' + (s.tableSelected || '?');
+            if (!dedupedMap[key] || (s.timestamp || 0) > (dedupedMap[key].timestamp || 0)) {
+                dedupedMap[key] = s;
+            }
+        });
+        const dedupedSessions = Object.values(dedupedMap);
+
+        const hasUnfinishedGame = dedupedSessions.some(s => {
+            if (s.gameFinished) return false;
+            // Обратная совместимость: старые сессии без gameFinished
+            if (s.winnerTeam && s.gameFinished === undefined) return false;
+            // Если нет winnerTeam и нет gameFinished — игра не завершена
+            return true;
+        });
+
+        if (hasUnfinishedGame) {
+            console.warn('⚠️ startNextTournamentGame: Нельзя создать новую игру — есть незавершённая');
+            if (window.haptic) window.haptic.notification('error');
+            // Находим незавершённую игру и открываем её
+            const unfinished = dedupedSessions.find(s => {
+                if (s.gameFinished) return false;
+                if (s.winnerTeam && s.gameFinished === undefined) return false;
+                return true;
+            });
+            if (unfinished) {
+                this.openSession(unfinished.sessionId);
+            }
+            return;
+        }
+
         // Проверяем, не фанки ли это турнир
         const isFunky = String(tournamentId).startsWith('funky_');
         if (isFunky) {
             // Находим имя турнира из существующих сессий
-            const existingSession = (this.sessionsList || []).find(s => s.tournamentId === tournamentId);
+            const existingSession = freshSessions.find(s => s.tournamentId === tournamentId);
             const tournamentName = existingSession?.tournamentName || this._tournamentDisplayName;
 
-            // Определяем следующий номер игры
-            const tournamentSessions = (this.sessionsList || []).filter(s => s.tournamentId === tournamentId);
+            // Определяем следующий номер игры (только из активного турнира)
+            const tournamentSessions = freshSessions.filter(s => s.tournamentId === tournamentId && !s.tournamentFinishedFlag);
             let maxGame = 0;
             tournamentSessions.forEach(s => {
                 const gn = Number(s.gameSelected) || 0;
@@ -1069,23 +1356,107 @@ Object.assign(window.app.methods, {
             return;
         }
 
+        // Проверяем, не городская мафия ли это турнир
+        const isCity = String(tournamentId).startsWith('city_');
+        if (isCity) {
+            const existingSession = freshSessions.find(s => s.tournamentId === tournamentId);
+            const tournamentName = existingSession?.tournamentName || this._tournamentDisplayName;
+            const prevPlayersCount = existingSession?.cityPlayersCount || 10;
+            const prevRoleToggles = existingSession?.cityRoleToggles || {};
+
+            const tournamentSessions = freshSessions.filter(s => s.tournamentId === tournamentId && !s.tournamentFinishedFlag);
+            let maxGame = 0;
+            tournamentSessions.forEach(s => {
+                const gn = Number(s.gameSelected) || 0;
+                if (gn > maxGame) maxGame = gn;
+            });
+
+            if (this.currentSessionId) {
+                this.saveCurrentSession();
+            }
+            if (this.ws) {
+                this.ws.close();
+                this.ws = null;
+            }
+            this._resetGameState();
+
+            this.currentSessionId = window.sessionManager ? window.sessionManager.generateSessionId() : ('sess_' + Date.now());
+            this.cityMode = true;
+            this.manualMode = false;
+            this.inputMode = 'city';
+            this.tournamentId = String(tournamentId);
+            this._tournamentDisplayName = tournamentName;
+            this.mainInfoText = tournamentName;
+            this.cityGameNumber = maxGame + 1;
+            this.cityTableNumber = 1;
+            this.gameSelected = maxGame + 1;
+            this.tableSelected = 1;
+            this.cityPlayersCount = prevPlayersCount;
+            this.cityRoleToggles = JSON.parse(JSON.stringify(prevRoleToggles));
+
+            // Предзаполняем игроков из последней игры
+            const lastSession = tournamentSessions.sort((a, b) => (b.gameSelected || 0) - (a.gameSelected || 0))[0];
+            const prevPlayers = lastSession?.cityPlayers || [];
+            this.cityPlayers = [];
+            this.cityPlayerInputs = [];
+            this.citySearchResults = [];
+            this.cityActiveInput = -1;
+            for (let i = 0; i < prevPlayersCount; i++) {
+                if (prevPlayers[i]) {
+                    this.cityPlayers.push({
+                        login: prevPlayers[i].login,
+                        avatar_link: prevPlayers[i].avatar_link || null,
+                        id: prevPlayers[i].id || null,
+                        title: prevPlayers[i].title || null,
+                        roleKey: `${maxGame + 1}-1-${i + 1}`,
+                        num: i + 1
+                    });
+                    this.cityPlayerInputs.push(prevPlayers[i].login || '');
+                } else {
+                    this.cityPlayers.push(null);
+                    this.cityPlayerInputs.push('');
+                }
+            }
+
+            this.cityStep = 'players';
+            this.cityAssignedRoles = {};
+            this.cityRolesAutoAssigned = false;
+
+            this.showModal = true;
+            this.showMainMenu = false;
+            this.showRoomModal = false;
+            this.showGameTableModal = false;
+            this.newGameStep = 'city';
+
+            this.saveCurrentSession();
+            return;
+        }
+
         // Сохраняем текущую сессию
         if (this.currentSessionId) {
             this.saveCurrentSession();
         }
 
-        // Находим максимальный номер игры для этого турнира и стола
-        const tournamentSessions = (this.sessionsList || []).filter(
-            s => s.tournamentId === tournamentId
+        // Находим все сессии этого турнира и определяем сыгранные игры + стол
+        // Учитываем только сессии активного турнира (не перемещённые в историю)
+        const tournamentSessions = freshSessions.filter(
+            s => s.tournamentId === tournamentId && !s.tournamentFinishedFlag
         );
-        let maxGame = 0;
-        tournamentSessions.forEach(s => {
-            const gn = Number(s.gameSelected) || 0;
-            if (gn > maxGame) maxGame = gn;
-        });
-        const nextGameNum = maxGame + 1;
+        const playedGameNums = tournamentSessions
+            .filter(s => s.gameSelected)
+            .map(s => Number(s.gameSelected));
 
-        console.log('🎮 Следующая игра:', nextGameNum, 'для стола', tableNum);
+        // Определяем зафиксированный стол из первой игры турнира
+        const firstSession = tournamentSessions.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))[0];
+        const lockedTable = firstSession ? Number(firstSession.tableSelected) || Number(tableNum) : Number(tableNum);
+
+        // Определяем следующий номер игры (первая не сыгранная)
+        let nextGameNum = 1;
+        while (playedGameNums.includes(nextGameNum)) {
+            nextGameNum++;
+        }
+
+        console.log('🎮 Следующая игра:', nextGameNum, 'для стола', lockedTable, '(сыгранные:', playedGameNums, ')');
 
         // Закрываем WebSocket текущей сессии
         if (this.ws) {
@@ -1102,7 +1473,9 @@ Object.assign(window.app.methods, {
         // Устанавливаем данные турнира
         this.tournamentId = String(tournamentId);
         this.gameSelected = nextGameNum;
-        this.tableSelected = Number(tableNum);
+        this.tableSelected = lockedTable;
+        this._lockedTableNum = lockedTable;
+        this._playedGameNums = playedGameNums;
         this.inputMode = 'gomafia';
         this.manualMode = false;
 
@@ -1112,9 +1485,9 @@ Object.assign(window.app.methods, {
         this.showModal = false;
         this.showGameTableModal = false;
 
-        // Загружаем турнир (пропустит экран выбора стола, т.к. мы уже знаем стол и игру)
+        // Загружаем турнир и показываем окно выбора игры/стола
         this._isNextGameLoad = true;
-        this.isRestoringSession = true;
+        this.isRestoringSession = false;
         this.loadTournament();
     },
 

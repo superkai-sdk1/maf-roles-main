@@ -223,7 +223,8 @@ Object.assign(window.app.methods, {
                     console.log('🎯 Первая игра:', games[0]);
                     
                     // Устанавливаем значения по умолчанию (первая игра, первый стол)
-                    if (!this.isRestoringSession) {
+                    // НЕ перезаписываем если это следующая игра в турнире (_isNextGameLoad)
+                    if (!this.isRestoringSession && !this._isNextGameLoad) {
                         this.gameSelected = Number(games[0].gameNum);
                         const tables = games[0].game;
                         if (tables && tables.length > 0) {
@@ -259,6 +260,7 @@ Object.assign(window.app.methods, {
                     console.log('🎯 loadTournament: Показываем выбор игры и стола');
                     this.showModal = false;
                     this.showRoomModal = false;
+                    this.showMainMenu = false;
                     this.showGameTableModal = true;
                 }
             } else {
@@ -308,6 +310,9 @@ Object.assign(window.app.methods, {
                 additional += `Номер стола: ${tableNum} | `;
             }
             additional += `Игра ${currentGame} из ${gameCount}`;
+
+            // Сохраняем общее количество игр в турнире для отображения на карточке
+            this.totalGamesInTournament = gameCount;
             this.additionalInfoText = additional;
         }
 
@@ -603,8 +608,13 @@ Object.assign(window.app.methods, {
         this.saveCurrentSession();
     },
 
-    // Валидация раздачи ролей: 1 дон, 2 мафии, 1 шериф
+    // Валидация раздачи ролей: 1 дон, 2 мафии, 1 шериф (или городская мафия)
     validateRolesDistribution() {
+        // В режиме городской мафии роли уже валидированы при назначении
+        if (this.cityMode) {
+            return { valid: true, donCount: 1, blackCount: 2, sheriffCount: 1, errors: [] };
+        }
+
         const roleValues = Object.values(this.roles);
         const donCount = roleValues.filter(r => r === 'don').length;
         const blackCount = roleValues.filter(r => r === 'black').length;
@@ -698,6 +708,11 @@ Object.assign(window.app.methods, {
             
             // Если снимаем статус 'killed', проверяем логику лучшего хода
             if (action === 'killed') {
+                // Remove the killedOnNight record
+                if (this.killedOnNight && this.killedOnNight[roleKey] !== undefined) {
+                    this.$delete(this.killedOnNight, roleKey);
+                }
+
                 const remainingKilledCount = Object.values(this.playersActions).filter(a => a === 'killed').length;
                 
                 // Если больше нет убитых игроков, сбрасываем лучший ход
@@ -715,6 +730,10 @@ Object.assign(window.app.methods, {
             
             // Логика для показа карточки убитого и лучшего хода
             if (action === 'killed') {
+                // Record which night the kill happened on
+                if (!this.killedOnNight) this.killedOnNight = {};
+                this.$set(this.killedOnNight, roleKey, this.nightNumber || 1);
+
                 // Clear miss for this night since a kill happened
                 if (this.nightMisses && this.nightMisses[this.nightNumber]) {
                     this.$delete(this.nightMisses, this.nightNumber);
@@ -753,7 +772,8 @@ Object.assign(window.app.methods, {
                     bestMove: this.bestMove,
                     killedCardPhase: this.killedCardPhase,
                     killedPlayerBlink: this.killedPlayerBlink,
-                    nightPhase: this.nightPhase
+                    nightPhase: this.nightPhase,
+                    killedOnNight: this.killedOnNight
                 });
             }
         }
@@ -766,7 +786,8 @@ Object.assign(window.app.methods, {
         // Сохраняем состояние
         this.saveRoomStateIncremental({ 
             playersActions: this.playersActions,
-            removed: this.removed
+            removed: this.removed,
+            killedOnNight: this.killedOnNight
         });
         
         // Отправляем изменение
@@ -919,9 +940,11 @@ Object.assign(window.app.methods, {
     toggleBestMove(playerNumber) {
         // Функция для добавления/удаления игрока из списка лучшего хода
         const index = this.bestMove.indexOf(playerNumber);
+        // Максимум: для городской мафии — из конфига, для обычной — 3
+        const maxBM = this.cityMode ? (this.getCityBestMoveMax() || 3) : 3;
         if (index === -1) {
-            // Добавляем игрока, если его нет в списке (максимум 3 игрока)
-            if (this.bestMove.length < 3) {
+            // Добавляем игрока, если его нет в списке
+            if (this.bestMove.length < maxBM) {
                 this.bestMove.push(playerNumber);
                 this.bestMove.sort((a, b) => a - b); // Сортируем по возрастанию
             }
@@ -1449,8 +1472,10 @@ Object.assign(window.app.methods, {
         this.stopDiscussionTimer();
         this.gamePhase = 'freeSeating';
         this.currentMode = 'freeSeating';
-        this.freeSeatingTimeLeft = 40;
-        this.saveRoomStateIncremental({ gamePhase: 'freeSeating', currentMode: 'freeSeating', freeSeatingTimeLeft: 40 });
+        // Городская мафия: 20 секунд свободной посадки
+        const freeSeatingTime = this.cityMode ? 20 : 40;
+        this.freeSeatingTimeLeft = freeSeatingTime;
+        this.saveRoomStateIncremental({ gamePhase: 'freeSeating', currentMode: 'freeSeating', freeSeatingTimeLeft: freeSeatingTime });
         this.sendFullState();
         this.saveCurrentSession();
     },
@@ -1526,6 +1551,10 @@ Object.assign(window.app.methods, {
 
     // --- BM (Best Move) Eligibility ---
     canShowBestMove() {
+        // В городской мафии с 18+ игроками ЛХ не нужен
+        if (this.cityMode && this.getCityBestMoveMax() === 0) {
+            return false;
+        }
         // ЛХ показывается только первому убитому при условии:
         // 1. На нулевом круге (день 0) никого не заголосовали
         // 2. Это действительно первое убийство за всю игру
@@ -1539,7 +1568,7 @@ Object.assign(window.app.methods, {
 
     // --- Phase label helpers ---
     getPhaseLabel() {
-        if (this.gamePhase === 'discussion') return 'Договорка';
+        if (this.gamePhase === 'discussion') return this.cityMode ? 'Знакомство' : 'Договорка';
         if (this.gamePhase === 'freeSeating') return 'Свободная посадка';
         if (this.gamePhase === 'day' || this.currentMode === 'day') {
             if (this.dayNumber === 0) return 'День 0';
@@ -1573,20 +1602,41 @@ Object.assign(window.app.methods, {
         return Object.entries(this.roles).find(([k, v]) => v === role)?.[0] || null;
     },
 
-    // Check if a role holder was killed BEFORE the current night (i.e. not freshly killed this night)
+    // Check if a role holder is dead/removed and cannot perform night checks.
+    // Special rule: if killed THIS night (by mafia), they can still check.
+    // If killed on a previous night, voted out, or removed — they cannot.
     _wasKilledBeforeThisNight(roleKey) {
-        // If the player is killed AND this is NOT the first time we're entering the night phase for them
-        // We track this by checking: if the kill happened this night, they can still check.
-        // The kill always happens at the START of the night sequence (before Don/Sheriff phases).
-        // So on the SAME night they die, they can still check.
-        // On SUBSEQUENT nights, they cannot.
-        // We use nightNumber: if they were killed and the phase was already processed,
-        // they were killed on a previous night.
-        if (!this.playersActions[roleKey] || this.playersActions[roleKey] !== 'killed') return false;
-        // Player is killed. Check if killed this night (fresh kill) or before.
-        // If this night's kill target includes this roleKey, they were killed NOW and can still check.
-        // We store _freshlyKilledThisNight during the kill sequence.
-        return !this._freshlyKilledThisNight || !this._freshlyKilledThisNight.includes(roleKey);
+        const action = this.playersActions[roleKey];
+        if (!action) return false; // Alive — not dead
+
+        // Voted out or removed — always blocked from checking
+        if (action === 'voted' || action === 'removed' || action === 'tech_fall_removed' || action === 'fall_removed') {
+            return true;
+        }
+
+        // Killed by mafia — check which night
+        if (action === 'killed') {
+            const killedNight = this.killedOnNight && this.killedOnNight[roleKey];
+            if (killedNight === undefined || killedNight === null) {
+                // No record — treat as killed before (safety fallback)
+                return true;
+            }
+            // Killed this night → can still check; killed earlier → cannot
+            return killedNight < this.nightNumber;
+        }
+
+        // Unknown action — block for safety
+        return true;
+    },
+
+    // Returns human-readable death reason for a dead player (for night check UI)
+    _getDeathReasonText(roleKey) {
+        const action = this.playersActions[roleKey];
+        const roleName = this.roles[roleKey] === 'don' ? 'Дон' : 'Шериф';
+        if (action === 'killed') return `${roleName} убит`;
+        if (action === 'voted') return `${roleName} заголосован`;
+        if (action === 'removed' || action === 'tech_fall_removed' || action === 'fall_removed') return `${roleName} удалён`;
+        return `${roleName} выбыл`;
     },
 
     startNightSequence() {
@@ -1596,22 +1646,15 @@ Object.assign(window.app.methods, {
             this.nightAutoCloseTimer = null;
         }
 
-        // Track freshly killed players this night
-        this._freshlyKilledThisNight = Object.entries(this.playersActions)
-            .filter(([k, v]) => v === 'killed')
-            .map(([k]) => k);
-
         const donKey = this._findRoleKey('don');
         const sheriffKey = this._findRoleKey('sheriff');
-
-        // Check if Don/Sheriff were killed before this night
-        const donDead = donKey && this._wasKilledBeforeThisNight(donKey);
-        const sheriffDead = sheriffKey && this._wasKilledBeforeThisNight(sheriffKey);
+        const doctorKey = this.cityMode ? this._findRoleKey('doctor') : null;
 
         // Close any open card first
         this.highlightedPlayer = null;
 
-        if (donKey && !donDead) {
+        // Don/Sheriff/Doctor phases always show (even if dead — UI shows death message)
+        if (donKey) {
             this.nightPhase = 'don';
             this.$nextTick(() => {
                 this.highlightedPlayer = donKey;
@@ -1619,7 +1662,7 @@ Object.assign(window.app.methods, {
                     this._scrollToPlayer && this._scrollToPlayer(donKey);
                 });
             });
-        } else if (sheriffKey && !sheriffDead) {
+        } else if (sheriffKey) {
             this.nightPhase = 'sheriff';
             this.$nextTick(() => {
                 this.highlightedPlayer = sheriffKey;
@@ -1627,8 +1670,16 @@ Object.assign(window.app.methods, {
                     this._scrollToPlayer && this._scrollToPlayer(sheriffKey);
                 });
             });
+        } else if (doctorKey && !this._wasKilledBeforeThisNight(doctorKey)) {
+            this.nightPhase = 'doctor';
+            this.$nextTick(() => {
+                this.highlightedPlayer = doctorKey;
+                this.$nextTick(() => {
+                    this._scrollToPlayer && this._scrollToPlayer(doctorKey);
+                });
+            });
         } else {
-            // No Don or Sheriff available — go straight to day blink
+            // No Don, Sheriff, or Doctor — go straight to day blink
             this.nightPhase = 'done';
             this.dayButtonBlink = true;
         }
@@ -1641,11 +1692,13 @@ Object.assign(window.app.methods, {
         }
 
         const sheriffKey = this._findRoleKey('sheriff');
-        const sheriffDead = sheriffKey && this._wasKilledBeforeThisNight(sheriffKey);
+        const doctorKey = this.cityMode ? this._findRoleKey('doctor') : null;
+        // Doctor is only available if alive (not killed before this night, not voted, not removed)
+        const doctorAvailable = doctorKey && !this._wasKilledBeforeThisNight(doctorKey);
 
         if (this.nightPhase === 'don') {
-            // Don done → move to Sheriff
-            if (sheriffKey && !sheriffDead) {
+            // Don done → move to Sheriff (always, even if dead)
+            if (sheriffKey) {
                 this.nightPhase = 'sheriff';
                 this.highlightedPlayer = null;
                 this.$nextTick(() => {
@@ -1654,14 +1707,41 @@ Object.assign(window.app.methods, {
                         this._scrollToPlayer && this._scrollToPlayer(sheriffKey);
                     });
                 });
+            } else if (doctorAvailable) {
+                // No sheriff but doctor exists
+                this.nightPhase = 'doctor';
+                this.highlightedPlayer = null;
+                this.$nextTick(() => {
+                    this.highlightedPlayer = doctorKey;
+                    this.$nextTick(() => {
+                        this._scrollToPlayer && this._scrollToPlayer(doctorKey);
+                    });
+                });
             } else {
-                // No sheriff available
+                // No sheriff or doctor
                 this.nightPhase = 'done';
                 this.highlightedPlayer = null;
                 this.dayButtonBlink = true;
             }
         } else if (this.nightPhase === 'sheriff') {
-            // Sheriff done → day blink
+            // Sheriff done → move to Doctor if available
+            if (doctorAvailable) {
+                this.nightPhase = 'doctor';
+                this.highlightedPlayer = null;
+                this.$nextTick(() => {
+                    this.highlightedPlayer = doctorKey;
+                    this.$nextTick(() => {
+                        this._scrollToPlayer && this._scrollToPlayer(doctorKey);
+                    });
+                });
+            } else {
+                // No doctor — day blink
+                this.nightPhase = 'done';
+                this.highlightedPlayer = null;
+                this.dayButtonBlink = true;
+            }
+        } else if (this.nightPhase === 'doctor') {
+            // Doctor done → day blink
             this.nightPhase = 'done';
             this.highlightedPlayer = null;
             this.dayButtonBlink = true;
@@ -1737,14 +1817,128 @@ Object.assign(window.app.methods, {
 
     clearNightChecks() {
         this.nightChecks = {};
+        // Save doctor's last heal target before clearing (for consecutive heal restriction)
+        if (this.doctorHeal && this.doctorHeal.target) {
+            this.doctorLastHealTarget = this.doctorHeal.target;
+        }
+        this.doctorHeal = null;
         this.nightNumber = (this.nightNumber || 0) + 1;
-        this.saveRoomStateIncremental({ nightChecks: {}, nightNumber: this.nightNumber });
+        this.saveRoomStateIncremental({ nightChecks: {}, nightNumber: this.nightNumber, doctorHeal: null, doctorLastHealTarget: this.doctorLastHealTarget });
     },
 
     // Get night check history for a specific checker (Don or Sheriff)
     getNightCheckHistoryFor(roleKey) {
         if (!this.nightCheckHistory || !Array.isArray(this.nightCheckHistory)) return [];
         return this.nightCheckHistory.filter(h => h.checker === roleKey);
+    },
+
+    // =============================================
+    // Doctor Healing (City Mode)
+    // =============================================
+
+    // Check if the doctor can heal a specific target
+    canDoctorHealTarget(targetNum) {
+        const doctorKey = this._findRoleKey('doctor');
+        if (!doctorKey) return false;
+
+        const doctorIdx = this.tableOut.findIndex(p => p.roleKey === doctorKey);
+        const doctorNum = doctorIdx + 1;
+        const targetPlayer = this.tableOut[targetNum - 1];
+        if (!targetPlayer) return false;
+
+        // Can't heal dead/removed players (unless killed THIS night by mafia)
+        const targetAction = this.playersActions[targetPlayer.roleKey];
+        if (targetAction && targetAction !== 'killed') return false;
+        // If killed, only allow if killed THIS night
+        if (targetAction === 'killed') {
+            const killedNight = this.killedOnNight && this.killedOnNight[targetPlayer.roleKey];
+            if (killedNight !== this.nightNumber) return false;
+        }
+
+        // Can't heal the same player two nights in a row
+        if (this.doctorLastHealTarget === targetNum) return false;
+
+        // Can't heal self two nights in a row (check if doctor is healing self)
+        // Doctor CAN heal self, but not consecutive nights
+        // doctorLastHealTarget already handles this — if last healed self, can't heal self again
+
+        return true;
+    },
+
+    // Perform doctor healing
+    performDoctorHeal(targetNum) {
+        const doctorKey = this._findRoleKey('doctor');
+        if (!doctorKey) return;
+
+        // Already healed this night
+        if (this.doctorHeal) {
+            window.haptic && window.haptic.notification('error');
+            return;
+        }
+
+        if (!this.canDoctorHealTarget(targetNum)) {
+            window.haptic && window.haptic.notification('error');
+            return;
+        }
+
+        const targetPlayer = this.tableOut[targetNum - 1];
+        if (!targetPlayer) return;
+
+        this.doctorHeal = { target: targetNum };
+
+        // Record to persistent history
+        if (!this.doctorHealHistory) this.doctorHealHistory = [];
+        this.doctorHealHistory.push({
+            night: this.nightNumber || 1,
+            target: targetNum,
+            targetLogin: targetPlayer.login || ('Игрок ' + targetNum)
+        });
+
+        // Check if the healed player was killed this night — if so, revive them
+        const targetAction = this.playersActions[targetPlayer.roleKey];
+        const killedNight = this.killedOnNight && this.killedOnNight[targetPlayer.roleKey];
+        if (targetAction === 'killed' && killedNight === this.nightNumber) {
+            // Doctor saved this player! Reverse the kill
+            this.$delete(this.playersActions, targetPlayer.roleKey);
+            this.$delete(this.killedOnNight, targetPlayer.roleKey);
+            // Reset killed card phase
+            this.$delete(this.killedCardPhase, targetPlayer.roleKey);
+            this.$delete(this.killedPlayerBlink, targetPlayer.roleKey);
+            // If this was the first killed player, clear that reference
+            if (this.firstKilledPlayer === targetPlayer.roleKey) {
+                this.firstKilledPlayer = null;
+                this.bestMove = [];
+                this.bestMoveAccepted = false;
+            }
+        }
+
+        window.haptic && window.haptic.notification('success');
+        this.saveRoomStateIncremental({
+            doctorHeal: this.doctorHeal,
+            doctorHealHistory: this.doctorHealHistory,
+            playersActions: this.playersActions,
+            killedOnNight: this.killedOnNight,
+            killedCardPhase: this.killedCardPhase,
+            killedPlayerBlink: this.killedPlayerBlink,
+            firstKilledPlayer: this.firstKilledPlayer
+        });
+        this.sendFullState();
+        this.saveCurrentSession();
+
+        // Auto-close card after 5 seconds and advance to next phase
+        if (this.nightAutoCloseTimer) {
+            clearTimeout(this.nightAutoCloseTimer);
+        }
+        this.nightAutoCloseTimer = setTimeout(() => {
+            this.nightAutoCloseTimer = null;
+            this.advanceNightPhase();
+        }, 5000);
+    },
+
+    // Skip doctor healing (proceed without healing anyone)
+    skipDoctorHeal() {
+        this.doctorHeal = { target: null }; // Mark as done but no target
+        this.advanceNightPhase();
     },
 
     // =============================================
@@ -1866,8 +2060,14 @@ Object.assign(window.app.methods, {
 
     // Переход к протоколу/мнению из таймера
     openProtocolForKilled(roleKey) {
-        this.$set(this.killedCardPhase, roleKey, 'protocol');
-        this.saveRoomStateIncremental({ killedCardPhase: this.killedCardPhase });
+        // В городской мафии нет протокола/мнения — сразу done
+        if (this.cityMode) {
+            this.$set(this.killedCardPhase, roleKey, 'done');
+            this.$set(this.protocolAccepted, roleKey, true);
+        } else {
+            this.$set(this.killedCardPhase, roleKey, 'protocol');
+        }
+        this.saveRoomStateIncremental({ killedCardPhase: this.killedCardPhase, protocolAccepted: this.protocolAccepted });
         this.sendFullState();
     },
 
@@ -2218,13 +2418,32 @@ Object.assign(window.app.methods, {
             return;
         }
 
+        const finishedSessions = sessions.filter(s => !!s.winnerTeam);
+        console.log('📊 funkyBuildSummary: Сессий:', sessions.length, ', завершённых:', finishedSessions.length);
+
+        if (!finishedSessions.length) {
+            this.showAlert && this.showAlert('Нет завершённых игр. Завершите хотя бы одну игру для подведения итогов.');
+            return;
+        }
+
+        finishedSessions.forEach((s, i) => {
+            const players = (s.funkyPlayers && s.funkyPlayers.length > 0) ? s.funkyPlayers
+                : (s.goMafiaPlayers && s.goMafiaPlayers.length > 0) ? s.goMafiaPlayers
+                : (s.manualPlayers && s.manualPlayers.length > 0) ? s.manualPlayers
+                : [];
+            console.log('📊  Игра', i + 1, ':', s.winnerTeam, '| игроков:', players.length, '| mode:', s.funkyMode ? 'funky' : (s.inputMode || 'gomafia'));
+        });
+
         // Собираем статистику по каждому игроку
         const stats = {}; // { login: { ... } }
 
         sessions.forEach(session => {
             if (!session.winnerTeam) return; // пропускаем незавершённые
 
-            const players = session.funkyPlayers || session.manualPlayers || [];
+            const players = (session.funkyPlayers && session.funkyPlayers.length > 0) ? session.funkyPlayers
+                : (session.goMafiaPlayers && session.goMafiaPlayers.length > 0) ? session.goMafiaPlayers
+                : (session.manualPlayers && session.manualPlayers.length > 0) ? session.manualPlayers
+                : [];
             const roles = session.roles || {};
             const actions = session.playersActions || {};
             const fouls = session.fouls || {};
@@ -2237,7 +2456,7 @@ Object.assign(window.app.methods, {
             players.forEach((p, i) => {
                 if (!p || !p.login) return;
                 const login = p.login;
-                const roleKey = p.roleKey || ((session.funkyGameNumber || session.gameSelected || 1) + '-' + (session.funkyTableNumber || 1) + '-' + (i + 1));
+                const roleKey = p.roleKey || ((session.funkyGameNumber || session.gameSelected || 1) + '-' + (session.funkyTableNumber || session.tableSelected || 1) + '-' + (i + 1));
                 const role = roles[roleKey] || null; // null = мирный, 'don', 'black', 'sheriff'
 
                 if (!stats[login]) {
@@ -2267,10 +2486,11 @@ Object.assign(window.app.methods, {
                 s.games++;
 
                 // Роль
-                const isCivilian = !role || role === 'sheriff';
-                const isMafia = role === 'black' || role === 'don';
+                const cityRoles = this.CITY_ROLES_ALL ? this.CITY_ROLES_ALL() : {};
+                const isMafia = role === 'black' || role === 'don' || (cityRoles[role] && cityRoles[role].team === 'black');
+                const isCivilian = !isMafia;
                 if (role === 'don') { s.donPlayed++; }
-                else if (role === 'black') { s.mafiaPlayed++; }
+                else if (isMafia) { s.mafiaPlayed++; }
                 else if (role === 'sheriff') { s.sheriffPlayed++; }
                 else { s.peacePlayed++; }
 
@@ -2329,7 +2549,10 @@ Object.assign(window.app.methods, {
         sessions.forEach(session => {
             if (!session.winnerTeam) return;
 
-            const players = session.funkyPlayers || session.manualPlayers || [];
+            const players = (session.funkyPlayers && session.funkyPlayers.length > 0) ? session.funkyPlayers
+                : (session.goMafiaPlayers && session.goMafiaPlayers.length > 0) ? session.goMafiaPlayers
+                : (session.manualPlayers && session.manualPlayers.length > 0) ? session.manualPlayers
+                : [];
             const roles = session.roles || {};
             const actions = session.playersActions || {};
             const fouls = session.fouls || {};
@@ -2349,11 +2572,12 @@ Object.assign(window.app.methods, {
             const gamePlayers = [];
             players.forEach((p, i) => {
                 if (!p || !p.login) return;
-                const roleKey = p.roleKey || ((session.funkyGameNumber || session.gameSelected || 1) + '-' + (session.funkyTableNumber || 1) + '-' + (i + 1));
+                const roleKey = p.roleKey || ((session.funkyGameNumber || session.gameSelected || 1) + '-' + (session.funkyTableNumber || session.tableSelected || 1) + '-' + (i + 1));
                 const role = roles[roleKey] || null;
                 const action = actions[roleKey] || null;
-                const isCivilian = !role || role === 'sheriff';
-                const isMafia = role === 'black' || role === 'don';
+                const cityRolesMap = this.CITY_ROLES_ALL ? this.CITY_ROLES_ALL() : {};
+                const isMafia = role === 'black' || role === 'don' || (cityRolesMap[role] && cityRolesMap[role].team === 'black');
+                const isCivilian = !isMafia;
                 const won = (winnerTeam === 'civilians' && isCivilian) || (winnerTeam === 'mafia' && isMafia);
 
                 let gameScore = 0;
@@ -2373,7 +2597,7 @@ Object.assign(window.app.methods, {
                             has = true;
                             const targetIdx = parseInt(idx);
                             const targetP = players[targetIdx - 1];
-                            const targetRoleKey = targetP?.roleKey || ((session.funkyGameNumber || session.gameSelected || 1) + '-' + (session.funkyTableNumber || 1) + '-' + targetIdx);
+                            const targetRoleKey = targetP?.roleKey || ((session.funkyGameNumber || session.gameSelected || 1) + '-' + (session.funkyTableNumber || session.tableSelected || 1) + '-' + targetIdx);
                             const actualRole = roles[targetRoleKey] || null;
                             let isCorrect = false;
                             if (predicted === 'peace' && !actualRole) isCorrect = true;
@@ -2397,7 +2621,7 @@ Object.assign(window.app.methods, {
                             has = true;
                             const targetIdx = parseInt(idx);
                             const targetP = players[targetIdx - 1];
-                            const targetRoleKey = targetP?.roleKey || ((session.funkyGameNumber || session.gameSelected || 1) + '-' + (session.funkyTableNumber || 1) + '-' + targetIdx);
+                            const targetRoleKey = targetP?.roleKey || ((session.funkyGameNumber || session.gameSelected || 1) + '-' + (session.funkyTableNumber || session.tableSelected || 1) + '-' + targetIdx);
                             const actualRole = roles[targetRoleKey] || null;
                             let isCorrect = false;
                             if (predicted === 'peace' && !actualRole) isCorrect = true;
@@ -2454,7 +2678,7 @@ Object.assign(window.app.methods, {
         this.funkySummaryGameExpanded = null;
         this.funkySummaryPlayerExpanded = null;
         this.funkySummaryTab = 'overall';
-        this.funkySummaryTournamentName = sessions[0]?.tournamentName || sessions[0]?.mainInfoText || 'Фанки';
+        this.funkySummaryTournamentName = sessions[0]?.tournamentName || sessions[0]?.mainInfoText || 'Турнир';
         this.funkySummarySharing = false;
         this.funkySummaryShareUrl = '';
         this.showFunkySummary = true;
@@ -2467,20 +2691,30 @@ Object.assign(window.app.methods, {
     funkySaveGameResults() {
         // Помечаем игру как завершённую с сохранёнными баллами
         this._funkyGameSaved = true;
+        this.gameFinished = true;
 
         // Сохраняем сессию
         this.saveCurrentSession();
 
+        // Обновляем sessionsList чтобы главное меню показало актуальный статус
+        if (this.currentSessionId && this.sessionsList) {
+            const idx = this.sessionsList.findIndex(s => s.sessionId === this.currentSessionId);
+            if (idx >= 0) {
+                this.$set(this.sessionsList[idx], 'gameFinished', true);
+                this.$set(this.sessionsList[idx], 'winnerTeam', this.winnerTeam);
+            }
+        }
+
+        // Запоминаем, что сессия уже сохранена — returnToMainMenu не должен пересохранять
+        const savedSessionId = this.currentSessionId;
+        this._skipReturnSave = true;
+
         // Возвращаемся в главное меню
-        this.showMainMenu = true;
-        this.showModal = false;
-        this.showRoomModal = false;
-        this.showGameTableModal = false;
+        this.returnToMainMenu();
 
-        console.log('💾 funkySaveGameResults: Игра сохранена');
+        this._skipReturnSave = false;
 
-        // Если это фанки — можно создать следующую игру из меню
-        if (window.haptic) window.haptic.notification('success');
+        console.log('💾 funkySaveGameResults: Игра завершена и сохранена, sessionId:', savedSessionId);
     },
 
     // Поделиться итогами вечера — сохраняет на сервер и копирует ссылку
@@ -2496,7 +2730,7 @@ Object.assign(window.app.methods, {
         this.funkySummarySharing = true;
         try {
             const payload = {
-                tournamentName: this.funkySummaryTournamentName || 'Фанки',
+                tournamentName: this.funkySummaryTournamentName || 'Турнир',
                 data: this.funkySummaryData,
                 games: this.funkySummaryGames || [],
                 createdAt: new Date().toISOString()
@@ -2535,7 +2769,7 @@ Object.assign(window.app.methods, {
 
     // Открыть стандартный диалог «Поделиться» в Telegram (выбор получателя)
     _funkyOpenTelegramShare(url) {
-        const text = '📊 ' + (this.funkySummaryTournamentName || 'Итоги вечера');
+        const text = '📊 ' + (this.funkySummaryTournamentName || 'Итоги');
         const tg = window.Telegram && window.Telegram.WebApp;
 
         if (tg && typeof tg.openTelegramLink === 'function') {
@@ -2599,12 +2833,14 @@ Object.assign(window.app.methods, {
             roleKey: `${this.funkyGameNumber}-${this.funkyTableNumber}-${i + 1}`
         }));
 
-        // Записываем в manualGames (manualPlayers — computed, читает из manualGames)
+        // Записываем в manualGames и manualPlayers
+        // Примечание: manualPlayers в data перекрывает computed, поэтому ставим напрямую
         this.manualGames = [{
             num: this.funkyGameNumber,
             players: players
         }];
         this.manualGameSelected = this.funkyGameNumber;
+        this.manualPlayers = players;
 
         // Включаем manualMode для совместимости с tableOut computed
         this.manualMode = true;
@@ -2735,6 +2971,416 @@ Object.assign(window.app.methods, {
         clearTimeout(this._funkySearchTimeout);
     },
 
+    // =====================================================
+    // City Mafia Mode — Городская мафия
+    // =====================================================
+
+    CITY_ROLES_ALL() {
+        return {
+            sheriff:      { label: 'Шериф',        team: 'red',   icon: 'mdi-shield-star' },
+            detective:    { label: 'Детектив',      team: 'red',   icon: 'mdi-magnify' },
+            jailer:       { label: 'Тюремщик',     team: 'red',   icon: 'mdi-lock' },
+            prostitute:   { label: 'Проститутка',   team: 'red',   icon: 'mdi-heart' },
+            bodyguard:    { label: 'Телохранитель', team: 'red',   icon: 'mdi-shield-account' },
+            sleepwalker:  { label: 'Лунатик',       team: 'red',   icon: 'mdi-weather-night' },
+            journalist:   { label: 'Журналист',     team: 'red',   icon: 'mdi-newspaper' },
+            doctor:       { label: 'Доктор',        team: 'red',   icon: 'mdi-medical-bag' },
+            priest:       { label: 'Священник',     team: 'red',   icon: 'mdi-cross' },
+            judge:        { label: 'Судья',         team: 'red',   icon: 'mdi-gavel' },
+            kamikaze:     { label: 'Камикадзе',     team: 'red',   icon: 'mdi-bomb' },
+            immortal:     { label: 'Бессмертный',   team: 'red',   icon: 'mdi-infinity' },
+            beauty:       { label: 'Красотка',      team: 'red',   icon: 'mdi-flower' },
+            don:          { label: 'Дон',           team: 'black', icon: 'mdi-crown' },
+            mafia:        { label: 'Мафия',         team: 'black', icon: 'mdi-pistol' },
+            oyabun:       { label: 'Оябун',         team: 'black', icon: 'mdi-yin-yang' },
+            yakuza:       { label: 'Якудза',        team: 'black', icon: 'mdi-sword-cross' },
+            maniac:       { label: 'Маньяк',        team: 'black', icon: 'mdi-knife' },
+            ripper:       { label: 'Потрошитель',   team: 'black', icon: 'mdi-axe' },
+            swindler:     { label: 'Аферист',       team: 'black', icon: 'mdi-cards' },
+            thief:        { label: 'Вор',           team: 'black', icon: 'mdi-eye-off' },
+            snitch:       { label: 'Стукач',        team: 'black', icon: 'mdi-account-alert' },
+            fangirl:      { label: 'Поклонница',    team: 'black', icon: 'mdi-account-heart' },
+            lawyer:       { label: 'Адвокат',       team: 'black', icon: 'mdi-briefcase' },
+            peace:        { label: 'Мирный',        team: 'red',   icon: 'mdi-account' }
+        };
+    },
+
+    CITY_PLAYER_CONFIGS() {
+        return {
+            8:  { roles: ['don', 'mafia', 'sheriff'], peaceFill: 5 },
+            9:  { roles: ['don', 'mafia', 'mafia', 'sheriff'], peaceFill: 5 },
+            10: { roles: ['don', 'mafia', 'mafia', 'sheriff', 'doctor'], peaceFill: 5 },
+            11: { roles: ['don', 'mafia', 'mafia', 'sheriff', 'doctor'], peaceFill: 6 },
+            12: { roles: ['don', 'mafia', 'mafia', 'mafia', 'sheriff', 'doctor'], peaceFill: 6 },
+            13: { roles: ['don', 'mafia', 'mafia', 'maniac', 'sheriff', 'doctor', 'kamikaze'], peaceFill: 6 },
+            14: { roles: ['don', 'mafia', 'mafia', 'maniac', 'sheriff', 'doctor', 'kamikaze', 'immortal'], peaceFill: 6 },
+            15: { roles: ['don', 'mafia', 'mafia', 'mafia', 'maniac', 'sheriff', 'doctor', 'kamikaze', 'immortal'], peaceFill: 6 },
+            16: { roles: ['don', 'mafia', 'mafia', 'mafia', 'maniac', 'sheriff', 'doctor', 'kamikaze', 'immortal', 'beauty'], peaceFill: 6 },
+        };
+    },
+
+    CITY_BASE_ROLES_17() {
+        return ['don', 'mafia', 'mafia', 'mafia', 'maniac', 'sheriff', 'doctor', 'kamikaze', 'immortal', 'beauty'];
+    },
+
+    CITY_OPTIONAL_ROLES() {
+        return [
+            'detective', 'jailer', 'prostitute', 'bodyguard', 'sleepwalker',
+            'journalist', 'priest', 'judge',
+            'oyabun', 'yakuza', 'ripper', 'swindler', 'thief', 'snitch', 'fangirl', 'lawyer'
+        ];
+    },
+
+    CITY_BEST_MOVE_CONFIG() {
+        return { 8: 2, 9: 3, 10: 3, 11: 3, 12: 4, 13: 4, 14: 4, 15: 5, 16: 5, 17: 5 };
+    },
+
+    getCityBestMoveMax() {
+        const count = this.cityPlayersCount || 10;
+        const config = this.CITY_BEST_MOVE_CONFIG();
+        return config[count] || 0;
+    },
+
+    getCityActiveRoles() {
+        const count = this.cityPlayersCount;
+        const configs = this.CITY_PLAYER_CONFIGS();
+        if (count <= 16 && configs[count]) {
+            const cfg = configs[count];
+            const roles = [...cfg.roles];
+            for (let i = 0; i < cfg.peaceFill; i++) roles.push('peace');
+            return roles;
+        }
+        const base = [...this.CITY_BASE_ROLES_17()];
+        const optional = this.CITY_OPTIONAL_ROLES();
+        optional.forEach(r => { if (this.cityRoleToggles[r]) base.push(r); });
+        const remaining = count - base.length;
+        for (let i = 0; i < remaining; i++) base.push('peace');
+        return base;
+    },
+
+    startCityMode() {
+        console.log('🏙️ startCityMode: Запускаем режим Городская мафия');
+        this.cityMode = true;
+        this.funkyMode = false;
+        this.manualMode = false;
+        this.inputMode = 'city';
+        this.cityGameNumber = 1;
+        this.cityTableNumber = 1;
+        this.cityStep = 'count';
+        this.cityPlayersCount = 10;
+        this.cityRoleToggles = {};
+        this.cityAssignedRoles = {};
+        this.cityRolesAutoAssigned = false;
+
+        const now = new Date();
+        const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+        const dateStr = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+        this._tournamentDisplayName = `Городская мафия ${dateStr}`;
+        this.mainInfoText = this._tournamentDisplayName;
+        this.tournamentId = 'city_' + Date.now();
+
+        this.cityPlayers = [];
+        this.cityPlayerInputs = [];
+        this.citySearchResults = [];
+        this.cityActiveInput = -1;
+        this.citySearchLoading = false;
+
+        if (!this.currentSessionId && window.sessionManager) {
+            this.currentSessionId = window.sessionManager.generateSessionId();
+        }
+
+        this.showModal = true;
+        this.showRoomModal = false;
+        this.showMainMenu = false;
+        this.showGameTableModal = false;
+        this.newGameStep = 'city';
+        this.saveCurrentSession();
+    },
+
+    citySetPlayersCount(count) {
+        count = parseInt(count);
+        if (isNaN(count) || count < 8 || count > 30) return;
+        this.cityPlayersCount = count;
+        this.cityPlayers = [];
+        this.cityPlayerInputs = [];
+        for (let i = 0; i < count; i++) {
+            this.cityPlayers.push(null);
+            this.cityPlayerInputs.push('');
+        }
+        if (count >= 17) {
+            this.cityRoleToggles = {};
+            this.cityStep = 'roles_config';
+        } else {
+            this.cityStep = 'players';
+        }
+        this.saveCurrentSession();
+    },
+
+    cityToggleRole(roleKey) {
+        const current = this.cityRoleToggles[roleKey] || false;
+        this.$set(this.cityRoleToggles, roleKey, !current);
+        const activeRoles = this.getCityActiveRoles();
+        if (activeRoles.length > this.cityPlayersCount) {
+            this.$set(this.cityRoleToggles, roleKey, current);
+            if (this.showAlert) this.showAlert('Слишком много ролей для ' + this.cityPlayersCount + ' игроков');
+        }
+    },
+
+    cityConfirmRolesConfig() {
+        this.cityStep = 'players';
+        this.saveCurrentSession();
+    },
+
+    async citySearchPlayer(index) {
+        const query = this.cityPlayerInputs[index];
+        if (!query || query.trim().length < 1) { this.citySearchResults = []; this.citySearchLoading = false; return; }
+        if (this.citySearchResults.length === 0) this.citySearchLoading = true;
+        this.cityActiveInput = index;
+        try {
+            const url = `/api/players-search.php?za&q=${encodeURIComponent(query.trim())}`;
+            const response = await fetch(url);
+            if (this.cityActiveInput !== index) return;
+            if (response.ok) {
+                const text = await response.text();
+                if (this.cityActiveInput !== index) return;
+                let results;
+                try { results = JSON.parse(text); } catch (e) { this.citySearchResults = []; return; }
+                if (Array.isArray(results)) {
+                    const selectedLogins = this.cityPlayers.filter(p => p !== null).map(p => p.login);
+                    this.citySearchResults = results.filter(r => !selectedLogins.includes(r.login));
+                } else { this.citySearchResults = []; }
+            } else { this.citySearchResults = []; }
+        } catch (e) { this.citySearchResults = []; }
+        finally { this.citySearchLoading = false; }
+    },
+
+    citySelectPlayer(index, player) {
+        const roleKey = `${this.cityGameNumber}-${this.cityTableNumber}-${index + 1}`;
+        this.$set(this.cityPlayers, index, { login: player.login, avatar_link: player.avatar_link || null, id: player.id || null, title: player.title || null, roleKey: roleKey, num: index + 1 });
+        this.$set(this.cityPlayerInputs, index, player.login);
+        this.citySearchResults = [];
+        this.cityActiveInput = -1;
+        if (player.avatar_link) {
+            if (!this.avatarsFromServer) this.avatarsFromServer = {};
+            this.$set(this.avatarsFromServer, player.login, player.avatar_link);
+        }
+        this.$nextTick(() => {
+            const nextEmpty = this.cityPlayers.findIndex(p => p === null);
+            if (nextEmpty !== -1) {
+                const nextInput = document.querySelector(`.city-player-input[data-index="${nextEmpty}"]`);
+                if (nextInput) nextInput.focus();
+            }
+        });
+        this.saveCurrentSession();
+    },
+
+    citySetManualPlayer(index) {
+        const name = this.cityPlayerInputs[index];
+        if (!name || !name.trim()) return;
+        if (this.cityPlayers.find(p => p && p.login === name.trim())) return;
+        const roleKey = `${this.cityGameNumber}-${this.cityTableNumber}-${index + 1}`;
+        this.$set(this.cityPlayers, index, { login: name.trim(), avatar_link: null, id: null, title: null, roleKey: roleKey, num: index + 1 });
+        this.citySearchResults = [];
+        this.cityActiveInput = -1;
+        this.saveCurrentSession();
+    },
+
+    cityClearPlayer(index) {
+        this.$set(this.cityPlayers, index, null);
+        this.$set(this.cityPlayerInputs, index, '');
+        this.citySearchResults = [];
+        this.saveCurrentSession();
+    },
+
+    cityAllPlayersFilled() {
+        return this.cityPlayers.length === this.cityPlayersCount && this.cityPlayers.every(p => p !== null);
+    },
+
+    cityShufflePlayers() {
+        if (!this.cityAllPlayersFilled()) return;
+        const players = [...this.cityPlayers];
+        for (let i = players.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [players[i], players[j]] = [players[j], players[i]];
+        }
+        for (let i = 0; i < players.length; i++) {
+            if (players[i]) {
+                players[i] = { ...players[i], num: i + 1, roleKey: `${this.cityGameNumber}-${this.cityTableNumber}-${i + 1}` };
+            }
+        }
+        this.cityPlayers = players;
+        this.cityPlayerInputs = players.map(p => p ? p.login : '');
+        this.citySearchResults = [];
+        this.cityActiveInput = -1;
+    },
+
+    cityOnInput(index) {
+        if (this.cityActiveInput !== index) { this.citySearchResults = []; this.citySearchLoading = false; }
+        this.cityActiveInput = index;
+        clearTimeout(this._citySearchTimeout);
+        const query = this.cityPlayerInputs[index];
+        if (!query || query.trim().length < 1) { this.citySearchResults = []; this.citySearchLoading = false; return; }
+        this._citySearchTimeout = setTimeout(() => { this.citySearchPlayer(index); }, 300);
+    },
+
+    cityCloseSearch() {
+        this.citySearchResults = [];
+        this.cityActiveInput = -1;
+        this.citySearchLoading = false;
+        clearTimeout(this._citySearchTimeout);
+    },
+
+    cityGoToRolesAssign() {
+        if (!this.cityAllPlayersFilled()) { if (this.showAlert) this.showAlert('Заполните всех игроков'); return; }
+        this.cityAssignedRoles = {};
+        this.cityRolesAutoAssigned = false;
+        this.cityStep = 'roles_assign';
+        this.saveCurrentSession();
+    },
+
+    cityAutoAssignRoles() {
+        const activeRoles = this.getCityActiveRoles();
+        const shuffled = [...activeRoles];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        const assigned = {};
+        for (let i = 0; i < this.cityPlayers.length; i++) {
+            assigned[i] = shuffled[i] || 'peace';
+        }
+        this.cityAssignedRoles = assigned;
+        this.cityRolesAutoAssigned = true;
+        this.$forceUpdate();
+    },
+
+    citySetPlayerRole(playerIndex, roleId) {
+        this.$set(this.cityAssignedRoles, playerIndex, roleId);
+    },
+
+    cityGetAvailableRoles(playerIndex) {
+        const allRoles = this.CITY_ROLES_ALL();
+        const activeRoles = this.getCityActiveRoles();
+        const roleCounts = {};
+        activeRoles.forEach(r => { roleCounts[r] = (roleCounts[r] || 0) + 1; });
+        const assignedCounts = {};
+        Object.entries(this.cityAssignedRoles).forEach(([idx, role]) => {
+            if (parseInt(idx) !== playerIndex && role) assignedCounts[role] = (assignedCounts[role] || 0) + 1;
+        });
+        const available = [];
+        const addedRoles = new Set();
+        Object.entries(roleCounts).forEach(([role, needed]) => {
+            const used = assignedCounts[role] || 0;
+            if (used < needed && !addedRoles.has(role)) {
+                available.push({ id: role, label: allRoles[role] ? allRoles[role].label : role, team: allRoles[role] ? allRoles[role].team : 'red' });
+                addedRoles.add(role);
+            }
+        });
+        return available;
+    },
+
+    cityValidateRoles() {
+        const activeRoles = this.getCityActiveRoles();
+        const assigned = Object.values(this.cityAssignedRoles);
+        if (assigned.length !== this.cityPlayersCount) return false;
+        if (assigned.some(r => !r)) return false;
+        const neededCounts = {};
+        activeRoles.forEach(r => { neededCounts[r] = (neededCounts[r] || 0) + 1; });
+        const assignedCounts = {};
+        assigned.forEach(r => { assignedCounts[r] = (assignedCounts[r] || 0) + 1; });
+        for (const role in neededCounts) {
+            if ((assignedCounts[role] || 0) !== neededCounts[role]) return false;
+        }
+        return true;
+    },
+
+    cityConfirmPlayers() {
+        if (!this.cityValidateRoles()) {
+            if (this.showAlert) this.showAlert('Назначьте все роли перед началом игры');
+            return;
+        }
+        console.log('🏙️ cityConfirmPlayers: Подтверждаем состав');
+        const allRolesMap = this.CITY_ROLES_ALL();
+        const players = this.cityPlayers.map((p, i) => ({
+            ...p, num: i + 1, roleKey: `${this.cityGameNumber}-${this.cityTableNumber}-${i + 1}`
+        }));
+        this.manualGames = [{ num: this.cityGameNumber, players: players }];
+        this.manualGameSelected = this.cityGameNumber;
+        this.manualPlayers = players;
+        this.manualMode = true;
+        this.gameSelected = this.cityGameNumber;
+        this.tableSelected = this.cityTableNumber;
+
+        this.roles = {};
+        for (let i = 0; i < players.length; i++) {
+            const roleId = this.cityAssignedRoles[i] || 'peace';
+            let mappedRole = roleId;
+            if (roleId === 'mafia') mappedRole = 'black';
+            this.$set(this.roles, players[i].roleKey, mappedRole);
+        }
+
+        this.additionalInfoText = `Игра ${this.cityGameNumber} | Стол ${this.cityTableNumber}`;
+        this.showModal = false;
+        this.showMainMenu = false;
+        this.showGameTableModal = false;
+        this.editRoles = false;
+        this.rolesDistributed = true;
+        this.gamePhase = 'discussion';
+        this.currentMode = 'discussion';
+        this.dayNumber = 0;
+        this.nightNumber = 0;
+        this.newGameStep = 'modes';
+
+        // Reset game state for new city game
+        this.firstKilledEver = false;
+        this.firstKilledPlayer = null;
+        this.firstKilledEver = false;
+        this.bestMove = [];
+        this.bestMoveSelected = false;
+        this.bestMoveAccepted = false;
+        this.playersActions = {};
+        this.killedOnNight = {};
+        this.killedCardPhase = {};
+        this.killedPlayerBlink = {};
+        this.protocolAccepted = {};
+        this.nightChecks = {};
+        this.nightCheckHistory = [];
+        this.nightPhase = null;
+        this.dayButtonBlink = false;
+        this.nightMisses = {};
+        this.dayVoteOuts = {};
+        this.fouls = {};
+        this.techFouls = {};
+        this.removed = {};
+        this.nominations = {};
+        this.nominationsLocked = false;
+        this.votingHistory = [];
+        this.winnerTeam = null;
+        this.protocolData = {};
+        this.opinionData = {};
+        this.opinionText = {};
+        this.doctorHeal = null;
+        this.doctorHealHistory = [];
+        this.doctorLastHealTarget = null;
+
+        const avatars = {};
+        this.cityPlayers.forEach(p => { if (p && p.avatar_link) avatars[p.login] = p.avatar_link; });
+        if (Object.keys(avatars).length > 0) {
+            this.avatarsFromServer = { ...(this.avatarsFromServer || {}), ...avatars };
+            if (this.saveAvatarsToServer) this.saveAvatarsToServer(this.avatarsFromServer);
+        }
+        this.$forceUpdate();
+        this.saveCurrentSession();
+        if (this.sendFullState && this.ws && this.ws.readyState === WebSocket.OPEN) this.sendFullState();
+    },
+
+    getCityRoleLabel(roleId) {
+        const allRoles = this.CITY_ROLES_ALL();
+        if (allRoles[roleId]) return allRoles[roleId].label;
+        if (roleId === 'black') return 'Мафия';
+        return 'Мирный';
+    },
+
     // Функции для ручного режима
     createManualTable() {
         if (!this.manualPlayersCount || this.manualPlayersCount < 1 || this.manualPlayersCount > 15) {
@@ -2761,7 +3407,8 @@ Object.assign(window.app.methods, {
             players: players
         }];
         this.manualGameSelected = 1;
-        
+        this.manualPlayers = players;
+
         this.showModal = false;
         this.showRoomModal = false;
         this.showMainMenu = false;
@@ -2797,8 +3444,11 @@ Object.assign(window.app.methods, {
                 players: players
             });
             this.manualGameSelected = newGameNum;
+            this.manualPlayers = players;
         } else {
             this.manualGameSelected = Number(value);
+            const selectedGame = this.manualGames.find(g => g.num === Number(value));
+            if (selectedGame) this.manualPlayers = selectedGame.players;
         }
         
         // Сохраняем сессию при смене игры
@@ -2817,6 +3467,7 @@ Object.assign(window.app.methods, {
     resetManualMode() {
         this.manualMode = false;
         this.manualGames = [];
+        this.manualPlayers = [];
         this.manualGameSelected = 1;
         this.inputMode = 'gomafia';
         this.showModal = true;
@@ -3069,6 +3720,29 @@ Object.assign(window.app.methods, {
             case 'mafia': return 'Мафия';
             case 'don': return 'Дон';
             case 'black': return 'Мафия';
+            // City Mafia roles — red
+            case 'detective': return 'Детектив';
+            case 'jailer': return 'Тюремщик';
+            case 'prostitute': return 'Проститутка';
+            case 'bodyguard': return 'Телохранитель';
+            case 'sleepwalker': return 'Лунатик';
+            case 'journalist': return 'Журналист';
+            case 'doctor': return 'Доктор';
+            case 'priest': return 'Священник';
+            case 'judge': return 'Судья';
+            case 'kamikaze': return 'Камикадзе';
+            case 'immortal': return 'Бессмертный';
+            case 'beauty': return 'Красотка';
+            // City Mafia roles — black
+            case 'oyabun': return 'Оябун';
+            case 'yakuza': return 'Якудза';
+            case 'maniac': return 'Маньяк';
+            case 'ripper': return 'Потрошитель';
+            case 'swindler': return 'Аферист';
+            case 'thief': return 'Вор';
+            case 'snitch': return 'Стукач';
+            case 'fangirl': return 'Поклонница';
+            case 'lawyer': return 'Адвокат';
             default: return 'Мирный';
         }
     },
@@ -3078,6 +3752,9 @@ Object.assign(window.app.methods, {
         if (role === 'don') return 'don';
         if (role === 'black') return 'mafia';
         if (role === 'sheriff') return 'sheriff';
+        // City Mafia black roles
+        const blackRoles = ['oyabun', 'yakuza', 'maniac', 'ripper', 'swindler', 'thief', 'snitch', 'fangirl', 'lawyer', 'mafia'];
+        if (blackRoles.includes(role)) return 'mafia';
         return 'peace';
     },
 
@@ -3109,23 +3786,23 @@ Object.assign(window.app.methods, {
             if (night === 1) {
                 const fk = players.find(p => p.isFirstKilled);
                 if (fk) {
-                    events.push({ type: 'kill', icon: '💀', text: '№' + fk.num + ' ' + fk.login + ' убит' + (fk.isSelfKill ? ' (самострел)' : '') });
+                    events.push({ type: 'kill', icon: '✦', text: '№' + fk.num + ' ' + fk.login + ' убит' + (fk.isSelfKill ? ' (самострел)' : '') });
                 }
             }
 
             // Промах
             if (game.nightMisses && game.nightMisses[night]) {
-                events.push({ type: 'miss', icon: '❌', text: 'Промах' });
+                events.push({ type: 'miss', icon: '✕', text: 'Промах' });
             }
 
             // Проверки Дона
             nch.filter(h => h.night === night && h.checkerRole === 'don').forEach(h => {
-                events.push({ type: 'don-check', icon: '🎩', text: 'Дон проверил №' + h.target + ' ' + (h.targetLogin || '') + ' — ' + h.result });
+                events.push({ type: 'don-check', icon: '◆', text: 'Дон проверил №' + h.target + ' ' + (h.targetLogin || '') + ' — ' + h.result });
             });
 
             // Проверки Шерифа
             nch.filter(h => h.night === night && h.checkerRole === 'sheriff').forEach(h => {
-                events.push({ type: 'sheriff-check', icon: '⭐', text: 'Шериф проверил №' + h.target + ' ' + (h.targetLogin || '') + ' — ' + h.result });
+                events.push({ type: 'sheriff-check', icon: '★', text: 'Шериф проверил №' + h.target + ' ' + (h.targetLogin || '') + ' — ' + h.result });
             });
 
             if (events.length > 0) {

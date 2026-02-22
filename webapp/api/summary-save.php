@@ -57,7 +57,7 @@ if (!is_dir($dir)) {
 
 $fileData = [
     'id' => $id,
-    'tournamentName' => isset($payload['tournamentName']) ? $payload['tournamentName'] : 'Фанки',
+    'tournamentName' => isset($payload['tournamentName']) ? $payload['tournamentName'] : 'Турнир',
     'data' => $payload['data'],
     'games' => isset($payload['games']) ? $payload['games'] : [],
     'createdAt' => isset($payload['createdAt']) ? $payload['createdAt'] : date('c'),

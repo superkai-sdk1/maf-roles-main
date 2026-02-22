@@ -424,6 +424,13 @@ window.timerMixin = {    data() {
                 });
                 console.log('Vue: Timer stopped for player:', playerKey);
             }
+            // City mode: авто-принятие при остановке таймера (нет протокола/мнения)
+            if (this.cityMode && this.killedCardPhase && this.killedCardPhase[playerKey] === 'timer') {
+                this.$set(this.killedCardPhase, playerKey, 'done');
+                this.$set(this.protocolAccepted, playerKey, true);
+                this.saveRoomStateIncremental({ killedCardPhase: this.killedCardPhase, protocolAccepted: this.protocolAccepted });
+                this.sendFullState();
+            }
         },        // Добавление 30 секунд
         addThirtySecondsToTimer(playerKey) {
             console.log('Vue: addThirtySecondsToTimer called for player:', playerKey);
@@ -459,13 +466,10 @@ window.timerMixin = {    data() {
             }
         },        // Получение данных таймера для отображения
         getTimerDisplay(playerKey) {
-            console.log('Vue: getTimerDisplay called for player:', playerKey);
             if (!this.playerTimers[playerKey]) {
-                console.log('Vue: Timer not found, initializing for player:', playerKey);
                 const fouls = this.fouls ? this.fouls[playerKey] || 0 : 0;
                 this.initTimer(playerKey, fouls);
             }
-            console.log('Vue: Returning timer display for player:', playerKey, this.playerTimers[playerKey]);
             return this.playerTimers[playerKey] || {
                 timeLeft: 60,
                 isRunning: false,

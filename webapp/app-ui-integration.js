@@ -11,6 +11,160 @@ if (!window.app.methods) window.app.methods = {};
 
 // Принудительно добавляем методы, перезаписывая существующие
 Object.assign(window.app.methods, {
+
+    // =============================================
+    // Slide-to-Confirm Slider System
+    // =============================================
+    _slideState: {},
+
+    initSlider(id) {
+        const el = this.$refs['slider_' + id];
+        if (!el) return;
+        const thumb = el.querySelector('.slide-confirm__thumb');
+        const progress = el.querySelector('.slide-confirm__progress');
+        const text = el.querySelector('.slide-confirm__text');
+        if (!thumb) return;
+
+        const self = this; // explicitly capture Vue instance
+        const state = { isDragging: false, startX: 0, completed: false };
+        this.$set(this.slideStates, id, state);
+
+        const padding = 4;
+        const getMaxDelta = () => el.offsetWidth - thumb.offsetWidth - (padding * 2);
+
+        const startDrag = (e) => {
+            if (state.completed || el.classList.contains('slide-confirm--disabled') || el.getAttribute('data-disabled') === '1') return;
+            state.isDragging = true;
+            state.startX = (e.type === 'touchstart') ? e.touches[0].clientX : e.clientX;
+            thumb.style.transition = 'none';
+            thumb.style.animation = 'none';
+            progress.style.transition = 'none';
+            el.classList.remove('slider-pulse-glow');
+            try { if (window.haptic) window.haptic.impact('light'); } catch(ex) {}
+        };
+
+        const onDrag = (e) => {
+            if (!state.isDragging) return;
+            e.preventDefault();
+            const maxDelta = getMaxDelta();
+            if (maxDelta <= 0) return;
+            const currentX = (e.type === 'touchmove') ? e.touches[0].clientX : e.clientX;
+            let delta = currentX - state.startX;
+            if (delta < 0) delta = 0;
+            if (delta > maxDelta) delta = maxDelta;
+            thumb.style.transform = 'translateX(' + delta + 'px)';
+            progress.style.width = (delta + thumb.offsetWidth / 2 + padding) + 'px';
+            if (text) text.style.opacity = Math.max(0, 1 - (delta / (maxDelta * 0.6)));
+        };
+
+        const endDrag = () => {
+            if (!state.isDragging) return;
+            state.isDragging = false;
+            const maxDelta = getMaxDelta();
+            if (maxDelta <= 0) return;
+            const matrix = new WebKitCSSMatrix(getComputedStyle(thumb).transform);
+            const currentTranslate = matrix.m41;
+
+            if (currentTranslate >= maxDelta * 0.9) {
+                // Success
+                thumb.style.transition = 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                thumb.style.transform = 'translateX(' + maxDelta + 'px)';
+                progress.style.transition = 'all 0.3s ease';
+                progress.style.width = '100%';
+                el.classList.add('slide-confirm--done');
+                if (text) { text.style.opacity = '1'; text.innerText = '✓'; text.style.webkitTextFillColor = '#4ade80'; }
+                state.completed = true;
+                try { if (window.haptic) window.haptic.notification('success'); } catch(ex) {}
+                // Fire completion with small delay so visual feedback renders first
+                var sliderId = id;
+                setTimeout(function() {
+                    try {
+                        console.log('🎚️ Slider firing action:', sliderId);
+                        self.onSliderComplete(sliderId);
+                    } catch(err) {
+                        console.error('🎚️ Slider action error:', err);
+                    }
+                }, 50);
+            } else {
+                // Cancel — snap back
+                thumb.style.transition = 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
+                progress.style.transition = 'all 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
+                thumb.style.transform = 'translateX(0px)';
+                progress.style.width = '0';
+                if (text) text.style.opacity = '1';
+            }
+        };
+
+        thumb.addEventListener('mousedown', startDrag);
+        thumb.addEventListener('touchstart', startDrag, { passive: true });
+        window.addEventListener('mousemove', onDrag);
+        window.addEventListener('touchmove', onDrag, { passive: false });
+        window.addEventListener('mouseup', endDrag);
+        window.addEventListener('touchend', endDrag);
+
+        // Store cleanup reference
+        state._cleanup = () => {
+            window.removeEventListener('mousemove', onDrag);
+            window.removeEventListener('touchmove', onDrag);
+            window.removeEventListener('mouseup', endDrag);
+            window.removeEventListener('touchend', endDrag);
+        };
+    },
+
+    resetSlider(id) {
+        const el = this.$refs['slider_' + id];
+        if (!el) return;
+        const thumb = el.querySelector('.slide-confirm__thumb');
+        const progress = el.querySelector('.slide-confirm__progress');
+        const text = el.querySelector('.slide-confirm__text');
+        el.classList.remove('slide-confirm--done');
+        if (thumb) { thumb.style.transition = 'all 0.3s ease'; thumb.style.transform = 'translateX(0px)'; }
+        if (progress) { progress.style.transition = 'all 0.3s ease'; progress.style.width = '0'; }
+        if (text) { text.style.opacity = '1'; text.style.webkitTextFillColor = ''; }
+        if (this.slideStates[id]) this.slideStates[id].completed = false;
+    },
+
+    onSliderComplete(id) {
+        console.log('🎚️ Slider completed:', id, 'gamePhase:', this.gamePhase);
+        var vm = this || window.app;
+        switch (id) {
+            case 'roles':
+                vm.confirmRolesDistribution();
+                break;
+            case 'skip_discussion':
+                console.log('🎚️ Advancing from discussion...');
+                vm.stopDiscussionTimer();
+                vm.advanceFromDiscussion();
+                console.log('🎚️ Discussion advanced, new gamePhase:', vm.gamePhase);
+                break;
+            case 'skip_freeseating':
+                console.log('🎚️ Advancing from free seating...');
+                vm.stopFreeSeatingTimer();
+                vm.advanceFromFreeSeating();
+                console.log('🎚️ Free seating advanced, new gamePhase:', vm.gamePhase);
+                break;
+            case 'finish_game':
+                vm.showWinnerModal = true;
+                // Reset slider so it can be used again if modal is cancelled
+                vm.$nextTick(function() { vm.resetSlider('finish_game'); });
+                break;
+            case 'exit_game':
+                vm.returnToMainMenu();
+                break;
+            case 'save_results':
+                vm.funkySaveGameResults();
+                break;
+            case 'go_night':
+                console.log('🎚️ Slider: go to night');
+                vm.handleGoToNight();
+                break;
+            case 'go_day':
+                console.log('🎚️ Slider: go to day (morning)');
+                vm.setMode('day');
+                break;
+        }
+    },
+
     // Telegram Web App методы
     initTelegramApp() {
         try {
@@ -591,7 +745,9 @@ Object.assign(window.app.methods, {
             editRoles: this.editRoles,
             inputMode: this.inputMode,
             avatarsFromServer: this.avatarsFromServer,
-            avatarsJustLoaded: this.avatarsJustLoaded,        };
+            avatarsJustLoaded: this.avatarsJustLoaded,
+            killedOnNight: this.killedOnNight,
+        };
         try {
             const response = await fetch('/api/room-state.php?roomId=' + encodeURIComponent(this.roomId), {
                 method: 'POST',
@@ -662,18 +818,45 @@ Object.assign(window.app.methods, {
                 if (state.votingLiftResults !== undefined) this.votingLiftResults = state.votingLiftResults;
                 if (state.votingHistory !== undefined) this.votingHistory = state.votingHistory;
 
-                if (state.selectedColorScheme !== undefined) {
-                    this.selectedColorScheme = state.selectedColorScheme;
-                    this.applyColorScheme(this.selectedColorScheme);
-                }
-                if (state.selectedBackgroundTheme !== undefined) {
-                    this.selectedBackgroundTheme = state.selectedBackgroundTheme;
-                    this.applyBackgroundTheme(this.selectedBackgroundTheme);
+                // Тема — localStorage (глобальный выбор) имеет приоритет над входящим состоянием
+                try {
+                    const globalColor = localStorage.getItem('maf_color_scheme');
+                    const globalBg = localStorage.getItem('maf_bg_theme');
+                    if (globalColor) {
+                        this.selectedColorScheme = globalColor;
+                        this.applyColorScheme(globalColor);
+                    } else if (state.selectedColorScheme !== undefined) {
+                        this.selectedColorScheme = state.selectedColorScheme;
+                        this.applyColorScheme(this.selectedColorScheme);
+                    }
+                    if (globalBg) {
+                        this.selectedBackgroundTheme = globalBg;
+                        this.applyBackgroundTheme(globalBg);
+                    } else if (state.selectedBackgroundTheme !== undefined) {
+                        this.selectedBackgroundTheme = state.selectedBackgroundTheme;
+                        this.applyBackgroundTheme(this.selectedBackgroundTheme);
+                    }
+                } catch(e) {
+                    if (state.selectedColorScheme !== undefined) {
+                        this.selectedColorScheme = state.selectedColorScheme;
+                        this.applyColorScheme(this.selectedColorScheme);
+                    }
+                    if (state.selectedBackgroundTheme !== undefined) {
+                        this.selectedBackgroundTheme = state.selectedBackgroundTheme;
+                        this.applyBackgroundTheme(this.selectedBackgroundTheme);
+                    }
                 }
                 if (state.winnerTeam !== undefined) this.winnerTeam = state.winnerTeam;
+                if (state.gameFinished !== undefined) this.gameFinished = state.gameFinished;
                 if (state.currentMode) this.currentMode = state.currentMode;
                 if (state.manualMode !== undefined) this.manualMode = state.manualMode;
-                if (state.manualGames) this.manualGames = state.manualGames;
+                if (state.manualGames) {
+                    this.manualGames = state.manualGames;
+                    // manualPlayers — data property, обновляем из manualGames
+                    const selNum = state.manualGameSelected !== undefined ? state.manualGameSelected : this.manualGameSelected;
+                    const activeGame = state.manualGames.find(g => g.num === selNum);
+                    if (activeGame && activeGame.players) this.manualPlayers = activeGame.players;
+                }
                 if (state.manualGameSelected !== undefined) this.manualGameSelected = state.manualGameSelected;
                 if (state.gameSelected !== undefined) this.gameSelected = state.gameSelected;
                 if (state.tableSelected !== undefined) this.tableSelected = state.tableSelected;
@@ -681,7 +864,8 @@ Object.assign(window.app.methods, {
                 if (state.inputMode) this.inputMode = state.inputMode;
                 if (state.avatarsFromServer) this.avatarsFromServer = state.avatarsFromServer;
                 if (state.avatarsJustLoaded !== undefined) this.avatarsJustLoaded = state.avatarsJustLoaded;
-                
+                if (state.killedOnNight) this.killedOnNight = state.killedOnNight;
+
                 // Помечаем что состояние получено, чтобы больше не загружать из JSON
                 this.stateReceived = true;
                 console.log(`✅ loadRoomState: Начальное состояние загружено, больше не будем загружать из JSON`);
@@ -902,6 +1086,23 @@ Object.assign(window.app.methods, {
     },
 
     // Управление режимами и темами
+    handleGoToNight() {
+        // Check if there was voting this day
+        if (!this.hasVotingThisDay) {
+            // No voting — show alert and reset slider
+            this.showNoVotingAlert = true;
+            this.$nextTick(() => { this.resetSlider('go_night'); });
+            return;
+        }
+        // Voting happened — go directly to night
+        this.setMode('night');
+    },
+
+    confirmGoToNight() {
+        this.showNoVotingAlert = false;
+        this.setMode('night');
+    },
+
     setMode(mode) {
         // Block navigation to day/night during discussion/freeSeating
         if (this.gamePhase === 'discussion' || this.gamePhase === 'freeSeating') {
@@ -925,6 +1126,12 @@ Object.assign(window.app.methods, {
             if (prevMode === 'night') {
                 this.dayNumber = (this.dayNumber || 0) + 1;
             }
+
+            // Reset sliders for next use
+            this.$nextTick(() => {
+                this.resetSlider('go_day');
+                this.resetSlider('go_night');
+            });
 
             // Автоматически открыть карточку первого непринятого убитого игрока
             this.$nextTick(() => {
@@ -950,6 +1157,12 @@ Object.assign(window.app.methods, {
                 clearTimeout(this.nightAutoCloseTimer);
                 this.nightAutoCloseTimer = null;
             }
+
+            // Reset sliders for next use
+            this.$nextTick(() => {
+                this.resetSlider('go_night');
+                this.resetSlider('go_day');
+            });
         }
 
         // Синхронизируем режим с roles.html через activeInfoTab
@@ -1383,6 +1596,23 @@ Object.assign(window.app.methods, {
                     }
                     return;
                 }
+            } else if (this.nightPhase === 'doctor') {
+                // Только доктор может быть открыт
+                const doctorKey = this._findRoleKey('doctor');
+                if (roleKey !== doctorKey) return;
+
+                if (this.highlightedPlayer === roleKey) {
+                    this.highlightedPlayer = null;
+                    this.setHighlightedPlayer(null);
+                    if (this.doctorHeal) {
+                        if (this.nightAutoCloseTimer) {
+                            clearTimeout(this.nightAutoCloseTimer);
+                            this.nightAutoCloseTimer = null;
+                        }
+                        this.advanceNightPhase();
+                    }
+                    return;
+                }
             }
         }
 
@@ -1453,6 +1683,7 @@ Object.assign(window.app.methods, {
     resetAllState() {
         this.manualMode = false;
         this.manualGames = [];
+        this.manualPlayers = [];
         this.manualGameSelected = 1;
         this.tournamentId = '';
         this.inputMode = 'gomafia';
@@ -1515,6 +1746,13 @@ Object.assign(window.app.methods, {
 
     // Функция для обновления выбора стола при смене игры
     updateTableSelection() {
+        // Если стол зафиксирован (следующая игра в турнире) — используем его
+        if (this._lockedTableNum) {
+            this.tableSelected = this._lockedTableNum;
+            console.log('🔒 Стол зафиксирован:', this.tableSelected);
+            return;
+        }
+
         if (!this.gameSelectedObject || this.gameSelectedObject.length === 0) {
             this.tableSelected = undefined;
             return;

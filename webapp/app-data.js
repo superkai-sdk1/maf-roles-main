@@ -12,6 +12,7 @@ Vue.mixin(window.timerMixin || {});
 window.app = new Vue({
     el: '#app',
     data: {
+        slideStates: {},
         tournament: undefined,
         gameSelected: undefined,
         tableSelected: undefined,
@@ -24,9 +25,9 @@ window.app = new Vue({
         sendAuto: true,
         playersDataOnline: new Map(),
         avatarsFromServer: {}, // Добавляем поле для аватаров с сервера
-        showModal: true,        tournamentId: '',
+        showModal: false,        tournamentId: '',
         inputMode: 'gomafia',
-        newGameStep: 'modes',   // 'modes' | 'gomafia' | 'manual' | 'funky'
+        newGameStep: 'modes',   // 'modes' | 'gomafia' | 'manual' | 'funky' | 'city'
         manualMode: false,
         manualPlayersCount: 10,
         manualPlayers: [], // Добавляем массив игроков для ручного режима
@@ -42,6 +43,21 @@ window.app = new Vue({
         funkySearchLoading: false,
         funkyGameNumber: 1,         // текущий номер игры в фанки-турнире
         funkyTableNumber: 1,        // номер стола (всегда 1)
+
+        // City Mafia mode (Городская мафия)
+        cityMode: false,
+        cityPlayers: [],            // [{login, avatar_link, id, title, roleKey, num}, ...]
+        cityPlayerInputs: [],       // ['', '', ...] — текстовые значения инпутов
+        cityPlayersCount: 10,       // количество игроков (8–30)
+        citySearchResults: [],      // результаты поиска для текущего инпута
+        cityActiveInput: -1,        // индекс активного инпута
+        citySearchLoading: false,
+        cityGameNumber: 1,          // текущий номер игры
+        cityTableNumber: 1,         // номер стола (всегда 1)
+        cityRoleToggles: {},        // {roleKey: true/false} — тумблеры опциональных ролей (для 17+)
+        cityAssignedRoles: {},      // {playerIndex: roleId} — назначенные роли городской мафии
+        cityRolesAutoAssigned: false, // были ли роли авто-раздаваны
+        cityStep: 'count',          // 'count' | 'roles_config' | 'players' | 'roles_assign'
 
         // Funky итоги вечера
         showFunkySummary: false,
@@ -85,6 +101,9 @@ window.app = new Vue({
         activeHistoryTab: 'active', // 'active' или 'history'
         currentSessionId: null,
         expandedTournaments: {}, // { tournamentId: true/false } — раскрытые турнирные карточки
+        totalGamesInTournament: null, // Общее количество игр в турнире GoMafia
+        _lockedTableNum: null, // Зафиксированный номер стола (для следующих игр турнира)
+        _playedGameNums: [],   // Номера уже сыгранных игр в турнире (для фильтрации выбора)
         isMasterPanel: false,
         panelId: null,
         activePanelId: null,
@@ -112,16 +131,23 @@ window.app = new Vue({
         nightChecks: {},          // { roleKey: { target: playerNum, result: 'string' } } — current night only
         nightCheckHistory: [],    // [{ night: N, checker: roleKey, checkerRole: 'don'|'sheriff', target: playerNum, result: 'string', found: bool }]
         nightNumber: 0,           // tracks which night we're on
-        nightPhase: null,         // null | 'kill' | 'don' | 'sheriff' | 'done'
+        nightPhase: null,         // null | 'kill' | 'don' | 'sheriff' | 'doctor' | 'done'
+        killedOnNight: {},        // { roleKey: nightNumber } — tracks which night each player was killed on
         nightAutoCloseTimer: null,
+        // Doctor healing (city mode)
+        doctorHeal: null,         // { target: playerNum } — current night heal choice
+        doctorHealHistory: [],    // [{ night: N, target: playerNum }]
+        doctorLastHealTarget: null, // playerNum healed last night (can't repeat consecutive)
         // Protocol/Opinion acceptance per killed player
         protocolAccepted: {},     // { roleKey: true/false }
         // Killed card UI phase: 'bm' | 'timer' | 'protocol' | 'done'
         killedCardPhase: {},
         // Best move accepted flag
         bestMoveAccepted: false,
-        // Day button blink after night
+        // Day button blink after night (now used for slider pulse)
         dayButtonBlink: false,
+        // No-voting alert modal
+        showNoVotingAlert: false,
         // Killed player row blink
         killedPlayerBlink: {},
         userEditedAdditionalInfo: false,
@@ -135,7 +161,7 @@ window.app = new Vue({
         
         // Цветовые схемы
         colorSchemes: [
-            { key: 'purple', name: 'TITAN (по умолчанию)', accent: '#ae8cff', glow: '#ae8cff', preview: 'linear-gradient(135deg,#ae8cff 60%,#5b3e9c 100%)', icon: '💜' },
+            { key: 'purple', name: 'TITAN (по умолчанию)', accent: '#a855f7', glow: '#a855f7', preview: 'linear-gradient(135deg,#a855f7 60%,#6366f1 100%)', icon: '💜' },
             { key: 'blue', name: 'Голубой лед', accent: '#4fc3f7', glow: '#4fc3f7', preview: 'linear-gradient(135deg,#4fc3f7 60%,#1976d2 100%)', icon: '💧' },
             { key: 'green', name: 'Изумруд', accent: '#6fe7b7', glow: '#6fe7b7', preview: 'linear-gradient(135deg,#6fe7b7 60%,#11998e 100%)', icon: '🌿' },
             { key: 'red', name: 'Вишня', accent: '#e63946', glow: '#e63946', preview: 'linear-gradient(135deg,#e63946 60%,#b12329 100%)', icon: '🍒' },
@@ -170,9 +196,9 @@ window.app = new Vue({
         
         // Темы фона
         backgroundThemes: [
-            { key: 'ultradark', name: 'Очень тёмная', bgMain: '#101014', bgSecondary: '#18181d', bgAccent: '#23232a', icon: '🌑' },
-            { key: 'dark', name: 'Тёмная', bgMain: '#18181d', bgSecondary: '#23232a', bgAccent: '#2c2c36', icon: '🌘' },
-            { key: 'default', name: 'Стандарт', bgMain: '#23232a', bgSecondary: '#2c2c36', bgAccent: '#37374a', icon: '🌗' },
+            { key: 'ultradark', name: 'Очень тёмная', bgMain: '#020208', bgSecondary: '#060612', bgAccent: '#0d0a2a', icon: '🌑' },
+            { key: 'dark', name: 'Тёмная', bgMain: '#060612', bgSecondary: '#0d0a2a', bgAccent: '#1a0f4a', icon: '🌘' },
+            { key: 'default', name: 'Стандарт', bgMain: '#040410', bgSecondary: '#0d0a2a', bgAccent: '#1a0f4a', icon: '🌗' },
             { key: 'light', name: 'Светлая', bgMain: '#f5f6fa', bgSecondary: '#e9eaf3', bgAccent: '#d8d9e6', icon: '🌤️' },
             { key: 'ultralight', name: 'Очень светлая', bgMain: '#ffffff', bgSecondary: '#f5f6fa', bgAccent: '#e9eaf3', icon: '🌕' },
         ],
@@ -180,6 +206,7 @@ window.app = new Vue({
         
         winnerTeam: null,
         showWinnerModal: false,
+        gameFinished: false, // true = баллы сохранены, игра завершена
         playerScores: {}, // {roleKey: {bonus: 0, penalty: 0, reveal: false}}
         editVotingHistory: false,
         currentMode: 'roles',
@@ -187,7 +214,7 @@ window.app = new Vue({
         fouls: {}, // {roleKey: 0-4}
 
         // ===== Game Phase System =====
-        gamePhase: 'roles',       // 'roles' | 'discussion' | 'freeSeating' | 'day' | 'night'
+        gamePhase: 'roles',       // 'roles' | 'discussion' (Договорка / Знакомство в cityMode) | 'freeSeating' | 'day' | 'night'
         dayNumber: 0,             // 0 = нулевой круг, 1 = первый день, ...
         dayVoteOuts: {},          // { dayNumber: true } — был ли голосованием удалён игрок на конкретном дне
         nightMisses: {},          // { nightNumber: true } — промахи мафии по ночам
@@ -233,13 +260,98 @@ window.app = new Vue({
         tournamentsTotalCount: 0,
     },
     
-    // Базовые computed свойства - будут расширены в других модулях
+    // Базовые computed свойства - полные реализации
     computed: {
-        // Базовое определение tableOut - будет переопределено в app-ui-integration.js
+        buildId() {
+            return this.tournament?.buildId;
+        },
+        gameSelectedObject() {
+            if (!this.tournament || this.manualMode) return [];
+            const games = this.tournament?.props?.pageProps?.serverData?.games;
+            if (!games || !this.gameSelected) return [];
+            const selectedGame = games.find(g => g.gameNum === this.gameSelected);
+            return selectedGame?.game || [];
+        },
+        games() {
+            if (this.manualMode) return this.manualGames || [];
+            return this.tournament?.props?.pageProps?.serverData?.games || [];
+        },
+        availableGames() {
+            // Фильтруем игры: убираем уже сыгранные (кроме текущей выбранной)
+            const played = this._playedGameNums || [];
+            if (!played.length) return this.games;
+            return this.games.filter(g => {
+                const gn = Number(g.gameNum);
+                // Показываем текущую выбранную и все не сыгранные
+                return gn === this.gameSelected || !played.includes(gn);
+            });
+        },
         tableOut() {
-            return this.manualPlayers || [];
-        }    },
-    
+            const out = this.manualMode
+                ? this.manualPlayers
+                : this.tournament?.props?.pageProps?.serverData?.games
+                    ?.find(g => g.gameNum === this.gameSelected)?.game
+                    ?.find(t => t.tableNum === this.tableSelected)?.table
+                    ?.map((p, i) => ({ ...p, num: i + 1, roleKey: `${this.gameSelected}-${this.tableSelected}-${i + 1}` }))
+                    ?.filter(Boolean) || [];
+            const result = out.map((p, i) => {
+                if (!p || !p.roleKey) return null;
+                const roleKey = p.roleKey;
+                const pd = this.playersData.get(p.login);
+                const pdo = this.playersDataOnline.get(p.login);
+                let avatarCss = '';
+                let avatarLink = this.playersAvatarEx.get(this.gameSelected + '-' + p.id) || pdo?.avatar_link || pd?.avatar || this.avatarsFromServer?.[p.login];
+                if (avatarLink) avatarCss = `url("${avatarLink}")`;
+                return {
+                    ...p, num: i + 1, roleKey: p.roleKey, avatarCss, avatar_link: avatarLink,
+                    role: this.roles[p.roleKey] || null,
+                    action: this.playersActions[p.roleKey] || null,
+                    fouls: this.fouls[p.roleKey] || 0, foul: this.fouls[p.roleKey] || 0,
+                    techFouls: this.techFouls[p.roleKey] || 0, techFoul: this.techFouls[p.roleKey] || 0,
+                    removed: this.removed[p.roleKey] || false,
+                    isFirstKilled: p.roleKey === this.firstKilledPlayer,
+                    isHighlighted: p.roleKey === this.highlightedPlayer
+                };
+            }).filter(Boolean);
+            return result;
+        },
+        tournamentName() {
+            const sd = this.tournament?.props?.pageProps?.serverData;
+            return this.tournament?._pageTitle || sd?.name || sd?.title || sd?.tournamentName || sd?.tournament_name || '';
+        },
+        manualPlayers() {
+            const game = this.manualGames.find(g => g.num === this.manualGameSelected);
+            return game?.players || [];
+        },
+        firstGamePlayers() {
+            const game = this.manualGames.find(g => g.num === 1);
+            return game?.players || [];
+        },
+        panelStateChanged() {
+            try {
+                const panelState = {
+                    mainInfoVisible: this.mainInfoVisible,
+                    additionalInfoVisible: this.additionalInfoVisible,
+                    hideSeating: this.hideSeating,
+                    hideLeaveOrder: this.hideLeaveOrder,
+                    hideRolesStatus: this.hideRolesStatus,
+                    hideBestMove: this.hideBestMove,
+                    showRoomNumber: this.showRoomNumber
+                };
+                localStorage.setItem('maf-panel-settings', JSON.stringify(panelState));
+            } catch (error) {}
+        },
+        // Night sequence is fully complete: kill/miss happened, don checked, sheriff checked, doctor healed
+        nightSequenceComplete() {
+            return this.nightPhase === 'done';
+        },
+        // Check if voting happened on the current day
+        hasVotingThisDay() {
+            if (!this.votingHistory || !this.votingHistory.length) return false;
+            return this.votingHistory.some(v => v.dayNumber === this.dayNumber);
+        }
+    },
+
     // Методы - будут расширены и перезаписаны в других модулях
     methods: {        // Безопасная заглушка для joinRoom - предотвращает ошибку до загрузки модулей
         joinRoom() {
@@ -354,18 +466,29 @@ window.app = new Vue({
         if (this.applyBackgroundTheme) {
             this.applyBackgroundTheme(this.selectedBackgroundTheme);
         }
-          // Загружаем главное меню с историей игр
-        this.$nextTick(() => {
-            setTimeout(() => {
-                if (this.loadMainMenu) {
-                    this.loadMainMenu();
-                } else {
-                    // Fallback: показываем главное меню
-                    this.showMainMenu = true;
-                }
-            }, 500);
+          // Загружаем главное меню — вызывается из app-core.js finalizeApp() после привязки методов
+        // Здесь НЕ вызываем loadMainMenu, т.к. методы из app-sessions.js ещё не привязаны
+
+        // ЗАЩИТА: Следим чтобы всегда был виден хотя бы один экран.
+        // Если showMainMenu стал false, а ничего другого не активно — возвращаем обратно.
+        this.$watch('showMainMenu', function(val) {
+            if (!val) {
+                var self = this;
+                setTimeout(function() {
+                    var hasActiveScreen = self.showModal || self.showGameTableModal ||
+                        self.funkyMode || self.tournamentId || self.manualMode ||
+                        self.showFunkySummary || self.showProfileScreen ||
+                        self.showThemesScreen || self.showRoomModal ||
+                        self.showTournamentBrowser ||
+                        (self.tableOut && self.tableOut.length > 0);
+                    if (!hasActiveScreen && !self.showMainMenu) {
+                        console.warn('⚠️ Пустой экран обнаружен, восстанавливаем главное меню');
+                        self.showMainMenu = true;
+                    }
+                }, 200);
+            }
         });
-        
+
         this.roomId = null;
         if (!localStorage.getItem('maf-master-panel')) {
             localStorage.setItem('maf-master-panel', '1');

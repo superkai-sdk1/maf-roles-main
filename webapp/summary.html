@@ -3,19 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Итоги вечера — MafBoard</title>
+    <title>Итоги — MafBoard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.materialdesignicons.com/7.2.96/css/materialdesignicons.min.css">
     <style>
         :root {
-            --bg-main: #0c0a1e;
-            --bg-card: rgba(255,255,255,0.06);
-            --bg-card-highlight: rgba(174,140,255,0.12);
-            --accent: #ae8cff;
+            --bg-main: #040410;
+            --glass: rgba(255,255,255,0.03);
+            --glass-hi: rgba(255,255,255,0.06);
+            --glass-border: rgba(255,255,255,0.10);
+            --glass-border-hi: rgba(255,255,255,0.18);
+            --accent: #a855f7;
+            --accent-rgb: 168,85,247;
             --text: #fff;
-            --text-secondary: rgba(255,255,255,0.4);
-            --border: rgba(255,255,255,0.12);
-            --border-highlight: rgba(174,140,255,0.35);
+            --text-dim: rgba(255,255,255,0.40);
+            --mono: 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Fira Code', monospace;
+            --gold: #ffd700; --gold-rgb: 255,215,0;
+            --silver: #c0c0c0; --silver-rgb: 192,192,192;
+            --bronze: #cd7f32; --bronze-rgb: 205,127,50;
+            --neon-red: #ff5252; --neon-red-rgb: 255,82,82;
+            --neon-blue: #4fc3f7; --neon-blue-rgb: 79,195,247;
+            --neon-purple: #ce93d8; --neon-purple-rgb: 206,147,216;
+            --neon-gold: #ffd54f; --neon-gold-rgb: 255,213,79;
+            --neon-green: #30d158; --neon-green-rgb: 48,209,88;
+            --nexus-glow: 0 0 10px rgba(168,85,247,0.5);
+            --ease-accordion: cubic-bezier(0.4, 0, 0.2, 1);
         }
         *, *:before, *:after { box-sizing: border-box; }
         * { -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
@@ -30,29 +42,54 @@
             display: flex; align-items: center; justify-content: center;
             font-size: 1.4em; font-weight: 800; padding: 18px 20px 4px; letter-spacing: 0.5px;
         }
-        .subtitle { text-align: center; font-size: 0.9em; font-weight: 600; color: var(--text-secondary); padding-bottom: 14px; }
+        .subtitle { text-align: center; font-size: 0.9em; font-weight: 600; color: var(--text-dim); padding-bottom: 14px; }
 
-        /* Cards */
+        /* ===== LEADERBOARD CARDS (Общая таблица) ===== */
         .card {
-            background: var(--bg-card); border: 1px solid var(--border);
-            border-radius: 22px; overflow: hidden;
-            transition: all 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15); margin-bottom: 10px;
-            position: relative; cursor: pointer;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 18px; overflow: hidden;
+            transition: all 0.4s var(--ease-accordion);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            margin-bottom: 10px; position: relative; cursor: pointer;
+            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.8);
         }
+        .card:hover, .card:active { background: var(--glass-hi); }
         .card::before {
-            content: ''; position: absolute; inset: 0; border-radius: 22px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 50%);
-            pointer-events: none; opacity: 0.7;
+            content: ''; position: absolute; inset: 0; border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 40%);
+            pointer-events: none;
         }
         .card.expanded {
-            background: var(--bg-card-highlight); border-color: var(--border-highlight);
-            box-shadow: 0 0 0 1px rgba(174,140,255,0.3), 0 8px 32px rgba(174,140,255,0.15);
+            background: rgba(var(--accent-rgb),0.08);
+            border-color: rgba(var(--accent-rgb),0.30);
+            box-shadow: 0 0 0 1px rgba(var(--accent-rgb),0.2), 0 8px 32px rgba(0,0,0,0.8);
+        }
+        /* Top-3 elevated gradient cards */
+        .card.top-gold {
+            background: linear-gradient(135deg, rgba(var(--gold-rgb),0.08) 0%, rgba(var(--gold-rgb),0.02) 100%);
+            border-color: rgba(var(--gold-rgb),0.35);
+            box-shadow: 0 0 24px rgba(var(--gold-rgb),0.15), 0 8px 32px 0 rgba(0,0,0,0.8), inset 0 1px 0 rgba(var(--gold-rgb),0.15);
+            transform: translateY(-2px);
+        }
+        .card.top-silver {
+            background: linear-gradient(135deg, rgba(var(--silver-rgb),0.06) 0%, rgba(var(--silver-rgb),0.01) 100%);
+            border-color: rgba(var(--silver-rgb),0.30);
+            box-shadow: 0 0 18px rgba(var(--silver-rgb),0.12), 0 8px 32px 0 rgba(0,0,0,0.8), inset 0 1px 0 rgba(var(--silver-rgb),0.12);
+            transform: translateY(-1px);
+        }
+        .card.top-bronze {
+            background: linear-gradient(135deg, rgba(var(--bronze-rgb),0.06) 0%, rgba(var(--bronze-rgb),0.01) 100%);
+            border-color: rgba(var(--bronze-rgb),0.30);
+            box-shadow: 0 0 16px rgba(var(--bronze-rgb),0.12), 0 8px 32px 0 rgba(0,0,0,0.8), inset 0 1px 0 rgba(var(--bronze-rgb),0.12);
         }
         .card-header {
             display: flex; align-items: center; padding: 12px 16px; position: relative; z-index: 1;
         }
-        .rank { width: 28px; font-weight: 800; font-size: 1em; text-align: center; flex-shrink: 0; margin-right: 12px; }
+        .rank {
+            width: 28px; font-weight: 900; font-size: 1.05em; text-align: center;
+            flex-shrink: 0; margin-right: 12px; font-family: var(--mono);
+        }
         .avatar-wrap {
             width: 36px; height: 36px; border-radius: 50%; overflow: hidden;
             background: rgba(255,255,255,0.08); flex-shrink: 0; margin-right: 12px;
@@ -62,104 +99,366 @@
         .avatar-wrap .placeholder { opacity: 0.4; font-size: 1.3em; }
         .name { flex: 1; font-weight: 700; font-size: 0.95em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .badges { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-        .games-badge { font-size: 0.75em; font-weight: 700; color: var(--text-secondary); background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 8px; }
-        .total-score { font-size: 1.2em; font-weight: 800; min-width: 36px; text-align: right; }
-        .card-body { padding: 12px; background: rgba(0,0,0,0.15); position: relative; z-index: 1; }
+        .games-badge {
+            font-size: 0.72em; font-weight: 700; color: var(--text-dim);
+            background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .total-score {
+            font-size: 1.25em; font-weight: 900; min-width: 36px; text-align: right;
+            font-family: var(--mono); letter-spacing: -0.5px;
+            text-shadow: 0 0 10px rgba(var(--accent-rgb),0.5);
+        }
+        .card-body {
+            padding: 12px;
+            background: rgba(0,0,0,0.30); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            position: relative; z-index: 1;
+            transition: all 0.4s var(--ease-accordion);
+        }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+        /* ===== PLAYER SUMMARY GLASS WIDGETS ===== */
         .cell {
-            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 12px; padding: 10px; display: flex; flex-direction: column; min-height: 70px; position: relative;
+            background: var(--glass); border: 1px solid var(--glass-border);
+            border-radius: 14px; padding: 10px; display: flex; flex-direction: column; min-height: 70px;
+            position: relative; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.8);
         }
         .cell::before {
-            content: ''; position: absolute; inset: 0; border-radius: 12px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 50%);
-            pointer-events: none; opacity: 0.5;
+            content: ''; position: absolute; inset: 0; border-radius: 14px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 40%);
+            pointer-events: none;
         }
-        .cell-label { font-size: 0.7em; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 700; }
-        .cell-value { font-size: 1.2em; font-weight: 800; text-align: center; padding: 6px 0; }
+        .cell-label {
+            font-size: 0.68em; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-dim); margin-bottom: 8px; font-weight: 700;
+        }
+        .cell-value {
+            font-size: 1.2em; font-weight: 800; text-align: center; padding: 6px 0;
+            font-family: var(--mono);
+        }
         .cell.full-width { grid-column: 1 / -1; min-height: auto; }
-        .wins-inline { font-size: 0.7em; font-weight: 600; color: var(--text-secondary); }
-        .cell-total { background: rgba(174,140,255,0.05); border-color: rgba(174,140,255,0.2); }
-        .cell-total .cell-value { font-size: 1.5em; color: var(--accent); }
+
+        /* Glowing Total cell (Player Summary) */
+        .cell-total {
+            background: linear-gradient(135deg, rgba(var(--accent-rgb),0.10) 0%, rgba(var(--accent-rgb),0.03) 100%);
+            border-color: rgba(var(--accent-rgb),0.30);
+            box-shadow: 0 0 30px rgba(var(--accent-rgb),0.20), 0 8px 32px 0 rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .cell-total .cell-value {
+            font-size: 1.8em; color: #fff; font-weight: 900;
+            text-shadow: 0 0 32px rgba(var(--accent-rgb),0.7), 0 0 10px rgba(var(--accent-rgb),0.4);
+        }
         .cell-total .cell-label { color: var(--accent); }
 
-        /* Role tags */
-        .role-tag { padding: 3px 10px; border-radius: 8px; font-size: 0.75em; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
-        .role-tag.peace { background: rgba(30,58,138,0.6); color: #90caf9; }
-        .role-tag.mafia { background: rgba(62,26,26,0.6); color: #ef9a9a; }
-        .role-tag.don { background: rgba(74,20,140,0.6); color: #e1bee7; }
-        .role-tag.sheriff { background: rgba(66,54,2,0.6); color: #ffd54f; }
+        /* ===== GLASSMORPHISM DASHBOARD (Итоги игрока — Общая) ===== */
+        .dash-hero { display: flex; gap: 8px; margin-bottom: 10px; }
+        .dash-hero-main {
+            flex: 1.3;
+            background: linear-gradient(135deg, rgba(var(--accent-rgb),0.10) 0%, rgba(var(--accent-rgb),0.03) 100%);
+            border: 1px solid rgba(var(--accent-rgb),0.30);
+            border-radius: 16px; padding: 16px 12px;
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; overflow: hidden;
+            box-shadow: 0 0 40px rgba(var(--accent-rgb),0.20), 0 8px 32px 0 rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+        .dash-hero-main::before {
+            content: ''; position: absolute; inset: 0; border-radius: 16px;
+            background: linear-gradient(180deg, rgba(var(--accent-rgb),0.10) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .dash-hero-label {
+            font-size: 0.6em; text-transform: uppercase; letter-spacing: 1.5px;
+            color: rgba(var(--accent-rgb),0.75); font-weight: 700; margin-bottom: 6px;
+            display: flex; align-items: center; gap: 5px; position: relative; z-index: 1;
+        }
+        .dash-hero-value {
+            font-size: 2.4em; font-weight: 900; color: #fff; line-height: 1;
+            font-family: var(--mono);
+            text-shadow: 0 0 40px rgba(var(--accent-rgb),0.7), 0 0 10px rgba(var(--accent-rgb),0.4);
+            position: relative; z-index: 1;
+        }
+        .dash-hero-side {
+            flex: 1;
+            background: var(--glass); border: 1px solid var(--glass-border);
+            border-radius: 16px; padding: 14px 10px;
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; overflow: hidden;
+            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.8);
+        }
+        .dash-hero-side::before {
+            content: ''; position: absolute; inset: 0; border-radius: 16px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        .dash-hero-side-label {
+            font-size: 0.6em; text-transform: uppercase; letter-spacing: 1.2px;
+            color: var(--text-dim); font-weight: 700; margin-bottom: 4px;
+            display: flex; align-items: center; gap: 5px; position: relative; z-index: 1;
+        }
+        .dash-hero-side-value {
+            font-size: 1.6em; font-weight: 800; color: #fff; position: relative; z-index: 1;
+            font-family: var(--mono);
+            text-shadow: 0 0 10px rgba(var(--accent-rgb),0.3);
+        }
+
+        /* Misc stats row */
+        .dash-misc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .dash-misc-cell {
+            background: var(--glass); border: 1px solid var(--glass-border);
+            border-radius: 14px; padding: 12px 10px;
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; overflow: hidden;
+            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.8);
+        }
+        .dash-misc-cell::before {
+            content: ''; position: absolute; inset: 0; border-radius: 14px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        .dash-misc-label {
+            font-size: 0.6em; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-dim); font-weight: 700; margin-bottom: 4px;
+            display: flex; align-items: center; gap: 5px; position: relative; z-index: 1;
+        }
+        .dash-misc-value {
+            font-size: 1.3em; font-weight: 800; color: #fff; position: relative; z-index: 1;
+            font-family: var(--mono);
+        }
+
+        /* Role groups */
+        .dash-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .dash-role-group {
+            border-radius: 16px; padding: 12px 10px;
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; flex-direction: column; gap: 8px;
+            position: relative; overflow: hidden;
+            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.8);
+        }
+        .dash-role-group::before {
+            content: ''; position: absolute; inset: 0; border-radius: 16px;
+            pointer-events: none;
+        }
+        .dash-role-group.peace-group {
+            background: rgba(var(--neon-red-rgb),0.05);
+            border: 1px solid rgba(var(--neon-red-rgb),0.15);
+        }
+        .dash-role-group.peace-group::before {
+            background: linear-gradient(180deg, rgba(var(--neon-red-rgb),0.06) 0%, transparent 50%);
+        }
+        .dash-role-group.mafia-group {
+            background: rgba(var(--neon-purple-rgb),0.05);
+            border: 1px solid rgba(var(--neon-purple-rgb),0.15);
+        }
+        .dash-role-group.mafia-group::before {
+            background: linear-gradient(180deg, rgba(var(--neon-purple-rgb),0.06) 0%, transparent 50%);
+        }
+        .dash-group-title {
+            font-size: 0.6em; text-transform: uppercase; letter-spacing: 1.5px;
+            font-weight: 800; position: relative; z-index: 1;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .peace-group .dash-group-title { color: rgba(var(--neon-red-rgb),0.8); }
+        .mafia-group .dash-group-title { color: rgba(var(--neon-purple-rgb),0.8); }
+
+        .dash-role-card {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px; padding: 10px; position: relative; z-index: 1;
+            transition: opacity 0.3s;
+        }
+        .dash-role-card.inactive { opacity: 0.35; }
+        .dash-role-name {
+            font-size: 0.65em; text-transform: uppercase; letter-spacing: 1px;
+            font-weight: 700; margin-bottom: 6px;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .dash-role-stats { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+        .dash-role-played { font-size: 1.4em; font-weight: 800; color: #fff; line-height: 1; font-family: var(--mono); }
+        .dash-role-wins { font-size: 0.75em; font-weight: 600; color: var(--text-dim); }
+
+        /* Progress bar */
+        .dash-progress { width: 100%; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); overflow: hidden; }
+        .dash-progress-fill {
+            height: 100%; border-radius: 2px;
+            transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .dash-progress-fill.green { background: linear-gradient(90deg, #30d158, #34c759); box-shadow: 0 0 8px rgba(48,209,88,0.5); }
+        .dash-progress-fill.red { background: linear-gradient(90deg, #ef5350, #ef9a9a); box-shadow: 0 0 8px rgba(239,83,80,0.4); }
+        .dash-progress-fill.purple { background: linear-gradient(90deg, #9c64ff, #ce93d8); box-shadow: 0 0 8px rgba(156,100,255,0.4); }
+        .dash-progress-fill.gold { background: linear-gradient(90deg, #ffd54f, #ffb300); box-shadow: 0 0 8px rgba(255,213,79,0.4); }
+
+        .dash-icon { width: 14px; height: 14px; flex-shrink: 0; }
+        .dash-icon-lg { width: 16px; height: 16px; flex-shrink: 0; }
+
+        /* Discipline bar */
+        .dash-discipline {
+            display: flex; align-items: center; justify-content: center; gap: 0;
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px; padding: 10px 14px;
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            position: relative; overflow: hidden;
+            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.8);
+        }
+        .dash-discipline::before {
+            content: ''; position: absolute; inset: 0; border-radius: 12px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        .dash-disc-item {
+            display: flex; align-items: center; gap: 5px;
+            font-size: 0.75em; font-weight: 600; color: var(--text-dim);
+            position: relative; z-index: 1;
+        }
+        .dash-disc-item .disc-val { font-weight: 800; color: rgba(255,255,255,0.7); font-family: var(--mono); }
+        .dash-disc-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,0.15); margin: 0 10px; flex-shrink: 0; }
+        .dash-winrate-label {
+            font-size: 0.6em; font-weight: 600; color: var(--text-dim);
+            text-align: right; margin-bottom: 2px; position: relative; z-index: 1;
+            font-family: var(--mono);
+        }
+
+        /* ===== NEON PILL ROLE TAGS (Game Session) ===== */
+        .role-tag {
+            padding: 3px 10px; border-radius: 20px; font-size: 0.72em; font-weight: 800;
+            text-transform: uppercase; white-space: nowrap; letter-spacing: 0.5px;
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        }
+        .role-tag.peace {
+            background: rgba(144,202,249,0.08); color: #90caf9;
+            border: 1px solid rgba(144,202,249,0.25);
+            box-shadow: 0 0 14px rgba(144,202,249,0.12);
+            text-shadow: 0 0 10px rgba(144,202,249,0.4);
+        }
+        .role-tag.mafia {
+            background: rgba(var(--accent-rgb),0.08); color: #c084fc;
+            border: 1px solid rgba(var(--accent-rgb),0.30);
+            box-shadow: 0 0 14px rgba(var(--accent-rgb),0.15);
+            text-shadow: 0 0 10px rgba(var(--accent-rgb),0.5);
+        }
+        .role-tag.don {
+            background: rgba(var(--neon-purple-rgb),0.08); color: var(--neon-purple);
+            border: 1px solid rgba(var(--neon-purple-rgb),0.30);
+            box-shadow: 0 0 14px rgba(var(--neon-purple-rgb),0.15);
+            text-shadow: 0 0 10px rgba(var(--neon-purple-rgb),0.5);
+        }
+        .role-tag.sheriff {
+            background: rgba(var(--neon-gold-rgb),0.08); color: var(--neon-gold);
+            border: 1px solid rgba(var(--neon-gold-rgb),0.30);
+            box-shadow: 0 0 14px rgba(var(--neon-gold-rgb),0.15);
+            text-shadow: 0 0 10px rgba(var(--neon-gold-rgb),0.5);
+        }
+
+        /* ===== GAME SESSION CARDS (По играм) ===== */
+        .game-card-civ {
+            box-shadow: inset 0 0 0 1px rgba(var(--neon-red-rgb),0.25), 0 0 20px rgba(var(--neon-red-rgb),0.10), 0 8px 32px 0 rgba(0,0,0,0.8);
+        }
+        .game-card-maf {
+            box-shadow: inset 0 0 0 1px rgba(var(--neon-blue-rgb),0.25), 0 0 20px rgba(var(--neon-blue-rgb),0.10), 0 8px 32px 0 rgba(0,0,0,0.8);
+        }
+        .game-num-badge {
+            width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center;
+            justify-content: center; font-weight: 900; font-size: 1.1em; flex-shrink: 0;
+            margin-right: 12px; font-family: var(--mono);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        }
 
         /* Info items */
         .info-item {
             display: flex; align-items: center; justify-content: space-between;
-            font-size: 0.85em; padding: 4px 8px; background: rgba(0,0,0,0.15);
-            border-radius: 8px; border: 1px solid rgba(255,255,255,0.04); margin-bottom: 3px;
+            font-size: 0.85em; padding: 5px 10px;
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px; margin-bottom: 3px;
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
         }
         .info-text-mini { font-size: 0.9em; font-style: italic; color: #ccc; line-height: 1.4; padding: 4px; }
-        .check-icon { color: #30d158; margin-left: 4px; }
-        .cross-icon { color: #ff453a; margin-left: 4px; }
-        .text-peace { color: #90caf9; } .text-sheriff { color: #ffd54f; }
-        .text-mafia { color: #ef9a9a; } .text-don { color: #e1bee7; }
+        .check-icon { color: var(--neon-green); margin-left: 4px; }
+        .cross-icon { color: var(--neon-red); margin-left: 4px; }
+        .text-peace { color: #90caf9; text-shadow: 0 0 10px rgba(144,202,249,0.4); }
+        .text-sheriff { color: var(--neon-gold); text-shadow: 0 0 10px rgba(255,213,79,0.5); }
+        .text-mafia { color: #c084fc; text-shadow: 0 0 10px rgba(168,85,247,0.5); }
+        .text-don { color: var(--neon-purple); text-shadow: 0 0 10px rgba(206,147,216,0.5); }
 
         /* Voting history */
-        .vh-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; }
+        .vh-card {
+            background: var(--glass); border: 1px solid var(--glass-border);
+            border-radius: 14px; padding: 10px 12px; margin-bottom: 8px;
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.8);
+        }
         .vh-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
         .vh-card-day { font-weight: 700; font-size: 0.85em; }
         .vh-card-result-badge { font-size: 0.75em; padding: 2px 8px; border-radius: 6px; }
-        .badge-voted { background: rgba(255,82,82,0.15); color: #ff5252; }
-        .badge-none { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); }
+        .badge-voted { background: rgba(var(--neon-red-rgb),0.12); color: var(--neon-red); }
+        .badge-none { background: rgba(255,255,255,0.06); color: var(--text-dim); }
         .vh-nominees { font-size: 0.8em; color: rgba(255,255,255,0.5); margin-bottom: 6px; }
         .vh-stage { margin-top: 6px; }
         .vh-stage-name { font-size: 0.7em; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.3); margin-bottom: 4px; }
         .vh-candidate-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 0.85em; }
-        .vh-cand-num { width: 24px; text-align: center; font-weight: 700; }
-        .vh-cand-winner { color: #ff5252; }
-        .vh-cand-votes { font-weight: 700; min-width: 20px; text-align: center; }
+        .vh-cand-num { width: 24px; text-align: center; font-weight: 700; font-family: var(--mono); }
+        .vh-cand-winner { color: var(--neon-red); text-shadow: 0 0 8px rgba(var(--neon-red-rgb),0.4); }
+        .vh-cand-votes { font-weight: 700; min-width: 20px; text-align: center; font-family: var(--mono); }
         .vh-cand-voters { color: rgba(255,255,255,0.4); }
         .vh-lift-row { display: flex; gap: 8px; font-size: 0.85em; align-items: center; }
         .vh-lift-label { color: rgba(255,255,255,0.5); }
-        .vh-lift-count { font-weight: 700; }
+        .vh-lift-count { font-weight: 700; font-family: var(--mono); }
         .vh-lift-voters { color: rgba(255,255,255,0.4); }
         .vh-lift-result { font-size: 0.8em; font-weight: 700; margin-top: 4px; }
-        .lift-pass { color: #30d158; } .lift-fail { color: #ff453a; }
+        .lift-pass { color: var(--neon-green); } .lift-fail { color: var(--neon-red); }
 
         /* Bottom nav */
         .bottom-bar {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: rgba(12,10,30,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(255,255,255,0.08);
+            position: fixed; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10,8,20,0.75); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 50px;
             display: flex; align-items: center; justify-content: center;
-            padding: 8px 16px; padding-bottom: max(8px, env(safe-area-inset-bottom));
+            padding: 6px 8px;
             z-index: 100; gap: 4px;
+            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06);
+            width: auto; max-width: 92vw;
         }
         .nav-btn {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer;
-            padding: 6px 16px; border-radius: 12px; font-size: 0.7em; font-weight: 600;
-            transition: all 0.2s;
+            background: none; border: none; color: rgba(255,255,255,0.35); cursor: pointer;
+            padding: 8px 20px; border-radius: 50px; font-size: 0.7em; font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .nav-btn i { font-size: 1.6em; margin-bottom: 2px; }
-        .nav-btn.active { color: var(--accent); background: rgba(174,140,255,0.1); }
+        .nav-btn.active {
+            color: #fff;
+            background: linear-gradient(135deg, rgba(var(--accent-rgb),0.6), rgba(99,102,241,0.6));
+            box-shadow: 0 4px 20px rgba(var(--accent-rgb),0.4), inset 0 1px 0 rgba(255,255,255,0.15);
+        }
 
         /* Loading & error */
         .state {
             display: flex; flex-direction: column; align-items: center;
             justify-content: center; min-height: 60vh; gap: 16px;
-            color: var(--text-secondary); font-size: 1.1em;
+            color: var(--text-dim); font-size: 1.1em;
         }
         .spinner {
-            width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.1);
+            width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.08);
             border-top-color: var(--accent); border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .branding { text-align: center; padding: 20px; font-size: 0.8em; color: rgba(255,255,255,0.2); font-weight: 600; }
+        .branding { text-align: center; padding: 20px; font-size: 0.8em; color: rgba(255,255,255,0.15); font-weight: 600; }
 
         @media (max-width: 380px) {
             .cell { padding: 8px; min-height: 60px; }
             .cell-label { font-size: 0.65em; }
             .cell-value { font-size: 1em; }
+            .dash-hero { flex-direction: column; }
+            .dash-hero-main { flex: none; }
+            .dash-hero-side { flex: none; }
+            .dash-hero-value { font-size: 1.8em; }
+            .dash-hero-side-value { font-size: 1.3em; }
+            .dash-roles { grid-template-columns: 1fr; }
+            .dash-role-played { font-size: 1.2em; }
         }
     </style>
 </head>
@@ -179,8 +478,8 @@
         <!-- Content -->
         <template v-else>
             <div class="header">
-                <i class="mdi mdi-chart-bar" style="font-size: 1.2em; margin-right: 8px; color: #ae8cff;"></i>
-                Итоги вечера
+                <i class="mdi mdi-chart-bar" style="font-size: 1.2em; margin-right: 8px; color: #a855f7;"></i>
+                Итоги
             </div>
             <div class="subtitle">{{ tournamentName }}</div>
 
@@ -188,7 +487,7 @@
                 <!-- ===== ВКЛАДКА: ОБЩАЯ ===== -->
                 <div v-if="tab === 'overall'" style="padding: 0 12px;">
                     <div v-for="(player, rank) in players" :key="player.login"
-                         class="card" :class="{ expanded: expanded === player.login }"
+                         class="card" :class="{ expanded: expanded === player.login, 'top-gold': rank === 0, 'top-silver': rank === 1, 'top-bronze': rank === 2 }"
                          @click="expanded = (expanded === player.login ? null : player.login)">
                         <div class="card-header">
                             <div class="rank" :style="rank < 3 ? {color: ['#ffd700','#c0c0c0','#cd7f32'][rank]} : {}">{{ rank + 1 }}</div>
@@ -203,21 +502,155 @@
                             </div>
                         </div>
                         <div v-if="expanded === player.login" class="card-body" @click.stop>
-                            <div class="grid">
-                                <div class="cell"><div class="cell-label">🎮 Игры</div><div class="cell-value">{{ player.games }}</div></div>
-                                <div class="cell"><div class="cell-label">🏆 Победы</div><div class="cell-value" style="color:#30d158;">{{ player.wins }}</div></div>
-                                <div class="cell"><div class="cell-label" style="color:#4caf50;"><i class="fa fa-plus"></i> Доп баллы</div><div class="cell-value">{{ player.bonusTotal }}</div></div>
-                                <div class="cell"><div class="cell-label" style="color:#f44336;"><i class="fa fa-minus"></i> Штрафы</div><div class="cell-value">{{ player.penaltyTotal }}</div></div>
-                                <div class="cell"><div class="cell-label">🎯 ПУ</div><div class="cell-value">{{ player.firstKilled }}</div></div>
-                                <div class="cell"><div class="cell-label">💀 Убит ночью</div><div class="cell-value">{{ player.killed }}<span v-if="player.selfKills" style="color:#ff453a; font-size:0.7em;"> ({{ player.selfKills }} сам.)</span></div></div>
-                                <div class="cell"><div class="cell-label">🔴 Мирный</div><div class="cell-value">{{ player.peacePlayed }} <span class="wins-inline">/ {{ player.peaceWins }} W</span></div></div>
-                                <div class="cell"><div class="cell-label">⚫ Мафия</div><div class="cell-value">{{ player.mafiaPlayed }} <span class="wins-inline">/ {{ player.mafiaWins }} W</span></div></div>
-                                <div class="cell"><div class="cell-label">🎩 Дон</div><div class="cell-value">{{ player.donPlayed }} <span class="wins-inline">/ {{ player.donWins }} W</span></div></div>
-                                <div class="cell"><div class="cell-label">⭐ Шериф</div><div class="cell-value">{{ player.sheriffPlayed }} <span class="wins-inline">/ {{ player.sheriffWins }} W</span></div></div>
-                                <div class="cell"><div class="cell-label">⚠️ Фолы</div><div class="cell-value">{{ player.foulsTotal }}</div></div>
-                                <div class="cell"><div class="cell-label">🔧 Тех. фолы</div><div class="cell-value">{{ player.techFoulsTotal }}</div></div>
-                                <div class="cell"><div class="cell-label">🚫 Удаления</div><div class="cell-value">{{ player.removals }}</div></div>
-                                <div class="cell cell-total"><div class="cell-label">Итого баллов</div><div class="cell-value">{{ player.totalScore }}</div></div>
+                            <!-- HERO BLOCK -->
+                            <div class="dash-hero">
+                                <div class="dash-hero-main">
+                                    <div class="dash-hero-label">
+                                        <svg class="dash-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                        Итого баллов
+                                    </div>
+                                    <div class="dash-hero-value">{{ player.totalScore }}</div>
+                                </div>
+                                <div style="display:flex; flex-direction:column; flex:1; gap:8px;">
+                                    <div class="dash-hero-side">
+                                        <div class="dash-hero-side-label">
+                                            <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                                            Игры
+                                        </div>
+                                        <div class="dash-hero-side-value">{{ player.games }}</div>
+                                    </div>
+                                    <div class="dash-hero-side">
+                                        <div class="dash-hero-side-label">
+                                            <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="#30d158" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 7 7 7 7"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C17 4 17 7 17 7"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                                            Победы
+                                        </div>
+                                        <div class="dash-hero-side-value" style="color:#30d158;">{{ player.wins }}</div>
+                                        <div class="dash-winrate-label">{{ player.games > 0 ? Math.round(player.wins / player.games * 100) : 0 }}%</div>
+                                        <div class="dash-progress" style="margin-top:2px;">
+                                            <div class="dash-progress-fill green" :style="{width: (player.games > 0 ? Math.round(player.wins / player.games * 100) : 0) + '%'}"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- MISC STATS ROW -->
+                            <div class="dash-misc-row">
+                                <div class="dash-misc-cell">
+                                    <div class="dash-misc-label">
+                                        <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="#4caf50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        <span style="color:#4caf50;">Доп баллы</span>
+                                    </div>
+                                    <div class="dash-misc-value">{{ player.bonusTotal }}</div>
+                                </div>
+                                <div class="dash-misc-cell">
+                                    <div class="dash-misc-label">
+                                        <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="#f44336" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        <span style="color:#f44336;">Штрафы</span>
+                                    </div>
+                                    <div class="dash-misc-value">{{ player.penaltyTotal }}</div>
+                                </div>
+                                <div class="dash-misc-cell">
+                                    <div class="dash-misc-label">
+                                        <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                                        ПУ
+                                    </div>
+                                    <div class="dash-misc-value">{{ player.firstKilled }}</div>
+                                </div>
+                                <div class="dash-misc-cell">
+                                    <div class="dash-misc-label">
+                                        <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c0-3 2.5-6 2.5-6s2.5 3 2.5 6a2.5 2.5 0 0 1-5 0Z"/><path d="M9.5 17c0-2.5 2.5-5 2.5-5s2.5 2.5 2.5 5a2.5 2.5 0 0 1-5 0Z"/><circle cx="12" cy="2" r="1"/></svg>
+                                        Убит ночью
+                                    </div>
+                                    <div class="dash-misc-value">{{ player.killed }}<span v-if="player.selfKills" style="color:#ff453a; font-size:0.6em;"> ({{ player.selfKills }})</span></div>
+                                </div>
+                            </div>
+
+                            <!-- ROLE GROUPS -->
+                            <div class="dash-roles">
+                                <!-- Мирный блок -->
+                                <div class="dash-role-group peace-group">
+                                    <div class="dash-group-title">
+                                        <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                        Мирные
+                                    </div>
+                                    <div class="dash-role-card" :class="{inactive: player.peacePlayed === 0}">
+                                        <div class="dash-role-name" style="color:#ef9a9a;">
+                                            <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="#ef9a9a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                            Мирный
+                                        </div>
+                                        <div class="dash-role-stats">
+                                            <span class="dash-role-played">{{ player.peacePlayed }}</span>
+                                            <span class="dash-role-wins">/ {{ player.peaceWins }} побед</span>
+                                        </div>
+                                        <div class="dash-progress">
+                                            <div class="dash-progress-fill red" :style="{width: (player.peacePlayed > 0 ? Math.round(player.peaceWins / player.peacePlayed * 100) : 0) + '%'}"></div>
+                                        </div>
+                                    </div>
+                                    <div class="dash-role-card" :class="{inactive: player.sheriffPlayed === 0}">
+                                        <div class="dash-role-name" style="color:#ffd54f;">
+                                            <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="#ffd54f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                            Шериф
+                                        </div>
+                                        <div class="dash-role-stats">
+                                            <span class="dash-role-played">{{ player.sheriffPlayed }}</span>
+                                            <span class="dash-role-wins">/ {{ player.sheriffWins }} побед</span>
+                                        </div>
+                                        <div class="dash-progress">
+                                            <div class="dash-progress-fill gold" :style="{width: (player.sheriffPlayed > 0 ? Math.round(player.sheriffWins / player.sheriffPlayed * 100) : 0) + '%'}"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Мафия блок -->
+                                <div class="dash-role-group mafia-group">
+                                    <div class="dash-group-title">
+                                        <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                                        Мафия
+                                    </div>
+                                    <div class="dash-role-card" :class="{inactive: player.mafiaPlayed === 0}">
+                                        <div class="dash-role-name" style="color:#ef9a9a;">
+                                            <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="#ef9a9a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                            Мафия
+                                        </div>
+                                        <div class="dash-role-stats">
+                                            <span class="dash-role-played">{{ player.mafiaPlayed }}</span>
+                                            <span class="dash-role-wins">/ {{ player.mafiaWins }} побед</span>
+                                        </div>
+                                        <div class="dash-progress">
+                                            <div class="dash-progress-fill purple" :style="{width: (player.mafiaPlayed > 0 ? Math.round(player.mafiaWins / player.mafiaPlayed * 100) : 0) + '%'}"></div>
+                                        </div>
+                                    </div>
+                                    <div class="dash-role-card" :class="{inactive: player.donPlayed === 0}">
+                                        <div class="dash-role-name" style="color:#e1bee7;">
+                                            <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="#e1bee7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                                            Дон
+                                        </div>
+                                        <div class="dash-role-stats">
+                                            <span class="dash-role-played">{{ player.donPlayed }}</span>
+                                            <span class="dash-role-wins">/ {{ player.donWins }} побед</span>
+                                        </div>
+                                        <div class="dash-progress">
+                                            <div class="dash-progress-fill purple" :style="{width: (player.donPlayed > 0 ? Math.round(player.donWins / player.donPlayed * 100) : 0) + '%'}"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- DISCIPLINE BAR -->
+                            <div class="dash-discipline">
+                                <div class="dash-disc-item">
+                                    <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                    Фолы <span class="disc-val">{{ player.foulsTotal }}</span>
+                                </div>
+                                <div class="dash-disc-dot"></div>
+                                <div class="dash-disc-item">
+                                    <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                                    Тех <span class="disc-val">{{ player.techFoulsTotal }}</span>
+                                </div>
+                                <div class="dash-disc-dot"></div>
+                                <div class="dash-disc-item">
+                                    <svg class="dash-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                                    Удал <span class="disc-val">{{ player.removals }}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -226,10 +659,10 @@
                 <!-- ===== ВКЛАДКА: ПО ИГРАМ ===== -->
                 <div v-if="tab === 'games'" style="padding: 0 12px;">
                     <div v-if="games && games.length">
-                        <div v-for="game in games" :key="'g-'+game.gameNumber" class="card" :class="{ expanded: gameExpanded === game.gameNumber }">
+                        <div v-for="game in games" :key="'g-'+game.gameNumber" class="card" :class="{ expanded: gameExpanded === game.gameNumber, 'game-card-civ': game.winnerTeam === 'civilians', 'game-card-maf': game.winnerTeam === 'mafia' }">
                             <!-- Заголовок игры -->
                             <div class="card-header" @click="gameExpanded = (gameExpanded === game.gameNumber ? null : game.gameNumber); playerExpanded = null;">
-                                <div style="width:36px; height:36px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1em; flex-shrink:0; margin-right:12px;"
+                                <div class="game-num-badge"
                                      :style="{background: game.winnerTeam === 'civilians' ? 'rgba(255,82,82,0.15)' : (game.winnerTeam === 'mafia' ? 'rgba(79,195,247,0.15)' : 'rgba(255,255,255,0.08)'), color: game.winnerTeam === 'civilians' ? '#ff5252' : (game.winnerTeam === 'mafia' ? '#4fc3f7' : '#fff')}">
                                     {{ game.gameNumber }}
                                 </div>
@@ -247,8 +680,9 @@
                             <!-- Содержимое игры -->
                             <div v-if="gameExpanded === game.gameNumber">
                                 <!-- Лучший ход -->
-                                <div v-if="game.bestMove && game.bestMove.length" style="padding:8px 16px; background:rgba(0,0,0,0.1); border-top:1px solid rgba(255,255,255,0.06); font-size:0.85em; color:rgba(255,255,255,0.6);">
-                                    🎯 Лучший ход: <b style="color:#fff;">{{ game.bestMove.join(', ') }}</b>
+                                <div v-if="game.bestMove && game.bestMove.length" style="padding:8px 16px; background:rgba(255,255,255,0.03); border-top:1px solid rgba(255,255,255,0.06); font-size:0.85em; color:rgba(255,255,255,0.6); backdrop-filter:blur(8px);">
+                                    <svg style="width:12px;height:12px;margin-right:4px;vertical-align:middle;" viewBox="0 0 24 24" fill="none" stroke="#ffd54f" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                                    Лучший ход: <b style="color:#fff; font-family:var(--mono);">{{ game.bestMove.join(', ') }}</b>
                                 </div>
 
                                 <!-- Игроки -->
@@ -273,57 +707,78 @@
                                                 <div class="cell-label">Протокол</div>
                                                 <template v-if="p.protocolResults">
                                                     <div v-for="(res, idx) in p.protocolResults" :key="'pr'+idx" class="info-item">
-                                                        <span>#{{ idx }}</span>
+                                                        <span style="font-family:var(--mono);">#{{ idx }}</span>
                                                         <div><span :class="'text-' + res.role" style="margin-right:4px;">{{ roleLabel(res.role) }}</span><i :class="res.correct ? 'fa fa-check check-icon' : 'fa fa-times cross-icon'"></i></div>
                                                     </div>
                                                 </template>
-                                                <div v-else style="font-size:0.8em; color:rgba(255,255,255,0.25); text-align:center; padding:8px 0;">Пусто</div>
+                                                <div v-else style="font-size:0.8em; color:rgba(255,255,255,0.2); text-align:center; padding:8px 0;">—</div>
                                             </div>
                                             <div class="cell">
                                                 <div class="cell-label">Мнение</div>
                                                 <template v-if="p.opinionResults">
                                                     <div v-for="(res, idx) in p.opinionResults" :key="'op'+idx" class="info-item">
-                                                        <span>#{{ idx }}</span>
+                                                        <span style="font-family:var(--mono);">#{{ idx }}</span>
                                                         <div><span :class="'text-' + res.role" style="margin-right:4px;">{{ roleLabel(res.role) }}</span><i :class="res.correct ? 'fa fa-check check-icon' : 'fa fa-times cross-icon'"></i></div>
                                                     </div>
                                                 </template>
-                                                <div v-else style="font-size:0.8em; color:rgba(255,255,255,0.25); text-align:center; padding:8px 0;">Пусто</div>
+                                                <div v-else style="font-size:0.8em; color:rgba(255,255,255,0.2); text-align:center; padding:8px 0;">—</div>
                                             </div>
                                             <div v-if="p.opinionText" class="cell full-width">
                                                 <div class="cell-label">Текст мнения</div>
                                                 <div class="info-text-mini">"{{ p.opinionText }}"</div>
                                             </div>
                                             <div v-if="p.nightChecks && p.nightChecks.length" class="cell full-width">
-                                                <div class="cell-label">{{ p.role === 'don' ? '🔍 Проверки Дона' : '🔍 Проверки Шерифа' }}</div>
+                                                <div class="cell-label">
+                                                    <svg style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                                    {{ p.role === 'don' ? 'Проверки Дона' : 'Проверки Шерифа' }}
+                                                </div>
                                                 <div v-for="(check, ci) in p.nightChecks" :key="'nc'+ci" class="info-item">
-                                                    <span style="color:rgba(255,255,255,0.45);">Ночь {{ check.night }}</span>
+                                                    <span style="color:rgba(255,255,255,0.45); font-family:var(--mono);">Н{{ check.night }}</span>
                                                     <div><span style="margin-right:6px;">→ №{{ check.target }}</span><span :style="{ color: check.found ? '#30d158' : '#ff453a', fontWeight: 700 }">{{ check.result }}</span></div>
                                                 </div>
                                             </div>
-                                            <div class="cell"><div class="cell-label" style="color:#4caf50;"><i class="fa fa-plus"></i> Доп</div><div class="cell-value">{{ p.bonus }}</div></div>
-                                            <div class="cell"><div class="cell-label" style="color:#f44336;"><i class="fa fa-minus"></i> Штраф</div><div class="cell-value">{{ p.penalty }}</div></div>
-                                            <div class="cell">
-                                                <div class="cell-label">Статус</div>
-                                                <div style="font-size:0.85em;">
-                                                    <div>Вскрытие: <b :style="{color: p.reveal ? '#30d158' : 'rgba(255,255,255,0.4)'}">{{ p.reveal ? 'Да' : 'Нет' }}</b></div>
-                                                    <div v-if="p.isSelfKill" style="color:#ff453a; font-weight:700; margin-top:4px;"><i class="mdi mdi-skull"></i> САМОСТРЕЛ</div>
-                                                    <div v-if="p.isFirstKilled" style="color:#ffd700; margin-top:4px;">🎯 Первый убитый</div>
-                                                    <div style="color:rgba(255,255,255,0.4); margin-top:2px;">Ф: {{ p.foul }} · ТФ: {{ p.techFoul }}</div>
-                                                </div>
-                                            </div>
-                                            <div class="cell cell-total">
+                                            <!-- Glowing Total block -->
+                                            <div class="cell cell-total full-width">
                                                 <div class="cell-label">Итого</div>
                                                 <div class="cell-value">{{ p.totalScore }}</div>
-                                                <div v-if="p.won" style="font-size:0.7em; text-align:center; color:#ffd60a;">+1 Победа</div>
+                                                <div v-if="p.won" style="font-size:0.7em; text-align:center; color:#ffd60a; font-weight:700; text-shadow: 0 0 8px rgba(255,214,10,0.3);">+1 Победа</div>
+                                            </div>
+                                            <!-- Symmetric Bonus / Penalty -->
+                                            <div class="cell">
+                                                <div class="cell-label" style="color:#4caf50;">
+                                                    <svg style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="#4caf50" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                                    Доп
+                                                </div>
+                                                <div class="cell-value">{{ p.bonus }}</div>
+                                            </div>
+                                            <div class="cell">
+                                                <div class="cell-label" style="color:#f44336;">
+                                                    <svg style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="#f44336" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                                    Штраф
+                                                </div>
+                                                <div class="cell-value">{{ p.penalty }}</div>
+                                            </div>
+                                            <div class="cell full-width">
+                                                <div class="cell-label">Статус</div>
+                                                <div style="font-size:0.85em; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                                                    <span>Вскрытие: <b :style="{color: p.reveal ? '#30d158' : 'rgba(255,255,255,0.35)'}">{{ p.reveal ? 'Да' : 'Нет' }}</b></span>
+                                                    <span v-if="p.isSelfKill" style="color:#ff453a; font-weight:700; text-shadow: 0 0 8px rgba(255,69,58,0.4);"><i class="mdi mdi-skull"></i> САМОСТРЕЛ</span>
+                                                    <span v-if="p.isFirstKilled" style="color:#ffd700;">
+                                                        <svg style="width:12px;height:12px;margin-right:2px;" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                                                        ПУ
+                                                    </span>
+                                                    <span style="color:rgba(255,255,255,0.35); font-family:var(--mono);">Ф:{{ p.foul }} · ТФ:{{ p.techFoul }}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Хронология ночей -->
-                                <div v-if="buildNightTimeline(game).length" style="border-top:1px solid rgba(255,255,255,0.08); padding:12px 16px;">
-                                    <div style="font-weight:700; font-size:0.85em; margin-bottom:10px; color:rgba(255,255,255,0.6);">
-                                        <i class="mdi mdi-moon-waning-crescent" style="margin-right:4px;"></i> Хронология ночей
+                                <div v-if="buildNightTimeline(game).length" style="border-top:1px solid rgba(255,255,255,0.08); padding:12px 16px; background:rgba(255,255,255,0.02);">
+                                    <div style="font-weight:700; font-size:0.85em; margin-bottom:10px; color:rgba(255,255,255,0.5);">
+                                        <svg style="width:14px;height:14px;margin-right:4px;vertical-align:middle;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                                        Хронология ночей
                                     </div>
                                     <div v-for="ni in buildNightTimeline(game)" :key="'nt'+ni.night" style="margin-bottom:8px;">
                                         <div style="font-size:0.75em; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.3); margin-bottom:4px;">Ночь {{ ni.night }}</div>
@@ -335,9 +790,10 @@
                                 </div>
 
                                 <!-- История голосования -->
-                                <div v-if="game.votingHistory && game.votingHistory.length" style="border-top:1px solid rgba(255,255,255,0.08); padding:12px 16px;">
-                                    <div style="font-weight:700; font-size:0.85em; margin-bottom:10px; color:rgba(255,255,255,0.6);">
-                                        <i class="fa fa-gavel" style="margin-right:6px;"></i> История голосования
+                                <div v-if="game.votingHistory && game.votingHistory.length" style="border-top:1px solid rgba(255,255,255,0.08); padding:12px 16px; background:rgba(255,255,255,0.02);">
+                                    <div style="font-weight:700; font-size:0.85em; margin-bottom:10px; color:rgba(255,255,255,0.5);">
+                                        <svg style="width:14px;height:14px;margin-right:4px;vertical-align:middle;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                                        История голосования
                                     </div>
                                     <div v-for="(voting, vi) in game.votingHistory" :key="'vh'+vi" class="vh-card">
                                         <div class="vh-card-header">
@@ -378,7 +834,7 @@
                         </div>
                     </div>
                     <div v-else style="text-align:center; padding:40px 20px; color:rgba(255,255,255,0.3);">
-                        <div style="font-size:2em; margin-bottom:8px;">🎲</div>
+                        <div style="margin-bottom:8px;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="8" cy="8" r="1"/><circle cx="16" cy="8" r="1"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/><circle cx="12" cy="12" r="1"/></svg></div>
                         Данные по играм недоступны
                     </div>
                 </div>
@@ -435,10 +891,10 @@
                         return;
                     }
                     const data = await res.json();
-                    this.tournamentName = data.tournamentName || 'Фанки';
+                    this.tournamentName = data.tournamentName || 'Турнир';
                     this.players = data.data || [];
                     this.games = data.games || [];
-                    document.title = (data.tournamentName || 'Итоги вечера') + ' — MafBoard';
+                    document.title = (data.tournamentName || 'Итоги') + ' — MafBoard';
                 } catch (e) {
                     this.error = 'Ошибка сети';
                 }
@@ -469,16 +925,16 @@
                     const events = [];
                     if (night === 1) {
                         const fk = players.find(p => p.isFirstKilled);
-                        if (fk) events.push({ type: 'kill', icon: '💀', text: '№' + fk.num + ' ' + fk.login + ' убит' + (fk.isSelfKill ? ' (самострел)' : '') });
+                        if (fk) events.push({ type: 'kill', icon: '✦', text: '№' + fk.num + ' ' + fk.login + ' убит' + (fk.isSelfKill ? ' (самострел)' : '') });
                     }
                     if (game.nightMisses && game.nightMisses[night]) {
-                        events.push({ type: 'miss', icon: '❌', text: 'Промах' });
+                        events.push({ type: 'miss', icon: '✕', text: 'Промах' });
                     }
                     nch.filter(h => h.night === night && h.checkerRole === 'don').forEach(h => {
-                        events.push({ type: 'don-check', icon: '🎩', text: 'Дон проверил №' + h.target + ' ' + (h.targetLogin || '') + ' — ' + h.result });
+                        events.push({ type: 'don-check', icon: '◆', text: 'Дон проверил №' + h.target + ' ' + (h.targetLogin || '') + ' — ' + h.result });
                     });
                     nch.filter(h => h.night === night && h.checkerRole === 'sheriff').forEach(h => {
-                        events.push({ type: 'sheriff-check', icon: '⭐', text: 'Шериф проверил №' + h.target + ' ' + (h.targetLogin || '') + ' — ' + h.result });
+                        events.push({ type: 'sheriff-check', icon: '★', text: 'Шериф проверил №' + h.target + ' ' + (h.targetLogin || '') + ' — ' + h.result });
                     });
                     if (events.length) timeline.push({ night: night, events: events });
                 }

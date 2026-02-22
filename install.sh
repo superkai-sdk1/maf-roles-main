@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # ==============================================================================
-# СКРИПТ УСТАНОВКИ MafBoard (v12)
+# СКРИПТ УСТАНОВКИ MafBoard (v13)
 # Включает: Nginx, PHP + MySQL, Node.js (через NVM), PM2, Certbot (SSL),
-#            Telegram-бот авторизации, база данных, автоматическая миграция
+#            Telegram-бот авторизации, база данных, автоматическая миграция,
+#            админ-панель, режим Городская мафия
 # ==============================================================================
 
 set -e
@@ -82,6 +83,15 @@ if [ -z "$BOT_USERNAME" ]; then
     exit 1
 fi
 
+# Админ-панель
+echo ""
+echo -e "${YELLOW}--- Настройка админ-панели ---${NC}"
+read -p "Telegram ID администратора (узнать у @userinfobot): " ADMIN_TELEGRAM_ID
+if [ -z "$ADMIN_TELEGRAM_ID" ]; then
+    echo -e "${YELLOW}Предупреждение: Админ-панель будет недоступна до настройки admin-config.php${NC}"
+    ADMIN_TELEGRAM_ID="0"
+fi
+
 # Итог
 PROJECT_DEST_DIR="/var/www/$DOMAIN"
 LETSENCRYPT_EMAIL="admin@$DOMAIN"
@@ -92,6 +102,7 @@ echo -e "Домен:           ${GREEN}$DOMAIN${NC}"
 echo -e "Путь установки:  ${GREEN}$PROJECT_DEST_DIR${NC}"
 echo -e "БД:              ${GREEN}$DB_NAME${NC} (пользователь: ${GREEN}$DB_USER${NC})"
 echo -e "Telegram бот:    ${GREEN}@$BOT_USERNAME${NC}"
+echo -e "Админ ID:        ${GREEN}$ADMIN_TELEGRAM_ID${NC}"
 echo -e "${CYAN}============================================================${NC}"
 read -p "Всё верно? Начать установку? (y/n): " CONFIRM
 if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
@@ -232,6 +243,24 @@ sed -i "s|const BOT_TOKEN = process.env.BOT_TOKEN || '.*';|const BOT_TOKEN = pro
     "$PROJECT_DEST_DIR/$FRONTEND_DIR_NAME/login/bot.js"
 sed -i "s|const CONFIRM_API_URL = process.env.CONFIRM_API_URL || '.*';|const CONFIRM_API_URL = process.env.CONFIRM_API_URL || 'https://${DOMAIN}/login/code-confirm.php';|g" \
     "$PROJECT_DEST_DIR/$FRONTEND_DIR_NAME/login/bot.js"
+
+# --- admin-config.php ---
+cat > "$PROJECT_DEST_DIR/$FRONTEND_DIR_NAME/admin/api/admin-config.php" <<ADMINEOF
+<?php
+// =====================================================
+// Admin Configuration
+// Telegram ID пользователей с правами администратора
+// =====================================================
+
+// Добавьте сюда Telegram ID администраторов
+// Узнать свой ID можно у бота @userinfobot в Telegram
+define('ADMIN_TELEGRAM_IDS', [
+    ${ADMIN_TELEGRAM_ID},
+]);
+
+// Название панели
+define('ADMIN_PANEL_NAME', 'MafBoard Admin');
+ADMINEOF
 
 echo -e "${GREEN}Конфигурация настроена.${NC}"
 
@@ -375,10 +404,12 @@ echo -e "${GREEN}       УСТАНОВКА УСПЕШНО ЗАВЕРШЕНА!${N
 echo -e "${CYAN}================================================================${NC}"
 echo ""
 echo -e "  Сайт:         ${GREEN}https://$DOMAIN${NC}"
+echo -e "  Админ-панель: ${GREEN}https://$DOMAIN/admin/${NC}"
 echo -e "  База данных:  ${GREEN}$DB_NAME${NC}"
 echo -e "  DB юзер:      ${GREEN}$DB_USER${NC}"
 echo -e "  DB пароль:    ${GREEN}$DB_PASS${NC}"
 echo -e "  Telegram бот: ${GREEN}@$BOT_USERNAME${NC}"
+echo -e "  Админ ID:     ${GREEN}$ADMIN_TELEGRAM_ID${NC}"
 echo ""
 echo -e "  ${YELLOW}Сервисы PM2:${NC}"
 echo -e "    - ${CYAN}$BACKEND_SERVICE_NAME${NC} — WebSocket сервер"

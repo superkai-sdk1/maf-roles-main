@@ -177,6 +177,27 @@ async function getUserData(buildId, userId) {
 }
 
 /**
+ * Кеш названий клубов и функция получения
+ */
+const clubCache = {};
+async function getClubTitle(buildId, clubId) {
+    if (!clubId || clubId === '0' || clubId === '') return 'Без клуба';
+    if (clubCache[clubId]) return clubCache[clubId];
+    try {
+        const url = `https://gomafia.pro/_next/data/${buildId}/club/${clubId}.json`;
+        const text = await httpGet(url);
+        const data = JSON.parse(text);
+        const title = data?.pageProps?.serverData?.club?.title;
+        if (title) {
+            clubCache[clubId] = title;
+            return title;
+        }
+    } catch (e) { /* ignore */ }
+    clubCache[clubId] = 'Без клуба';
+    return 'Без клуба';
+}
+
+/**
  * Загрузить список игроков из турнира GoMafia
  */
 async function getPlayersFromTournament(buildId, tournamentId) {
@@ -291,11 +312,12 @@ async function syncByRange(buildId, start, end, apiUrl) {
         if (user) {
             consecutive404 = 0;
             found++;
+            const clubTitle = await getClubTitle(buildId, user.club_id);
             const playerData = {
                 login: user.login,
                 avatar_link: user.avatar_link || null,
                 id: String(user.id || userId),
-                title: user.club_title || user.title || 'Без клуба'
+                title: clubTitle
             };
             batch.push(playerData);
 
@@ -359,11 +381,12 @@ async function syncByTournament(buildId, tournamentId, apiUrl) {
 
         if (user) {
             found++;
+            const clubTitle = await getClubTitle(buildId, user.club_id);
             const playerData = {
                 login: user.login,
                 avatar_link: user.avatar_link || null,
                 id: String(user.id || p.id),
-                title: user.club_title || user.title || 'Без клуба'
+                title: clubTitle
             };
             batch.push(playerData);
             process.stdout.write(`\r  ✅ ${found}/${players.length} — ${user.login}          `);

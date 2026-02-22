@@ -82,6 +82,7 @@ function checkModules() {
 // Функция финальной инициализации приложения
 function finalizeApp() {
     if (!checkModules()) {
+        _removeSplash();
         return;
     }
     
@@ -92,36 +93,33 @@ function finalizeApp() {
         
         // КРИТИЧНО: Принудительно обновляем методы в экземпляре Vue
         console.log('🔄 Принудительно обновляем методы в Vue экземпляре...');
-        Object.assign(window.app.$options.methods, window.app.methods);
-        
+
+        // Фильтруем: только функции (исключаем 'watch' и другие объекты)
+        var cleanMethods = {};
+        Object.keys(window.app.methods).forEach(function(key) {
+            if (typeof window.app.methods[key] === 'function') {
+                cleanMethods[key] = window.app.methods[key];
+            }
+        });
+        Object.assign(window.app.$options.methods, cleanMethods);
+
         // Перезаписываем методы напрямую в экземпляре
-        Object.keys(window.app.methods).forEach(methodName => {
-            window.app[methodName] = window.app.methods[methodName].bind(window.app);
+        Object.keys(cleanMethods).forEach(function(methodName) {
+            window.app[methodName] = cleanMethods[methodName].bind(window.app);
         });
-        
-        console.log('✅ Методы успешно обновлены в Vue экземпляре');
-        console.log('🔧 joinRoom тип:', typeof window.app.joinRoom);
-    }
-    
-    // КРИТИЧНО: Обновляем computed свойства
-    if (window.app && window.app.computed) {
-        console.log('🔄 Принудительно обновляем computed свойства...');
-        console.log('📝 Computed свойств:', Object.keys(window.app.computed).length);
-        
-        // Обновляем computed свойства в Vue экземпляре
-        Object.assign(window.app.$options.computed, window.app.computed);
-        
-        // Принудительно обновляем computed свойства в экземпляре
-        Object.keys(window.app.computed).forEach(computedName => {
-            Object.defineProperty(window.app, computedName, {
-                get: window.app.computed[computedName].bind(window.app),
-                enumerable: true,
-                configurable: true
+
+        // Регистрируем watchers если они были добавлены через methods.watch
+        if (window.app.methods.watch && typeof window.app.methods.watch === 'object') {
+            Object.keys(window.app.methods.watch).forEach(function(key) {
+                var handler = window.app.methods.watch[key];
+                if (typeof handler === 'function') {
+                    window.app.$watch(key, handler.bind(window.app));
+                }
             });
-        });
-        
-        console.log('✅ Computed свойства успешно обновлены');
-        console.log('🔧 tableOut тип:', typeof window.app.tableOut);
+            console.log('👁️ Watchers зарегистрированы:', Object.keys(window.app.methods.watch));
+        }
+
+        console.log('✅ Методы успешно обновлены в Vue экземпляре');
     }
     
     // Дополнительная настройка приложения
@@ -133,12 +131,96 @@ function finalizeApp() {
         
         // Добавляем отладочную информацию
         window.mafApp.instance = window.app;
-        
+
+        // ПРИМЕНЯЕМ ТЕМУ ИЗ localStorage (глобальный выбор пользователя) — теперь методы точно привязаны
+        try {
+            var savedColor = localStorage.getItem('maf_color_scheme');
+            var savedBg = localStorage.getItem('maf_bg_theme');
+            if (savedColor) window.app.selectedColorScheme = savedColor;
+            if (savedBg) window.app.selectedBackgroundTheme = savedBg;
+            if (typeof window.app.applyColorScheme === 'function') {
+                window.app.applyColorScheme(window.app.selectedColorScheme);
+            }
+            if (typeof window.app.applyBackgroundTheme === 'function') {
+                window.app.applyBackgroundTheme(window.app.selectedBackgroundTheme);
+            }
+            console.log('🎨 Тема применена из localStorage:', window.app.selectedColorScheme, window.app.selectedBackgroundTheme);
+        } catch(e) {
+            console.warn('⚠️ Ошибка применения темы:', e);
+        }
+
         console.log('🎉 MafBoard успешно инициализирован!');
-        console.log('🔍 Отладка: window.mafApp.instance содержит экземпляр Vue');
-    } else {
-        console.error('❌ Не удалось найти экземпляр Vue приложения');
+
+        // Инициализация слайдеров при изменении состояния UI
+        var _sliderInitTimeout = null;
+        var _sliderInitElems = {};
+        function _debouncedSliderInit() {
+            if (_sliderInitTimeout) clearTimeout(_sliderInitTimeout);
+            _sliderInitTimeout = setTimeout(function() {
+                var a = window.app;
+                if (!a) return;
+                a.$nextTick(function() {
+                    var ids = ['roles', 'skip_discussion', 'skip_freeseating', 'finish_game', 'exit_game', 'save_results', 'go_night', 'go_day'];
+                    ids.forEach(function(id) {
+                        var el = a.$refs['slider_' + id];
+                        if (el && el !== _sliderInitElems[id]) {
+                            // New or changed DOM element — (re)init slider
+                            if (a.slideStates[id] && a.slideStates[id]._cleanup) a.slideStates[id]._cleanup();
+                            delete a.slideStates[id];
+                            a.initSlider(id);
+                            _sliderInitElems[id] = el;
+                        } else if (!el && _sliderInitElems[id]) {
+                            // Element removed from DOM — cleanup
+                            if (a.slideStates[id] && a.slideStates[id]._cleanup) a.slideStates[id]._cleanup();
+                            delete a.slideStates[id];
+                            delete _sliderInitElems[id];
+                        }
+                    });
+                });
+            }, 120);
+        }
+
+        // Watch relevant state changes to init sliders
+        ['rolesDistributed', 'gamePhase', 'winnerTeam', 'showMainMenu', 'showVotingScreen', 'currentMode', 'nightPhase', 'dayButtonBlink'].forEach(function(prop) {
+            window.app.$watch(prop, function() { _debouncedSliderInit(); });
+        });
+
+        // Periodic check for sliders (handles edge cases where watchers miss DOM changes)
+        setInterval(function() {
+            if (window.app && !window.app.showMainMenu) {
+                _debouncedSliderInit();
+            }
+        }, 500);
+
+        // Загружаем главное меню ПОСЛЕ привязки всех методов
+        if (typeof window.app.loadMainMenu === 'function') {
+            window.app.loadMainMenu();
+        } else {
+            window.app.showMainMenu = true;
+        }
     }
+
+    // Убираем splash
+    _removeSplash();
+}
+
+// ==============================================
+// Удаление splash-экрана
+// ==============================================
+
+var _splashRemoved = false;
+
+function _removeSplash() {
+    if (_splashRemoved) return;
+    _splashRemoved = true;
+
+    var splash = document.getElementById('maf-splash');
+    if (splash) {
+        splash.style.opacity = '0';
+        splash.style.pointerEvents = 'none';
+        setTimeout(function() { if (splash.parentNode) splash.parentNode.removeChild(splash); }, 400);
+    }
+    console.log('✅ Splash убран, приложение показано');
 }
 
 // Инициализируем приложение после загрузки DOM
@@ -148,6 +230,9 @@ if (document.readyState === 'loading') {
     // DOM уже загружен
     finalizeApp();
 }
+
+// Безопасный таймаут: если splash всё ещё на экране через 4 сек — убираем принудительно
+setTimeout(_removeSplash, 4000);
 
 // Экспортируем функцию для ручной инициализации
 window.mafApp.initialize = finalizeApp;

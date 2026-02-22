@@ -349,14 +349,14 @@ Vue.component('role-badge', {
  });
 
  const themePresets = [
-		{ key: 'ultradark', name: 'Очень тёмная', bg: '#101014', surface: '#18181d', surfaceVariant: '#23232a', onPrimary: '#fff', onSurface: '#eaeaea', btn: '#23232a', icon: '🌑' },
-		{ key: 'dark', name: 'Тёмная', bg: '#18181d', surface: '#23232a', surfaceVariant: '#2c2c36', onPrimary: '#fff', onSurface: '#f4eeff', btn: '#23232a', icon: '🌒' },
-		{ key: 'neutral', name: 'Нейтральная', bg: '#23232a', surface: '#2c2c36', surfaceVariant: '#37374a', onPrimary: '#fff', onSurface: '#f4f4f4', btn: '#23232a', icon: '🌗' },
+		{ key: 'ultradark', name: 'Очень тёмная', bg: '#020208', surface: '#060612', surfaceVariant: '#0d0a2a', onPrimary: '#fff', onSurface: '#eaeaea', btn: '#0a0814', icon: '🌑' },
+		{ key: 'dark', name: 'Тёмная', bg: '#060612', surface: '#0d0a2a', surfaceVariant: '#1a0f4a', onPrimary: '#fff', onSurface: '#f4eeff', btn: '#0a0814', icon: '🌒' },
+		{ key: 'neutral', name: 'Нейтральная', bg: '#040410', surface: '#0d0a2a', surfaceVariant: '#1a0f4a', onPrimary: '#fff', onSurface: '#f4f4f4', btn: '#0a0814', icon: '🌗' },
 		{ key: 'light', name: 'Светлая', bg: '#f5f6fa', surface: '#e9eaf3', surfaceVariant: '#d8d9e6', onPrimary: '#222', onSurface: '#222', btn: '#fff', icon: '🌤️' },
 		{ key: 'ultralight', name: 'Очень светлая', bg: '#ffffff', surface: '#f5f6fa', surfaceVariant: '#e9eaf3', onPrimary: '#111', onSurface: '#222', btn: '#fff', icon: '🌞' }
 	];
 	const colorSchemes = [
-		{ key: 'purple', name: 'Фиолетовый', accent: '#ae8cff', preview: 'linear-gradient(135deg,#ae8cff 60%,#5b3e9c 100%)', icon:'💜' },
+		{ key: 'purple', name: 'Фиолетовый', accent: '#a855f7', preview: 'linear-gradient(135deg,#a855f7 60%,#6366f1 100%)', icon:'💜' },
 		{ key: 'blue', name: 'Голубой лед', accent: '#4fc3f7', preview: 'linear-gradient(135deg,#4fc3f7 60%,#1976d2 100%)', icon:'💧' },
 		{ key: 'green', name: 'Изумруд', accent: '#6fe7b7', preview: 'linear-gradient(135deg,#6fe7b7 60%,#11998e 100%)', icon:'🌿' },
 		{ key: 'red', name: 'Вишня', accent: '#e63946', preview: 'linear-gradient(135deg,#e63946 60%,#b12329 100%)', icon:'🍒' },
@@ -802,18 +802,18 @@ Vue.component('role-badge', {
 						data: url,
 						image: "",
 						dotsOptions: {
-							color: "#ae8cff",
+							color: "#a855f7",
 							type: "rounded"
 						},
 						backgroundOptions: {
 							color: "rgba(0,0,0,0)"
 						},
 						cornersSquareOptions: {
-							color: "#ae8cff",
+							color: "#a855f7",
 							type: "extra-rounded"
 						},
 						cornersDotOptions: {
-							color: "#ae8cff",
+							color: "#a855f7",
 							type: "dot"
 						}
 					});
@@ -853,7 +853,7 @@ Vue.component('role-badge', {
 				document.documentElement.style.setProperty('--maf-bg-secondary', theme.surface);
 				document.documentElement.style.setProperty('--maf-bg-accent', theme.surfaceVariant);
 				document.documentElement.style.setProperty('--maf-text-main', theme.onPrimary);
-				document.documentElement.style.setProperty('--maf-btn-main', theme.btn || (theme.key === 'light' || theme.key === 'ultralight' ? '#fff' : '#23232a'));
+				document.documentElement.style.setProperty('--maf-btn-main', theme.btn || (theme.key === 'light' || theme.key === 'ultralight' ? '#fff' : '#0a0814'));
 				document.documentElement.style.setProperty('--md3-bg', theme.bg);
 				document.documentElement.style.setProperty('--md3-surface', theme.surface);
 				document.documentElement.style.setProperty('--md3-surface-variant', theme.surfaceVariant);

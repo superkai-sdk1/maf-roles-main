@@ -1,14 +1,13 @@
 /**
  * Session Manager для сохранения и восстановления сессий мафии
  * Поддерживает localStorage, Telegram Cloud Storage и серверную синхронизацию
- * Версия 4: серверная синхронизация через MySQL для единого хранилища между устройствами
+ * Версия 5: исправлены гонки инициализации между Cloud Storage, авторизацией и Vue
  */
 window.sessionManager = (function() {
     const SESSIONS_KEY = 'maf-sessions';
-    // Увеличиваем срок хранения до 365 дней, так как теперь есть история игр
-    const SESSION_DURATION = 365 * 24 * 60 * 60 * 1000; 
-    const MAX_SESSIONS = 50; // Максимум сессий в истории
-    const SYNC_DEBOUNCE_MS = 5000; // Debounce для sync на сервер (5 сек)
+    const SESSION_DURATION = 365 * 24 * 60 * 60 * 1000;
+    const MAX_SESSIONS = 50;
+    const SYNC_DEBOUNCE_MS = 2000;
     const SYNC_API_URL = './api/sessions-sync.php';
 
     // ============================================
@@ -16,6 +15,10 @@ window.sessionManager = (function() {
     // ============================================
     let _cachedSessions = null;
     let _cacheReady = false;
+
+    // Promise, который разрешается когда кэш прогрет (из localStorage ИЛИ Cloud Storage)
+    let _readyResolve = null;
+    const _readyPromise = new Promise(function(resolve) { _readyResolve = resolve; });
 
     // ============================================
     // Серверная синхронизация
@@ -31,27 +34,20 @@ window.sessionManager = (function() {
     // Проверяем доступность Telegram Cloud Storage
     function hasTelegramCloudStorage() {
         try {
-            if (!window.Telegram || !window.Telegram.WebApp) {
-                return false;
-            }
-            const webApp = window.Telegram.WebApp;
-            if (!webApp.CloudStorage || typeof webApp.CloudStorage.setItem !== 'function') {
-                return false;
-            }
-            if (webApp.version && parseFloat(webApp.version) < 6.1) {
-                return false;
-            }
+            if (!window.Telegram || !window.Telegram.WebApp) return false;
+            var webApp = window.Telegram.WebApp;
+            if (!webApp.CloudStorage || typeof webApp.CloudStorage.setItem !== 'function') return false;
+            if (webApp.version && parseFloat(webApp.version) < 6.1) return false;
             return true;
         } catch (error) {
-            console.warn('Telegram Cloud Storage недоступен:', error);
             return false;
         }
     }
 
     // Очистка сессий старше SESSION_DURATION
     function cleanExpiredSessions(sessions) {
-        const now = Date.now();
-        return sessions.filter(s => s.timestamp && (now - s.timestamp) < SESSION_DURATION);
+        var now = Date.now();
+        return sessions.filter(function(s) { return s.timestamp && (now - s.timestamp) < SESSION_DURATION; });
     }
 
     // Парсинг данных сессий из строки
@@ -62,17 +58,11 @@ window.sessionManager = (function() {
             return [];
         }
         try {
-            const parsed = JSON.parse(data);
-            if (Array.isArray(parsed)) {
-                return cleanExpiredSessions(parsed);
-            }
+            var parsed = JSON.parse(data);
+            if (Array.isArray(parsed)) return cleanExpiredSessions(parsed);
             if (parsed && typeof parsed === 'object' && parsed.timestamp) {
-                console.log('🔄 Миграция: конвертируем одну сессию в массив');
-                const session = parsed;
-                if (!session.sessionId) {
-                    session.sessionId = generateSessionId();
-                }
-                return cleanExpiredSessions([session]);
+                if (!parsed.sessionId) parsed.sessionId = generateSessionId();
+                return cleanExpiredSessions([parsed]);
             }
             return [];
         } catch (e) {
@@ -82,22 +72,71 @@ window.sessionManager = (function() {
     }
 
     // ============================================
+    // Прогрев кэша — вызывается один раз при инициализации
+    // ============================================
+    function _warmUpCache() {
+        // Сначала сразу загружаем из localStorage (синхронно, мгновенно)
+        var localSessions = [];
+        try {
+            var data = localStorage.getItem(SESSIONS_KEY);
+            var oldData = !data ? localStorage.getItem('maf-session') : null;
+            localSessions = parseSessionsData(data || oldData);
+            if (oldData && !data) {
+                try { localStorage.removeItem('maf-session'); } catch(e) {}
+            }
+        } catch(e) {}
+
+        // Устанавливаем localStorage данные как baseline сразу (не ждём Cloud Storage)
+        if (!_cacheReady) {
+            _cachedSessions = localSessions.length > 0 ? JSON.parse(JSON.stringify(localSessions)) : [];
+            _cacheReady = true;
+            console.log('📦 Cache warm-up: localStorage baseline (' + _cachedSessions.length + ' сессий)');
+        }
+
+        // Если Cloud Storage доступен — дополнительно загружаем оттуда и мержим
+        if (hasTelegramCloudStorage()) {
+            console.log('📦 Cache warm-up: также загружаем из Telegram Cloud Storage...');
+            window.Telegram.WebApp.CloudStorage.getItem(SESSIONS_KEY, function(error, data) {
+                var cloudSessions = [];
+                if (!error && data) {
+                    cloudSessions = parseSessionsData(data);
+                }
+                if (cloudSessions.length > 0) {
+                    // Мержим Cloud Storage + localStorage
+                    var merged = _mergeSessions(_cachedSessions || [], cloudSessions);
+                    _cachedSessions = JSON.parse(JSON.stringify(merged));
+                    console.log('📦 Cache warm-up: Cloud Storage merge → ' + _cachedSessions.length + ' сессий');
+                    // Сохраняем merged обратно в localStorage
+                    try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(_cachedSessions)); } catch(e) {}
+                }
+                _cacheReady = true;
+                if (_readyResolve) { _readyResolve(); _readyResolve = null; }
+            });
+            // Таймаут на случай если Cloud Storage зависнет
+            setTimeout(function() {
+                if (_readyResolve) {
+                    console.warn('⚠️ Cloud Storage timeout, используем localStorage');
+                    _readyResolve();
+                    _readyResolve = null;
+                }
+            }, 3000);
+        } else {
+            // Нет Cloud Storage — localStorage уже загружен
+            if (_readyResolve) { _readyResolve(); _readyResolve = null; }
+        }
+    }
+
+    // ============================================
     // Серверная синхронизация — функции
     // ============================================
 
     function _getAuthToken() {
-        try {
-            return localStorage.getItem('maf_auth_token') || null;
-        } catch (e) {
-            return null;
-        }
+        try { return localStorage.getItem('maf_auth_token') || null; } catch (e) { return null; }
     }
 
     function _scheduleSyncToServer() {
         if (!_getAuthToken()) return;
-        if (_syncTimer) {
-            clearTimeout(_syncTimer);
-        }
+        if (_syncTimer) clearTimeout(_syncTimer);
         _syncTimer = setTimeout(function() {
             _syncTimer = null;
             _pushToServer();
@@ -123,6 +162,18 @@ window.sessionManager = (function() {
                 console.warn('⚠️ Sync push ошибка:', data.error);
             } else {
                 console.log('☁️ Сессии синхронизированы на сервер');
+                if (data.sessions && Array.isArray(data.sessions)) {
+                    // Merge server response with current local cache (local wins on conflict by timestamp)
+                    var merged = _mergeSessions(_cachedSessions || [], data.sessions);
+                    var cleaned = cleanExpiredSessions(merged).slice(0, MAX_SESSIONS);
+                    try { _cachedSessions = JSON.parse(JSON.stringify(cleaned)); } catch(e) { _cachedSessions = cleaned; }
+                    _cacheReady = true;
+                    var dataString = JSON.stringify(cleaned);
+                    try { localStorage.setItem(SESSIONS_KEY, dataString); } catch(e) {}
+                    if (hasTelegramCloudStorage()) {
+                        window.Telegram.WebApp.CloudStorage.setItem(SESSIONS_KEY, dataString, function() {});
+                    }
+                }
             }
         })
         .catch(function(err) {
@@ -133,13 +184,9 @@ window.sessionManager = (function() {
 
     function _mergeSessions(localSessions, serverSessions) {
         var sessionsMap = {};
-
         (localSessions || []).forEach(function(s) {
-            if (s && s.sessionId) {
-                sessionsMap[s.sessionId] = s;
-            }
+            if (s && s.sessionId) sessionsMap[s.sessionId] = s;
         });
-
         (serverSessions || []).forEach(function(s) {
             if (!s || !s.sessionId) return;
             var existing = sessionsMap[s.sessionId];
@@ -151,7 +198,6 @@ window.sessionManager = (function() {
                 }
             }
         });
-
         var result = Object.keys(sessionsMap).map(function(key) { return sessionsMap[key]; });
         result.sort(function(a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
         return result;
@@ -184,19 +230,12 @@ window.sessionManager = (function() {
             var merged = _mergeSessions(localSessions, serverSessions);
             console.log('☁️ syncFromServer: после merge=' + merged.length);
 
-            // Сохраняем merged результат локально (без повторного debounce push)
             var cleaned = cleanExpiredSessions(merged).slice(0, MAX_SESSIONS);
-
-            try {
-                _cachedSessions = JSON.parse(JSON.stringify(cleaned));
-            } catch (e) {
-                _cachedSessions = cleaned;
-            }
+            try { _cachedSessions = JSON.parse(JSON.stringify(cleaned)); } catch (e) { _cachedSessions = cleaned; }
             _cacheReady = true;
 
             var dataString = JSON.stringify(cleaned);
             try { localStorage.setItem(SESSIONS_KEY, dataString); } catch (e) {}
-
             if (hasTelegramCloudStorage()) {
                 window.Telegram.WebApp.CloudStorage.setItem(SESSIONS_KEY, dataString, function() {});
             }
@@ -217,40 +256,17 @@ window.sessionManager = (function() {
     // ============================================
 
     function saveSessions(sessions) {
-        const cleaned = cleanExpiredSessions(sessions).slice(0, MAX_SESSIONS);
-
-        try {
-            _cachedSessions = JSON.parse(JSON.stringify(cleaned));
-        } catch (e) {
-            _cachedSessions = cleaned;
-        }
+        var cleaned = cleanExpiredSessions(sessions).slice(0, MAX_SESSIONS);
+        try { _cachedSessions = JSON.parse(JSON.stringify(cleaned)); } catch (e) { _cachedSessions = cleaned; }
         _cacheReady = true;
 
-        const dataString = JSON.stringify(cleaned);
-
-        try {
-            try {
-                localStorage.setItem(SESSIONS_KEY, dataString);
-            } catch (localError) {
-                console.warn('Ошибка сохранения в localStorage:', localError);
-            }
-
-            if (hasTelegramCloudStorage()) {
-                window.Telegram.WebApp.CloudStorage.setItem(SESSIONS_KEY, dataString, function(error) {
-                    if (error) {
-                        console.warn('Ошибка сохранения в Telegram Cloud Storage:', error);
-                    } else {
-                        console.log('✅ Сессии сохранены в Telegram Cloud Storage');
-                    }
-                });
-            } else {
-                console.log('✅ Сессии сохранены в localStorage');
-            }
-        } catch (error) {
-            console.error('Ошибка сохранения сессий:', error);
+        var dataString = JSON.stringify(cleaned);
+        try { localStorage.setItem(SESSIONS_KEY, dataString); } catch (e) {}
+        if (hasTelegramCloudStorage()) {
+            window.Telegram.WebApp.CloudStorage.setItem(SESSIONS_KEY, dataString, function(error) {
+                if (error) console.warn('Ошибка сохранения в Telegram Cloud Storage:', error);
+            });
         }
-
-        // Планируем синхронизацию на сервер (debounced)
         _scheduleSyncToServer();
     }
 
@@ -258,31 +274,13 @@ window.sessionManager = (function() {
         // === Асинхронный путь (с callback) ===
         if (callback && typeof callback === 'function') {
             if (_cacheReady && _cachedSessions !== null) {
-                console.log('📦 getSessions: отдаём из кэша (' + _cachedSessions.length + ' сессий)');
                 callback(null, JSON.parse(JSON.stringify(_cachedSessions)));
                 return;
             }
-
-            if (hasTelegramCloudStorage()) {
-                window.Telegram.WebApp.CloudStorage.getItem(SESSIONS_KEY, function(error, data) {
-                    let sessions;
-                    if (error || !data) {
-                        const localData = localStorage.getItem(SESSIONS_KEY);
-                        const oldData = !localData ? localStorage.getItem('maf-session') : null;
-                        sessions = parseSessionsData(localData || oldData);
-                    } else {
-                        sessions = parseSessionsData(data);
-                    }
-                    _cachedSessions = JSON.parse(JSON.stringify(sessions));
-                    _cacheReady = true;
-                    console.log('📦 getSessions: кэш прогрет из Cloud Storage (' + sessions.length + ' сессий)');
-                    callback(null, sessions);
-                });
-                return;
-            }
-
-            const sessions = _getFromLocalStorage();
-            callback(null, sessions);
+            // Ждём прогрева кэша
+            _readyPromise.then(function() {
+                callback(null, JSON.parse(JSON.stringify(_cachedSessions || [])));
+            });
             return;
         }
 
@@ -290,30 +288,25 @@ window.sessionManager = (function() {
         if (_cacheReady && _cachedSessions !== null) {
             return JSON.parse(JSON.stringify(_cachedSessions));
         }
-        return _getFromLocalStorage();
+        // Fallback: синхронно из localStorage
+        try {
+            var data = localStorage.getItem(SESSIONS_KEY);
+            return parseSessionsData(data) || [];
+        } catch(e) { return []; }
     }
 
-    function _getFromLocalStorage() {
-        try {
-            const data = localStorage.getItem(SESSIONS_KEY);
-            const oldData = !data ? localStorage.getItem('maf-session') : null;
-            const sessions = parseSessionsData(data || oldData);
-
-            if (oldData && !data) {
-                saveSessions(sessions);
-                try { localStorage.removeItem('maf-session'); } catch(e) {}
-            }
-
-            if (!_cacheReady && !hasTelegramCloudStorage()) {
-                _cachedSessions = JSON.parse(JSON.stringify(sessions));
-                _cacheReady = true;
-            }
-
-            return sessions;
-        } catch (error) {
-            console.error('Ошибка загрузки сессий из localStorage:', error);
-            return [];
+    /**
+     * Ждёт, пока кэш будет прогрет (localStorage + Cloud Storage), затем вызывает callback.
+     * Используется приложением для гарантированной загрузки сессий перед показом UI.
+     */
+    function whenReady(callback) {
+        if (_cacheReady && _cachedSessions !== null) {
+            callback(_cachedSessions);
+            return;
         }
+        _readyPromise.then(function() {
+            callback(_cachedSessions || []);
+        });
     }
 
     // ============================================
@@ -321,20 +314,16 @@ window.sessionManager = (function() {
     // ============================================
 
     function addOrUpdateSession(sessionData) {
-        if (!sessionData.sessionId) {
-            sessionData.sessionId = generateSessionId();
-        }
+        if (!sessionData.sessionId) sessionData.sessionId = generateSessionId();
         sessionData.timestamp = Date.now();
 
-        const sessions = getSessions() || [];
-        const existingIndex = sessions.findIndex(s => s.sessionId === sessionData.sessionId);
-
+        var sessions = getSessions() || [];
+        var existingIndex = sessions.findIndex(function(s) { return s.sessionId === sessionData.sessionId; });
         if (existingIndex >= 0) {
             sessions[existingIndex] = sessionData;
         } else {
             sessions.unshift(sessionData);
         }
-
         saveSessions(sessions);
         return sessionData.sessionId;
     }
@@ -342,102 +331,70 @@ window.sessionManager = (function() {
     function getSessionById(sessionId, callback) {
         if (callback && typeof callback === 'function') {
             getSessions(function(error, sessions) {
-                if (error) {
-                    callback(error, null);
-                    return;
-                }
-                const session = sessions.find(s => s.sessionId === sessionId);
-                callback(null, session || null);
+                if (error) { callback(error, null); return; }
+                callback(null, (sessions || []).find(function(s) { return s.sessionId === sessionId; }) || null);
             });
             return;
         }
-
-        const sessions = getSessions() || [];
-        return sessions.find(s => s.sessionId === sessionId) || null;
+        var sessions = getSessions() || [];
+        return sessions.find(function(s) { return s.sessionId === sessionId; }) || null;
     }
 
     function removeSession(sessionId) {
-        const sessions = getSessions() || [];
-        const filtered = sessions.filter(s => s.sessionId !== sessionId);
-        saveSessions(filtered);
+        var sessions = getSessions() || [];
+        saveSessions(sessions.filter(function(s) { return s.sessionId !== sessionId; }));
     }
 
     function isSessionValid(sessionData) {
-        if (!sessionData || !sessionData.timestamp) {
-            return false;
-        }
-        const now = Date.now();
-        const sessionAge = now - sessionData.timestamp;
-        return sessionAge < SESSION_DURATION;
+        if (!sessionData || !sessionData.timestamp) return false;
+        return (Date.now() - sessionData.timestamp) < SESSION_DURATION;
     }
 
     function hasSignificantData(sessionData) {
         if (!sessionData) return false;
-
-        const hasRoles = sessionData.roles && Object.keys(sessionData.roles).length > 0;
-        const hasActions = sessionData.playersActions && Object.keys(sessionData.playersActions).length > 0;
-        const hasFouls = sessionData.fouls && Object.keys(sessionData.fouls).length > 0;
-        const hasTechFouls = sessionData.techFouls && Object.keys(sessionData.techFouls).length > 0;
-        const hasRemoved = sessionData.removed && Object.keys(sessionData.removed).length > 0;
-        const hasBestMove = sessionData.bestMove && sessionData.bestMove.length > 0;
-        const hasManualPlayers = sessionData.manualPlayers && sessionData.manualPlayers.length > 0;
-        const hasTournamentId = sessionData.tournamentId && sessionData.tournamentId.toString().trim();
-
+        var hasRoles = sessionData.roles && Object.keys(sessionData.roles).length > 0;
+        var hasActions = sessionData.playersActions && Object.keys(sessionData.playersActions).length > 0;
+        var hasFouls = sessionData.fouls && Object.keys(sessionData.fouls).length > 0;
+        var hasTechFouls = sessionData.techFouls && Object.keys(sessionData.techFouls).length > 0;
+        var hasRemoved = sessionData.removed && Object.keys(sessionData.removed).length > 0;
+        var hasBestMove = sessionData.bestMove && sessionData.bestMove.length > 0;
+        var hasManualPlayers = sessionData.manualPlayers && sessionData.manualPlayers.length > 0;
+        var hasTournamentId = sessionData.tournamentId && sessionData.tournamentId.toString().trim();
         return hasRoles || hasActions || hasFouls || hasTechFouls || hasRemoved || hasBestMove || hasManualPlayers || hasTournamentId;
     }
 
     function clearAllSessions() {
         _cachedSessions = [];
         _cacheReady = true;
-
         try {
             if (hasTelegramCloudStorage()) {
-                window.Telegram.WebApp.CloudStorage.removeItem(SESSIONS_KEY, function(error) {
-                    if (error) {
-                        console.warn('Ошибка удаления из Telegram Cloud Storage:', error);
-                    }
-                });
+                window.Telegram.WebApp.CloudStorage.removeItem(SESSIONS_KEY, function() {});
             }
             localStorage.removeItem(SESSIONS_KEY);
             localStorage.removeItem('maf-session');
-            console.log('🗑️ Все сессии удалены');
-        } catch (error) {
-            console.error('Ошибка удаления сессий:', error);
-        }
-
-        // Синхронизируем пустой массив на сервер
+        } catch (e) {}
         _scheduleSyncToServer();
     }
 
     // Обратная совместимость
-    function clearSession() {
-        clearAllSessions();
-    }
-
-    function saveSession(sessionData) {
-        return addOrUpdateSession(sessionData);
-    }
-
+    function clearSession() { clearAllSessions(); }
+    function saveSession(sessionData) { return addOrUpdateSession(sessionData); }
     function getSession(callback) {
         if (callback && typeof callback === 'function') {
             getSessions(function(error, sessions) {
-                if (error || !sessions || sessions.length === 0) {
-                    callback(error, null);
-                    return;
-                }
+                if (error || !sessions || sessions.length === 0) { callback(error, null); return; }
                 callback(null, sessions[0]);
             });
             return;
         }
-        const sessions = getSessions();
+        var sessions = getSessions();
         return sessions && sessions.length > 0 ? sessions[0] : null;
     }
 
     // ============================================
     // Публичный API
     // ============================================
-
-    const api = {
+    var api = {
         generateSessionId: generateSessionId,
         saveSessions: saveSessions,
         getSessions: getSessions,
@@ -449,6 +406,7 @@ window.sessionManager = (function() {
         clearAllSessions: clearAllSessions,
         hasTelegramCloudStorage: hasTelegramCloudStorage,
         syncFromServer: syncFromServer,
+        whenReady: whenReady,
         // Обратная совместимость
         saveSession: saveSession,
         getSession: getSession,
@@ -459,58 +417,46 @@ window.sessionManager = (function() {
     // Инициализация
     // ============================================
 
-    // Автоматический прогрев кэша при инициализации (для Telegram)
-    if (hasTelegramCloudStorage()) {
-        console.log('📦 Session Manager: прогреваем кэш из Telegram Cloud Storage...');
-        window.Telegram.WebApp.CloudStorage.getItem(SESSIONS_KEY, function(error, data) {
-            if (!_cacheReady) {
-                let sessions;
-                if (error || !data) {
-                    const localData = localStorage.getItem(SESSIONS_KEY);
-                    const oldData = !localData ? localStorage.getItem('maf-session') : null;
-                    sessions = parseSessionsData(localData || oldData);
-                } else {
-                    sessions = parseSessionsData(data);
-                }
-                _cachedSessions = JSON.parse(JSON.stringify(sessions));
-                _cacheReady = true;
-                console.log('📦 Session Manager: кэш прогрет при инициализации (' + sessions.length + ' сессий)');
-            }
-        });
-    }
+    // Прогрев кэша: сначала localStorage (синхронно), потом Cloud Storage (async)
+    _warmUpCache();
 
     // При закрытии страницы — мгновенный push через sendBeacon
     window.addEventListener('beforeunload', function() {
         var token = _getAuthToken();
         if (!token) return;
-
-        if (_syncTimer) {
-            clearTimeout(_syncTimer);
-            _syncTimer = null;
-        }
-
+        if (_syncTimer) { clearTimeout(_syncTimer); _syncTimer = null; }
         var sessions = _cachedSessions || [];
         var payload = JSON.stringify({ token: token, sessions: sessions });
-
         if (navigator.sendBeacon) {
-            navigator.sendBeacon(SYNC_API_URL, payload);
-            console.log('☁️ Финальная синхронизация через sendBeacon');
+            var blob = new Blob([payload], { type: 'application/json' });
+            navigator.sendBeacon(SYNC_API_URL, blob);
         }
     });
 
     // При возвращении в приложение — pull с сервера
     document.addEventListener('visibilitychange', function() {
         if (document.visibilityState === 'visible' && _getAuthToken()) {
-            console.log('☁️ Страница стала видимой, синхронизируем с сервером...');
-            syncFromServer(function(error, sessions) {
-                if (window.app && window.app.showMainMenu && window.app.loadMainMenu) {
+            syncFromServer(function() {
+                if (window.app && typeof window.app.loadMainMenu === 'function') {
                     window.app.loadMainMenu();
                 }
             });
         }
     });
 
+    // Периодическая фоновая синхронизация (каждые 30 сек)
+    setInterval(function() {
+        if (document.visibilityState !== 'visible') return;
+        if (!_getAuthToken()) return;
+        if (_syncInProgress) return;
+        syncFromServer(function() {
+            if (window.app && typeof window.app.loadMainMenu === 'function') {
+                window.app.loadMainMenu();
+            }
+        });
+    }, 30000);
+
     return api;
 })();
 
-console.log('✅ Session Manager v4 (серверная синхронизация) инициализирован');
+console.log('✅ Session Manager v5 инициализирован');

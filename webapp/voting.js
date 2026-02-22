@@ -41,6 +41,12 @@ window.votingMixin = {    data() {
             votingLastSpeechTimerIntervalId: null,
             votingLastSpeechTimerDefaultTime: 60,
             votingLastSpeechPlayerIndex: 0,
+            // Day 0 special cases
+            votingDay0SingleCandidate: null, // номер единственного кандидата на день 0
+            votingDay0TripleTie: false,      // ничья 3+ на день 0
+            votingDay0TripleTiePlayers: [],   // игроки в ничьей 3+ на день 0
+            // City mode voting: store vote counts directly (not individual voters)
+            cityVoteCounts: {},  // { candidate: numberOfVotes }
         };
     },
     methods: {
@@ -53,6 +59,15 @@ window.votingMixin = {    data() {
         openVotingScreen() {
             this.showVotingScreen = true;
             this.votingScreenTab = 'voting';
+            // City mode: на первом дне (день 0) голосование не проводится
+            if (this.cityMode && this.dayNumber === 0) {
+                return;
+            }
+            // City mode: автостарт с живыми игроками как кандидатами
+            if (this.cityMode && !this.showVotingModal) {
+                this.$nextTick(() => { this.startCityVoting(); });
+                return;
+            }
             // Автостарт голосования если есть выставленные кандидатуры
             if (this.hasNominatedCandidates() && !this.showVotingModal) {
                 this.$nextTick(() => { this.startVoting(); });
@@ -93,8 +108,143 @@ window.votingMixin = {    data() {
 
         // Получить количество голосов за кандидата
         getVotesForCandidate(candidate) {
+            // City mode: use direct vote counts
+            if (this.cityMode && this.cityVoteCounts && this.cityVoteCounts[candidate] !== undefined) {
+                return this.cityVoteCounts[candidate];
+            }
             if (!this.votingResults || !this.votingResults[candidate]) return 0;
             return this.votingResults[candidate].length;
+        },
+
+        // City mode: получить количество живых игроков
+        cityGetAliveCount() {
+            if (!this.tableOut) return 0;
+            return this.tableOut.filter(p => this.isPlayerActive(p.roleKey)).length;
+        },
+
+        // City mode: установить количество голосов за текущего кандидата
+        citySetVoteCount(count) {
+            const candidate = this.votingOrder[this.votingCurrentIndex];
+            if (!candidate) return;
+            count = parseInt(count) || 0;
+
+            // Ограничение: нельзя назначить больше, чем осталось свободных голосов
+            const aliveCount = this.cityGetAliveCount();
+            let usedByOthers = 0;
+            this.votingOrder.forEach((cand, idx) => {
+                if (idx !== this.votingCurrentIndex) {
+                    usedByOthers += (this.cityVoteCounts[cand] || 0);
+                }
+            });
+            const maxAvailable = aliveCount - usedByOthers;
+            if (count > maxAvailable) count = maxAvailable;
+
+            this.$set(this.cityVoteCounts, candidate, count);
+            // Синхронизируем с votingResults (заполняем фейковыми номерами для совместимости)
+            const fakeVoters = [];
+            for (let i = 1; i <= count; i++) {
+                fakeVoters.push(-i); // отрицательные номера чтобы не конфликтовать
+            }
+            this.$set(this.votingResults, candidate, fakeVoters);
+            this.votingResults = { ...this.votingResults };
+            this.sendFullState();
+        },
+
+        // City mode: получить сколько голосов уже распределено по другим кандидатам
+        cityGetUsedVotes() {
+            let used = 0;
+            this.votingOrder.forEach(cand => {
+                used += (this.cityVoteCounts[cand] || 0);
+            });
+            return used;
+        },
+
+        // City mode: получить максимальное количество голосов для текущего кандидата
+        cityGetMaxVotesForCurrent() {
+            const aliveCount = this.cityGetAliveCount();
+            let usedByOthers = 0;
+            this.votingOrder.forEach((cand, idx) => {
+                if (idx !== this.votingCurrentIndex) {
+                    usedByOthers += (this.cityVoteCounts[cand] || 0);
+                }
+            });
+            return aliveCount - usedByOthers;
+        },
+
+        // City mode: получить массив строк кнопок для голосования (по 4 в ряд)
+        cityGetVoteRows(maxCount) {
+            const rows = [];
+            for (let i = 0; i <= maxCount; i += 4) {
+                const row = [];
+                for (let j = i; j < i + 4 && j <= maxCount; j++) {
+                    row.push(j);
+                }
+                rows.push(row);
+            }
+            return rows;
+        },
+
+        // City mode: запуск голосования — все живые игроки как кандидаты
+        startCityVoting() {
+            const alivePlayers = this.tableOut
+                .map((p, idx) => ({ num: idx + 1, roleKey: p.roleKey }))
+                .filter(p => this.isPlayerActive(p.roleKey))
+                .map(p => p.num);
+
+            if (alivePlayers.length < 2) {
+                if (window.showPanelNotification) {
+                    window.showPanelNotification('Недостаточно живых игроков для голосования', 3000);
+                }
+                return;
+            }
+
+            this.votingNominationsAll = [...alivePlayers];
+            this.votingOrder = [...alivePlayers];
+            this.votingCurrentIndex = 0;
+            this.votingResults = {};
+            this.votingVotedPlayers = [];
+            this.votingFinished = false;
+            this.votingWinners = [];
+            this.votingStage = 'main';
+            this.votingTiePlayers = [];
+            this.votingLiftResults = [];
+            this.cityVoteCounts = {};
+            this.votingDay0SingleCandidate = null;
+            this.votingDay0TripleTie = false;
+
+            this.stopVotingTieTimer();
+            this.votingTieTimerActive = false;
+            this.stopVotingLastSpeechTimer();
+            this.votingLastSpeechTimerActive = false;
+
+            this.showVotingModal = true;
+            this.nominationsLocked = true;
+
+            this.currentVotingSession = {
+                mainResults: {},
+                tieResults: {},
+                liftResults: [],
+                mainWinners: [],
+                tieWinners: [],
+                liftWinners: [],
+                finalWinners: [],
+                nominationsAll: [...alivePlayers]
+            };
+
+            this.sendToRoom({ type: "votingStart", votingOrder: this.votingOrder });
+            this.sendFullState();
+            this.votingMainIndex = (this.votingHistory?.length || 0);
+        },
+
+        // City mode: установить количество голосов для lift
+        citySetLiftVoteCount(count) {
+            count = parseInt(count) || 0;
+            const fakeLift = [];
+            for (let i = 1; i <= count; i++) {
+                fakeLift.push(-i);
+            }
+            this.votingLiftResults = fakeLift;
+            this.sendFullState();
         },
 
         // Проверить, были ли непроголосовавшие автоматически добавлены к последнему кандидату
@@ -114,6 +264,33 @@ window.votingMixin = {    data() {
         goToNightFromVoting() {
             this.showVotingScreen = false;
             this.showVotingModal = false;
+            this.setMode('night');
+        },
+
+        // Закрыть специальное сообщение дня 0 и перейти в ночь
+        dismissDay0VotingAndGoToNight() {
+            // Если это был случай тройной ничьи — сохраняем результаты в историю
+            if (this.votingDay0TripleTie && this.currentVotingSession) {
+                this.currentVotingSession.finalWinners = [];
+                this.finishVotingAndSaveToHistory();
+            }
+            this.votingDay0SingleCandidate = null;
+            this.votingDay0TripleTie = false;
+            this.votingDay0TripleTiePlayers = [];
+            this.nominations = {};
+            this.nominationsLocked = false;
+            this.votingOrder = [];
+            this.votingCurrentIndex = 0;
+            this.votingResults = {};
+            this.votingVotedPlayers = [];
+            this.votingFinished = false;
+            this.votingWinners = [];
+            this.votingStage = 'main';
+            this.votingTiePlayers = [];
+            this.votingLiftResults = [];
+            this.currentVotingSession = null;
+            this.showVotingModal = false;
+            this.showVotingScreen = false;
             this.setMode('night');
         },
 
@@ -151,6 +328,16 @@ window.votingMixin = {    data() {
                 }
                 return;
             }
+
+            // День 0: если выставлен только 1 кандидат — голосование не проводится
+            if (this.dayNumber === 0 && nominatedCandidates.length === 1) {
+                this.votingDay0SingleCandidate = nominatedCandidates[0];
+                this.showVotingModal = true;
+                return;
+            }
+            // Сбрасываем флаг
+            this.votingDay0SingleCandidate = null;
+            this.votingDay0TripleTie = false;
               // Сохраняем всех выставленных кандидатов и их порядок (по выставлению, не сортируя)
             this.votingNominationsAll = nominatedCandidates;
             this.votingOrder = [...this.votingNominationsAll];
@@ -162,6 +349,7 @@ window.votingMixin = {    data() {
             this.votingStage = 'main';
             this.votingTiePlayers = [];
             this.votingLiftResults = [];
+            this.cityVoteCounts = {};
             // Сброс таймеров от предыдущих голосований
             this.stopVotingTieTimer();
             this.votingTieTimerActive = false;
@@ -499,6 +687,51 @@ window.votingMixin = {    data() {
                 return;
             }
 
+            // City mode: не нужно проверять непроголосовавших, просто идём дальше
+            if (this.cityMode) {
+                const currentCandidate = this.votingOrder[this.votingCurrentIndex];
+                if (!this.votingResults[currentCandidate]) {
+                    this.$set(this.votingResults, currentCandidate, []);
+                }
+                // Если последний кандидат — автоматически досыпаем оставшиеся голоса
+                if (this.votingCurrentIndex === this.votingOrder.length - 1) {
+                    const aliveCount = this.cityGetAliveCount();
+                    const totalUsed = this.cityGetUsedVotes();
+                    const remaining = aliveCount - totalUsed;
+                    if (remaining > 0) {
+                        const currentCount = this.cityVoteCounts[currentCandidate] || 0;
+                        const newCount = currentCount + remaining;
+                        this.$set(this.cityVoteCounts, currentCandidate, newCount);
+                        const fakeVoters = [];
+                        for (let i = 1; i <= newCount; i++) fakeVoters.push(-i);
+                        this.$set(this.votingResults, currentCandidate, fakeVoters);
+                        this.votingResults = { ...this.votingResults };
+                    }
+                    this.finishVotingStage();
+                } else {
+                    // Проверяем: остались ли ещё нераспределённые голоса?
+                    const aliveCount = this.cityGetAliveCount();
+                    const totalUsed = this.cityGetUsedVotes();
+                    const remainingVotes = aliveCount - totalUsed;
+
+                    if (remainingVotes <= 0) {
+                        // Все голоса распределены — заполняем 0 всем оставшимся и завершаем
+                        for (let i = this.votingCurrentIndex + 1; i < this.votingOrder.length; i++) {
+                            const cand = this.votingOrder[i];
+                            this.$set(this.cityVoteCounts, cand, 0);
+                            this.$set(this.votingResults, cand, []);
+                        }
+                        this.votingResults = { ...this.votingResults };
+                        this.finishVotingStage();
+                    } else {
+                        this.votingCurrentIndex++;
+                        this.sendToRoom({ type: "votingNav", direction: "next", index: this.votingCurrentIndex });
+                        this.sendFullState();
+                    }
+                }
+                return;
+            }
+
             // Если это последний кандидат в main/tie голосовании - автоматически добавляем непроголосовавших
             if ((this.votingStage === 'main' || this.votingStage === 'tie') && 
                 this.votingCurrentIndex === this.votingOrder.length - 1) {
@@ -553,19 +786,37 @@ window.votingMixin = {    data() {
                     .map((p, idx) => ({ num: idx + 1, roleKey: p.roleKey }))
                     .filter(p => this.isPlayerActive(p.roleKey))
                     .map(p => p.num);
-                // Проверяем, что каждый живой игрок проголосовал хотя бы за одного кандидата (по всем кандидатам)
-                const votedNumbers = [].concat(...Object.values(this.votingResults)).filter((v, i, arr) => arr.indexOf(v) === i);
-                const notVoted = alivePlayers.filter(num => !votedNumbers.includes(num));
-                if (notVoted.length > 0) {
-                    this.showVotingNotification('Не проголосовал(и): ' + notVoted.join(', '));
-                    return;
+
+                // City mode: пропускаем проверку непроголосовавших
+                if (!this.cityMode) {
+                    // Проверяем, что каждый живой игрок проголосовал хотя бы за одного кандидата (по всем кандидатам)
+                    const votedNumbers = [].concat(...Object.values(this.votingResults)).filter((v, i, arr) => arr.indexOf(v) === i);
+                    const notVoted = alivePlayers.filter(num => !votedNumbers.includes(num));
+                    if (notVoted.length > 0) {
+                        this.showVotingNotification('Не проголосовал(и): ' + notVoted.join(', '));
+                        return;
+                    }
                 }
+
                 // Определяем максимальное количество голосов
-                const votesArr = Object.values(this.votingResults).map(arr => arr.length);
+                // City mode: используем cityVoteCounts для подсчёта
+                let votesArr;
+                if (this.cityMode) {
+                    votesArr = this.votingOrder.map(cand => this.cityVoteCounts[cand] || 0);
+                } else {
+                    votesArr = Object.values(this.votingResults).map(arr => arr.length);
+                }
                 const maxVotes = Math.max(...votesArr);
-                const candidatesWithMaxVotes = Object.entries(this.votingResults)
-                    .filter(([_, votes]) => votes.length === maxVotes)
-                    .map(([cand]) => Number(cand));                if (candidatesWithMaxVotes.length === 1 && maxVotes > 0) {
+                let candidatesWithMaxVotes;
+                if (this.cityMode) {
+                    candidatesWithMaxVotes = this.votingOrder
+                        .filter(cand => (this.cityVoteCounts[cand] || 0) === maxVotes)
+                        .map(Number);
+                } else {
+                    candidatesWithMaxVotes = Object.entries(this.votingResults)
+                        .filter(([_, votes]) => votes.length === maxVotes)
+                        .map(([cand]) => Number(cand));
+                }                if (candidatesWithMaxVotes.length === 1 && maxVotes > 0) {
                     // Есть единственный победитель
                     this.votingFinished = true;
                     this.votingWinners = [candidatesWithMaxVotes[0]];
@@ -602,6 +853,23 @@ window.votingMixin = {    data() {
                     if (this.votingStage === 'main') {
                         this.currentVotingSession.mainResults = JSON.parse(JSON.stringify(this.votingResults));
                         this.currentVotingSession.mainWinners = []; // Нет победителей в main
+
+                        // День 0: ничья 3+ кандидатов — голосование невозможно
+                        if (this.dayNumber === 0 && candidatesWithMaxVotes.length >= 3) {
+                            this.votingDay0TripleTie = true;
+                            this.votingDay0TripleTiePlayers = [...this.votingTiePlayers];
+                            this.votingFinished = true;
+                            this.votingWinners = [];
+                            this.currentVotingSession.finalWinners = [];
+                            this.sendToRoom({
+                                type: "votingFinish",
+                                winners: [],
+                                results: this.votingResults
+                            });
+                            this.sendFullState();
+                            return;
+                        }
+
                         // Активируем таймер ничьей для дополнительного времени кандидатов
                         this.startVotingTieTimer();
                     } else if (this.votingStage === 'tie') {
@@ -638,20 +906,29 @@ window.votingMixin = {    data() {
                 }
             }            if (this.votingStage === 'lift') {
                 this.votingFinished = true;
-                // Только уникальные и живые голоса, строгое большинство
                 const alivePlayers = this.tableOut.filter(
                     (p) => this.isPlayerActive(p.roleKey)
                 );
                 const totalAlive = alivePlayers.length;
-                const uniqueAliveVotes = Array.from(new Set(
-                    this.votingLiftResults.filter(num => {
-                        const player = this.tableOut[num - 1];
-                        return player && this.isPlayerActive(player.roleKey);
-                    })
-                ));
-                const liftVotes = uniqueAliveVotes.length;
-                // Сохраняем только валидные голоса для истории и UI
-                this.votingLiftResults = uniqueAliveVotes;                // Только если голосов больше половины живых — кандидаты заголосованы
+
+                let liftVotes;
+                if (this.cityMode) {
+                    // City mode: votingLiftResults содержит фейковые номера, длина = количество голосов
+                    liftVotes = this.votingLiftResults.length;
+                } else {
+                    // Только уникальные и живые голоса, строгое большинство
+                    const uniqueAliveVotes = Array.from(new Set(
+                        this.votingLiftResults.filter(num => {
+                            const player = this.tableOut[num - 1];
+                            return player && this.isPlayerActive(player.roleKey);
+                        })
+                    ));
+                    liftVotes = uniqueAliveVotes.length;
+                    // Сохраняем только валидные голоса для истории и UI
+                    this.votingLiftResults = uniqueAliveVotes;
+                }
+
+                // Только если голосов больше половины живых — кандидаты заголосованы
                 if (liftVotes > totalAlive / 2) {
                     this.votingWinners = [...this.votingOrder];
                     this.currentVotingSession.liftWinners = [...this.votingWinners];
@@ -800,6 +1077,9 @@ window.votingMixin = {    data() {
             this.votingTieTimerActive = false;
             this.stopVotingLastSpeechTimer();
             this.votingLastSpeechTimerActive = false;
+            this.votingDay0SingleCandidate = null;
+            this.votingDay0TripleTie = false;
+            this.votingDay0TripleTiePlayers = [];
             this.showVotingModal = false;
             this.nominationsLocked = false;
             this.sendToRoom({ type: "votingClose" });
@@ -842,6 +1122,9 @@ window.votingMixin = {    data() {
             this.currentVotingSession = null; // Очищаем текущую сессию
             this.votingTieTimerActive = false;
             this.votingLastSpeechTimerActive = false;
+            this.votingDay0SingleCandidate = null;
+            this.votingDay0TripleTie = false;
+            this.votingDay0TripleTiePlayers = [];
             this.showVotingModal = false;
             // Переключаемся на вкладку истории после завершения
             this.votingScreenTab = 'history';
@@ -1055,7 +1338,8 @@ window.votingMixin = {    data() {
             this.votingWinners = [];
             this.votingStage = 'tie';
             this.votingLiftResults = [];
-            
+            this.cityVoteCounts = {};
+
             this.sendToRoom({ 
                 type: "votingTieStart", 
                 votingOrder: this.votingOrder,
@@ -1078,7 +1362,8 @@ window.votingMixin = {    data() {
             this.votingWinners = [];
             this.votingStage = 'lift';
             this.votingLiftResults = [];
-            
+            this.cityVoteCounts = {};
+
             this.sendToRoom({ 
                 type: "votingLiftStart", 
                 votingOrder: this.votingOrder,
