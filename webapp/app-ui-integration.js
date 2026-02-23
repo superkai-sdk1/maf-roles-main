@@ -1100,7 +1100,17 @@ Object.assign(window.app.methods, {
 
     confirmGoToNight() {
         this.showNoVotingAlert = false;
+        this.showGoToNightPrompt = false;
         this.setMode('night');
+    },
+
+    confirmGoToNightPrompt() {
+        this.showGoToNightPrompt = false;
+        this.setMode('night');
+    },
+
+    cancelGoToNightPrompt() {
+        this.showGoToNightPrompt = false;
     },
 
     setMode(mode) {
@@ -1133,16 +1143,50 @@ Object.assign(window.app.methods, {
                 this.resetSlider('go_night');
             });
 
-            // Автоматически открыть карточку первого непринятого убитого игрока
+            // === Авто-открытие карточек при переходе в день ===
             this.$nextTick(() => {
+                // 1) Запускаем 5-секундный таймер мигания для убитых игроков
+                if (this._killedBlinkTimers) {
+                    Object.values(this._killedBlinkTimers).forEach(t => clearTimeout(t));
+                }
+                this._killedBlinkTimers = {};
+                this.tableOut.forEach(p => {
+                    if (p.action === 'killed' && !this.protocolAccepted[p.roleKey]) {
+                        this.$set(this.killedPlayerBlink, p.roleKey, true);
+                        this._killedBlinkTimers[p.roleKey] = setTimeout(() => {
+                            this.$set(this.killedPlayerBlink, p.roleKey, false);
+                        }, 5000);
+                    }
+                });
+
+                // 2) Определяем первого оратора дня (dayNumber-based, 0-indexed)
+                //    День 1 → игрок 0, День 2 → игрок 1, и т.д.
+                const speechStartIndex = ((this.dayNumber || 1) - 1) % this.tableOut.length;
+                const speechPlayerIdx = this._getNextAlivePlayerIndex(speechStartIndex);
+
+                // 3) Ищем убитого игрока (для авто-открытия первым)
                 const killedPlayer = this.tableOut.find(p =>
                     p.action === 'killed' && !this.protocolAccepted[p.roleKey]
                 );
+
                 if (killedPlayer) {
+                    // Авто-открываем карточку убитого (без таймера)
+                    this.autoOpenedCard = true;
+                    this.currentDaySpeakerIndex = speechPlayerIdx;
                     this.highlightedPlayer = killedPlayer.roleKey;
                     this.setHighlightedPlayer(killedPlayer.roleKey);
                     this.$nextTick(() => {
                         this._scrollToPlayer(killedPlayer.roleKey);
+                    });
+                } else if (speechPlayerIdx >= 0) {
+                    // Нет убитого — авто-открываем карточку первого оратора (без таймера)
+                    this.autoOpenedCard = true;
+                    this.currentDaySpeakerIndex = speechPlayerIdx;
+                    const speechPlayer = this.tableOut[speechPlayerIdx];
+                    this.highlightedPlayer = speechPlayer.roleKey;
+                    this.setHighlightedPlayer(speechPlayer.roleKey);
+                    this.$nextTick(() => {
+                        this._scrollToPlayer(speechPlayer.roleKey);
                     });
                 }
             });
@@ -1153,6 +1197,16 @@ Object.assign(window.app.methods, {
             this.clearNightChecks(); // also increments nightNumber
             this.nightPhase = null;
             this.highlightedPlayer = null;
+            this.autoOpenedCard = false;
+            this.currentDaySpeakerIndex = -1;
+            this.showGoToNightPrompt = false;
+
+            // Очищаем таймеры мигания убитых
+            if (this._killedBlinkTimers) {
+                Object.values(this._killedBlinkTimers).forEach(t => clearTimeout(t));
+                this._killedBlinkTimers = {};
+            }
+
             if (this.nightAutoCloseTimer) {
                 clearTimeout(this.nightAutoCloseTimer);
                 this.nightAutoCloseTimer = null;
@@ -1531,6 +1585,110 @@ Object.assign(window.app.methods, {
     },
 
     // Плавный скролл к карточке игрока
+    // Найти индекс следующего живого игрока в tableOut, начиная с startIndex (0-based)
+    _getNextAlivePlayerIndex(startIndex) {
+        if (!this.tableOut || !this.tableOut.length) return -1;
+        const len = this.tableOut.length;
+        for (let i = 0; i < len; i++) {
+            const idx = (startIndex + i) % len;
+            const p = this.tableOut[idx];
+            if (p && this.isPlayerActive(p.roleKey)) {
+                return idx;
+            }
+        }
+        return -1;
+    },
+
+    // Авто-переход к следующему живому игроку (вызывается при остановке таймера удержанием)
+    _autoAdvanceToNextPlayer() {
+        if (this.currentMode !== 'day' || this.gamePhase !== 'day') return;
+        if (this.currentDaySpeakerIndex < 0) return;
+
+        // Определяем стартовый индекс для этого дня
+        const dayStartIndex = ((this.dayNumber || 1) - 1) % this.tableOut.length;
+
+        // Проверяем: текущий оратор — это последний в круге?
+        // Последний в круге = следующий живой игрок после текущего совпадает
+        // со стартовым индексом дня (или проходит через него)
+        const nextIdx = this._getNextAlivePlayerIndex(this.currentDaySpeakerIndex + 1);
+        const isLastSpeaker = (nextIdx < 0
+            || nextIdx === this.currentDaySpeakerIndex
+            || this._isSpeechCircleComplete(dayStartIndex, this.currentDaySpeakerIndex));
+
+        if (isLastSpeaker) {
+            // Последний оратор — закрываем карточку и показываем "Перейти в ночь?"
+            this.highlightedPlayer = null;
+            this.setHighlightedPlayer(null);
+            this.showGoToNightPrompt = true;
+            return;
+        }
+
+        // Закрываем текущую карточку
+        this.highlightedPlayer = null;
+        this.setHighlightedPlayer(null);
+
+        const nextPlayer = this.tableOut[nextIdx];
+        if (!nextPlayer) return;
+
+        this.currentDaySpeakerIndex = nextIdx;
+        this.autoOpenedCard = false;
+
+        // Проверяем: этот СЛЕДУЮЩИЙ игрок — последний в круге?
+        const afterNextIdx = this._getNextAlivePlayerIndex(nextIdx + 1);
+        const isNextTheLastSpeaker = (afterNextIdx < 0
+            || afterNextIdx === nextIdx
+            || this._isSpeechCircleComplete(dayStartIndex, nextIdx));
+
+        this.$nextTick(() => {
+            this.highlightedPlayer = nextPlayer.roleKey;
+            this.setHighlightedPlayer(nextPlayer.roleKey);
+            this.$nextTick(() => {
+                this._scrollToPlayer(nextPlayer.roleKey);
+                // Если это последний оратор в круге и День 1 (нулевой круг) — 30 сек
+                if (isNextTheLastSpeaker && this.dayNumber === 1) {
+                    // Инициализируем таймер с 30 секундами
+                    this.timerModule.stopTimer(nextPlayer.roleKey);
+                    const timer = this.timerModule.getPlayerTimer(nextPlayer.roleKey);
+                    timer.timeLeft = 30;
+                    timer.initialTime = 30;
+                    this.$set(this.playerTimers, nextPlayer.roleKey, {
+                        ...this.playerTimers[nextPlayer.roleKey],
+                        timeLeft: 30,
+                        isRunning: false,
+                        isPaused: false
+                    });
+                    this.startPlayerTimer(nextPlayer.roleKey);
+                } else {
+                    this.startPlayerTimer(nextPlayer.roleKey);
+                }
+            });
+        });
+    },
+
+    // Проверяет, завершён ли круг речей: все живые игроки от dayStartIndex до currentIdx уже поговорили
+    _isSpeechCircleComplete(dayStartIndex, currentIdx) {
+        if (!this.tableOut || !this.tableOut.length) return true;
+        const len = this.tableOut.length;
+        // Считаем сколько живых игроков в таблице
+        let aliveCount = 0;
+        for (let i = 0; i < len; i++) {
+            if (this.tableOut[i] && this.isPlayerActive(this.tableOut[i].roleKey)) {
+                aliveCount++;
+            }
+        }
+        // Считаем сколько живых от dayStartIndex до currentIdx (включительно) по кругу
+        let spokeCount = 0;
+        let idx = dayStartIndex;
+        for (let i = 0; i < len; i++) {
+            const realIdx = (dayStartIndex + i) % len;
+            if (this.tableOut[realIdx] && this.isPlayerActive(this.tableOut[realIdx].roleKey)) {
+                spokeCount++;
+            }
+            if (realIdx === currentIdx) break;
+        }
+        return spokeCount >= aliveCount;
+    },
+
     _scrollToPlayer(roleKey) {
         this.$nextTick(() => {
             const playersList = document.querySelector('.players-list');
@@ -1619,11 +1777,60 @@ Object.assign(window.app.methods, {
         // Убираем мигание при открытии карточки убитого
         if (this.killedPlayerBlink && this.killedPlayerBlink[roleKey]) {
             this.$set(this.killedPlayerBlink, roleKey, false);
+            // Очищаем таймер 5-сек мигания
+            if (this._killedBlinkTimers && this._killedBlinkTimers[roleKey]) {
+                clearTimeout(this._killedBlinkTimers[roleKey]);
+                delete this._killedBlinkTimers[roleKey];
+            }
         }
         if (this.highlightedPlayer === roleKey) {
+            // === Закрытие карточки ===
+            const closedRoleKey = roleKey;
             this.highlightedPlayer = null;
+            this.autoOpenedCard = false;
+            this.setHighlightedPlayer(null);
+
+            // Если закрыли карточку убитого днём — авто-открываем карточку первого оратора
+            if (this.currentMode === 'day' && this.currentDaySpeakerIndex >= 0) {
+                const closedPlayer = this.tableOut.find(p => p.roleKey === closedRoleKey);
+                if (closedPlayer && closedPlayer.action === 'killed') {
+                    const speechPlayer = this.tableOut[this.currentDaySpeakerIndex];
+                    if (speechPlayer && this.isPlayerActive(speechPlayer.roleKey)) {
+                        this.autoOpenedCard = true;
+                        this.$nextTick(() => {
+                            this.highlightedPlayer = speechPlayer.roleKey;
+                            this.setHighlightedPlayer(speechPlayer.roleKey);
+                            this.$nextTick(() => {
+                                this._scrollToPlayer(speechPlayer.roleKey);
+                            });
+                        });
+                        return; // уже обработали setHighlightedPlayer
+                    }
+                }
+            }
         } else {
+            // === Открытие карточки ===
+            // Днём: нельзя открыть другую карточку, пока текущая открыта
+            if (this.currentMode === 'day' && this.highlightedPlayer) {
+                return;
+            }
             this.highlightedPlayer = roleKey;
+
+            // Обновляем индекс текущего оратора
+            if (this.currentMode === 'day') {
+                const idx = this.tableOut.findIndex(p => p.roleKey === roleKey);
+                if (idx >= 0 && this.isPlayerActive(roleKey)) {
+                    this.currentDaySpeakerIndex = idx;
+                }
+            }
+
+            // Авто-старт таймера при ручном открытии (не авто-открытие)
+            if (!this.autoOpenedCard && this.currentMode === 'day' && this.isPlayerActive(roleKey)) {
+                this.$nextTick(() => {
+                    this.startPlayerTimer(roleKey);
+                });
+            }
+            this.autoOpenedCard = false;
         }
         this.setHighlightedPlayer(this.highlightedPlayer);
     },

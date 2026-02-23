@@ -148,8 +148,13 @@ window.app = new Vue({
         dayButtonBlink: false,
         // No-voting alert modal
         showNoVotingAlert: false,
+        // Auto-prompt to go to night after last speaker
+        showGoToNightPrompt: false,
         // Killed player row blink
         killedPlayerBlink: {},
+        // Auto-open card mechanics
+        autoOpenedCard: false,        // true = текущая открытая карточка была авто-открыта (не запускать таймер)
+        currentDaySpeakerIndex: -1,   // индекс текущего оратора в tableOut (для авто-перехода)
         userEditedAdditionalInfo: false,
         sendFullStateTimer: null, // Таймер для дебаунсинга sendFullState
         activeVotingTab: 0, // Индекс активной вкладки в истории голосований
@@ -407,6 +412,9 @@ window.app = new Vue({
     },
       // Инициализация компонента
     mounted() {
+        // Не-реактивные таймеры для 5-сек мигания убитых
+        this._killedBlinkTimers = {};
+
         // Загружаем сохраненные настройки панели
         this.loadPanelSettings();
         

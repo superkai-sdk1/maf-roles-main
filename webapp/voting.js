@@ -843,7 +843,7 @@ window.votingMixin = {    data() {
                     });
                     this.sendFullState();
                     return;                } else if (candidatesWithMaxVotes.length > 1 && maxVotes > 0) {
-                    // Есть равное количество голосов у нескольких кандидатов
+                    // Есть равное количество ��олосов у нескольких кандидатов
                     // Сохраняем порядок выставления при ничьей
                     this.votingTiePlayers = this.votingOrder
                         .filter(cand => candidatesWithMaxVotes.includes(Number(cand)))
@@ -1202,20 +1202,56 @@ window.votingMixin = {    data() {
                 this.votingTieTimerRunning = true;
                 this.votingTieTimerPaused = false;
             }
+            this._votingTieEndTime = Date.now() + this.votingTieTimerTimeLeft * 1000;
             if (this.votingTieTimerIntervalId) clearInterval(this.votingTieTimerIntervalId);
             this.votingTieTimerIntervalId = setInterval(() => {
                 if (!this.votingTieTimerRunning || this.votingTieTimerPaused) return;
-                if (this.votingTieTimerTimeLeft > 0) {
-                    this.votingTieTimerTimeLeft--;
-                } else {
-                    this.stopVotingTieTimer();
+                const remaining = Math.max(0, Math.ceil((this._votingTieEndTime - Date.now()) / 1000));
+                if (remaining !== this.votingTieTimerTimeLeft) {
+                    this.votingTieTimerTimeLeft = remaining;
+                    if (remaining === 10) {
+                        if (typeof triggerLongVibration === 'function') triggerLongVibration();
+                    }
+                    if (remaining <= 0) this.stopVotingTieTimer();
                 }
-            }, 1000);
+            }, 250);
+        },
+
+        startVotingTieTimerWithTime(seconds) {
+            this.stopVotingTieTimer();
+            this.votingTieTimerTimeLeft = seconds;
+            this.votingTieTimerRunning = true;
+            this.votingTieTimerPaused = false;
+            this._votingTieEndTime = Date.now() + seconds * 1000;
+            if (this.votingTieTimerIntervalId) clearInterval(this.votingTieTimerIntervalId);
+            this.votingTieTimerIntervalId = setInterval(() => {
+                if (!this.votingTieTimerRunning || this.votingTieTimerPaused) return;
+                const remaining = Math.max(0, Math.ceil((this._votingTieEndTime - Date.now()) / 1000));
+                if (remaining !== this.votingTieTimerTimeLeft) {
+                    this.votingTieTimerTimeLeft = remaining;
+                    if (remaining === 10) {
+                        if (typeof triggerLongVibration === 'function') triggerLongVibration();
+                    }
+                    if (remaining <= 0) this.stopVotingTieTimer();
+                }
+            }, 250);
+        },
+
+        addVotingTieTimerTime(seconds) {
+            this.votingTieTimerTimeLeft += seconds;
+            if (this._votingTieEndTime && this.votingTieTimerRunning && !this.votingTieTimerPaused) {
+                this._votingTieEndTime += seconds * 1000;
+            }
         },
 
         pauseVotingTieTimer() {
             if (!this.votingTieTimerRunning) return;
             this.votingTieTimerPaused = true;
+            // Фиксируем оставшееся время из endTime
+            if (this._votingTieEndTime) {
+                this.votingTieTimerTimeLeft = Math.max(0, Math.ceil((this._votingTieEndTime - Date.now()) / 1000));
+                this._votingTieEndTime = null;
+            }
             if (this.votingTieTimerIntervalId) {
                 clearInterval(this.votingTieTimerIntervalId);
                 this.votingTieTimerIntervalId = null;
@@ -1225,6 +1261,7 @@ window.votingMixin = {    data() {
         stopVotingTieTimer() {
             this.votingTieTimerRunning = false;
             this.votingTieTimerPaused = false;
+            this._votingTieEndTime = null;
             if (this.votingTieTimerIntervalId) {
                 clearInterval(this.votingTieTimerIntervalId);
                 this.votingTieTimerIntervalId = null;
@@ -1271,20 +1308,55 @@ window.votingMixin = {    data() {
                 this.votingLastSpeechTimerRunning = true;
                 this.votingLastSpeechTimerPaused = false;
             }
+            this._votingLastSpeechEndTime = Date.now() + this.votingLastSpeechTimerTimeLeft * 1000;
             if (this.votingLastSpeechTimerIntervalId) clearInterval(this.votingLastSpeechTimerIntervalId);
             this.votingLastSpeechTimerIntervalId = setInterval(() => {
                 if (!this.votingLastSpeechTimerRunning || this.votingLastSpeechTimerPaused) return;
-                if (this.votingLastSpeechTimerTimeLeft > 0) {
-                    this.votingLastSpeechTimerTimeLeft--;
-                } else {
-                    this.stopVotingLastSpeechTimer();
+                const remaining = Math.max(0, Math.ceil((this._votingLastSpeechEndTime - Date.now()) / 1000));
+                if (remaining !== this.votingLastSpeechTimerTimeLeft) {
+                    this.votingLastSpeechTimerTimeLeft = remaining;
+                    if (remaining === 10) {
+                        if (typeof triggerLongVibration === 'function') triggerLongVibration();
+                    }
+                    if (remaining <= 0) this.stopVotingLastSpeechTimer();
                 }
-            }, 1000);
+            }, 250);
+        },
+
+        startVotingLastSpeechTimerWithTime(seconds) {
+            this.stopVotingLastSpeechTimer();
+            this.votingLastSpeechTimerTimeLeft = seconds;
+            this.votingLastSpeechTimerRunning = true;
+            this.votingLastSpeechTimerPaused = false;
+            this._votingLastSpeechEndTime = Date.now() + seconds * 1000;
+            if (this.votingLastSpeechTimerIntervalId) clearInterval(this.votingLastSpeechTimerIntervalId);
+            this.votingLastSpeechTimerIntervalId = setInterval(() => {
+                if (!this.votingLastSpeechTimerRunning || this.votingLastSpeechTimerPaused) return;
+                const remaining = Math.max(0, Math.ceil((this._votingLastSpeechEndTime - Date.now()) / 1000));
+                if (remaining !== this.votingLastSpeechTimerTimeLeft) {
+                    this.votingLastSpeechTimerTimeLeft = remaining;
+                    if (remaining === 10) {
+                        if (typeof triggerLongVibration === 'function') triggerLongVibration();
+                    }
+                    if (remaining <= 0) this.stopVotingLastSpeechTimer();
+                }
+            }, 250);
+        },
+
+        addVotingLastSpeechTimerTime(seconds) {
+            this.votingLastSpeechTimerTimeLeft += seconds;
+            if (this._votingLastSpeechEndTime && this.votingLastSpeechTimerRunning && !this.votingLastSpeechTimerPaused) {
+                this._votingLastSpeechEndTime += seconds * 1000;
+            }
         },
 
         pauseVotingLastSpeechTimer() {
             if (!this.votingLastSpeechTimerRunning) return;
             this.votingLastSpeechTimerPaused = true;
+            if (this._votingLastSpeechEndTime) {
+                this.votingLastSpeechTimerTimeLeft = Math.max(0, Math.ceil((this._votingLastSpeechEndTime - Date.now()) / 1000));
+                this._votingLastSpeechEndTime = null;
+            }
             if (this.votingLastSpeechTimerIntervalId) {
                 clearInterval(this.votingLastSpeechTimerIntervalId);
                 this.votingLastSpeechTimerIntervalId = null;
@@ -1294,6 +1366,7 @@ window.votingMixin = {    data() {
         stopVotingLastSpeechTimer() {
             this.votingLastSpeechTimerRunning = false;
             this.votingLastSpeechTimerPaused = false;
+            this._votingLastSpeechEndTime = null;
             if (this.votingLastSpeechTimerIntervalId) {
                 clearInterval(this.votingLastSpeechTimerIntervalId);
                 this.votingLastSpeechTimerIntervalId = null;
@@ -1371,10 +1444,133 @@ window.votingMixin = {    data() {
             });
             this.sendFullState();
         },
+
+        // --- Long-press / click interaction for tie timer display ---
+        tieTimerToggle() {
+            if (this.votingTieTimerPaused) {
+                this.playVotingTieTimer();
+                if (window.haptic) window.haptic.impact('light');
+            } else if (this.votingTieTimerRunning) {
+                this.pauseVotingTieTimer();
+                if (window.haptic) window.haptic.impact('light');
+            } else {
+                const time = this.votingTieTimerTimeLeft > 0 ? this.votingTieTimerTimeLeft : this.votingTieTimerDefaultTime;
+                this.startVotingTieTimerWithTime(time);
+                if (window.haptic) window.haptic.impact('medium');
+            }
+        },
+
+        tieTimerHoldStart() {
+            this._tieHoldFlag = false;
+            this._tieHoldTimer = setTimeout(() => {
+                this._tieHoldFlag = true;
+                if (window.navigator.vibrate) window.navigator.vibrate(50);
+                if (window.haptic) window.haptic.impact('heavy');
+                this.stopVotingTieTimer();
+            }, 800);
+        },
+
+        tieTimerHoldEnd(e) {
+            if (this._tieHoldTimer) {
+                clearTimeout(this._tieHoldTimer);
+            }
+            if (!this._tieHoldFlag) {
+                if (e && e.type !== 'mouseleave') {
+                    this.tieTimerToggle();
+                }
+            }
+            this._tieHoldFlag = false;
+        },
+
+        tieTimerHoldCancel() {
+            if (this._tieHoldTimer) {
+                clearTimeout(this._tieHoldTimer);
+            }
+            this._tieHoldFlag = false;
+        },
+
+        // --- Long-press / click interaction for last speech timer display ---
+        lastSpeechTimerToggle() {
+            if (this.votingLastSpeechTimerPaused) {
+                // Возобновляем
+                this.playVotingLastSpeechTimer();
+                if (window.haptic) window.haptic.impact('light');
+            } else if (this.votingLastSpeechTimerRunning) {
+                // Пауза
+                this.pauseVotingLastSpeechTimer();
+                if (window.haptic) window.haptic.impact('light');
+            } else {
+                // Не запущен — стартуем с текущего значения или дефолтного
+                const time = this.votingLastSpeechTimerTimeLeft > 0 ? this.votingLastSpeechTimerTimeLeft : this.votingLastSpeechTimerDefaultTime;
+                this.startVotingLastSpeechTimerWithTime(time);
+                if (window.haptic) window.haptic.impact('medium');
+            }
+        },
+
+        lastSpeechHoldStart() {
+            this._lastSpeechHoldFlag = false;
+            this._lastSpeechHoldTimer = setTimeout(() => {
+                this._lastSpeechHoldFlag = true;
+                if (window.navigator.vibrate) window.navigator.vibrate(50);
+                if (window.haptic) window.haptic.impact('heavy');
+                this.stopVotingLastSpeechTimer();
+            }, 800);
+        },
+
+        lastSpeechHoldEnd(e) {
+            if (this._lastSpeechHoldTimer) {
+                clearTimeout(this._lastSpeechHoldTimer);
+            }
+            if (!this._lastSpeechHoldFlag) {
+                if (e && e.type !== 'mouseleave') {
+                    this.lastSpeechTimerToggle();
+                }
+            }
+            this._lastSpeechHoldFlag = false;
+        },
+
+        lastSpeechHoldCancel() {
+            if (this._lastSpeechHoldTimer) {
+                clearTimeout(this._lastSpeechHoldTimer);
+            }
+            this._lastSpeechHoldFlag = false;
+        },
+    },
+    created() {
+        // Не-реактивные переменные для long-press логики
+        this._lastSpeechHoldTimer = null;
+        this._lastSpeechHoldFlag = false;
+        this._tieHoldTimer = null;
+        this._tieHoldFlag = false;
+        // Не-реактивные endTime для timestamp-based таймеров
+        this._votingTieEndTime = null;
+        this._votingLastSpeechEndTime = null;
+
+        // Синхронизация при возврате из фона
+        this._votingVisibilityCb = () => {
+            if (document.visibilityState === 'visible') {
+                // Tie timer
+                if (this.votingTieTimerRunning && !this.votingTieTimerPaused && this._votingTieEndTime) {
+                    const remaining = Math.max(0, Math.ceil((this._votingTieEndTime - Date.now()) / 1000));
+                    this.votingTieTimerTimeLeft = remaining;
+                    if (remaining <= 0) this.stopVotingTieTimer();
+                }
+                // Last speech timer
+                if (this.votingLastSpeechTimerRunning && !this.votingLastSpeechTimerPaused && this._votingLastSpeechEndTime) {
+                    const remaining = Math.max(0, Math.ceil((this._votingLastSpeechEndTime - Date.now()) / 1000));
+                    this.votingLastSpeechTimerTimeLeft = remaining;
+                    if (remaining <= 0) this.stopVotingLastSpeechTimer();
+                }
+            }
+        };
+        document.addEventListener('visibilitychange', this._votingVisibilityCb);
     },
     mounted() {
         window.addEventListener('keydown', this.handleVotingKeydown);
     },    beforeDestroy() {
         window.removeEventListener('keydown', this.handleVotingKeydown);
+        if (this._votingVisibilityCb) {
+            document.removeEventListener('visibilitychange', this._votingVisibilityCb);
+        }
     }
 };

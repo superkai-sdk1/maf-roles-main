@@ -569,21 +569,22 @@ body::after {
   animation: slideDown 0.25s var(--ease-smooth);
 }
 
-/* Timer */
+/* Timer — Nexus Glass Design */
 .timer-section {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
   margin-bottom: 16px;
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 14px 18px;
-  border-radius: var(--radius-m);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 2px 8px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  padding: 24px 18px 18px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   position: relative;
   overflow: hidden;
+  text-align: center;
 }
 
 .timer-section::before {
@@ -593,64 +594,153 @@ body::after {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
   pointer-events: none;
 }
 
-.timer-display {
-  font-size: 2.8em;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent-color);
-  text-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+.timer-status-pill {
+  display: inline-block;
+  padding: 5px 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
   letter-spacing: 1px;
-  transition: color 0.3s, text-shadow 0.3s;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  min-width: 100px;
+  transition: color 0.3s ease;
+}
+
+.timer-status-pill.status-running {
+  color: #00ff88;
+}
+
+.timer-status-pill.status-paused {
+  color: #ff9f0a;
+}
+
+.timer-status-pill.status-finished {
+  color: #ff3e3e;
+}
+
+.timer-display {
+  font-size: 5rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  user-select: none;
+  color: #ffffff;
+  text-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.timer-display.normal { color: #ffffff; }
+
+.timer-display.running {
+  color: #ffffff;
 }
 
 .timer-display.warning {
-  color: var(--status-warning);
-  text-shadow: 0 0 20px rgba(255, 214, 10, 0.4);
+  color: #ff3e3e;
+  filter: drop-shadow(0 0 15px rgba(255, 62, 62, 0.5));
+  animation: timer-pulse-red 1s infinite;
 }
 
-.timer-controls { display: flex; gap: 8px; }
+.timer-display.paused {
+  opacity: 0.3;
+  transform: scale(0.95);
+}
+
+.timer-display.holding {
+  transform: scale(0.9);
+  filter: blur(2px);
+  color: #ff3e3e;
+}
+
+.timer-display.finished {
+  color: #ff3e3e;
+  filter: drop-shadow(0 0 20px rgba(255, 62, 62, 0.7));
+  animation: timer-finished-blink 0.8s ease-in-out infinite;
+}
+
+@keyframes timer-finished-blink {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 20px rgba(255, 62, 62, 0.7)); }
+  50% { opacity: 0.4; filter: drop-shadow(0 0 8px rgba(255, 62, 62, 0.3)); }
+}
+
+@keyframes timer-pulse-red {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.timer-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
 
 .timer-btn {
-  width: var(--timer-btn-size);
-  height: var(--timer-btn-size);
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: var(--glass-layer-1);
-  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  padding: 14px 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: transform 0.1s var(--ease-spring), background-color 0.1s, box-shadow 0.1s;
-  box-shadow: var(--glass-shadow-sm);
-  font-size: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  touch-action: manipulation;
   position: relative;
   overflow: hidden;
-  touch-action: manipulation;
 }
 
 .timer-btn::before {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 50%;
-  background: var(--glass-specular-subtle);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 50%);
   pointer-events: none;
 }
 
 .timer-btn:hover:not(:disabled) {
-  background: var(--glass-layer-3);
-  transform: scale(1.08);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
 }
 
-.timer-btn:active:not(:disabled) { transform: scale(0.92); }
+.timer-btn:active:not(:disabled) { transform: translateY(0); }
 .timer-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.timer-btn.timer-start {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 210, 255, 0.2));
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  color: #00ff88;
+}
+
+.timer-btn.timer-add {
+  color: #00d2ff;
+}
+
+.timer-hint {
+  margin-top: 10px;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
 
 /* Candidate Grid */
 .candidate-grid {
@@ -3008,7 +3098,7 @@ input:focus, select:focus, .input-compact:focus {
     font-size: 1.2em;
   }
   .voting-timer-display--compact {
-    font-size: 1.6em;
+    font-size: 2rem;
     padding: 4px 16px;
   }
 }
@@ -3076,13 +3166,19 @@ input:focus, select:focus, .input-compact:focus {
   font-weight: 600;
 }
 
-/* Compact timer inside tie/winner */
+/* Compact timer inside tie/winner — Nexus Glass */
 .voting-tie-timer-block {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  padding: 18px 14px;
 }
 
 .voting-timer-title-compact {
@@ -3093,8 +3189,11 @@ input:focus, select:focus, .input-compact:focus {
 }
 
 .voting-timer-display--compact {
-  font-size: 2em;
+  font-size: 2.5rem;
   padding: 6px 20px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* === Finish screen === */
@@ -3537,36 +3636,42 @@ input:focus, select:focus, .input-compact:focus {
 }
 
 .voting-timer-display {
-  font-size: 3em;
-  font-weight: 700;
+  font-size: 3.5rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: var(--accent-color);
-  text-shadow: 0 0 20px rgba(174, 140, 255, 0.3);
+  color: #ffffff;
+  text-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   letter-spacing: 2px;
-  transition: color 0.3s, text-shadow 0.3s;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   line-height: 1;
+  user-select: none;
 }
 
 .voting-timer-display.running {
-  color: var(--status-success);
-  text-shadow: 0 0 20px rgba(48, 209, 88, 0.4);
+  color: #ffffff;
 }
 
 .voting-timer-display.warning {
-  color: var(--status-error);
-  text-shadow: 0 0 20px rgba(255, 69, 58, 0.5);
-  animation: pulse-timer 1s infinite;
+  color: #ff3e3e;
+  filter: drop-shadow(0 0 15px rgba(255, 62, 62, 0.5));
+  animation: timer-pulse-red 1s infinite;
 }
 
-@keyframes pulse-timer {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+.voting-timer-display.paused {
+  opacity: 0.3;
+}
+
+.voting-timer-display.finished {
+  color: #ff3e3e;
+  filter: drop-shadow(0 0 20px rgba(255, 62, 62, 0.7));
+  animation: timer-finished-blink 0.8s ease-in-out infinite;
 }
 
 .voting-timer-controls {
   display: flex;
   gap: 10px;
   justify-content: center;
+  width: 100%;
 }
 
 .voting-timer-nav {
@@ -3705,7 +3810,7 @@ input:focus, select:focus, .input-compact:focus {
   .game-option-card .label { font-size: 0.7em; }
   .game-option-card select { font-size: 1.1em; }
 
-  .timer-display { font-size: 2.2em; }
+  .timer-display { font-size: 3.5rem; }
 
   .candidate-grid { gap: 8px; }
   .candidate-btn { font-size: 1.1em; }
@@ -3721,7 +3826,7 @@ input:focus, select:focus, .input-compact:focus {
   .winner-card { padding: 14px 16px; }
 
   .voting-timer-section { padding: 12px; gap: 10px; }
-  .voting-timer-display { font-size: 2.4em; }
+  .voting-timer-display { font-size: 2.8rem; }
   .voting-timer-title { font-size: 0.95em; }
   .voting-timer-tie-info { font-size: 1em; }
   .voting-timer-nav .glass-btn { min-width: 70px; padding: 6px 10px; font-size: 0.8em; }
@@ -5417,6 +5522,9 @@ input:focus, select:focus, .input-compact:focus {
 }
 
 .phase-timer-section {
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
   margin-bottom: 0 !important;
   background: transparent !important;
   border: none !important;
@@ -5424,6 +5532,7 @@ input:focus, select:focus, .input-compact:focus {
   border-radius: 0 !important;
   padding: 6px 10px !important;
   width: 100%;
+  text-align: left !important;
 }
 
 .phase-timer-section::before {
@@ -5432,12 +5541,28 @@ input:focus, select:focus, .input-compact:focus {
 
 .phase-timer-section .timer-display {
   font-size: 2em;
+  margin-bottom: 0 !important;
+}
+
+.phase-timer-section .timer-controls {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 6px !important;
+  width: auto !important;
 }
 
 .phase-timer-section .timer-btn {
-  width: 32px;
-  height: 32px;
-  font-size: 0.8em;
+  padding: 8px 14px !important;
+  font-size: 0.75rem !important;
+  border-radius: 14px !important;
+}
+
+.phase-timer-section .timer-hint {
+  display: none !important;
+}
+
+.phase-timer-section .timer-status-pill {
+  display: none !important;
 }
 
 .phase-unified-skip-btn {

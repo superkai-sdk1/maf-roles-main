@@ -1990,7 +1990,7 @@ if (window.Telegram && window.Telegram.WebApp) {
                     'mode-old': currentMode==='old',
                     'foul-4': currentMode==='day' && playerData.foul===4,
                     'player-inactive': ['removed','voted','tech_fall_removed','fall_removed'].includes(playerData.action) || (playerData.action==='killed' && protocolAccepted[playerData.roleKey]),
-                    'killed-blink': playerData.action==='killed' && !protocolAccepted[playerData.roleKey],
+                    'killed-blink': killedPlayerBlink[playerData.roleKey],
                     'night-don-pulse': currentMode==='night' && nightPhase==='don' && roles[playerData.roleKey]==='don',
                     'night-sheriff-pulse': currentMode==='night' && nightPhase==='sheriff' && roles[playerData.roleKey]==='sheriff',
                     'night-doctor-pulse': currentMode==='night' && nightPhase==='doctor' && roles[playerData.roleKey]==='doctor'
@@ -2162,34 +2162,36 @@ if (window.Telegram && window.Telegram.WebApp) {
                         <!-- ============ ЖИВОЙ ИГРОК: Таймер + Кандидаты (только День) ============ -->
                         <template v-if="playerData.action !== 'killed' && currentMode==='day'">
                             <div class="timer-section">
-                                <div class="timer-display" :class="{
-                                    running: getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused,
-                                    warning: getTimerDisplay(playerData.roleKey).timeLeft <= 10 && getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused
+                                <div class="timer-status-pill" :class="{
+                                    'status-running': getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused,
+                                    'status-paused': getTimerDisplay(playerData.roleKey).isPaused,
+                                    'status-finished': getTimerDisplay(playerData.roleKey).timeLeft === 0 && !getTimerDisplay(playerData.roleKey).isRunning
                                 }">
+                                    {{ getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused ? 'Речь идет' : getTimerDisplay(playerData.roleKey).isPaused ? 'Пауза' : getTimerDisplay(playerData.roleKey).timeLeft === 0 ? 'Время вышло' : 'Готов' }}
+                                </div>
+                                <div class="timer-display" :class="{
+                                    normal: getTimerDisplay(playerData.roleKey).timeLeft > 0 && (!getTimerDisplay(playerData.roleKey).isRunning || getTimerDisplay(playerData.roleKey).isPaused),
+                                    running: getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused && getTimerDisplay(playerData.roleKey).timeLeft > 10,
+                                    warning: getTimerDisplay(playerData.roleKey).timeLeft <= 10 && getTimerDisplay(playerData.roleKey).timeLeft > 0 && getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused,
+                                    paused: getTimerDisplay(playerData.roleKey).isPaused,
+                                    finished: getTimerDisplay(playerData.roleKey).timeLeft === 0
+                                }"
+                                    @mousedown.prevent.stop="timerHoldStart(playerData.roleKey)"
+                                    @mouseup.prevent.stop="timerHoldEnd(playerData.roleKey, $event)"
+                                    @mouseleave.stop="timerHoldCancel(playerData.roleKey)"
+                                    @touchstart.prevent.stop="timerHoldStart(playerData.roleKey)"
+                                    @touchend.prevent.stop="timerHoldEnd(playerData.roleKey, $event)"
+                                    @touchcancel.prevent.stop="timerHoldCancel(playerData.roleKey)">
                                     {{ formatTimerTime(getTimerDisplay(playerData.roleKey).timeLeft) }}
                                 </div>
                                 <div class="timer-controls">
-                                    <button class="timer-btn timer-start"
-                                        :disabled="getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused"
-                                        @click.stop="handleTimerStart(playerData.roleKey); window.haptic.impact('light');">
-                                        <i class="fa fa-play"></i>
-                                    </button>
-                                    <button class="timer-btn timer-pause"
-                                        :disabled="!getTimerDisplay(playerData.roleKey).isRunning || getTimerDisplay(playerData.roleKey).isPaused"
-                                        @click.stop="pausePlayerTimer(playerData.roleKey); window.haptic.impact('light');">
-                                        <i class="fa fa-pause"></i>
-                                    </button>
                                     <button class="timer-btn timer-add"
-                                        :class="{ disabled: !isAddTimeButtonAvailable(playerData.roleKey) }"
                                         :disabled="!isAddTimeButtonAvailable(playerData.roleKey)"
                                         @click.stop="addThirtySecondsToTimer(playerData.roleKey); window.haptic.impact('light');">
-                                        +30
-                                    </button>
-                                    <button class="timer-btn timer-stop"
-                                        @click.stop="stopPlayerTimer(playerData.roleKey); window.haptic.impact('light');">
-                                        <i class="fa fa-stop"></i>
+                                        +30 сек
                                     </button>
                                 </div>
+                                <div class="timer-hint">Клик: Старт/Пауза | Удержание: Сброс</div>
                             </div>
                             <div v-if="!cityMode" class="candidate-grid">
                                 <button v-for="n in tableOut.length" :key="'cand'+n"
@@ -2253,34 +2255,36 @@ if (window.Telegram && window.Telegram.WebApp) {
                                 </button>
 
                                 <div class="timer-section">
-                                    <div class="timer-display" :class="{
-                                        running: getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused,
-                                        warning: getTimerDisplay(playerData.roleKey).timeLeft <= 10 && getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused
+                                    <div class="timer-status-pill" :class="{
+                                        'status-running': getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused,
+                                        'status-paused': getTimerDisplay(playerData.roleKey).isPaused,
+                                        'status-finished': getTimerDisplay(playerData.roleKey).timeLeft === 0 && !getTimerDisplay(playerData.roleKey).isRunning
                                     }">
+                                        {{ getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused ? 'Речь идет' : getTimerDisplay(playerData.roleKey).isPaused ? 'Пауза' : getTimerDisplay(playerData.roleKey).timeLeft === 0 ? 'Время вышло' : 'Готов' }}
+                                    </div>
+                                    <div class="timer-display" :class="{
+                                        normal: getTimerDisplay(playerData.roleKey).timeLeft > 0 && (!getTimerDisplay(playerData.roleKey).isRunning || getTimerDisplay(playerData.roleKey).isPaused),
+                                        running: getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused && getTimerDisplay(playerData.roleKey).timeLeft > 10,
+                                        warning: getTimerDisplay(playerData.roleKey).timeLeft <= 10 && getTimerDisplay(playerData.roleKey).timeLeft > 0 && getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused,
+                                        paused: getTimerDisplay(playerData.roleKey).isPaused,
+                                        finished: getTimerDisplay(playerData.roleKey).timeLeft === 0
+                                    }"
+                                        @mousedown.prevent.stop="timerHoldStart(playerData.roleKey)"
+                                        @mouseup.prevent.stop="timerHoldEnd(playerData.roleKey, $event)"
+                                        @mouseleave.stop="timerHoldCancel(playerData.roleKey)"
+                                        @touchstart.prevent.stop="timerHoldStart(playerData.roleKey)"
+                                        @touchend.prevent.stop="timerHoldEnd(playerData.roleKey, $event)"
+                                        @touchcancel.prevent.stop="timerHoldCancel(playerData.roleKey)">
                                         {{ formatTimerTime(getTimerDisplay(playerData.roleKey).timeLeft) }}
                                     </div>
                                     <div class="timer-controls">
-                                        <button class="timer-btn timer-start"
-                                            :disabled="getTimerDisplay(playerData.roleKey).isRunning && !getTimerDisplay(playerData.roleKey).isPaused"
-                                            @click.stop="handleTimerStart(playerData.roleKey); window.haptic.impact('light');">
-                                            <i class="fa fa-play"></i>
-                                        </button>
-                                        <button class="timer-btn timer-pause"
-                                            :disabled="!getTimerDisplay(playerData.roleKey).isRunning || getTimerDisplay(playerData.roleKey).isPaused"
-                                            @click.stop="pausePlayerTimer(playerData.roleKey); window.haptic.impact('light');">
-                                            <i class="fa fa-pause"></i>
-                                        </button>
                                         <button class="timer-btn timer-add"
-                                            :class="{ disabled: !isAddTimeButtonAvailable(playerData.roleKey) }"
                                             :disabled="!isAddTimeButtonAvailable(playerData.roleKey)"
                                             @click.stop="addThirtySecondsToTimer(playerData.roleKey); window.haptic.impact('light');">
-                                            +30
-                                        </button>
-                                        <button class="timer-btn timer-stop"
-                                            @click.stop="stopPlayerTimer(playerData.roleKey); window.haptic.impact('light');">
-                                            <i class="fa fa-stop"></i>
+                                            +30 сек
                                         </button>
                                     </div>
+                                    <div class="timer-hint">Клик: Старт/Пауза | Удержание: Сброс</div>
                                 </div>
                                 <button v-if="!cityMode" class="killed-hold-btn protocol-open-btn" @click.stop="openProtocolForKilled(playerData.roleKey); window.haptic.impact('light');">
                                     <i class="fa fa-file-alt" style="margin-right:6px;"></i> Протокол / Мнение
@@ -2369,7 +2373,7 @@ if (window.Telegram && window.Telegram.WebApp) {
                 </transition>
             </div>
             <!-- Кнопка Промах (внутри списка игроков, под 10 игроком) -->
-            <div v-if="currentMode==='night' && !winnerTeam && rolesDistributed && (!nightPhase || nightPhase==='kill') && !nightMisses[nightNumber]"
+            <div v-if="currentMode==='night' && !winnerTeam && rolesDistributed && !cityMode && (!nightPhase || nightPhase==='kill') && !nightMisses[nightNumber]"
                  class="player-row night-miss-row"
                  @click.stop="setNightMiss(); window.haptic.notification('warning');">
                 <div class="player-row-content night-miss-row-content">
@@ -2706,26 +2710,33 @@ if (window.Telegram && window.Telegram.WebApp) {
                             </div>
                             <!-- Таймер -->
                             <div class="voting-tie-timer-block">
-                                <div class="voting-timer-title-compact">
-                                    ⏱ Игрок №{{ votingTiePlayers[votingTieTimerPlayerIndex] }}
+                                <div class="timer-status-pill" :class="{
+                                    'status-running': votingTieTimerRunning && !votingTieTimerPaused,
+                                    'status-paused': votingTieTimerPaused,
+                                    'status-finished': votingTieTimerTimeLeft === 0 && !votingTieTimerRunning
+                                }">
+                                    ⏱ Игрок №{{ votingTiePlayers[votingTieTimerPlayerIndex] }} — {{ votingTieTimerRunning && !votingTieTimerPaused ? 'Речь идет' : votingTieTimerPaused ? 'Пауза' : votingTieTimerTimeLeft === 0 ? 'Время вышло' : 'Готов' }}
                                 </div>
                                 <div class="voting-timer-display voting-timer-display--compact" :class="{
-                                    'running': votingTieTimerRunning && !votingTieTimerPaused,
-                                    'warning': votingTieTimerTimeLeft <= 10 && votingTieTimerRunning && !votingTieTimerPaused
-                                }">
+                                    'running': votingTieTimerRunning && !votingTieTimerPaused && votingTieTimerTimeLeft > 0,
+                                    'warning': votingTieTimerTimeLeft <= 10 && votingTieTimerTimeLeft > 0 && votingTieTimerRunning && !votingTieTimerPaused,
+                                    'paused': votingTieTimerPaused,
+                                    'finished': votingTieTimerTimeLeft === 0
+                                }"
+                                    @mousedown.prevent.stop="tieTimerHoldStart()"
+                                    @mouseup.prevent.stop="tieTimerHoldEnd($event)"
+                                    @mouseleave.stop="tieTimerHoldCancel()"
+                                    @touchstart.prevent.stop="tieTimerHoldStart()"
+                                    @touchend.prevent.stop="tieTimerHoldEnd($event)"
+                                    @touchcancel.prevent.stop="tieTimerHoldCancel()">
                                     {{ formatVotingTimerTime(votingTieTimerTimeLeft) }}
                                 </div>
-                                <div class="voting-timer-controls">
-                                    <button class="timer-btn timer-start" :disabled="votingTieTimerRunning && !votingTieTimerPaused" @click.stop="playVotingTieTimer(); window.haptic.impact('light');">
-                                        <i class="fa fa-play"></i>
-                                    </button>
-                                    <button class="timer-btn timer-pause" :disabled="!votingTieTimerRunning || votingTieTimerPaused" @click.stop="pauseVotingTieTimer(); window.haptic.impact('light');">
-                                        <i class="fa fa-pause"></i>
-                                    </button>
-                                    <button class="timer-btn timer-stop" @click.stop="stopVotingTieTimer(); window.haptic.impact('light');">
-                                        <i class="fa fa-stop"></i>
+                                <div class="timer-controls">
+                                    <button class="timer-btn timer-add" @click.stop="addVotingTieTimerTime(30); window.haptic.impact('light');">
+                                        +30 сек
                                     </button>
                                 </div>
+                                <div class="timer-hint">Клик: Старт/Пауза | Удержание: Сброс</div>
                                 <div v-if="votingTiePlayers.length > 1" class="voting-timer-nav">
                                     <button class="glass-btn" :disabled="votingTieTimerPlayerIndex <= 0" @click.stop="prevVotingTieTimerPlayer(); window.haptic.impact('light');">
                                         ◀ Пред.
@@ -2757,26 +2768,33 @@ if (window.Telegram && window.Telegram.WebApp) {
                                 </div>
                                 <!-- Таймер крайней речи -->
                                 <div v-if="votingLastSpeechTimerActive" class="voting-tie-timer-block">
-                                    <div class="voting-timer-title-compact">
-                                        🎤 Крайняя речь — №{{ votingWinners[votingLastSpeechPlayerIndex] }}
+                                    <div class="timer-status-pill" :class="{
+                                        'status-running': votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused,
+                                        'status-paused': votingLastSpeechTimerPaused,
+                                        'status-finished': votingLastSpeechTimerTimeLeft === 0 && !votingLastSpeechTimerRunning
+                                    }">
+                                        🎤 №{{ votingWinners[votingLastSpeechPlayerIndex] }} — {{ votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused ? 'Речь идет' : votingLastSpeechTimerPaused ? 'Пауза' : votingLastSpeechTimerTimeLeft === 0 ? 'Время вышло' : 'Готов' }}
                                     </div>
                                     <div class="voting-timer-display voting-timer-display--compact" :class="{
-                                        'running': votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused,
-                                        'warning': votingLastSpeechTimerTimeLeft <= 10 && votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused
-                                    }">
+                                        'running': votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused && votingLastSpeechTimerTimeLeft > 0,
+                                        'warning': votingLastSpeechTimerTimeLeft <= 10 && votingLastSpeechTimerTimeLeft > 0 && votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused,
+                                        'paused': votingLastSpeechTimerPaused,
+                                        'finished': votingLastSpeechTimerTimeLeft === 0
+                                    }"
+                                        @mousedown.prevent.stop="lastSpeechHoldStart()"
+                                        @mouseup.prevent.stop="lastSpeechHoldEnd($event)"
+                                        @mouseleave.stop="lastSpeechHoldCancel()"
+                                        @touchstart.prevent.stop="lastSpeechHoldStart()"
+                                        @touchend.prevent.stop="lastSpeechHoldEnd($event)"
+                                        @touchcancel.prevent.stop="lastSpeechHoldCancel()">
                                         {{ formatVotingTimerTime(votingLastSpeechTimerTimeLeft) }}
                                     </div>
-                                    <div class="voting-timer-controls">
-                                        <button class="timer-btn timer-start" :disabled="votingLastSpeechTimerRunning && !votingLastSpeechTimerPaused" @click.stop="playVotingLastSpeechTimer(); window.haptic.impact('light');">
-                                            <i class="fa fa-play"></i>
-                                        </button>
-                                        <button class="timer-btn timer-pause" :disabled="!votingLastSpeechTimerRunning || votingLastSpeechTimerPaused" @click.stop="pauseVotingLastSpeechTimer(); window.haptic.impact('light');">
-                                            <i class="fa fa-pause"></i>
-                                        </button>
-                                        <button class="timer-btn timer-stop" @click.stop="stopVotingLastSpeechTimer(); window.haptic.impact('light');">
-                                            <i class="fa fa-stop"></i>
+                                    <div class="timer-controls">
+                                        <button class="timer-btn timer-add" @click.stop="addVotingLastSpeechTimerTime(30); window.haptic.impact('light');">
+                                            +30 сек
                                         </button>
                                     </div>
+                                    <div class="timer-hint">Клик: Старт/Пауза | Удержание: Сброс</div>
                                     <div v-if="votingWinners.length > 1" class="voting-timer-nav">
                                         <button class="glass-btn" :disabled="votingLastSpeechPlayerIndex <= 0" @click.stop="prevVotingLastSpeechPlayer(); window.haptic.impact('light');">
                                             ◀ Пред.
@@ -3001,25 +3019,25 @@ if (window.Telegram && window.Telegram.WebApp) {
                         v-if="gamePhase==='discussion'"
                         :disabled="discussionRunning"
                         @click.stop="startDiscussionTimer(); window.haptic.impact('light');">
-                        <i class="fa fa-play"></i>
+                        Старт
                     </button>
                     <button class="timer-btn timer-start"
                         v-if="gamePhase==='freeSeating'"
                         :disabled="freeSeatingRunning"
                         @click.stop="startFreeSeatingTimer(); window.haptic.impact('light');">
-                        <i class="fa fa-play"></i>
+                        Старт
                     </button>
-                    <button class="timer-btn timer-pause"
+                    <button class="timer-btn timer-add"
                         v-if="gamePhase==='discussion'"
                         :disabled="!discussionRunning"
                         @click.stop="stopDiscussionTimer(); window.haptic.impact('light');">
-                        <i class="fa fa-pause"></i>
+                        Пауза
                     </button>
-                    <button class="timer-btn timer-pause"
+                    <button class="timer-btn timer-add"
                         v-if="gamePhase==='freeSeating'"
                         :disabled="!freeSeatingRunning"
                         @click.stop="stopFreeSeatingTimer(); window.haptic.impact('light');">
-                        <i class="fa fa-pause"></i>
+                        Пауза
                     </button>
                 </div>
             </div>
@@ -3090,6 +3108,20 @@ if (window.Telegram && window.Telegram.WebApp) {
                 <div class="no-voting-alert-buttons">
                     <button class="no-voting-alert-btn no-voting-alert-btn--no" @click="showNoVotingAlert = false; window.haptic && window.haptic.impact('light');">Нет</button>
                     <button class="no-voting-alert-btn no-voting-alert-btn--yes" @click="confirmGoToNight(); window.haptic && window.haptic.notification('success');">Да</button>
+                </div>
+            </div>
+        </div>
+    </transition>
+
+    <!-- ============ ALERT: Go to night after all speeches ============ -->
+    <transition name="fade">
+        <div v-if="showGoToNightPrompt" class="no-voting-alert-overlay" @click.self="cancelGoToNightPrompt()">
+            <div class="no-voting-alert-card">
+                <div class="no-voting-alert-icon"><i class="mdi mdi-moon-waning-crescent"></i></div>
+                <div class="no-voting-alert-text">Все игроки высказались. Перейти в ночь?</div>
+                <div class="no-voting-alert-buttons">
+                    <button class="no-voting-alert-btn no-voting-alert-btn--no" @click="cancelGoToNightPrompt(); window.haptic && window.haptic.impact('light');">Нет</button>
+                    <button class="no-voting-alert-btn no-voting-alert-btn--yes" @click="confirmGoToNightPrompt(); window.haptic && window.haptic.notification('success');">Да</button>
                 </div>
             </div>
         </div>

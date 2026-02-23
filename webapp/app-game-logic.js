@@ -1427,13 +1427,17 @@ Object.assign(window.app.methods, {
     startDiscussionTimer() {
         if (this.discussionTimerId) return; // already running
         this.discussionRunning = true;
+        this._discussionEndTime = Date.now() + this.discussionTimeLeft * 1000;
         this.discussionTimerId = setInterval(() => {
-            this.discussionTimeLeft--;
-            if (this.discussionTimeLeft <= 0) {
-                this.stopDiscussionTimer();
-                this.advanceFromDiscussion();
+            const remaining = Math.max(0, Math.ceil((this._discussionEndTime - Date.now()) / 1000));
+            if (remaining !== this.discussionTimeLeft) {
+                this.discussionTimeLeft = remaining;
+                if (remaining <= 0) {
+                    this.stopDiscussionTimer();
+                    this.advanceFromDiscussion();
+                }
             }
-        }, 1000);
+        }, 250);
     },
 
     stopDiscussionTimer() {
@@ -1442,6 +1446,7 @@ Object.assign(window.app.methods, {
             this.discussionTimerId = null;
         }
         this.discussionRunning = false;
+        this._discussionEndTime = null;
     },
 
     // Hold-to-skip discussion
@@ -1484,13 +1489,17 @@ Object.assign(window.app.methods, {
     startFreeSeatingTimer() {
         if (this.freeSeatingTimerId) return;
         this.freeSeatingRunning = true;
+        this._freeSeatingEndTime = Date.now() + this.freeSeatingTimeLeft * 1000;
         this.freeSeatingTimerId = setInterval(() => {
-            this.freeSeatingTimeLeft--;
-            if (this.freeSeatingTimeLeft <= 0) {
-                this.stopFreeSeatingTimer();
-                this.advanceFromFreeSeating();
+            const remaining = Math.max(0, Math.ceil((this._freeSeatingEndTime - Date.now()) / 1000));
+            if (remaining !== this.freeSeatingTimeLeft) {
+                this.freeSeatingTimeLeft = remaining;
+                if (remaining <= 0) {
+                    this.stopFreeSeatingTimer();
+                    this.advanceFromFreeSeating();
+                }
             }
-        }, 1000);
+        }, 250);
     },
 
     stopFreeSeatingTimer() {
@@ -1499,6 +1508,7 @@ Object.assign(window.app.methods, {
             this.freeSeatingTimerId = null;
         }
         this.freeSeatingRunning = false;
+        this._freeSeatingEndTime = null;
     },
 
     startSkipFreeSeatingHold() {
@@ -1521,6 +1531,21 @@ Object.assign(window.app.methods, {
         this.saveRoomStateIncremental({ gamePhase: 'day', currentMode: 'day', dayNumber: 1 });
         this.sendFullState();
         this.saveCurrentSession();
+
+        // Авто-открытие первого игрока (День 1 → игрок 1)
+        this.$nextTick(() => {
+            const speechIdx = this._getNextAlivePlayerIndex(0);
+            if (speechIdx >= 0) {
+                const speechPlayer = this.tableOut[speechIdx];
+                this.autoOpenedCard = true;
+                this.currentDaySpeakerIndex = speechIdx;
+                this.highlightedPlayer = speechPlayer.roleKey;
+                this.setHighlightedPlayer(speechPlayer.roleKey);
+                this.$nextTick(() => {
+                    this._scrollToPlayer(speechPlayer.roleKey);
+                });
+            }
+        });
     },
 
     // --- Night Miss (Промах) ---
@@ -3342,6 +3367,9 @@ Object.assign(window.app.methods, {
         this.killedOnNight = {};
         this.killedCardPhase = {};
         this.killedPlayerBlink = {};
+        this.autoOpenedCard = false;
+        this.currentDaySpeakerIndex = -1;
+        this.showGoToNightPrompt = false;
         this.protocolAccepted = {};
         this.nightChecks = {};
         this.nightCheckHistory = [];

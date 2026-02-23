@@ -1,105 +1,107 @@
+// Утилита: длинная вибрация (1.5 сек) через повторные хаптик-вызовы для Telegram
+function triggerLongVibration() {
+    // Web Vibration API (Android)
+    if (window.navigator.vibrate) {
+        window.navigator.vibrate(1500);
+    }
+    // Telegram HapticFeedback — повторяем несколько раз, т.к. один вызов слишком короткий
+    if (window.haptic) {
+        window.haptic.notification('warning');
+        setTimeout(function() { if (window.haptic) window.haptic.impact('heavy'); }, 300);
+        setTimeout(function() { if (window.haptic) window.haptic.notification('warning'); }, 600);
+        setTimeout(function() { if (window.haptic) window.haptic.impact('heavy'); }, 900);
+        setTimeout(function() { if (window.haptic) window.haptic.notification('warning'); }, 1200);
+    }
+}
+
 // Timer Module для панели мафии
+// Использует timestamp-based подход: хранит endTime и вычисляет timeLeft из реального времени.
+// Это решает проблемы: (1) ускорение при повторных интервалах, (2) заморозку в фоне.
 class TimerModule {
     constructor() {
-        this.playerTimers = new Map(); // Map для хранения независимых таймеров
-        this.defaultTime = 60; // Стандартное время в секундах
-        this.threeFoulTime = 30; // Время для игроков с 3 фолами
+        this.playerTimers = new Map();
+        this.defaultTime = 60;
+
+        // Обработка возврата из фона — пересчитываем все таймеры
+        this._onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                this._recalcAllTimers();
+            }
+        };
+        document.addEventListener('visibilitychange', this._onVisibilityChange);
     }
 
-    // Инициализация данных таймера для игрока
-    initializePlayerTimer(playerKey, fouls = 0, hasUsedThreeFoulTimer = false) {
-        console.log(`TimerModule: Initializing timer for player ${playerKey} with fouls: ${fouls}`);
-        
-        const initialTime = (fouls >= 3 && !hasUsedThreeFoulTimer) ? this.threeFoulTime : this.defaultTime;
-        
+    // Пересчёт всех активных таймеров после возврата из фона
+    _recalcAllTimers() {
+        const now = Date.now();
+        this.playerTimers.forEach((timer, playerKey) => {
+            if (timer.isRunning && !timer.isPaused && timer.endTime) {
+                const remaining = Math.max(0, Math.ceil((timer.endTime - now) / 1000));
+                timer.timeLeft = remaining;
+                if (remaining <= 0) {
+                    // Таймер истёк пока страница была в фоне
+                    const finishCb = timer._onFinishCb;
+                    this.stopTimer(playerKey);
+                    if (finishCb) finishCb(playerKey);
+                } else if (timer._onUpdateCb) {
+                    timer._onUpdateCb(remaining, playerKey);
+                }
+            }
+        });
+    }
+
+    initializePlayerTimer(playerKey, fouls = 0) {
+        // Если уже есть работающий таймер — не перезаписываем
+        const existing = this.playerTimers.get(playerKey);
+        if (existing && existing.isRunning) {
+            existing.fouls = fouls;
+            return existing;
+        }
+
         const timerData = {
             playerKey: playerKey,
-            timeLeft: initialTime,
+            timeLeft: this.defaultTime,
             isRunning: false,
             isPaused: false,
             intervalId: null,
             fouls: fouls,
-            hasUsedThreeFoulTimer: hasUsedThreeFoulTimer,
-            initialTime: initialTime,
-            lastTick: null
+            initialTime: this.defaultTime,
+            endTime: null,       // timestamp когда таймер должен закончиться
+            _onUpdateCb: null,   // callback для обновления UI
+            _onFinishCb: null,   // callback при окончании
         };
         
         this.playerTimers.set(playerKey, timerData);
-        console.log(`TimerModule: Timer initialized for player ${playerKey}:`, timerData);
-        
         return timerData;
     }
 
-    // Получение данных таймера игрока
     getPlayerTimer(playerKey) {
         if (!this.playerTimers.has(playerKey)) {
-            console.log(`TimerModule: Timer not found for player ${playerKey}, creating new one`);
             return this.initializePlayerTimer(playerKey);
         }
         return this.playerTimers.get(playerKey);
-    }    // Обновление количества фолов игрока
+    }
+
     updatePlayerFouls(playerKey, fouls) {
         const timer = this.getPlayerTimer(playerKey);
         timer.fouls = fouls;
-        
-        // Если таймер не запущен и игрок имеет 3 фола
-        if (!timer.isRunning) {
-            if (fouls >= 3 && !timer.hasUsedThreeFoulTimer) {
-                // Первый раз с 3 фолами - 30 секунд
-                timer.timeLeft = this.threeFoulTime;
-                timer.initialTime = this.threeFoulTime;
-            } else if (fouls >= 3 && timer.hasUsedThreeFoulTimer) {
-                // Уже использовал 30-секундный таймер - возвращаем к 60 секундам
-                timer.timeLeft = this.defaultTime;
-                timer.initialTime = this.defaultTime;
-            } else if (fouls < 3) {
-                // Меньше 3 фолов - стандартное время
-                timer.timeLeft = this.defaultTime;
-                timer.initialTime = this.defaultTime;
-                timer.hasUsedThreeFoulTimer = false; // Сбрасываем флаг если фолов стало меньше
-            }
-        }
-    }    // Старт таймера
-    startTimer(playerKey, onUpdate, onFinish) {
-        console.log(`TimerModule: Starting timer for player ${playerKey}`);
-        
-        const timer = this.getPlayerTimer(playerKey);
-        console.log(`TimerModule: Timer state before start for ${playerKey}:`, timer);
-        
-        if (timer.isRunning && !timer.isPaused) {
-            console.log(`TimerModule: Timer already running for player ${playerKey}`);
-            return false;
-        }
-        
-        // Если таймер был на паузе, просто возобновляем его (не создаем новый интервал)
-        if (timer.isPaused && timer.intervalId) {
-            timer.isPaused = false;
-            timer.isRunning = true;
-            console.log(`TimerModule: Resuming paused timer for player ${playerKey}`);
-            return true;
-        }
-        
-        // Убеждаемся, что предыдущий интервал очищен полностью
+    }
+
+    // Создаёт интервал, вычисляющий timeLeft из endTime
+    _createInterval(timer, playerKey, onUpdate, onFinish) {
+        // Всегда очищаем старый интервал
         if (timer.intervalId) {
-            console.log(`TimerModule: Clearing existing interval for player ${playerKey}`);
             clearInterval(timer.intervalId);
             timer.intervalId = null;
         }
-        
-        timer.isRunning = true;
-        timer.isPaused = false;
-        timer.lastTick = Date.now();
 
-        // Если игрок с 3 фолами запускает таймер впервые, отмечаем использование
-        if (timer.fouls >= 3 && !timer.hasUsedThreeFoulTimer) {
-            timer.hasUsedThreeFoulTimer = true;
-        }
+        // Сохраняем callbacks для использования при visibilitychange
+        timer._onUpdateCb = onUpdate;
+        timer._onFinishCb = onFinish;
 
-        // Создаем уникальный интервал для этого игрока только если его нет
         timer.intervalId = setInterval(() => {
             const currentTimer = this.playerTimers.get(playerKey);
             if (!currentTimer || !currentTimer.isRunning || currentTimer.isPaused) {
-                console.log(`TimerModule: Clearing interval for player ${playerKey} - timer not running`);
                 if (currentTimer && currentTimer.intervalId) {
                     clearInterval(currentTimer.intervalId);
                     currentTimer.intervalId = null;
@@ -107,137 +109,148 @@ class TimerModule {
                 return;
             }
             
-            if (currentTimer.timeLeft > 0) {
-                currentTimer.timeLeft--;
-                console.log(`TimerModule: Tick for player ${playerKey}, time left: ${currentTimer.timeLeft}`);
-                if (onUpdate) onUpdate(currentTimer.timeLeft, playerKey);
-            } else {
-                console.log(`TimerModule: Timer finished for player ${playerKey}`);
-                this.stopTimer(playerKey);
-                if (onFinish) onFinish(playerKey);
-            }
-        }, 1000);
+            // Вычисляем оставшееся время из endTime
+            const now = Date.now();
+            const remaining = Math.max(0, Math.ceil((currentTimer.endTime - now) / 1000));
 
-        console.log(`TimerModule: Timer started for player ${playerKey}, interval ID: ${timer.intervalId}`);
-        return true;
-    }// Пауза таймера
-    pauseTimer(playerKey) {
-        console.log(`TimerModule: Pausing timer for player ${playerKey}`);
-        
+            if (remaining !== currentTimer.timeLeft) {
+                currentTimer.timeLeft = remaining;
+
+                if (remaining === 10) {
+                    triggerLongVibration();
+                }
+
+                if (remaining > 0) {
+                    if (onUpdate) onUpdate(remaining, playerKey);
+                } else {
+                    this.stopTimer(playerKey);
+                    if (onFinish) onFinish(playerKey);
+                }
+            }
+        }, 250); // Проверяем чаще (250мс) для точности после возврата из фона
+    }
+
+    startTimer(playerKey, onUpdate, onFinish) {
         const timer = this.getPlayerTimer(playerKey);
-        
-        if (!timer.isRunning || timer.isPaused) {
-            console.log(`TimerModule: Timer for player ${playerKey} is not running or already paused`);
+
+        if (timer.isRunning && !timer.isPaused) {
+            // Уже работает — просто обновляем callbacks (чтобы Vue реактивность не потерялась)
+            timer._onUpdateCb = onUpdate;
+            timer._onFinishCb = onFinish;
             return false;
         }
-        
-        timer.isPaused = true;
-        
+
+        if (timer.isPaused) {
+            // Возобновляем из паузы
+            timer.isPaused = false;
+            timer.isRunning = true;
+            timer.endTime = Date.now() + timer.timeLeft * 1000;
+            this._createInterval(timer, playerKey, onUpdate, onFinish);
+            return true;
+        }
+
+        // Убеждаемся, что предыдущий интервал очищен
         if (timer.intervalId) {
             clearInterval(timer.intervalId);
             timer.intervalId = null;
-            console.log(`TimerModule: Interval cleared for player ${playerKey}`);
         }
-        
-        console.log(`TimerModule: Timer paused for player ${playerKey}`);
+
+        timer.isRunning = true;
+        timer.isPaused = false;
+        timer.endTime = Date.now() + timer.timeLeft * 1000;
+
+        this._createInterval(timer, playerKey, onUpdate, onFinish);
         return true;
-    }    // Возобновление таймера
-    resumeTimer(playerKey, onUpdate, onFinish) {
-        console.log(`TimerModule: Resume timer called for player ${playerKey}`);
-        
+    }
+
+    pauseTimer(playerKey) {
         const timer = this.getPlayerTimer(playerKey);
         
-        if (!timer.isRunning || !timer.isPaused) {
-            console.log(`TimerModule: Timer for player ${playerKey} is not paused`);
+        if (!timer.isRunning || timer.isPaused) {
             return false;
         }
         
-        // Возобновляем таймер через startTimer с правильными callback'ами
-        timer.isPaused = false;
-        return this.startTimer(playerKey, onUpdate, onFinish);
-    }// Остановка таймера
-    stopTimer(playerKey) {
-        console.log(`TimerModule: Stopping timer for player ${playerKey}`);
+        // Фиксируем оставшееся время из endTime
+        const now = Date.now();
+        timer.timeLeft = Math.max(0, Math.ceil((timer.endTime - now) / 1000));
+        timer.isPaused = true;
+        timer.endTime = null;
+
+        if (timer.intervalId) {
+            clearInterval(timer.intervalId);
+            timer.intervalId = null;
+        }
         
+        return true;
+    }
+
+    resumeTimer(playerKey, onUpdate, onFinish) {
+        const timer = this.getPlayerTimer(playerKey);
+        
+        if (!timer.isRunning || !timer.isPaused) {
+            return false;
+        }
+        
+        timer.isPaused = false;
+        timer.endTime = Date.now() + timer.timeLeft * 1000;
+
+        this._createInterval(timer, playerKey, onUpdate, onFinish);
+        return true;
+    }
+
+    stopTimer(playerKey) {
         const timer = this.getPlayerTimer(playerKey);
         
         timer.isRunning = false;
         timer.isPaused = false;
-        
+        timer.endTime = null;
+        timer._onUpdateCb = null;
+        timer._onFinishCb = null;
+
         if (timer.intervalId) {
-            console.log(`TimerModule: Clearing interval ${timer.intervalId} for player ${playerKey}`);
             clearInterval(timer.intervalId);
             timer.intervalId = null;
         }
         
-        // Если игрок с 3 фолами и уже использовал 30-секундный таймер, 
-        // при следующем запуске должно быть 60 секунд
-        if (timer.fouls >= 3 && timer.hasUsedThreeFoulTimer) {
-            timer.timeLeft = this.defaultTime;
-            timer.initialTime = this.defaultTime;
-            console.log(`TimerModule: Player ${playerKey} with 3 fouls reset to default time after using 30s timer`);
-        } else {
-            // Сброс времени к начальному значению
-            timer.timeLeft = timer.initialTime;
-        }
-        
-        timer.lastTick = null;
-        
-        console.log(`TimerModule: Timer stopped for player ${playerKey}, reset to: ${timer.timeLeft}s`);
+        timer.timeLeft = this.defaultTime;
+        timer.initialTime = this.defaultTime;
+
         return true;
     }
 
-    // Добавление 30 секунд
     addThirtySeconds(playerKey) {
-        console.log(`TimerModule: Adding 30 seconds to timer for player ${playerKey}`);
-        
         const timer = this.getPlayerTimer(playerKey);
         
-        // Проверяем, можно ли добавить время (не больше 2 фолов)
         if (timer.fouls >= 2) {
-            console.log(`TimerModule: Cannot add time for player ${playerKey} - too many fouls (${timer.fouls})`);
             return false;
         }
         
         timer.timeLeft += 30;
-        console.log(`TimerModule: Added 30 seconds to player ${playerKey}, new time: ${timer.timeLeft}s`);
+        // Если таймер работает — сдвигаем endTime
+        if (timer.isRunning && !timer.isPaused && timer.endTime) {
+            timer.endTime += 30 * 1000;
+        }
         return true;
     }
 
-    // Проверка доступности кнопки +30
     isAddTimeAvailable(playerKey) {
         const timer = this.getPlayerTimer(playerKey);
-        return timer.fouls < 2;
+        return timer.fouls <= 1;
     }
 
-    // Форматирование времени для отображения (двузначное)
     formatTime(seconds) {
         return seconds.toString().padStart(2, '0');
-    }    // Очистка всех таймеров (при переходе к новой игре)
+    }
+
     clearAllTimers() {
-        console.log('TimerModule: Clearing all timers');
-        this.playerTimers.forEach((timer, playerKey) => {
+        this.playerTimers.forEach((timer) => {
             if (timer.intervalId) {
-                console.log(`TimerModule: Clearing interval for player ${playerKey}`);
                 clearInterval(timer.intervalId);
             }
         });
         this.playerTimers.clear();
-        console.log('TimerModule: All timers cleared');
     }
 
-    // Сброс данных о использовании 30-секундного таймера (новый раунд)
-    resetThreeFoulTimerUsage() {
-        console.log('TimerModule: Resetting three foul timer usage');
-        this.playerTimers.forEach((timer, playerKey) => {
-            if (timer.hasUsedThreeFoulTimer) {
-                timer.hasUsedThreeFoulTimer = false;
-                timer.timeLeft = this.defaultTime;
-                timer.initialTime = this.defaultTime;
-                console.log(`TimerModule: Reset three foul timer for player ${playerKey}`);
-            }
-        });
-    }    // Получение состояния всех таймеров для отладки
     getAllTimersState() {
         const state = {};
         this.playerTimers.forEach((timer, playerKey) => {
@@ -246,24 +259,21 @@ class TimerModule {
                 isRunning: timer.isRunning,
                 isPaused: timer.isPaused,
                 hasInterval: timer.intervalId !== null,
-                intervalId: timer.intervalId,
+                endTime: timer.endTime,
                 fouls: timer.fouls
             };
         });
-        console.log('TimerModule: All timers state:', state);
         return state;
     }
 
-    // Принудительная очистка всех интервалов
     forceCleanAllIntervals() {
-        console.log('TimerModule: Force cleaning all intervals');
-        this.playerTimers.forEach((timer, playerKey) => {
+        this.playerTimers.forEach((timer) => {
             if (timer.intervalId) {
-                console.log(`TimerModule: Force clearing interval ${timer.intervalId} for player ${playerKey}`);
                 clearInterval(timer.intervalId);
                 timer.intervalId = null;
                 timer.isRunning = false;
                 timer.isPaused = false;
+                timer.endTime = null;
             }
         });
     }
@@ -282,8 +292,27 @@ window.timerMixin = {    data() {
     
     created() {
         // Принудительно очищаем все интервалы при создании компонента
-        console.log('Vue: Timer mixin created, cleaning intervals');
         this.timerModule.forceCleanAllIntervals();
+        // Не-реактивные объекты для long-press логики (вне data чтобы Vue не оборачивал)
+        this._timerHoldTimers = {};
+        this._timerHoldFlags = {};
+
+        // Синхронизируем Vue реактивное состояние при возврате из фона
+        this._timerVisibilityCb = () => {
+            if (document.visibilityState === 'visible') {
+                this.timerModule.playerTimers.forEach((timer, playerKey) => {
+                    if (this.playerTimers[playerKey]) {
+                        this.$set(this.playerTimers, playerKey, {
+                            ...this.playerTimers[playerKey],
+                            timeLeft: timer.timeLeft,
+                            isRunning: timer.isRunning,
+                            isPaused: timer.isPaused
+                        });
+                    }
+                });
+            }
+        };
+        document.addEventListener('visibilitychange', this._timerVisibilityCb);
     },
     
     methods: {        // Инициализация таймера игрока
@@ -294,35 +323,43 @@ window.timerMixin = {    data() {
                 timeLeft: timer.timeLeft,
                 isRunning: timer.isRunning,
                 isPaused: timer.isPaused,
-                fouls: timer.fouls,
-                hasUsedThreeFoulTimer: timer.hasUsedThreeFoulTimer
+                fouls: timer.fouls
             });
             console.log('Vue: Timer initialized for player:', playerKey, this.playerTimers[playerKey]);
         },        // Старт таймера игрока
         startPlayerTimer(playerKey) {
-            console.log(`Vue: startPlayerTimer called for player: ${playerKey}`);
-            
-            // Принудительно очищаем все интервалы для этого игрока перед запуском
-            const timer = this.timerModule.getPlayerTimer(playerKey);
-            if (timer.intervalId) {
-                console.log(`Vue: Force clearing interval for player ${playerKey} before start`);
-                clearInterval(timer.intervalId);
-                timer.intervalId = null;
-                timer.isRunning = false;
-                timer.isPaused = false;
-            }
-            
             // Проверяем, что таймер для этого игрока инициализирован
             if (!this.playerTimers[playerKey]) {
-                console.log(`Vue: Initializing timer for player: ${playerKey}`);
                 this.initTimer(playerKey, this.fouls ? this.fouls[playerKey] || 0 : 0);
             }
-            
+
+            // Если таймер уже работает — просто обновим callbacks (не сбрасываем)
+            const existingTimer = this.timerModule.getPlayerTimer(playerKey);
+            if (existingTimer.isRunning && !existingTimer.isPaused) {
+                // Обновляем callbacks для Vue реактивности
+                existingTimer._onUpdateCb = (timeLeft, pKey) => {
+                    if (this.playerTimers[pKey]) {
+                        this.$set(this.playerTimers, pKey, {
+                            ...this.playerTimers[pKey],
+                            timeLeft: timeLeft
+                        });
+                    }
+                };
+                existingTimer._onFinishCb = (pKey) => {
+                    if (this.playerTimers[pKey]) {
+                        this.$set(this.playerTimers, pKey, {
+                            ...this.playerTimers[pKey],
+                            isRunning: false,
+                            isPaused: false
+                        });
+                    }
+                };
+                return true;
+            }
+
             const success = this.timerModule.startTimer(
                 playerKey,
                 (timeLeft, pKey) => {
-                    // Обновление реактивных данных только для конкретного игрока
-                    console.log(`Vue: Timer update callback for player: ${pKey}, timeLeft: ${timeLeft}`);
                     if (this.playerTimers[pKey]) {
                         this.$set(this.playerTimers, pKey, {
                             ...this.playerTimers[pKey],
@@ -331,8 +368,6 @@ window.timerMixin = {    data() {
                     }
                 },
                 (pKey) => {
-                    // Таймер закончился для конкретного игрока
-                    console.log(`Vue: Время вышло для игрока ${pKey}`);
                     if (this.playerTimers[pKey]) {
                         this.$set(this.playerTimers, pKey, {
                             ...this.playerTimers[pKey],
@@ -343,42 +378,32 @@ window.timerMixin = {    data() {
                 }
             );
             
-            console.log(`Vue: Timer start success for player: ${playerKey} = ${success}`);
             if (success && this.playerTimers[playerKey]) {
                 this.$set(this.playerTimers, playerKey, {
                     ...this.playerTimers[playerKey],
                     isRunning: true,
                     isPaused: false
                 });
-                console.log(`Vue: Updated playerTimers state for: ${playerKey}`, this.playerTimers[playerKey]);
             }
-            
-            // Отладка состояния всех таймеров
-            this.debugAllTimers();
-            
+
             return success;
         },// Пауза таймера игрока
         pausePlayerTimer(playerKey) {
-            console.log('Vue: pausePlayerTimer called for player:', playerKey);
             const success = this.timerModule.pauseTimer(playerKey);
             if (success && this.playerTimers[playerKey]) {
+                const timer = this.timerModule.getPlayerTimer(playerKey);
                 this.$set(this.playerTimers, playerKey, {
                     ...this.playerTimers[playerKey],
-                    isPaused: true
+                    isPaused: true,
+                    timeLeft: timer.timeLeft  // синхронизируем из timestamp
                 });
-                console.log('Vue: Timer paused for player:', playerKey);
             }
             return success;
         },        // Возобновление таймера игрока
         resumePlayerTimer(playerKey) {
-            console.log(`Vue: resumePlayerTimer called for player: ${playerKey}`);
-            
-            // Проверяем, что таймер действительно на паузе
             if (this.playerTimers[playerKey] && this.playerTimers[playerKey].isPaused) {
                 const success = this.timerModule.resumeTimer(playerKey, 
                     (timeLeft, pKey) => {
-                        // Обновление реактивных данных только для конкретного игрока
-                        console.log(`Vue: Timer update callback for player: ${pKey}, timeLeft: ${timeLeft}`);
                         if (this.playerTimers[pKey]) {
                             this.$set(this.playerTimers, pKey, {
                                 ...this.playerTimers[pKey],
@@ -387,8 +412,6 @@ window.timerMixin = {    data() {
                         }
                     },
                     (pKey) => {
-                        // Таймер закончился для конкретного игрока
-                        console.log(`Vue: Время вышло для игрока ${pKey}`);
                         if (this.playerTimers[pKey]) {
                             this.$set(this.playerTimers, pKey, {
                                 ...this.playerTimers[pKey],
@@ -412,7 +435,6 @@ window.timerMixin = {    data() {
             return false;
         },// Остановка таймера игрока
         stopPlayerTimer(playerKey) {
-            console.log('Vue: stopPlayerTimer called for player:', playerKey);
             this.timerModule.stopTimer(playerKey);
             if (this.playerTimers[playerKey]) {
                 const timer = this.timerModule.getPlayerTimer(playerKey);
@@ -431,7 +453,7 @@ window.timerMixin = {    data() {
                 this.saveRoomStateIncremental({ killedCardPhase: this.killedCardPhase, protocolAccepted: this.protocolAccepted });
                 this.sendFullState();
             }
-        },        // Добавление 30 секунд
+        },        // Добавление 30 секунд (+ 2 фола игроку)
         addThirtySecondsToTimer(playerKey) {
             console.log('Vue: addThirtySecondsToTimer called for player:', playerKey);
             const success = this.timerModule.addThirtySeconds(playerKey);
@@ -442,6 +464,25 @@ window.timerMixin = {    data() {
                     timeLeft: timer.timeLeft
                 });
                 console.log('Vue: Added 30 seconds to timer for player:', playerKey);
+
+                // Добавляем 2 фола игроку
+                const currentFouls = (this.fouls && this.fouls[playerKey]) ? this.fouls[playerKey] : 0;
+                const newFouls = Math.min(currentFouls + 2, 4); // максимум 4 фола
+                if (this.fouls) {
+                    this.$set(this.fouls, playerKey, newFouls);
+                    this.saveRoomStateIncremental({ fouls: this.fouls });
+                    this.sendToRoom({ type: "foulChange", roleKey: playerKey, value: newFouls });
+                    this.sendFullState();
+                }
+                // Синхронизируем фолы в таймере
+                this.timerModule.updatePlayerFouls(playerKey, newFouls);
+                if (this.playerTimers[playerKey]) {
+                    this.$set(this.playerTimers, playerKey, {
+                        ...this.playerTimers[playerKey],
+                        fouls: newFouls
+                    });
+                }
+                console.log(`Vue: Added 2 fouls to player ${playerKey}, new fouls: ${newFouls}`);
             }
             return success;
         },
@@ -454,6 +495,74 @@ window.timerMixin = {    data() {
         // Форматирование времени
         formatTimerTime(seconds) {
             return this.timerModule.formatTime(seconds);
+        },
+
+        // --- Long-press / click interaction for timer display ---
+
+        // Начало удержания
+        timerHoldStart(playerKey) {
+            this._timerHoldFlags[playerKey] = false;
+            this._timerHoldTimers[playerKey] = setTimeout(() => {
+                this._timerHoldFlags[playerKey] = true;
+                // Визуальная обратная связь
+                if (window.navigator.vibrate) window.navigator.vibrate(50);
+                if (window.haptic) window.haptic.impact('heavy');
+                this.stopPlayerTimer(playerKey);
+                // Для живых игроков — авто-переход к следующему
+                if (this.isPlayerActive && this.isPlayerActive(playerKey)) {
+                    if (this._autoAdvanceToNextPlayer) {
+                        this.$nextTick(() => {
+                            this._autoAdvanceToNextPlayer();
+                        });
+                    }
+                } else {
+                    // Для убитых игроков — просто закрываем карточку
+                    if (this.highlightedPlayer === playerKey) {
+                        this.highlightedPlayer = null;
+                        if (this.setHighlightedPlayer) this.setHighlightedPlayer(null);
+                    }
+                }
+            }, 800);
+        },
+
+        // Конец удержания — если не было long-press, это клик = toggle pause
+        timerHoldEnd(playerKey, e) {
+            if (this._timerHoldTimers && this._timerHoldTimers[playerKey]) {
+                clearTimeout(this._timerHoldTimers[playerKey]);
+            }
+            if (!this._timerHoldFlags || !this._timerHoldFlags[playerKey]) {
+                if (e && e.type !== 'mouseleave') {
+                    this.timerTogglePause(playerKey);
+                }
+            }
+            if (this._timerHoldFlags) this._timerHoldFlags[playerKey] = false;
+        },
+
+        // Отмена удержания (mouseleave)
+        timerHoldCancel(playerKey) {
+            if (this._timerHoldTimers && this._timerHoldTimers[playerKey]) {
+                clearTimeout(this._timerHoldTimers[playerKey]);
+            }
+            if (this._timerHoldFlags) this._timerHoldFlags[playerKey] = false;
+        },
+
+        // Переключение паузы по клику (или старт если не запущен)
+        timerTogglePause(playerKey) {
+            const timerData = this.getTimerDisplay(playerKey);
+
+            if (timerData.isPaused) {
+                // Возобновляем
+                this.resumePlayerTimer(playerKey);
+                if (window.haptic) window.haptic.impact('light');
+            } else if (timerData.isRunning) {
+                // Ставим на паузу
+                this.pausePlayerTimer(playerKey);
+                if (window.haptic) window.haptic.impact('light');
+            } else {
+                // Не запущен — стартуем
+                this.startPlayerTimer(playerKey);
+                if (window.haptic) window.haptic.impact('medium');
+            }
         },
 
         // Обновление фолов игрока
@@ -474,8 +583,7 @@ window.timerMixin = {    data() {
                 timeLeft: 60,
                 isRunning: false,
                 isPaused: false,
-                fouls: 0,
-                hasUsedThreeFoulTimer: false
+                fouls: 0
             };
         },
 
@@ -490,6 +598,9 @@ window.timerMixin = {    data() {
 
     // Очистка при уничтожении компонента
     beforeDestroy() {
+        if (this._timerVisibilityCb) {
+            document.removeEventListener('visibilitychange', this._timerVisibilityCb);
+        }
         if (this.timerModule) {
             this.timerModule.clearAllTimers();
         }
