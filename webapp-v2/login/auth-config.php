@@ -5,10 +5,10 @@
 // =====================================================
 
 // Токен вашего Telegram бота (получите у @BotFather)
-define('BOT_TOKEN', '7656955712:AAHqAzwzatfGif1fL7tNcTvYpfGsDKeE_nE');
+define('BOT_TOKEN', '8196046026:AAHP4j4JvjGReMfOiW09LqmrhavXriaPdjk');
 
 // Username бота без @ (например: mafboard_auth_bot)
-define('BOT_USERNAME', 'titanblankbot');
+define('BOT_USERNAME', 'mafboard_bot');
 
 // Время жизни сессии в днях
 define('SESSION_TTL_DAYS', 30);

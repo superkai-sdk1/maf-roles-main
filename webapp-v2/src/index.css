@@ -5123,6 +5123,29 @@ body::after {
   box-shadow: 0 2px 12px rgba(168,85,247,0.4);
 }
 
+.profile-logout-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  margin-top: 12px;
+  border-radius: var(--radius-m);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  font-size: 0.88em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-spring);
+}
+
+.profile-logout-btn:active {
+  transform: scale(0.97);
+  background: rgba(239, 68, 68, 0.18);
+}
+
 /* ===== GoMafia Profile Badge (profile screen) ===== */
 .profile-gomafia-badge {
   display: inline-flex;

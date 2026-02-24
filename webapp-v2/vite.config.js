@@ -8,9 +8,9 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     proxy: {
-      '/api': { target: 'http://localhost', changeOrigin: true },
-      '/login': { target: 'http://localhost', changeOrigin: true },
-      '/admin': { target: 'http://localhost', changeOrigin: true },
+      '/api': { target: 'http://localhost:8080', changeOrigin: true },
+      '/login': { target: 'http://localhost:8080', changeOrigin: true },
+      '/admin': { target: 'http://localhost:8080', changeOrigin: true },
     }
   },
   build: {

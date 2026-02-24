@@ -8,7 +8,7 @@ const fetch = require('node-fetch');
 
 // ======== КОНФИГУРАЦИЯ ========
 // Токен бота (тот же что в auth-config.php)
-const BOT_TOKEN = process.env.BOT_TOKEN || '7656955712:AAHqAzwzatfGif1fL7tNcTvYpfGsDKeE_nE';
+const BOT_TOKEN = process.env.BOT_TOKEN || '8196046026:AAHP4j4JvjGReMfOiW09LqmrhavXriaPdjk';
 
 // URL до API подтверждения кода (адрес вашего сервера)
 const CONFIRM_API_URL = process.env.CONFIRM_API_URL || 'https://localhost/login/code-confirm.php';
