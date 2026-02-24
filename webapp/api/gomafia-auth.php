@@ -74,70 +74,49 @@ exit();
 function doFullLogin($cookieFile, $nickname, $password) {
     global $UA;
 
-    // ---- Strategy 1: Direct JSON API login ----
-    $jsonBody = json_encode(['nickname' => $nickname, 'password' => $password]);
+    // ---- Strategy 1: Direct API login — brute-force all possible formats ----
+    // GoMafia uses custom JSON-RPC-like API. "wrong_method" on /api/login means
+    // the endpoint exists but body format is wrong. Try all combinations.
 
-    $directEndpoints = [
-        'https://gomafia.pro/api/auth/login',
-        'https://gomafia.pro/api/login',
-        'https://gomafia.pro/api/v1/auth/login',
-        'https://gomafia.pro/api/user/login',
-        'https://gomafia.pro/api/auth/signin',
+    $bodyVariants = [
+        // Different field names for nickname/password
+        json_encode(['nickname' => $nickname, 'password' => $password]),
+        json_encode(['login' => $nickname, 'password' => $password]),
+        json_encode(['username' => $nickname, 'password' => $password]),
+        json_encode(['email' => $nickname, 'password' => $password]),
+        json_encode(['nick' => $nickname, 'pass' => $password]),
+        // JSON-RPC style with method in body
+        json_encode(['method' => 'login', 'nickname' => $nickname, 'password' => $password]),
+        json_encode(['method' => 'user.login', 'params' => ['nickname' => $nickname, 'password' => $password]]),
+        json_encode(['method' => 'auth.login', 'params' => ['nickname' => $nickname, 'password' => $password]]),
+        json_encode(['method' => 'login', 'params' => ['login' => $nickname, 'password' => $password]]),
     ];
 
-    foreach ($directEndpoints as $url) {
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $jsonBody,
-            CURLOPT_COOKIEJAR      => $cookieFile,
-            CURLOPT_COOKIEFILE     => $cookieFile,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_TIMEOUT        => 12,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'Accept: application/json, text/plain, */*',
-                'Origin: https://gomafia.pro',
-                'Referer: https://gomafia.pro/login',
-                "User-Agent: $UA",
-            ],
-        ]);
-        $resp = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+    $urlVariants = [
+        'https://gomafia.pro/api/login',
+        'https://gomafia.pro/api/user/login',
+        'https://gomafia.pro/api/auth/signin',
+        'https://gomafia.pro/api/',
+    ];
 
-        if (!$resp) continue;
-        $data = json_decode($resp, true);
-        if (!$data) continue;
+    // Also try form-encoded for /api/login
+    $formVariants = [
+        http_build_query(['nickname' => $nickname, 'password' => $password]),
+        http_build_query(['login' => $nickname, 'password' => $password]),
+    ];
 
-        // Check various success indicators
-        if (isset($data['result']) && $data['result'] === 'ok') {
-            $profile = extractProfileAnywhere($data);
-            return ['success' => true, 'profile' => $profile ?: ['nickname' => $nickname, 'avatar' => null]];
+    // First: JSON bodies to all URLs
+    foreach ($urlVariants as $url) {
+        foreach ($bodyVariants as $body) {
+            $result = tryApiCall($url, $body, 'application/json', $cookieFile, $nickname);
+            if ($result) return $result;
         }
-        if (isset($data['token']) || isset($data['accessToken']) || isset($data['access_token'])) {
-            $profile = extractProfileAnywhere($data);
-            return ['success' => true, 'profile' => $profile ?: ['nickname' => $nickname, 'avatar' => null]];
-        }
-        if (isset($data['user']) && is_array($data['user'])) {
-            $profile = extractProfileFromData($data['user']);
-            return ['success' => true, 'profile' => $profile ?: ['nickname' => $nickname, 'avatar' => null]];
-        }
-        if (isset($data['success']) && $data['success'] === true) {
-            $profile = extractProfileAnywhere($data);
-            return ['success' => true, 'profile' => $profile ?: ['nickname' => $nickname, 'avatar' => null]];
-        }
+    }
 
-        // If we got a clear wrong-password error, stop trying other endpoints
-        if (isset($data['error']) && (
-            stripos($data['error'], 'password') !== false ||
-            stripos($data['error'], 'пароль') !== false ||
-            stripos($data['error'], 'credentials') !== false
-        )) {
-            return ['success' => false, 'error' => $data['error']];
-        }
+    // Second: form-encoded to /api/login
+    foreach ($formVariants as $body) {
+        $result = tryApiCall('https://gomafia.pro/api/login', $body, 'application/x-www-form-urlencoded', $cookieFile, $nickname);
+        if ($result) return $result;
     }
 
     // ---- Strategy 2: Form-encoded login (like NextAuth callback) ----
@@ -252,6 +231,75 @@ function doFullLogin($cookieFile, $nickname, $password) {
     // Collect diagnostic info
     $diag = collectDiagnostics($cookieFile, $nickname);
     return ['success' => false, 'error' => "Не удалось войти в GoMafia ($diag)"];
+}
+
+
+// ==========================================================================
+// API call helper
+// ==========================================================================
+
+function tryApiCall($url, $body, $contentType, $cookieFile, $nickname) {
+    global $UA;
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $body,
+        CURLOPT_COOKIEJAR      => $cookieFile,
+        CURLOPT_COOKIEFILE     => $cookieFile,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_HTTPHEADER     => [
+            "Content-Type: $contentType",
+            'Accept: application/json, text/plain, */*',
+            'Origin: https://gomafia.pro',
+            'Referer: https://gomafia.pro/login',
+            "User-Agent: $UA",
+        ],
+    ]);
+    $resp = curl_exec($ch);
+    curl_close($ch);
+
+    if (!$resp) return null;
+    $data = json_decode($resp, true);
+    if (!$data) return null;
+
+    // Skip known "not found" / "wrong" errors
+    if (isset($data['error']) && in_array($data['error'], ['method_not_found', 'wrong_method', 'method_is_not_post'])) {
+        return null;
+    }
+
+    // Success indicators
+    if (isset($data['result']) && $data['result'] === 'ok') {
+        $profile = extractProfileAnywhere($data);
+        return ['success' => true, 'profile' => $profile ?: ['nickname' => $nickname, 'avatar' => null]];
+    }
+    if (isset($data['token']) || isset($data['accessToken']) || isset($data['access_token'])) {
+        $profile = extractProfileAnywhere($data);
+        return ['success' => true, 'profile' => $profile ?: ['nickname' => $nickname, 'avatar' => null]];
+    }
+    if (isset($data['user']) && is_array($data['user'])) {
+        return ['success' => true, 'profile' => extractProfileFromData($data['user']) ?: ['nickname' => $nickname, 'avatar' => null]];
+    }
+    if (isset($data['success']) && $data['success'] === true) {
+        $profile = extractProfileAnywhere($data);
+        return ['success' => true, 'profile' => $profile ?: ['nickname' => $nickname, 'avatar' => null]];
+    }
+
+    // Clear wrong-password errors → stop
+    if (isset($data['error']) && (
+        stripos($data['error'], 'password') !== false ||
+        stripos($data['error'], 'пароль') !== false ||
+        stripos($data['error'], 'credentials') !== false ||
+        stripos($data['error'], 'not_found') !== false ||
+        stripos($data['error'], 'wrong_password') !== false
+    )) {
+        return ['success' => false, 'error' => $data['error']];
+    }
+
+    return null;
 }
 
 
@@ -423,36 +471,30 @@ function collectDiagnostics($cookieFile, $nickname) {
 
     $parts = [];
 
-    // Check what the login endpoint returns
-    $testEndpoints = [
-        'https://gomafia.pro/api/auth/login',
-        'https://gomafia.pro/api/login',
+    // Test different body formats against /api/login
+    $tests = [
+        ['/api/login', json_encode(['login' => $nickname, 'password' => 'x']), 'application/json'],
+        ['/api/login', json_encode(['method' => 'login', 'login' => $nickname, 'password' => 'x']), 'application/json'],
+        ['/api/login', http_build_query(['login' => $nickname, 'password' => 'x']), 'application/x-www-form-urlencoded'],
+        ['/api/', json_encode(['method' => 'login', 'login' => $nickname, 'password' => 'x']), 'application/json'],
+        ['/api/user/login', json_encode(['login' => $nickname, 'password' => 'x']), 'application/json'],
     ];
 
-    foreach ($testEndpoints as $url) {
-        $ch = curl_init($url);
+    foreach ($tests as [$path, $body, $ct]) {
+        $ch = curl_init("https://gomafia.pro$path");
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => json_encode(['nickname' => $nickname, 'password' => 'test']),
+            CURLOPT_POSTFIELDS     => $body,
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_TIMEOUT        => 8,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                "User-Agent: $UA",
-            ],
+            CURLOPT_HTTPHEADER     => ["Content-Type: $ct", "User-Agent: $UA"],
         ]);
         $resp = curl_exec($ch);
-        $err = curl_error($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        $shortUrl = str_replace('https://gomafia.pro', '', $url);
-        if ($err) {
-            $parts[] = "$shortUrl: curl err";
-        } else {
-            $parts[] = "$shortUrl: HTTP$code " . substr($resp, 0, 80);
-        }
+        $parts[] = "$path($ct): $code " . substr($resp ?: '', 0, 60);
     }
 
     return implode(' | ', $parts);
