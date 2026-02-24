@@ -3,11 +3,11 @@ node_modules/
 *.log
 .env
 *.bak
-webapp/api/avatar_cache/
 webapp-v2/dist/
 webapp-v2/node_modules/
+webapp-v2/api/avatar_cache/
+webapp-v2/login/node_modules/
 websocket/node_modules/
-webapp/login/node_modules/
 websocket/roomStates.json
 websocket/api/room_*.json
 websocket/avatars_*.json

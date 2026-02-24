@@ -83,8 +83,6 @@ MafBoard/
 │       ├── utils/          # Иконки, хаптика, Telegram SDK
 │       └── media/          # SVG-ассеты
 │
-├── webapp/                 # Legacy (не используется)
-│
 └── websocket/              # WebSocket сервер
     ├── ws.js               # Сервер (Node.js)
     └── package.json

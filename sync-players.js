@@ -446,7 +446,7 @@ async function main() {
 
         if (config.dumpSql) {
             console.log('\n📄 Для создания SQL-дампа выполните на сервере:');
-            console.log(`   mysqldump -u kai -p webrarium_mafia players > webapp/api/mafia.sql`);
+            console.log(`   mysqldump -u USER -p DATABASE players > webapp-v2/api/mafia.sql`);
         }
 
     } catch (error) {
