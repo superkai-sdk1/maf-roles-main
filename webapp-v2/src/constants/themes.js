@@ -38,6 +38,17 @@ export function applyTheme(colorKey) {
   try {
     localStorage.setItem('maf_color_scheme', colorKey);
   } catch (e) { /* ignore */ }
+
+  try {
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      const bg = getComputedStyle(document.documentElement)
+        .getPropertyValue('--maf-bg-main').trim() || '#040410';
+      tg.setHeaderColor?.(bg);
+      tg.setBackgroundColor?.(bg);
+      tg.setBottomBarColor?.(bg);
+    }
+  } catch (e) { /* ignore */ }
 }
 
 export function loadSavedTheme() {

@@ -4,6 +4,7 @@ import { MainMenu } from './components/MainMenu';
 import { ModeSelector } from './components/ModeSelector';
 import { GameScreen } from './components/GameScreen';
 import { loadSavedTheme, applyTheme } from './constants/themes';
+import { initTelegramApp } from './utils/telegram';
 
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -32,6 +33,7 @@ function Router() {
 
 export default function App() {
   useEffect(() => {
+    initTelegramApp();
     const color = loadSavedTheme();
     applyTheme(color);
   }, []);
