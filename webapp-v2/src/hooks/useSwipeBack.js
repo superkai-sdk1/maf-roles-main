@@ -56,27 +56,9 @@ export function useSwipeBack(onBack, enabled = true) {
     if (overlayEl.current) {
       overlayEl.current.style.opacity = `${progress * 0.15}`;
     }
-
-    const root = document.getElementById('root');
-    if (root) {
-      const shift = Math.min(dx * 0.15, 40);
-      root.style.transform = `translateX(${shift}px)`;
-      root.style.transition = 'none';
-    }
   }, [getOrCreateIndicator]);
 
-  const resetVisual = useCallback((animate = true) => {
-    const root = document.getElementById('root');
-    if (root) {
-      if (animate) {
-        root.style.transition = 'transform 0.3s cubic-bezier(0.2, 0, 0, 1)';
-        root.style.transform = 'translateX(0)';
-        setTimeout(() => { root.style.transition = ''; root.style.transform = ''; }, 320);
-      } else {
-        root.style.transition = '';
-        root.style.transform = '';
-      }
-    }
+  const resetVisual = useCallback(() => {
     if (indicatorEl.current) {
       indicatorEl.current.style.transition = 'opacity 0.2s, transform 0.2s';
       indicatorEl.current.style.opacity = '0';
@@ -140,19 +122,10 @@ export function useSwipeBack(onBack, enabled = true) {
 
       if (progress >= 1) {
         triggerHaptic('light');
-        const root = document.getElementById('root');
-        if (root) {
-          root.style.transition = 'transform 0.25s cubic-bezier(0.2, 0, 0, 1)';
-          root.style.transform = 'translateX(100px)';
-          root.style.opacity = '0.7';
-        }
-        setTimeout(() => {
-          if (root) { root.style.transition = ''; root.style.transform = ''; root.style.opacity = ''; }
-          removeIndicator();
-          onBackRef.current?.();
-        }, 200);
+        resetVisual();
+        setTimeout(() => onBackRef.current?.(), 100);
       } else {
-        resetVisual(true);
+        resetVisual();
       }
       locked.current = false;
     };
@@ -161,7 +134,7 @@ export function useSwipeBack(onBack, enabled = true) {
       if (tracking.current) {
         tracking.current = false;
         locked.current = false;
-        resetVisual(true);
+        resetVisual();
       }
     };
 

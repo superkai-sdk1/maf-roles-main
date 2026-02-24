@@ -1074,7 +1074,7 @@ export const GameProvider = ({ children }) => {
     saveCurrentSession();
     if (wsRef.current) wsRef.current.close();
     resetGameState();
-    setCurrentSessionId(sessionManager.generateSessionId());
+    setCurrentSessionId(null);
     setScreen('modes');
   }, [saveCurrentSession, resetGameState]);
 
