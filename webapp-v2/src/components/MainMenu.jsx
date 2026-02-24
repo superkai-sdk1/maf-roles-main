@@ -136,17 +136,27 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
           <div className="series-card-name">{group.tournamentName}</div>
           <div className="series-card-meta">
             {modeLabel && <span className="series-mode-badge">{modeLabel}</span>}
-            {group.tableSelected && <span className="series-meta-item">Стол {group.tableSelected}</span>}
-            <span className="series-meta-item">
-              Игра {group.lastStartedGameNumber || group.sessions.length}
-            </span>
+            {!group.isFunky && group.tableSelected && <span className="series-meta-item">Стол {group.tableSelected}</span>}
+            {!group.isFunky && (
+              <span className="series-meta-item">
+                Игра {group.lastStartedGameNumber || group.sessions.length}
+              </span>
+            )}
           </div>
-          <div className="series-progress-bar">
-            <div className="series-progress-fill" style={{ width: `${progress}%` }} />
-          </div>
-          <div className="series-progress-text">
-            {completedGames} из {totalGames} завершено
-          </div>
+          {group.isFunky ? (
+            <div className="series-progress-text">
+              {completedGames} {completedGames === 1 ? 'игра' : completedGames < 5 ? 'игры' : 'игр'} сыграно
+            </div>
+          ) : (
+            <>
+              <div className="series-progress-bar">
+                <div className="series-progress-fill" style={{ width: `${progress}%` }} />
+              </div>
+              <div className="series-progress-text">
+                {completedGames} из {totalGames} завершено
+              </div>
+            </>
+          )}
         </div>
         <span className="series-card-chevron" style={{
           transform: expanded ? 'rotate(180deg)' : 'rotate(0)',
@@ -208,13 +218,13 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                     onClick={(e) => { e.stopPropagation(); onShowTable?.(group); triggerHaptic('light'); }}
                   >
                     <IconList size={15} />
-                    <span>Таблица</span>
+                    <span>{group.isFunky ? 'Итоги' : 'Таблица'}</span>
                   </button>
                 )}
                 {!group.archived && !group.allGamesFinished && (
                   archiveConfirm ? (
                     <div className="series-archive-confirm">
-                      <span className="series-archive-confirm-text">Завершить?</span>
+                      <span className="series-archive-confirm-text">{group.isFunky ? 'Удалить?' : 'Завершить?'}</span>
                       <button className="series-archive-confirm-yes" onClick={handleArchiveClick}>Да</button>
                       <button className="series-archive-confirm-no" onClick={handleCancelArchive}>Нет</button>
                     </div>
@@ -223,8 +233,8 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                       className="series-action-btn series-action-archive"
                       onClick={handleArchiveClick}
                     >
-                      <IconArchive size={15} />
-                      <span>Завершить серию</span>
+                      {group.isFunky ? <IconTrash size={15} /> : <IconArchive size={15} />}
+                      <span>{group.isFunky ? 'Удалить' : 'Завершить серию'}</span>
                     </button>
                   )
                 )}
@@ -241,18 +251,15 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
   );
 }
 
-function StandaloneCard({ session, onLoad, onDelete, onShowTable }) {
+function StandaloneCard({ session, onLoad, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   const getSessionName = (s) =>
     s.tournamentName || s.tournamentId ||
     (s.gameMode === 'funky' ? 'Фанки' : s.gameMode === 'city' ? 'Городская' : s.gameMode === 'gomafia' ? 'GoMafia' : 'Ручной');
 
-  const isFunky = isFunkySession(session);
   const modeLabel = getModeLabel(session.gameMode);
   const gh = session.gamesHistory || [];
-  const totalGames = gh.length + (session.winnerTeam ? 1 : (session.gamePhase && session.gamePhase !== 'roles' ? 1 : 0));
   const hasMultipleGames = gh.length > 0;
-  const hasFinishedGames = gh.some(g => g.winnerTeam) || !!session.winnerTeam;
 
   const allGamesForDisplay = useMemo(() => {
     const result = gh.map((g, idx) => ({
@@ -275,9 +282,8 @@ function StandaloneCard({ session, onLoad, onDelete, onShowTable }) {
     return result;
   }, [session, gh]);
 
-  const isExpandable = hasMultipleGames || isFunky;
-
-  if (isExpandable) {
+  if (hasMultipleGames) {
+    const totalGames = gh.length + (session.winnerTeam ? 1 : (session.gamePhase && session.gamePhase !== 'roles' ? 1 : 0));
     const civWins = allGamesForDisplay.filter(g => g.winnerTeam === 'civilians').length;
     const mafWins = allGamesForDisplay.filter(g => g.winnerTeam === 'mafia').length;
 
@@ -286,9 +292,7 @@ function StandaloneCard({ session, onLoad, onDelete, onShowTable }) {
         <div className="session-card-top" onClick={() => { setExpanded(!expanded); triggerHaptic('selection'); }}>
           <div className="session-card-name">
             {getSessionName(session)}
-            {totalGames > 0 && (
-              <span className="session-card-games-badge">{totalGames} {totalGames === 1 ? 'игра' : totalGames < 5 ? 'игры' : 'игр'}</span>
-            )}
+            <span className="session-card-games-badge">{totalGames} {totalGames === 1 ? 'игра' : totalGames < 5 ? 'игры' : 'игр'}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="session-card-date">
@@ -334,34 +338,12 @@ function StandaloneCard({ session, onLoad, onDelete, onShowTable }) {
                 </div>
               );
             })}
-
-            {isFunky ? (
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <button
-                  className="session-card-open-btn"
-                  style={{ flex: 1, width: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                  onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}
-                >
-                  <IconPlus size={14} /> Новая игра
-                </button>
-                {hasFinishedGames && (
-                  <button
-                    className="session-card-open-btn"
-                    style={{ flex: 1, width: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}
-                    onClick={() => { onShowTable?.(session); triggerHaptic('light'); }}
-                  >
-                    <IconList size={14} /> Итоги
-                  </button>
-                )}
-              </div>
-            ) : (
-              <button
-                className="session-card-open-btn"
-                onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}
-              >
-                Открыть сессию
-              </button>
-            )}
+            <button
+              className="session-card-open-btn"
+              onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}
+            >
+              Открыть сессию
+            </button>
           </div>
         )}
 
@@ -408,7 +390,7 @@ function StandaloneCard({ session, onLoad, onDelete, onShowTable }) {
 export function MainMenu() {
   const {
     sessionsList, startNewGame, loadSession, deleteSession, archiveSeries,
-    startTournamentGameFromMenu,
+    startTournamentGameFromMenu, startNewFunkyFromMenu,
     selectedColorScheme, setSelectedColorScheme,
   } = useGame();
 
@@ -517,9 +499,45 @@ export function MainMenu() {
     [sessionsList]
   );
 
-  const activeSessions = useMemo(() => standalone.filter(s => (!s.gameFinished && !s.winnerTeam) || isFunkySession(s)), [standalone]);
-  const historySessions = useMemo(() => standalone.filter(s => (s.gameFinished || s.winnerTeam) && !isFunkySession(s)), [standalone]);
-  const activeGroups = useMemo(() => groups.filter(g => !g.archived), [groups]);
+  const funkyGroups = useMemo(() => {
+    const funkySessions = standalone.filter(s => isFunkySession(s));
+    return funkySessions.map(s => {
+      const gh = s.gamesHistory || [];
+      const pseudoSessions = gh.map((g, idx) => ({
+        ...g,
+        sessionId: `${s.sessionId}_g${g.gameNumber || idx + 1}`,
+        gameSelected: g.gameNumber || idx + 1,
+        timestamp: g.completedAt,
+        updatedAt: g.completedAt,
+        seriesArchived: true,
+      }));
+      if (s.gamePhase && s.gamePhase !== 'roles') {
+        pseudoSessions.push({
+          ...s,
+          sessionId: s.sessionId,
+          gameSelected: gh.length + 1,
+          seriesArchived: false,
+        });
+      }
+      return {
+        tournamentId: s.tournamentId,
+        tournamentName: s.tournamentName || 'Фанки',
+        gameMode: 'funky',
+        isFunky: true,
+        archived: false,
+        sessions: pseudoSessions,
+        totalGamesInTournament: pseudoSessions.length,
+        lastStartedGameNumber: pseudoSessions.length,
+        _originalSessionId: s.sessionId,
+        updatedAt: s.updatedAt || s.timestamp,
+      };
+    }).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  }, [standalone]);
+
+  const nonFunkyStandalone = useMemo(() => standalone.filter(s => !isFunkySession(s)), [standalone]);
+  const activeSessions = useMemo(() => nonFunkyStandalone.filter(s => !s.gameFinished && !s.winnerTeam), [nonFunkyStandalone]);
+  const historySessions = useMemo(() => nonFunkyStandalone.filter(s => (s.gameFinished || s.winnerTeam)), [nonFunkyStandalone]);
+  const activeGroups = useMemo(() => [...groups.filter(g => !g.archived), ...funkyGroups], [groups, funkyGroups]);
   const historyGroups = useMemo(() => groups.filter(g => g.archived), [groups]);
 
   const displayGroups = activeTab === 'active' ? activeGroups : historyGroups;
@@ -564,37 +582,6 @@ export function MainMenu() {
     applyTheme(key);
     triggerHaptic('selection');
   };
-
-  const handleShowFunkyTable = useCallback((session) => {
-    const gh = session.gamesHistory || [];
-    const allSessions = [];
-
-    for (const g of gh) {
-      allSessions.push({
-        ...g,
-        gameSelected: g.gameNumber,
-        sessionId: `${session.sessionId}_g${g.gameNumber}`,
-      });
-    }
-
-    if (session.winnerTeam) {
-      allSessions.push({
-        ...session,
-        gameSelected: gh.length + 1,
-        sessionId: `${session.sessionId}_current`,
-      });
-    }
-
-    if (allSessions.length === 0) return;
-
-    setTableGroup({
-      tournamentId: session.tournamentId,
-      tournamentName: session.tournamentName || 'Фанки',
-      sessions: allSessions,
-      gameMode: 'funky',
-    });
-    triggerHaptic('light');
-  }, []);
 
   const handleNewGameInTournament = useCallback(async (group) => {
     setNewGameModal({ visible: true, loading: true, error: '', group, tournamentData: null, games: [] });
@@ -1159,8 +1146,8 @@ export function MainMenu() {
                         onToggle={() => toggleExpanded(g.tournamentId)}
                         onLoadSession={loadSession}
                         onDeleteSession={deleteSession}
-                        onArchive={archiveSeries}
-                        onNewGame={g.gameMode === 'gomafia' ? handleNewGameInTournament : null}
+                        onArchive={g.isFunky ? () => { deleteSession(g._originalSessionId); triggerHaptic('medium'); } : archiveSeries}
+                        onNewGame={g.gameMode === 'gomafia' ? handleNewGameInTournament : g.isFunky ? () => startNewFunkyFromMenu(g._originalSessionId) : null}
                         onShowTable={(grp) => { setTableGroup(grp); triggerHaptic('light'); }}
                       />
                     ))}
@@ -1171,7 +1158,6 @@ export function MainMenu() {
                         session={s}
                         onLoad={loadSession}
                         onDelete={deleteSession}
-                        onShowTable={handleShowFunkyTable}
                       />
                     ))}
                   </>

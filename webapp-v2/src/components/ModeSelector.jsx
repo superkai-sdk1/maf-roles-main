@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { goMafiaApi } from '../services/api';
 import { sessionManager } from '../services/sessionManager';
@@ -22,6 +22,8 @@ export function ModeSelector() {
     setCurrentSessionId, returnToMainMenu,
     funkyPlayers, setFunkyPlayers, funkyPlayerInputs, setFunkyPlayerInputs,
     funkyGameNumber, setFunkyGameNumber,
+    funkyEditSessionId, setFunkyEditSessionId,
+    gamesHistory,
     loadAvatars, setAvatars, setRoles, setRolesDistributed,
     loadTournamentsList, tournamentsList, tournamentsLoading, tournamentsFilters, setTournamentsFilters,
     tournamentsHasMore, tournamentsPage,
@@ -64,6 +66,12 @@ export function ModeSelector() {
   // Drag state for city
   const [cityDragIndex, setCityDragIndex] = useState(null);
   const [cityDragOverIndex, setCityDragOverIndex] = useState(null);
+
+  useEffect(() => {
+    if (funkyEditSessionId) {
+      setStep('funky');
+    }
+  }, [funkyEditSessionId]);
 
   // ===== GoMafia =====
   const loadTournament = async () => {
@@ -171,11 +179,22 @@ export function ModeSelector() {
   const confirmFunkyPlayers = () => {
     const filled = funkyPlayers.filter(Boolean);
     if (filled.length < 10) return;
-    setPlayers(filled.map((p, i) => ({ ...p, num: i + 1, roleKey: `1-1-${i + 1}` })));
+
+    const gameNum = funkyEditSessionId ? gamesHistory.length + 1 : 1;
+    const newPlayers = filled.map((p, i) => ({
+      ...p, num: i + 1, roleKey: `${gameNum}-1-${i + 1}`,
+    }));
+    setPlayers(newPlayers);
     setFunkyMode(true); setManualMode(true); setGameMode('funky');
-    setTournamentId('funky_' + Date.now());
-    setTournamentName(`Фанки #${funkyGameNumber} ${new Date().toLocaleDateString('ru-RU')}`);
-    setCurrentSessionId(sessionManager.generateSessionId());
+
+    if (funkyEditSessionId) {
+      setFunkyEditSessionId(null);
+    } else {
+      setTournamentId('funky_' + Date.now());
+      setTournamentName(`Фанки #${funkyGameNumber} ${new Date().toLocaleDateString('ru-RU')}`);
+      setCurrentSessionId(sessionManager.generateSessionId());
+    }
+
     setScreen('game');
     triggerHaptic('success');
   };
@@ -576,6 +595,11 @@ export function ModeSelector() {
   };
 
   const goBack = useCallback(() => {
+    if (step === 'funky' && funkyEditSessionId) {
+      setFunkyEditSessionId(null);
+      returnToMainMenu();
+      return;
+    }
     if (step === 'modes') returnToMainMenu();
     else if (step === 'game_select') setStep('browser');
     else if (step === 'gomafia') setStep('browser');
@@ -587,7 +611,7 @@ export function ModeSelector() {
       else setStep('modes');
     }
     else setStep('modes');
-  }, [step, cityStep, returnToMainMenu]);
+  }, [step, cityStep, returnToMainMenu, funkyEditSessionId, setFunkyEditSessionId]);
 
   useSwipeBack(goBack);
 

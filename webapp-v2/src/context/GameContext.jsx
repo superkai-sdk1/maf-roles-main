@@ -151,6 +151,7 @@ export const GameProvider = ({ children }) => {
   const [funkyPlayers, setFunkyPlayers] = useState([]);
   const [funkyPlayerInputs, setFunkyPlayerInputs] = useState([]);
   const [funkyGameNumber, setFunkyGameNumber] = useState(1);
+  const [funkyEditSessionId, setFunkyEditSessionId] = useState(null);
 
   // === Theme ===
   const [selectedColorScheme, setSelectedColorScheme] = useState(() => {
@@ -975,6 +976,71 @@ export const GameProvider = ({ children }) => {
 
   const currentGameNumber = useMemo(() => gamesHistory.length + 1, [gamesHistory.length]);
 
+  const startNewFunkyFromMenu = useCallback((sessionId) => {
+    const s = sessionManager.getSession(sessionId);
+    if (!s) return;
+
+    saveCurrentSession();
+    if (wsRef.current) wsRef.current.close();
+    resetGameState();
+
+    setCurrentSessionId(s.sessionId);
+    setTournamentId(s.tournamentId || '');
+    setTournamentName(s.tournamentName || '');
+    setGameMode('funky');
+    setFunkyMode(true);
+    setManualMode(true);
+    setGamesHistory(s.gamesHistory || []);
+
+    const existingGames = s.gamesHistory || [];
+    if (s.winnerTeam) {
+      const snapshot = {
+        gameNumber: existingGames.length + 1,
+        gameSelected: s.gameSelected, tableSelected: s.tableSelected,
+        players: [...(s.players || [])],
+        roles: { ...(s.roles || {}) },
+        playersActions: { ...(s.playersActions || {}) },
+        fouls: { ...(s.fouls || {}) },
+        techFouls: { ...(s.techFouls || {}) },
+        removed: { ...(s.removed || {}) },
+        avatars: { ...(s.avatars || {}) },
+        dayNumber: s.dayNumber, nightNumber: s.nightNumber,
+        nightCheckHistory: [...(s.nightCheckHistory || [])],
+        votingHistory: [...(s.votingHistory || [])],
+        bestMove: [...(s.bestMove || [])],
+        bestMoveAccepted: s.bestMoveAccepted,
+        firstKilledPlayer: s.firstKilledPlayer,
+        winnerTeam: s.winnerTeam,
+        playerScores: { ...(s.playerScores || {}) },
+        protocolData: { ...(s.protocolData || {}) },
+        opinionData: { ...(s.opinionData || {}) },
+        opinionText: { ...(s.opinionText || {}) },
+        doctorHealHistory: [...(s.doctorHealHistory || [])],
+        nightMisses: { ...(s.nightMisses || {}) },
+        killedOnNight: { ...(s.killedOnNight || {}) },
+        dayVoteOuts: { ...(s.dayVoteOuts || {}) },
+        cityMode: s.cityMode,
+        completedAt: Date.now(),
+      };
+      setGamesHistory([...existingGames, snapshot]);
+    }
+
+    const playersArr = s.players || [];
+    const preFilled = Array(10).fill(null).map((_, i) => playersArr[i] || null);
+    setFunkyPlayers(preFilled);
+    setFunkyPlayerInputs(preFilled.map(p => p ? p.login : ''));
+
+    if (playersArr.length > 0) {
+      const avatarMap = { ...(s.avatars || {}) };
+      playersArr.forEach(p => { if (p.avatar_link) avatarMap[p.login] = p.avatar_link; });
+      setAvatars(avatarMap);
+    }
+
+    setFunkyEditSessionId(s.sessionId);
+    setScreen('modes');
+    triggerHaptic('light');
+  }, [saveCurrentSession, resetGameState]);
+
   // =================== Session Management ===================
   const saveCurrentSession = useCallback(() => {
     if (!currentSessionId) return;
@@ -1527,6 +1593,7 @@ export const GameProvider = ({ children }) => {
     // Funky
     funkyPlayers, setFunkyPlayers, funkyPlayerInputs, setFunkyPlayerInputs,
     funkyGameNumber, setFunkyGameNumber,
+    funkyEditSessionId, setFunkyEditSessionId, startNewFunkyFromMenu,
     // Theme
     selectedColorScheme, setSelectedColorScheme,
     // Judge
