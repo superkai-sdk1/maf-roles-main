@@ -58,6 +58,9 @@ const getModeLabel = (mode) => {
   return null;
 };
 
+const isFunkySession = (s) =>
+  s.gameMode === 'funky' || s.funkyMode || (s.tournamentId && s.tournamentId.startsWith('funky_'));
+
 const computeSessionPlayerScore = (session, roleKey) => {
   if (!session.winnerTeam) return 0;
   let s = 0;
@@ -238,16 +241,18 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
   );
 }
 
-function StandaloneCard({ session, onLoad, onDelete }) {
+function StandaloneCard({ session, onLoad, onDelete, onShowTable }) {
   const [expanded, setExpanded] = useState(false);
   const getSessionName = (s) =>
     s.tournamentName || s.tournamentId ||
     (s.gameMode === 'funky' ? 'Фанки' : s.gameMode === 'city' ? 'Городская' : s.gameMode === 'gomafia' ? 'GoMafia' : 'Ручной');
 
+  const isFunky = isFunkySession(session);
   const modeLabel = getModeLabel(session.gameMode);
   const gh = session.gamesHistory || [];
   const totalGames = gh.length + (session.winnerTeam ? 1 : (session.gamePhase && session.gamePhase !== 'roles' ? 1 : 0));
   const hasMultipleGames = gh.length > 0;
+  const hasFinishedGames = gh.some(g => g.winnerTeam) || !!session.winnerTeam;
 
   const allGamesForDisplay = useMemo(() => {
     const result = gh.map((g, idx) => ({
@@ -270,7 +275,9 @@ function StandaloneCard({ session, onLoad, onDelete }) {
     return result;
   }, [session, gh]);
 
-  if (hasMultipleGames) {
+  const isExpandable = hasMultipleGames || isFunky;
+
+  if (isExpandable) {
     const civWins = allGamesForDisplay.filter(g => g.winnerTeam === 'civilians').length;
     const mafWins = allGamesForDisplay.filter(g => g.winnerTeam === 'mafia').length;
 
@@ -279,7 +286,9 @@ function StandaloneCard({ session, onLoad, onDelete }) {
         <div className="session-card-top" onClick={() => { setExpanded(!expanded); triggerHaptic('selection'); }}>
           <div className="session-card-name">
             {getSessionName(session)}
-            <span className="session-card-games-badge">{totalGames} {totalGames === 1 ? 'игра' : totalGames < 5 ? 'игры' : 'игр'}</span>
+            {totalGames > 0 && (
+              <span className="session-card-games-badge">{totalGames} {totalGames === 1 ? 'игра' : totalGames < 5 ? 'игры' : 'игр'}</span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="session-card-date">
@@ -325,12 +334,34 @@ function StandaloneCard({ session, onLoad, onDelete }) {
                 </div>
               );
             })}
-            <button
-              className="session-card-open-btn"
-              onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}
-            >
-              Открыть сессию
-            </button>
+
+            {isFunky ? (
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button
+                  className="session-card-open-btn"
+                  style={{ flex: 1, width: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}
+                >
+                  <IconPlus size={14} /> Новая игра
+                </button>
+                {hasFinishedGames && (
+                  <button
+                    className="session-card-open-btn"
+                    style={{ flex: 1, width: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}
+                    onClick={() => { onShowTable?.(session); triggerHaptic('light'); }}
+                  >
+                    <IconList size={14} /> Итоги
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                className="session-card-open-btn"
+                onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}
+              >
+                Открыть сессию
+              </button>
+            )}
           </div>
         )}
 
@@ -486,8 +517,8 @@ export function MainMenu() {
     [sessionsList]
   );
 
-  const activeSessions = useMemo(() => standalone.filter(s => !s.gameFinished && !s.winnerTeam), [standalone]);
-  const historySessions = useMemo(() => standalone.filter(s => s.gameFinished || s.winnerTeam), [standalone]);
+  const activeSessions = useMemo(() => standalone.filter(s => (!s.gameFinished && !s.winnerTeam) || isFunkySession(s)), [standalone]);
+  const historySessions = useMemo(() => standalone.filter(s => (s.gameFinished || s.winnerTeam) && !isFunkySession(s)), [standalone]);
   const activeGroups = useMemo(() => groups.filter(g => !g.archived), [groups]);
   const historyGroups = useMemo(() => groups.filter(g => g.archived), [groups]);
 
@@ -533,6 +564,37 @@ export function MainMenu() {
     applyTheme(key);
     triggerHaptic('selection');
   };
+
+  const handleShowFunkyTable = useCallback((session) => {
+    const gh = session.gamesHistory || [];
+    const allSessions = [];
+
+    for (const g of gh) {
+      allSessions.push({
+        ...g,
+        gameSelected: g.gameNumber,
+        sessionId: `${session.sessionId}_g${g.gameNumber}`,
+      });
+    }
+
+    if (session.winnerTeam) {
+      allSessions.push({
+        ...session,
+        gameSelected: gh.length + 1,
+        sessionId: `${session.sessionId}_current`,
+      });
+    }
+
+    if (allSessions.length === 0) return;
+
+    setTableGroup({
+      tournamentId: session.tournamentId,
+      tournamentName: session.tournamentName || 'Фанки',
+      sessions: allSessions,
+      gameMode: 'funky',
+    });
+    triggerHaptic('light');
+  }, []);
 
   const handleNewGameInTournament = useCallback(async (group) => {
     setNewGameModal({ visible: true, loading: true, error: '', group, tournamentData: null, games: [] });
@@ -1109,6 +1171,7 @@ export function MainMenu() {
                         session={s}
                         onLoad={loadSession}
                         onDelete={deleteSession}
+                        onShowTable={handleShowFunkyTable}
                       />
                     ))}
                   </>
