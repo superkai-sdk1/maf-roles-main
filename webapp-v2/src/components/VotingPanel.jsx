@@ -27,6 +27,7 @@ export function VotingPanel() {
   const tieTimer = useTimer(30, null);
   const tieHoldRef = useRef(null);
   const tieHoldActiveRef = useRef(false);
+  const tieLastTouchRef = useRef(0);
   const prevTieSpeakerIdx = useRef(-1);
 
   useEffect(() => {
@@ -47,7 +48,9 @@ export function VotingPanel() {
     else { tieTimer.pause(); triggerHaptic('light'); }
   }, [tieTimer]);
 
-  const handleTieHoldStart = useCallback(() => {
+  const handleTieHoldStart = useCallback((e) => {
+    if (e.type === 'mousedown' && Date.now() - tieLastTouchRef.current < 500) return;
+    if (e.type === 'touchstart') tieLastTouchRef.current = Date.now();
     tieHoldActiveRef.current = false;
     tieHoldRef.current = setTimeout(() => {
       tieHoldActiveRef.current = true;
@@ -56,7 +59,8 @@ export function VotingPanel() {
     }, 800);
   }, [tieTimer]);
 
-  const handleTieHoldEnd = useCallback(() => {
+  const handleTieHoldEnd = useCallback((e) => {
+    if (e.type === 'mouseup' && Date.now() - tieLastTouchRef.current < 500) return;
     clearTimeout(tieHoldRef.current);
     if (!tieHoldActiveRef.current) handleTieTimerClick();
   }, [handleTieTimerClick]);
@@ -79,6 +83,7 @@ export function VotingPanel() {
   const lastSpeechTimer = useTimer(60, null);
   const lastSpeechHoldRef = useRef(null);
   const lastSpeechHoldActiveRef = useRef(false);
+  const lastSpeechLastTouchRef = useRef(0);
   const [lastSpeechFoulCount, setLastSpeechFoulCount] = useState(0);
   const prevLastSpeechActive = useRef(false);
 
@@ -96,7 +101,9 @@ export function VotingPanel() {
     else { lastSpeechTimer.pause(); triggerHaptic('light'); }
   }, [lastSpeechTimer]);
 
-  const handleLastSpeechHoldStart = useCallback(() => {
+  const handleLastSpeechHoldStart = useCallback((e) => {
+    if (e.type === 'mousedown' && Date.now() - lastSpeechLastTouchRef.current < 500) return;
+    if (e.type === 'touchstart') lastSpeechLastTouchRef.current = Date.now();
     lastSpeechHoldActiveRef.current = false;
     lastSpeechHoldRef.current = setTimeout(() => {
       lastSpeechHoldActiveRef.current = true;
@@ -106,7 +113,8 @@ export function VotingPanel() {
     }, 800);
   }, [lastSpeechTimer]);
 
-  const handleLastSpeechHoldEnd = useCallback(() => {
+  const handleLastSpeechHoldEnd = useCallback((e) => {
+    if (e.type === 'mouseup' && Date.now() - lastSpeechLastTouchRef.current < 500) return;
     clearTimeout(lastSpeechHoldRef.current);
     if (!lastSpeechHoldActiveRef.current) handleLastSpeechTimerClick();
   }, [handleLastSpeechTimerClick]);

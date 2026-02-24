@@ -43,6 +43,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
   const expanded = expandedCardRK === rk;
   const holdTimerRef = useRef(null);
   const holdActiveRef = useRef(false);
+  const lastTouchRef = useRef(0);
 
   useEffect(() => {
     if (autoExpandPlayer === rk) {
@@ -89,7 +90,9 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
     else { pause(); triggerHaptic('light'); }
   }, [isRunning, isPaused, start, pause, resume]);
 
-  const handleTimerHoldStart = useCallback(() => {
+  const handleTimerHoldStart = useCallback((e) => {
+    if (e.type === 'mousedown' && Date.now() - lastTouchRef.current < 500) return;
+    if (e.type === 'touchstart') lastTouchRef.current = Date.now();
     holdActiveRef.current = false;
     holdTimerRef.current = setTimeout(() => {
       holdActiveRef.current = true;
@@ -98,7 +101,8 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
     }, 800);
   }, [stop]);
 
-  const handleTimerHoldEnd = useCallback(() => {
+  const handleTimerHoldEnd = useCallback((e) => {
+    if (e.type === 'mouseup' && Date.now() - lastTouchRef.current < 500) return;
     clearTimeout(holdTimerRef.current);
     if (!holdActiveRef.current) handleTimerClick();
   }, [handleTimerClick]);
