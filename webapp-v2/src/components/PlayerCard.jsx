@@ -102,6 +102,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
   }, [stop]);
 
   const handleTimerHoldEnd = useCallback((e) => {
+    if (e.type === 'touchend') lastTouchRef.current = Date.now();
     if (e.type === 'mouseup' && Date.now() - lastTouchRef.current < 500) return;
     clearTimeout(holdTimerRef.current);
     if (!holdActiveRef.current) handleTimerClick();
@@ -109,6 +110,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
 
   const handleTimerHoldCancel = useCallback(() => {
     clearTimeout(holdTimerRef.current);
+    holdActiveRef.current = true;
   }, []);
 
   const foulHoldRef = useRef(null);
@@ -127,6 +129,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
   }, [rk, removeFoul, removeTechFoul]);
 
   const handleFoulEnd = useCallback((type, e) => {
+    if (e?.type === 'touchend') foulLastTouchRef.current = Date.now();
     if (e?.type === 'mouseup' && Date.now() - foulLastTouchRef.current < 500) return;
     clearTimeout(foulHoldRef.current);
     if (!foulHoldActiveRef.current) {
@@ -135,19 +138,32 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
     }
   }, [rk, addFoul, addTechFoul]);
 
+  const handleFoulMoveCancel = useCallback(() => {
+    clearTimeout(foulHoldRef.current);
+    foulHoldActiveRef.current = true;
+  }, []);
+
   const removeHoldRef = useRef(null);
   const removeLastTouchRef = useRef(0);
+  const removeHoldActiveRef = useRef(false);
   const handleRemoveStart = useCallback((e) => {
     if (e?.type === 'mousedown' && Date.now() - removeLastTouchRef.current < 500) return;
     if (e?.type === 'touchstart') removeLastTouchRef.current = Date.now();
+    removeHoldActiveRef.current = false;
     removeHoldRef.current = setTimeout(() => {
+      removeHoldActiveRef.current = true;
       actionSet(rk, 'removed');
       triggerHaptic('heavy');
     }, 800);
   }, [rk, actionSet]);
   const handleRemoveEnd = useCallback((e) => {
+    if (e?.type === 'touchend') removeLastTouchRef.current = Date.now();
     if (e?.type === 'mouseup' && Date.now() - removeLastTouchRef.current < 500) return;
     clearTimeout(removeHoldRef.current);
+  }, []);
+  const handleRemoveMoveCancel = useCallback(() => {
+    clearTimeout(removeHoldRef.current);
+    removeHoldActiveRef.current = true;
   }, []);
   const handleReturnStart = useCallback((e) => {
     if (e?.type === 'mousedown' && Date.now() - removeLastTouchRef.current < 500) return;
@@ -231,8 +247,11 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
               <button className="day-return-btn"
                 onTouchStart={(e) => { e.stopPropagation(); handleReturnStart(e); }}
                 onTouchEnd={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
+                onTouchMove={handleRemoveMoveCancel}
+                onTouchCancel={handleRemoveMoveCancel}
                 onMouseDown={(e) => { e.stopPropagation(); handleReturnStart(e); }}
                 onMouseUp={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
+                onMouseLeave={handleRemoveMoveCancel}
                 onClick={(e) => e.stopPropagation()}>
                 ❤
               </button>
@@ -243,10 +262,11 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
                 onClick={(e) => e.stopPropagation()}
                 onTouchStart={(e) => { e.stopPropagation(); handleFoulStart('foul', e); }}
                 onTouchEnd={(e) => { e.stopPropagation(); handleFoulEnd('foul', e); }}
-                onTouchCancel={() => clearTimeout(foulHoldRef.current)}
+                onTouchMove={handleFoulMoveCancel}
+                onTouchCancel={handleFoulMoveCancel}
                 onMouseDown={(e) => { e.stopPropagation(); handleFoulStart('foul', e); }}
                 onMouseUp={(e) => { e.stopPropagation(); handleFoulEnd('foul', e); }}
-                onMouseLeave={() => clearTimeout(foulHoldRef.current)}>
+                onMouseLeave={handleFoulMoveCancel}>
                 <span className="pill-label">Ф</span>
                 <span className="pill-count">{foulCount}</span>
               </button>
@@ -254,10 +274,11 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
                   onClick={(e) => e.stopPropagation()}
                   onTouchStart={(e) => { e.stopPropagation(); handleFoulStart('tf', e); }}
                   onTouchEnd={(e) => { e.stopPropagation(); handleFoulEnd('tf', e); }}
-                  onTouchCancel={() => clearTimeout(foulHoldRef.current)}
+                  onTouchMove={handleFoulMoveCancel}
+                  onTouchCancel={handleFoulMoveCancel}
                   onMouseDown={(e) => { e.stopPropagation(); handleFoulStart('tf', e); }}
                   onMouseUp={(e) => { e.stopPropagation(); handleFoulEnd('tf', e); }}
-                  onMouseLeave={() => clearTimeout(foulHoldRef.current)}>
+                  onMouseLeave={handleFoulMoveCancel}>
                   <span className="pill-label">ТФ</span>
                   <span className="pill-count">{techFoulCount}</span>
                 </button>
@@ -265,10 +286,11 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
                 onClick={(e) => e.stopPropagation()}
                 onTouchStart={(e) => { e.stopPropagation(); handleRemoveStart(e); }}
                 onTouchEnd={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
-                onTouchCancel={handleRemoveEnd}
+                onTouchMove={handleRemoveMoveCancel}
+                onTouchCancel={handleRemoveMoveCancel}
                 onMouseDown={(e) => { e.stopPropagation(); handleRemoveStart(e); }}
                 onMouseUp={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
-                onMouseLeave={handleRemoveEnd}>
+                onMouseLeave={handleRemoveMoveCancel}>
                 ✕
               </button>
             </>
@@ -366,6 +388,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
                 onMouseLeave={handleTimerHoldCancel}
                 onTouchStart={handleTimerHoldStart}
                 onTouchEnd={handleTimerHoldEnd}
+                onTouchMove={handleTimerHoldCancel}
                 onTouchCancel={handleTimerHoldCancel}>
                 {formatTime(timeLeft)}
               </div>
@@ -438,6 +461,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
                 onMouseLeave={handleTimerHoldCancel}
                 onTouchStart={handleTimerHoldStart}
                 onTouchEnd={handleTimerHoldEnd}
+                onTouchMove={handleTimerHoldCancel}
                 onTouchCancel={handleTimerHoldCancel}>
                 {formatTime(timeLeft)}
               </div>

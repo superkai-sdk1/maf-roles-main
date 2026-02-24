@@ -60,6 +60,7 @@ export function VotingPanel() {
   }, [tieTimer]);
 
   const handleTieHoldEnd = useCallback((e) => {
+    if (e.type === 'touchend') tieLastTouchRef.current = Date.now();
     if (e.type === 'mouseup' && Date.now() - tieLastTouchRef.current < 500) return;
     clearTimeout(tieHoldRef.current);
     if (!tieHoldActiveRef.current) handleTieTimerClick();
@@ -67,6 +68,7 @@ export function VotingPanel() {
 
   const handleTieHoldCancel = useCallback(() => {
     clearTimeout(tieHoldRef.current);
+    tieHoldActiveRef.current = true;
   }, []);
 
   const tieTimerStatusText = tieTimer.isRunning
@@ -114,6 +116,7 @@ export function VotingPanel() {
   }, [lastSpeechTimer]);
 
   const handleLastSpeechHoldEnd = useCallback((e) => {
+    if (e.type === 'touchend') lastSpeechLastTouchRef.current = Date.now();
     if (e.type === 'mouseup' && Date.now() - lastSpeechLastTouchRef.current < 500) return;
     clearTimeout(lastSpeechHoldRef.current);
     if (!lastSpeechHoldActiveRef.current) handleLastSpeechTimerClick();
@@ -121,6 +124,7 @@ export function VotingPanel() {
 
   const handleLastSpeechHoldCancel = useCallback(() => {
     clearTimeout(lastSpeechHoldRef.current);
+    lastSpeechHoldActiveRef.current = true;
   }, []);
 
   const lastSpeechStatusText = lastSpeechTimer.isRunning
@@ -257,6 +261,7 @@ export function VotingPanel() {
                         onMouseLeave={handleTieHoldCancel}
                         onTouchStart={handleTieHoldStart}
                         onTouchEnd={handleTieHoldEnd}
+                        onTouchMove={handleTieHoldCancel}
                         onTouchCancel={handleTieHoldCancel}>
                         {formatTime(tieTimer.timeLeft)}
                       </div>
@@ -316,6 +321,7 @@ export function VotingPanel() {
                       onMouseLeave={handleLastSpeechHoldCancel}
                       onTouchStart={handleLastSpeechHoldStart}
                       onTouchEnd={handleLastSpeechHoldEnd}
+                      onTouchMove={handleLastSpeechHoldCancel}
                       onTouchCancel={handleLastSpeechHoldCancel}>
                       {formatTime(lastSpeechTimer.timeLeft)}
                     </div>
