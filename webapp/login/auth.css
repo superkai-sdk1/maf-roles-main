@@ -15,8 +15,8 @@
     align-items: center;
     justify-content: center;
     background: #0c0a1e;
-    backdrop-filter: blur(40px) saturate(180%);
-    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     animation: authFadeIn 0.4s cubic-bezier(0.23, 1, 0.32, 1);
     padding: 16px;
 }
@@ -40,8 +40,8 @@
     width: 100%;
     max-width: 380px;
     background: rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(24px) saturate(140%);
-    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 24px;
     padding: 40px 28px 32px;

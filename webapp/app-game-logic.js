@@ -1327,13 +1327,44 @@ Object.assign(window.app.methods, {
     },
 
     // Generic hold start for day actions
-    startDayHold(roleKey, type) {
+    startDayHold(roleKey, type, event) {
         this._dayHoldTarget = roleKey;
         this._dayHoldType = type;
         this.dayHoldActive = true;
         this._dayHoldTimestamp = Date.now();
+        // Запоминаем начальную позицию касания для определения свайпа
+        if (event && event.touches && event.touches.length > 0) {
+            this._dayHoldStartX = event.touches[0].clientX;
+            this._dayHoldStartY = event.touches[0].clientY;
+        } else if (event) {
+            this._dayHoldStartX = event.clientX;
+            this._dayHoldStartY = event.clientY;
+        } else {
+            this._dayHoldStartX = null;
+            this._dayHoldStartY = null;
+        }
+        this._dayHoldSwiped = false;
+
+        // Слушаем touchmove для определения свайпа
+        this._dayHoldMoveHandler = (e) => {
+            if (this._dayHoldStartX == null) return;
+            const touch = e.touches && e.touches.length > 0 ? e.touches[0] : e;
+            const dx = touch.clientX - this._dayHoldStartX;
+            const dy = touch.clientY - this._dayHoldStartY;
+            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                this._dayHoldSwiped = true;
+                // Отменяем удержание при свайпе
+                if (this._dayHoldTimer) {
+                    clearTimeout(this._dayHoldTimer);
+                    this._dayHoldTimer = null;
+                }
+                this.dayHoldActive = false;
+            }
+        };
+        document.addEventListener('touchmove', this._dayHoldMoveHandler, { passive: true });
+
         this._dayHoldTimer = setTimeout(() => {
-            if (this.dayHoldActive && this._dayHoldTarget === roleKey && this._dayHoldType === type) {
+            if (this.dayHoldActive && !this._dayHoldSwiped && this._dayHoldTarget === roleKey && this._dayHoldType === type) {
                 this.dayHoldActive = false;
                 this._executeDayHold(roleKey, type);
             }
@@ -1341,9 +1372,21 @@ Object.assign(window.app.methods, {
     },
 
     cancelDayHold() {
+        if (this._dayHoldMoveHandler) {
+            document.removeEventListener('touchmove', this._dayHoldMoveHandler);
+            this._dayHoldMoveHandler = null;
+        }
         if (this._dayHoldTimer) {
             clearTimeout(this._dayHoldTimer);
             this._dayHoldTimer = null;
+        }
+        // Если был свайп — не выполняем никакое действие
+        if (this._dayHoldSwiped) {
+            this.dayHoldActive = false;
+            this._dayHoldTarget = null;
+            this._dayHoldType = null;
+            this._dayHoldSwiped = false;
+            return;
         }
         if (this.dayHoldActive) {
             this.dayHoldActive = false;
@@ -1437,7 +1480,7 @@ Object.assign(window.app.methods, {
                     this.advanceFromDiscussion();
                 }
             }
-        }, 250);
+        }, 1000); // PERF: was 250ms
     },
 
     stopDiscussionTimer() {
@@ -1499,7 +1542,7 @@ Object.assign(window.app.methods, {
                     this.advanceFromFreeSeating();
                 }
             }
-        }, 250);
+        }, 1000); // PERF: was 250ms
     },
 
     stopFreeSeatingTimer() {
@@ -1553,11 +1596,6 @@ Object.assign(window.app.methods, {
         if (!this.nightMisses) this.nightMisses = {};
         this.$set(this.nightMisses, this.nightNumber, true);
 
-        // Trigger day transition sequence (skip Don/Sheriff if no kill)
-        this.nightPhase = 'done';
-        this.dayButtonBlink = true;
-        this.highlightedPlayer = null;
-
         // Clear any auto-close timers
         if (this.nightAutoCloseTimer) {
             clearTimeout(this.nightAutoCloseTimer);
@@ -1565,11 +1603,28 @@ Object.assign(window.app.methods, {
         }
 
         window.haptic && window.haptic.notification('warning');
-        this.saveRoomStateIncremental({
-            nightMisses: this.nightMisses,
-            nightPhase: 'done',
-            dayButtonBlink: true
-        });
+
+        // В турнирном режиме и режиме фанок проверки дона и шерифа должны происходить даже при промахе
+        if (this.tournamentId || this.funkyMode) {
+            // Начинаем ночную последовательность: Дон → Шериф → День (как при убийстве)
+            this.startNightSequence();
+            this.saveRoomStateIncremental({
+                nightMisses: this.nightMisses,
+                nightPhase: this.nightPhase,
+                dayButtonBlink: this.dayButtonBlink
+            });
+        } else {
+            // В обычном режиме — сразу переход ко дню (skip Don/Sheriff if no kill)
+            this.nightPhase = 'done';
+            this.dayButtonBlink = true;
+            this.highlightedPlayer = null;
+            this.saveRoomStateIncremental({
+                nightMisses: this.nightMisses,
+                nightPhase: 'done',
+                dayButtonBlink: true
+            });
+        }
+
         this.sendFullState();
         this.saveCurrentSession();
     },

@@ -50,10 +50,10 @@
     inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
     inset 0 0 20px 0 rgba(168, 85, 247, 0.03);
 
-  /* Blur Levels — Nexus Deep */
-  --blur-light: blur(16px) saturate(150%);
-  --blur-medium: blur(20px) saturate(160%);
-  --blur-heavy: blur(30px) saturate(180%);
+  /* Blur Levels — PERF: reduced radii and removed saturate for iOS GPU optimization */
+  --blur-light: blur(8px);
+  --blur-medium: blur(12px);
+  --blur-heavy: blur(16px);
 
   --input-bg: rgba(0, 0, 0, 0.35);
   --input-inner-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
@@ -123,13 +123,14 @@
 }
 
 @keyframes floatUp {
-  from { opacity: 0; transform: translateY(30px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  0% { opacity: 0; transform: translateY(24px) scale(0.97); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  0% { opacity: 0; transform: translateY(-6px) scale(0.99); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes fadeIn {
@@ -145,13 +146,11 @@
 @keyframes glassReveal {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.98);
-    filter: blur(4px);
+    transform: translateY(10px) scale(0.98);
   }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
-    filter: blur(0);
   }
 }
 
@@ -183,13 +182,10 @@ body::before {
   height: 100%;
   z-index: -1;
   background: var(--maf-gradient-bg, linear-gradient(135deg, #040410 0%, #0d0a2a 25%, #1a0f4a 50%, #0d0a2a 75%, #040410 100%));
-  background-size: 400% 400%;
-  animation: background-pan 25s ease infinite;
-  will-change: background-position;
-  transform: translateZ(0);
+  /* PERF: removed infinite background-pan animation — saves continuous GPU compositing */
 }
 
-/* Ambient light orb for depth */
+/* Ambient light orb for depth — static for performance */
 body::after {
   content: "";
   position: fixed;
@@ -201,7 +197,7 @@ body::after {
   background: radial-gradient(circle, rgba(168, 85, 247, 0.05) 0%, transparent 70%);
   z-index: -1;
   pointer-events: none;
-  animation: subtleFloat 12s ease-in-out infinite;
+  /* PERF: removed infinite subtleFloat animation */
 }
 
 /* ============================================= */
@@ -292,9 +288,7 @@ body::after {
 .player-row {
   display: flex;
   flex-direction: column;
-  background: var(--glass-layer-1);
-  backdrop-filter: var(--blur-light);
-  -webkit-backdrop-filter: var(--blur-light);
+  background: rgba(15, 12, 35, 0.85); /* PERF: replaced blur + glass-layer with opaque bg — 10 cards = 10 blur layers eliminated */
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-l);
   box-shadow: var(--glass-shadow-sm);
@@ -387,7 +381,7 @@ body::after {
   font-variant-numeric: tabular-nums;
   font-family: 'SF Mono', 'Cascadia Code', 'Roboto Mono', monospace;
   opacity: 0.7;
-  transition: all 0.3s var(--ease-smooth);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.3s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.2, 0, 0.2, 1), color 0.3s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.35s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
 .player-row.highlighted .player-num {
@@ -566,7 +560,20 @@ body::after {
   background: rgba(0, 0, 0, 0.3);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: inset 0 8px 16px -8px rgba(0, 0, 0, 0.4);
-  animation: slideDown 0.25s var(--ease-smooth);
+  animation: candidateExpand 0.4s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+@keyframes candidateExpand {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+    clip-path: inset(0 0 100% 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    clip-path: inset(0 0 0 0);
+  }
 }
 
 /* Timer — Nexus Glass Design */
@@ -576,8 +583,8 @@ body::after {
   align-items: center;
   margin-bottom: 16px;
   background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   padding: 24px 18px 18px;
   border-radius: 28px;
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -811,8 +818,13 @@ body::after {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   padding: 20px;
-  animation: fadeIn 0.25s ease;
+  animation: modalOverlayIn 0.35s cubic-bezier(0.25, 1, 0.5, 1) both;
   will-change: opacity;
+}
+
+@keyframes modalOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-content,
@@ -839,10 +851,16 @@ body::after {
   flex-direction: column;
   align-items: center;
   gap: 20px;
-  animation: floatUp 0.4s var(--ease-spring);
+  animation: modalContentIn 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.1) both;
   will-change: transform, opacity;
   transform: translate3d(0, 0, 0);
   position: relative;
+}
+
+@keyframes modalContentIn {
+  0% { opacity: 0; transform: translateY(20px) scale(0.95); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* Specular top shine on modals */
@@ -891,9 +909,9 @@ body::after {
   font-size: 1.05em;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s var(--ease-accordion);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.3s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.35s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.2, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   box-shadow: var(--glass-shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   display: inline-flex;
   align-items: center;
@@ -1004,8 +1022,8 @@ body::after {
   left: 50%;
   transform: translateX(-50%) translateZ(0);
   background: rgba(10, 8, 20, 0.75);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-pill);
   padding: var(--bottom-bar-padding);
@@ -1018,7 +1036,7 @@ body::after {
   z-index: 2100;
   width: auto;
   max-width: 90vw;
-  will-change: transform;
+  /* PERF: removed will-change: transform — not needed for static element */
 }
 
 .glass-item {
@@ -1029,7 +1047,7 @@ body::after {
   border-radius: var(--radius-pill);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s var(--ease-accordion);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.3s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.35s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   font-size: 1em;
   white-space: nowrap;
   position: relative;
@@ -1119,9 +1137,7 @@ input:focus, select:focus, .input-compact:focus {
 /* Card Style for Options */
 .game-option-card {
   flex: 1;
-  background: var(--glass-layer-1);
-  backdrop-filter: var(--blur-light);
-  -webkit-backdrop-filter: var(--blur-light);
+  background: rgba(15, 12, 35, 0.75); /* PERF: replaced blur with opaque bg */
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-m);
   padding: 12px 16px;
@@ -1331,7 +1347,7 @@ input:focus, select:focus, .input-compact:focus {
   background: var(--glass-layer-1);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-m);
-  transition: all 0.2s var(--ease-smooth);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   cursor: pointer;
   gap: 14px;
   box-sizing: border-box;
@@ -1455,7 +1471,10 @@ input:focus, select:focus, .input-compact:focus {
   background: var(--glass-layer-1);
   border: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
-  transition: all 0.15s var(--ease-smooth);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1),
+              background-color 0.3s cubic-bezier(0.2, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.2, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   width: 100%;
@@ -1539,7 +1558,10 @@ input:focus, select:focus, .input-compact:focus {
   background: var(--glass-layer-1);
   border: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
-  transition: all 0.15s var(--ease-smooth);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1),
+              background-color 0.3s cubic-bezier(0.2, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.2, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   width: 100%;
@@ -1675,8 +1697,7 @@ input:focus, select:focus, .input-compact:focus {
   flex-direction: column;
   align-items: center;
   background: var(--maf-gradient-bg, linear-gradient(135deg, #040410 0%, #0d0a2a 25%, #1a0f4a 50%, #0d0a2a 75%, #040410 100%));
-  background-size: 400% 400%;
-  animation: maf-bg-shift 30s ease infinite;
+  /* PERF: removed infinite maf-bg-shift animation */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: 0 0 calc(120px + env(safe-area-inset-bottom, 0)) 0;
@@ -1765,7 +1786,7 @@ input:focus, select:focus, .input-compact:focus {
   font-size: 0.95em;
   border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s var(--ease-smooth);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   font-family: inherit;
 }
 
@@ -1818,9 +1839,12 @@ input:focus, select:focus, .input-compact:focus {
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 20px;
   cursor: pointer;
-  transition: all 0.3s var(--ease-spring);
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1),
+              background-color 0.3s cubic-bezier(0.2, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.2, 0, 0.2, 1),
+              box-shadow 0.35s cubic-bezier(0.2, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   overflow: hidden;
 }
 
@@ -1928,7 +1952,7 @@ input:focus, select:focus, .input-compact:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s var(--ease-smooth);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   outline: none;
   z-index: 2;
   backdrop-filter: blur(8px);
@@ -1958,9 +1982,12 @@ input:focus, select:focus, .input-compact:focus {
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 20px;
   overflow: hidden;
-  transition: all 0.3s var(--ease-spring);
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1),
+              background-color 0.3s cubic-bezier(0.2, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.2, 0, 0.2, 1),
+              box-shadow 0.35s cubic-bezier(0.2, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .tournament-group-card::before {
@@ -2090,7 +2117,7 @@ input:focus, select:focus, .input-compact:focus {
   flex-shrink: 0;
   color: rgba(255, 255, 255, 0.35);
   font-size: 1.4em;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .tournament-group-chevron.expanded {
@@ -2102,7 +2129,7 @@ input:focus, select:focus, .input-compact:focus {
   z-index: 1;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(0, 0, 0, 0.2);
-  transition: all 0.3s var(--ease-smooth);
+  animation: candidateExpand 0.4s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 
 .tournament-games-list {
@@ -2118,7 +2145,7 @@ input:focus, select:focus, .input-compact:focus {
   padding: 10px 12px;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s var(--ease-smooth);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   gap: 10px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid transparent;
@@ -2246,7 +2273,7 @@ input:focus, select:focus, .input-compact:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s var(--ease-smooth);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   outline: none;
   letter-spacing: 0.3px;
   backdrop-filter: blur(8px);
@@ -2406,7 +2433,7 @@ input:focus, select:focus, .input-compact:focus {
   padding: 18px;
   border-radius: var(--radius-l);
   text-align: center;
-  transition: all 0.3s;
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.3s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   box-shadow: var(--glass-shadow-sm);
   position: relative;
   overflow: hidden;
@@ -2499,7 +2526,7 @@ input:focus, select:focus, .input-compact:focus {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s var(--ease-smooth);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   padding: 4px;
   position: relative;
   overflow: hidden;
@@ -2682,7 +2709,7 @@ input:focus, select:focus, .input-compact:focus {
 }
 
 .math-btn:active {
-  transform: scale(0.88);
+  transform: scale(0.90);
   background: var(--glass-layer-3);
 }
 
@@ -2708,10 +2735,14 @@ input:focus, select:focus, .input-compact:focus {
   background: var(--glass-layer-1);
   border: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
-  transition: all 0.15s var(--ease-smooth);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1),
+              background-color 0.3s cubic-bezier(0.2, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.2, 0, 0.2, 1),
+              box-shadow 0.35s cubic-bezier(0.2, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   touch-action: manipulation;
+  will-change: transform;
 }
 
 .winner-card::before {
@@ -2730,7 +2761,8 @@ input:focus, select:focus, .input-compact:focus {
 }
 
 .winner-card:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
+  transition-duration: 0.08s;
 }
 
 .winner-card.civilians {
@@ -2822,8 +2854,8 @@ input:focus, select:focus, .input-compact:focus {
   inset: 0;
   z-index: 2050;
   background: var(--maf-gradient-bg, linear-gradient(135deg, #040410 0%, #0d0a2a 25%, #1a0f4a 50%, #0d0a2a 75%, #040410 100%));
-  background-size: 400% 400%;
-  animation: fadeIn 0.25s ease, background-pan 25s ease infinite;
+  /* PERF: removed infinite background-pan, kept one-shot slideIn */
+  animation: fullscreenSlideIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) both;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2884,7 +2916,7 @@ input:focus, select:focus, .input-compact:focus {
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s var(--ease-smooth);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   min-width: 56px;
   white-space: nowrap;
 }
@@ -2922,6 +2954,7 @@ input:focus, select:focus, .input-compact:focus {
   min-height: 50vh;
   text-align: center;
   padding: 40px 20px;
+  animation: contentFadeIn 0.45s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 
 /* No-scroll voting screen */
@@ -3111,6 +3144,7 @@ input:focus, select:focus, .input-compact:focus {
   gap: 12px;
   width: 100%;
   max-width: 320px;
+  animation: contentFadeIn 0.45s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 
 .voting-tie-title {
@@ -3139,7 +3173,7 @@ input:focus, select:focus, .input-compact:focus {
   border-radius: 14px;
   background: var(--glass-layer-1);
   border: 2px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.25s;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
 .voting-player-card.card-active {
@@ -3204,6 +3238,7 @@ input:focus, select:focus, .input-compact:focus {
   gap: 16px;
   width: 100%;
   max-width: 320px;
+  animation: contentFadeIn 0.45s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 
 .voting-finish-title {
@@ -3323,7 +3358,7 @@ input:focus, select:focus, .input-compact:focus {
   cursor: pointer;
   font-weight: 600;
   font-size: 0.85em;
-  transition: all 0.2s;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   font-family: inherit;
 }
 
@@ -3547,7 +3582,7 @@ input:focus, select:focus, .input-compact:focus {
   border: 1px solid rgba(255, 255, 255, 0.08);
   font-weight: 700;
   font-size: 0.95em;
-  transition: all 0.2s;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
 .voting-header-candidate.active {
@@ -3721,20 +3756,30 @@ input:focus, select:focus, .input-compact:focus {
 }
 
 /* ============================================= */
-/*  Slide Fade Transition                        */
+/*  Slide Fade Transition (Vue)                  */
+/*  Native iOS-like expand/collapse feel         */
 /* ============================================= */
 
 .slide-fade-enter-active {
-  transition: all 0.3s var(--ease-smooth);
+  transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+              transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  will-change: opacity, transform;
 }
 
 .slide-fade-leave-active {
-  transition: all 0.2s var(--ease-smooth);
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 1, 1),
+              transform 0.25s cubic-bezier(0.4, 0, 1, 1);
+  will-change: opacity, transform;
 }
 
-.slide-fade-enter, .slide-fade-leave-to {
+.slide-fade-enter {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-6px) scale(0.98);
+}
+
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.99);
 }
 
 /* ============================================= */
@@ -3856,14 +3901,44 @@ input:focus, select:focus, .input-compact:focus {
   flex-direction: column;
   align-items: center;
   background: var(--maf-gradient-bg, linear-gradient(135deg, #040410 0%, #0d0a2a 25%, #1a0f4a 50%, #0d0a2a 75%, #040410 100%));
-  background-size: 400% 400%;
-  animation: fadeIn 0.25s ease, background-pan 25s ease infinite;
+  /* PERF: removed infinite background-pan, kept one-shot slideIn */
+  animation: fullscreenSlideIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) both;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   touch-action: pan-y;
   padding: env(safe-area-inset-top, 0) 0 calc(120px + env(safe-area-inset-bottom, 0px)) 0;
+}
+
+@keyframes fullscreenSlideIn {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes contentFadeIn {
+  0% { opacity: 0; transform: translateY(8px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes killedPhaseIn {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes alertCardIn {
+  0% { opacity: 0; transform: scale(0.92) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes bottomBarSlideIn {
+  0% { opacity: 0; transform: translateX(-50%) translateY(20px) translateZ(0); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) translateZ(0); }
+}
+
+@keyframes navBarSlideIn {
+  0% { opacity: 0; transform: translateX(-50%) translateY(30px) translateZ(0); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) translateZ(0); }
 }
 
 .fullscreen-page-container {
@@ -3905,7 +3980,7 @@ input:focus, select:focus, .input-compact:focus {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   font-size: 1em;
   flex-shrink: 0;
 }
@@ -3978,7 +4053,7 @@ input:focus, select:focus, .input-compact:focus {
   font-size: 1.05em;
   font-weight: 600;
   outline: none;
-  transition: all 0.2s;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
 .profile-field-input:focus {
@@ -4092,7 +4167,7 @@ input:focus, select:focus, .input-compact:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   overflow: hidden;
   touch-action: manipulation;
   font-family: 'Akrobat', sans-serif;
@@ -4154,8 +4229,8 @@ input:focus, select:focus, .input-compact:focus {
   left: 50%;
   transform: translateX(-50%) translateZ(0);
   background: rgba(15, 15, 15, 0.7);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 50px;
   padding: 6px 8px;
@@ -4167,6 +4242,8 @@ input:focus, select:focus, .input-compact:focus {
   width: auto;
   max-width: 92vw;
   height: 80px;
+  animation: navBarSlideIn 0.5s cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation-delay: 0.1s;
 }
 
 .game-nav-item {
@@ -4180,7 +4257,10 @@ input:focus, select:focus, .input-compact:focus {
   border: none;
   color: rgba(255, 255, 255, 0.4);
   cursor: pointer;
-  transition: all 0.2s var(--ease-smooth);
+  transition: color 0.3s cubic-bezier(0.25, 1, 0.5, 1),
+              transform 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+              background 0.3s cubic-bezier(0.25, 1, 0.5, 1),
+              box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   padding: 8px 4px;
   border-radius: 50px;
   min-width: 56px;
@@ -4190,7 +4270,8 @@ input:focus, select:focus, .input-compact:focus {
 
 .game-nav-item i {
   font-size: 24px;
-  transition: all 0.2s var(--ease-spring);
+  transition: color 0.3s cubic-bezier(0.25, 1, 0.5, 1),
+              transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .game-nav-item span {
@@ -4236,10 +4317,15 @@ input:focus, select:focus, .input-compact:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s var(--ease-spring);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1),
+              background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1),
+              border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1),
+              color 0.25s cubic-bezier(0.2, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   touch-action: manipulation;
   position: relative;
   overflow: hidden;
+  will-change: transform;
 }
 
 .bm-btn::before {
@@ -4288,7 +4374,7 @@ input:focus, select:focus, .input-compact:focus {
   color: #fff;
   font-family: inherit;
   touch-action: manipulation;
-  transition: all 0.2s;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   margin-top: 10px;
 }
 
@@ -4392,16 +4478,22 @@ input:focus, select:focus, .input-compact:focus {
   font-weight: 700;
   font-size: 0.8em;
   cursor: pointer;
-  transition: all 0.15s var(--ease-spring);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1),
+              background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1),
+              border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1),
+              color 0.25s cubic-bezier(0.2, 0, 0.2, 1),
+              box-shadow 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   touch-action: manipulation;
   font-family: inherit;
   white-space: nowrap;
   min-height: 34px;
   position: relative;
+  will-change: transform;
 }
 
 .day-foul-pill:active, .day-techfoul-pill:active {
-  transform: scale(0.88);
+  transform: scale(0.90);
+  transition-duration: 0.08s;
 }
 
 .pill-label {
@@ -4585,14 +4677,19 @@ input:focus, select:focus, .input-compact:focus {
   font-weight: 700;
   font-size: 0.9em;
   cursor: pointer;
-  transition: all 0.15s var(--ease-spring);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1),
+              background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1),
+              color 0.25s cubic-bezier(0.2, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   font-family: inherit;
   white-space: nowrap;
+  will-change: transform;
 }
 
 .night-kill-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.93);
   background: rgba(255, 69, 58, 0.3);
+  transition-duration: 0.08s;
 }
 
 .night-kill-btn.active {
@@ -4624,14 +4721,17 @@ input:focus, select:focus, .input-compact:focus {
   font-weight: 700;
   font-size: 1em;
   cursor: pointer;
-  transition: all 0.15s var(--ease-spring);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1),
+              background-color 0.2s cubic-bezier(0.2, 0, 0.2, 1);
   font-family: inherit;
   min-height: 44px;
   min-width: 44px;
+  will-change: transform;
 }
 .night-check-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.93);
   background: var(--glass-layer-3);
+  transition-duration: 0.08s;
 }
 .night-check-btn:disabled { opacity: 0.25; cursor: not-allowed; }
 
@@ -4641,7 +4741,7 @@ input:focus, select:focus, .input-compact:focus {
   border-radius: 16px;
   background: rgba(255, 69, 58, 0.08);
   border: 1px solid rgba(255, 69, 58, 0.2);
-  animation: fadeIn 0.3s ease;
+  animation: contentFadeIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 .night-check-result.positive {
   background: rgba(48, 209, 88, 0.1);
@@ -4667,7 +4767,7 @@ input:focus, select:focus, .input-compact:focus {
   color: rgba(255, 255, 255, 0.45);
   font-size: 1em;
   font-weight: 600;
-  animation: fadeIn 0.3s ease;
+  animation: contentFadeIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 .night-check-continue-btn {
   display: inline-block;
@@ -4679,7 +4779,8 @@ input:focus, select:focus, .input-compact:focus {
   font-size: 1em;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1),
+              background-color 0.2s cubic-bezier(0.2, 0, 0.2, 1);
 }
 .night-check-continue-btn:active {
   transform: scale(0.95);
@@ -4691,6 +4792,7 @@ input:focus, select:focus, .input-compact:focus {
 /* ============================================= */
 .killed-phase-section {
   padding: 4px 0;
+  animation: killedPhaseIn 0.35s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 .killed-done-phase {
   display: flex;
@@ -4714,6 +4816,7 @@ input:focus, select:focus, .input-compact:focus {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-top: 0;
+  animation: fullscreenSlideIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 
 .roles-distribution-overlay .players-list {
@@ -4749,7 +4852,7 @@ input:focus, select:focus, .input-compact:focus {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  transition: all 0.2s;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   overflow: hidden;
   touch-action: manipulation;
   font-family: inherit;
@@ -4838,7 +4941,7 @@ input:focus, select:focus, .input-compact:focus {
   font-weight: 700;
   font-size: 0.8em;
   cursor: pointer;
-  transition: all 0.15s var(--ease-spring);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   touch-action: manipulation;
   font-family: inherit;
   white-space: nowrap;
@@ -4847,7 +4950,7 @@ input:focus, select:focus, .input-compact:focus {
 }
 
 .day-foul-pill:active, .day-techfoul-pill:active {
-  transform: scale(0.88);
+  transform: scale(0.90);
 }
 
 /* Pill label and count */
@@ -4903,14 +5006,14 @@ input:focus, select:focus, .input-compact:focus {
   justify-content: center;
   font-size: 1.1em;
   cursor: pointer;
-  transition: all 0.15s var(--ease-spring);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   touch-action: manipulation;
   font-family: inherit;
   padding: 0;
 }
 
 .day-remove-btn:active {
-  transform: scale(0.88);
+  transform: scale(0.90);
   background: rgba(255, 69, 58, 0.2);
 }
 
@@ -4949,8 +5052,10 @@ input:focus, select:focus, .input-compact:focus {
   color: #fff;
   font-family: inherit;
   touch-action: manipulation;
-  transition: all 0.2s;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1),
+              background-color 0.2s cubic-bezier(0.2, 0, 0.2, 1);
   margin-top: 8px;
+  will-change: transform;
 }
 
 .protocol-hold-btn.accept {
@@ -4963,7 +5068,8 @@ input:focus, select:focus, .input-compact:focus {
 }
 
 .protocol-hold-btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
+  transition-duration: 0.08s;
 }
 
 .protocol-hold-progress {
@@ -5004,7 +5110,7 @@ input:focus, select:focus, .input-compact:focus {
   border: none;
   color: rgba(255, 255, 255, 0.4);
   cursor: pointer;
-  transition: all 0.2s var(--ease-smooth);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   padding: 8px 4px;
   border-radius: 50px;
   min-width: 56px;
@@ -5014,7 +5120,7 @@ input:focus, select:focus, .input-compact:focus {
 
 .nav-item i {
   font-size: 24px;
-  transition: all 0.2s var(--ease-spring);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   color: rgba(255, 255, 255, 0.4);
 }
 
@@ -5124,7 +5230,7 @@ input:focus, select:focus, .input-compact:focus {
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: var(--glass-layer-1);
   color: rgba(255, 255, 255, 0.3);
-  transition: all 0.3s var(--ease-smooth);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.3s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.2, 0, 0.2, 1), color 0.3s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.35s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
 .roles-summary-tag.valid {
@@ -5161,7 +5267,7 @@ input:focus, select:focus, .input-compact:focus {
   border-radius: var(--radius-l);
   box-shadow: var(--glass-shadow-sm);
   padding: 10px 14px;
-  transition: all 0.15s var(--ease-spring);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
@@ -5338,7 +5444,7 @@ input:focus, select:focus, .input-compact:focus {
   border-radius: var(--radius-l);
   box-shadow: var(--glass-shadow-sm);
   overflow: hidden;
-  transition: all 0.2s var(--ease-spring);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
 .score-card:active {
@@ -5361,14 +5467,14 @@ input:focus, select:focus, .input-compact:focus {
   justify-content: center;
   font-size: 1.1em;
   cursor: pointer;
-  transition: all 0.15s var(--ease-spring);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   touch-action: manipulation;
   font-family: inherit;
   padding: 0;
 }
 
 .day-return-btn:active {
-  transform: scale(0.88);
+  transform: scale(0.90);
   background: rgba(48, 209, 88, 0.2);
 }
 
@@ -5459,6 +5565,7 @@ input:focus, select:focus, .input-compact:focus {
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  animation: bottomBarSlideIn 0.5s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 
 /* Timer pill — standalone glass capsule */
@@ -5712,10 +5819,13 @@ input:focus, select:focus, .input-compact:focus {
   background: var(--glass-layer-1);
   border: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
-  transition: all 0.15s var(--ease-smooth);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1),
+              background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   touch-action: manipulation;
+  will-change: transform;
 }
 
 .ng-card::before {
@@ -5729,7 +5839,7 @@ input:focus, select:focus, .input-compact:focus {
 }
 
 .ng-card:hover { background: var(--glass-layer-2); transform: translateY(-1px); }
-.ng-card:active { transform: scale(0.98); }
+.ng-card:active { transform: scale(0.97); transition-duration: 0.08s; }
 
 .ng-card-icon {
   width: 44px;
@@ -5913,7 +6023,7 @@ input:focus, select:focus, .input-compact:focus {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: all 0.2s;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   position: relative;
   min-height: 48px;
   overflow: visible;
@@ -6094,7 +6204,7 @@ input:focus, select:focus, .input-compact:focus {
   cursor: pointer;
   flex-shrink: 0;
   font-size: 1em;
-  transition: all 0.15s;
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), color 0.25s cubic-bezier(0.2, 0, 0.2, 1);
   outline: none;
 }
 
@@ -6675,7 +6785,7 @@ input:focus, select:focus, .input-compact:focus {
   font-size: 0.76em;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s var(--ease-smooth);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   white-space: nowrap;
   -webkit-user-select: none;
   user-select: none;
@@ -6773,7 +6883,7 @@ input:focus, select:focus, .input-compact:focus {
   background: var(--glass-layer-1);
   border: 1px solid rgba(255, 255, 255, 0.06);
   cursor: pointer;
-  transition: all 0.15s var(--ease-smooth);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   touch-action: manipulation;
@@ -6996,8 +7106,8 @@ input:focus, select:focus, .input-compact:focus {
   top: 0; left: 0; right: 0; bottom: 0;
   z-index: 2000;
   background: var(--maf-gradient-bg, linear-gradient(135deg, #040410 0%, #0d0a2a 25%, #1a0f4a 50%, #0d0a2a 75%, #040410 100%));
-  background-size: 400% 400%;
-  animation: background-pan 25s ease infinite;
+  /* PERF: removed infinite background-pan */
+  animation: fullscreenSlideIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) both;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -7220,7 +7330,7 @@ input:focus, select:focus, .input-compact:focus {
 .selection-card,
 .mode-btn,
 .vh-card {
-  transition: all 0.3s var(--ease-accordion);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.3s cubic-bezier(0.2, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.35s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
 /* ============================================= */
@@ -7234,22 +7344,21 @@ input:focus, select:focus, .input-compact:focus {
 .best-move-modal-content,
 .theme-modal-content {
   background: rgba(15, 12, 30, 0.80);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .voting-fullscreen-page {
   background: var(--maf-gradient-bg, linear-gradient(135deg, #040410 0%, #0d0a2a 25%, #1a0f4a 50%, #0d0a2a 75%, #040410 100%));
-  background-size: 400% 400%;
 }
 
 /* Score card glass override */
 .score-card {
   background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
 }
@@ -7567,6 +7676,7 @@ input:focus, select:focus, .input-compact:focus {
   max-width: 340px;
   width: 100%;
   text-align: center;
+  animation: alertCardIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1) both;
 }
 .no-voting-alert-icon {
   font-size: 44px;
@@ -7617,13 +7727,31 @@ input:focus, select:focus, .input-compact:focus {
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
-/* Fade transition for alert */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.25s ease;
+/* Fade transition for alert overlays */
+.fade-enter-active {
+  transition: opacity 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.fade-leave-active {
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 1, 1);
 }
 .fade-enter, .fade-leave-to {
   opacity: 0;
 }
 
+/* ============================================= */
+/*  PERFORMANCE: Reduce motion for users who     */
+/*  prefer it + pause all animations when hidden */
+/* ============================================= */
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
+/* Pause all animations when tab is not visible (set via JS) */
+.page-hidden *, .page-hidden *::before, .page-hidden *::after {
+  animation-play-state: paused !important;
+}

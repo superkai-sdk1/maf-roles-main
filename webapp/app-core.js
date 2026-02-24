@@ -8,6 +8,30 @@ if (typeof Vue === 'undefined') {
     console.error('Vue.js не найден! Убедитесь, что Vue.js подключен перед app-core.js');
 }
 
+// =====================================================
+// PERF: Подавление console.log/warn в продакшене
+// Сотни emoji-логов вызывают серьёзные тормоза на мобильном Safari
+// Для включения логов: window.MAF_DEBUG = true в консоли + перезагрузка
+// =====================================================
+(function() {
+    // Сохраняем оригиналы для debug-режима
+    var _origLog = console.log;
+    var _origWarn = console.warn;
+
+    if (!window.MAF_DEBUG) {
+        console.log = function() {};
+        console.warn = function() {};
+    }
+    // console.error всегда оставляем для критических ошибок
+
+    // Функция включения логов из консоли
+    window.enableMafLogs = function() {
+        console.log = _origLog;
+        console.warn = _origWarn;
+        _origLog('🔧 Логирование включено');
+    };
+})();
+
 // Инициализация глобального объекта для хранения ссылок
 window.mafApp = window.mafApp || {};
 
@@ -34,25 +58,27 @@ window.addEventListener('unhandledrejection', (event) => {
     }
 });
 
-// Глобальный перехватчик fetch для отладки JSON ошибок
+// PERF: Global fetch interceptor REMOVED — was cloning every response (.clone() + .text())
+// which doubled memory usage for every network request.
+// To re-enable for debugging, set: window.MAF_DEBUG_FETCH = true
 const originalFetch = window.fetch;
 window.fetch = function(...args) {
-    const url = args[0];
-    console.log('🌐 Fetch запрос:', url);
-    
-    return originalFetch.apply(this, args).then(async response => {
-        const clonedResponse = response.clone();
-        try {
-            const text = await clonedResponse.text();
-            if (text.startsWith('<?') || text.includes('<html>')) {
-                console.warn('⚠️ Сервер вернул HTML/PHP вместо JSON для:', url);
-                console.warn('⚠️ Начало ответа:', text.substring(0, 200));
-            }
-        } catch (e) {
-            // Игнорируем ошибки проверки
-        }
-        return response;
-    });
+    if (window.MAF_DEBUG_FETCH) {
+        const url = args[0];
+        console.log('🌐 Fetch запрос:', url);
+        return originalFetch.apply(this, args).then(async response => {
+            const clonedResponse = response.clone();
+            try {
+                const text = await clonedResponse.text();
+                if (text.startsWith('<?') || text.includes('<html>')) {
+                    console.warn('⚠️ Сервер вернул HTML/PHP вместо JSON для:', url);
+                    console.warn('⚠️ Начало ответа:', text.substring(0, 200));
+                }
+            } catch (e) { /* ignore */ }
+            return response;
+        });
+    }
+    return originalFetch.apply(this, args);
 };
 
 // Проверяем, что все модули загружены
@@ -124,6 +150,21 @@ function finalizeApp() {
     
     // Дополнительная настройка приложения
     if (window.app) {
+        // PERF: Throttle $forceUpdate — called 20+ times in game-logic.js,
+        // each triggering full Vue re-render. Max once per 100ms.
+        (function() {
+            var _origForceUpdate = window.app.$forceUpdate.bind(window.app);
+            var _forceUpdatePending = false;
+            window.app.$forceUpdate = function() {
+                if (_forceUpdatePending) return;
+                _forceUpdatePending = true;
+                requestAnimationFrame(function() {
+                    _forceUpdatePending = false;
+                    _origForceUpdate();
+                });
+            };
+        })();
+
         // Добавляем глобальные обработчики ошибок
         window.app.$on('error', (error) => {
             console.error('Vue Error:', error);
@@ -185,12 +226,8 @@ function finalizeApp() {
             window.app.$watch(prop, function() { _debouncedSliderInit(); });
         });
 
-        // Periodic check for sliders (handles edge cases where watchers miss DOM changes)
-        setInterval(function() {
-            if (window.app && !window.app.showMainMenu) {
-                _debouncedSliderInit();
-            }
-        }, 500);
+        // PERF: Removed 500ms periodic slider polling — watchers above already handle changes.
+        // Previously: setInterval(_debouncedSliderInit, 500) ran forever causing unnecessary DOM checks.
 
         // Загружаем главное меню ПОСЛЕ привязки всех методов
         if (typeof window.app.loadMainMenu === 'function') {
@@ -260,3 +297,16 @@ console.log('📋 Доступные команды отладки:');
 console.log('  - window.mafApp.debug.checkModules() - проверка модулей');
 console.log('  - window.mafApp.debug.logAppState() - состояние приложения');
 console.log('  - window.mafApp.instance - экземпляр Vue');
+
+// =====================================================
+// PERF: Pause all CSS animations when page is hidden
+// Prevents GPU work when the user is not looking at the app
+// =====================================================
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        document.body.classList.add('page-hidden');
+    } else {
+        document.body.classList.remove('page-hidden');
+    }
+});
+

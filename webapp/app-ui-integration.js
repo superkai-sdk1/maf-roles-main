@@ -41,6 +41,11 @@ Object.assign(window.app.methods, {
             progress.style.transition = 'none';
             el.classList.remove('slider-pulse-glow');
             try { if (window.haptic) window.haptic.impact('light'); } catch(ex) {}
+            // PERF: Attach window listeners only during drag (not permanently)
+            window.addEventListener('mousemove', onDrag);
+            window.addEventListener('touchmove', onDrag, { passive: false });
+            window.addEventListener('mouseup', endDrag);
+            window.addEventListener('touchend', endDrag);
         };
 
         const onDrag = (e) => {
@@ -60,6 +65,11 @@ Object.assign(window.app.methods, {
         const endDrag = () => {
             if (!state.isDragging) return;
             state.isDragging = false;
+            // PERF: Remove window listeners immediately after drag ends
+            window.removeEventListener('mousemove', onDrag);
+            window.removeEventListener('touchmove', onDrag);
+            window.removeEventListener('mouseup', endDrag);
+            window.removeEventListener('touchend', endDrag);
             const maxDelta = getMaxDelta();
             if (maxDelta <= 0) return;
             const matrix = new WebKitCSSMatrix(getComputedStyle(thumb).transform);
@@ -97,13 +107,13 @@ Object.assign(window.app.methods, {
 
         thumb.addEventListener('mousedown', startDrag);
         thumb.addEventListener('touchstart', startDrag, { passive: true });
-        window.addEventListener('mousemove', onDrag);
-        window.addEventListener('touchmove', onDrag, { passive: false });
-        window.addEventListener('mouseup', endDrag);
-        window.addEventListener('touchend', endDrag);
+        // PERF: window listeners are now attached/removed dynamically during drag
 
         // Store cleanup reference
         state._cleanup = () => {
+            thumb.removeEventListener('mousedown', startDrag);
+            thumb.removeEventListener('touchstart', startDrag);
+            // Also clean up any leftover window listeners
             window.removeEventListener('mousemove', onDrag);
             window.removeEventListener('touchmove', onDrag);
             window.removeEventListener('mouseup', endDrag);
@@ -890,13 +900,13 @@ Object.assign(window.app.methods, {
     
     // Отправка полного состояния приложения
     sendFullState() {
-        // Дебаунсинг: отправляем полное состояние не чаще чем раз в 100мс
+        // PERF: Дебаунсинг увеличен с 100мс до 300мс — уменьшает нагрузку WebSocket
         if (this.sendFullStateTimer) {
             clearTimeout(this.sendFullStateTimer);
         }
         this.sendFullStateTimer = setTimeout(() => {
             this._sendFullStateNow();
-        }, 100);
+        }, 300);
     },
     
     _sendFullStateNow() {

@@ -106,7 +106,7 @@ async function loadAvatarsFromDB() {
     const fetch = require('node-fetch');
     try {
         // Получить всех игроков с аватарами
-        const res = await fetch('http://localhost:31006/api/players-get.php?za&playerLogin[]=%25');
+        const res = await fetch('http://localhost/api/players-get.php?za&playerLogin[]=%25');
         const players = await res.json();
         for (const p of players) {
             let login = null;
@@ -128,7 +128,7 @@ async function saveAvatarToDB(login, avatar) {
     const fetch = require('node-fetch');
     try {
         const player = { login, avatar };
-        await fetch('http://localhost:31006/api/players-add.php?za', {
+        await fetch('http://localhost/api/players-add.php?za', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `player[]=${encodeURIComponent(JSON.stringify(player))}`

@@ -1214,7 +1214,7 @@ window.votingMixin = {    data() {
                     }
                     if (remaining <= 0) this.stopVotingTieTimer();
                 }
-            }, 250);
+            }, 1000); // PERF: was 250ms
         },
 
         startVotingTieTimerWithTime(seconds) {
@@ -1234,7 +1234,7 @@ window.votingMixin = {    data() {
                     }
                     if (remaining <= 0) this.stopVotingTieTimer();
                 }
-            }, 250);
+            }, 1000); // PERF: was 250ms
         },
 
         addVotingTieTimerTime(seconds) {
@@ -1320,7 +1320,7 @@ window.votingMixin = {    data() {
                     }
                     if (remaining <= 0) this.stopVotingLastSpeechTimer();
                 }
-            }, 250);
+            }, 1000); // PERF: was 250ms
         },
 
         startVotingLastSpeechTimerWithTime(seconds) {
@@ -1340,7 +1340,7 @@ window.votingMixin = {    data() {
                     }
                     if (remaining <= 0) this.stopVotingLastSpeechTimer();
                 }
-            }, 250);
+            }, 1000); // PERF: was 250ms
         },
 
         addVotingLastSpeechTimerTime(seconds) {

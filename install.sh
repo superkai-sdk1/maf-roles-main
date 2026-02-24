@@ -1,154 +1,273 @@
 #!/bin/bash
 
 # ==============================================================================
-# СКРИПТ УСТАНОВКИ MafBoard (v13)
-# Включает: Nginx, PHP + MySQL, Node.js (через NVM), PM2, Certbot (SSL),
-#            Telegram-бот авторизации, база данных, автоматическая миграция,
-#            админ-панель, режим Городская мафия
+# MafBoard v2 — Production Installation Script for Ubuntu
+# v2.0: webapp-v2 (React/Vite) + PHP API + WebSocket + Telegram Bot + SSL
+#
+# Components:
+#   - Nginx (reverse proxy + static files)
+#   - PHP 8.2-FPM + MySQL 8 (API backend)
+#   - Node.js 20 (WebSocket server + Telegram auth bot)
+#   - PM2 (process manager)
+#   - Certbot (Let's Encrypt SSL)
+#   - Vite build (React SPA)
+#
+# Usage:
+#   sudo bash install.sh              — full installation
+#   sudo bash install.sh --update     — update from Git
 # ==============================================================================
 
 set -e
 
-# --- Цвета ---
+# --- Colors ---
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+BOLD='\033[1m'
+NC='\033[0m'
 
-# --- Переменные по умолчанию ---
-PROJECT_SOURCE_DIR=$(pwd)
-FRONTEND_DIR_NAME="webapp"
-BACKEND_DIR_NAME="websocket"
-BOT_DIR_NAME="webapp/login"
-BACKEND_SCRIPT_NAME="ws.js"
+log_info()    { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
+log_step()    { echo -e "\n${CYAN}${BOLD}--- $1 ---${NC}"; }
+
+# --- Constants ---
+PROJECT_SOURCE_DIR=$(cd "$(dirname "$0")" && pwd)
+NODE_VERSION="20"
+PHP_VERSION="8.2"
 BACKEND_PORT="8081"
 BACKEND_SERVICE_NAME="mafboard-websocket"
 BOT_SERVICE_NAME="mafboard-auth-bot"
-NODE_VERSION="20"
-PHP_VERSION="8.2"
-
-# --- Проверяем, что скрипт запущен с правами sudo ---
-if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}Ошибка: Пожалуйста, запустите этот скрипт с правами sudo: sudo bash install.sh${NC}"
-    exit 1
-fi
+CONFIG_FILE="/etc/mafboard/config.env"
 
 # ==============================================================================
-# ИНТЕРАКТИВНЫЙ ВВОД ПАРАМЕТРОВ
+# UPDATE MODE
 # ==============================================================================
-echo -e "${CYAN}============================================================${NC}"
-echo -e "${CYAN}       MafBoard — Установка                                ${NC}"
-echo -e "${CYAN}============================================================${NC}"
-echo ""
+if [ "$1" = "--update" ]; then
+    echo -e "${CYAN}============================================================${NC}"
+    echo -e "${CYAN}       MafBoard — Update from Git                           ${NC}"
+    echo -e "${CYAN}============================================================${NC}"
+    echo ""
 
-# Домен
-read -p "Введите доменное имя (например: titanmafia.pro): " DOMAIN
-if [ -z "$DOMAIN" ]; then
-    echo -e "${RED}Ошибка: Домен не может быть пустым.${NC}"
-    exit 1
-fi
+    if [ "$EUID" -ne 0 ]; then
+        log_error "Run with sudo: sudo bash install.sh --update"
+        exit 1
+    fi
 
-# MySQL
-echo ""
-echo -e "${YELLOW}--- Настройка MySQL ---${NC}"
-read -p "Имя базы данных [webrarium_mafia]: " DB_NAME
-DB_NAME=${DB_NAME:-webrarium_mafia}
+    if [ ! -f "$CONFIG_FILE" ]; then
+        log_error "Config not found at $CONFIG_FILE"
+        log_error "Run a full installation first: sudo bash install.sh"
+        exit 1
+    fi
 
-read -p "Имя пользователя MySQL [maf_user]: " DB_USER
-DB_USER=${DB_USER:-maf_user}
+    source "$CONFIG_FILE"
 
-read -s -p "Пароль пользователя MySQL: " DB_PASS
-echo ""
-if [ -z "$DB_PASS" ]; then
-    DB_PASS=$(openssl rand -base64 16)
-    echo -e "${YELLOW}Сгенерирован случайный пароль: ${DB_PASS}${NC}"
-fi
+    if [ -z "$DOMAIN" ] || [ -z "$PROJECT_DEST_DIR" ]; then
+        log_error "Invalid config. DOMAIN or PROJECT_DEST_DIR is empty."
+        exit 1
+    fi
 
-read -p "Порт MySQL [3306]: " DB_PORT
-DB_PORT=${DB_PORT:-3306}
+    log_info "Updating MafBoard for domain: ${GREEN}$DOMAIN${NC}"
+    log_info "Project directory: ${GREEN}$PROJECT_DEST_DIR${NC}"
 
-# Telegram бот
-echo ""
-echo -e "${YELLOW}--- Настройка Telegram бота ---${NC}"
-read -p "Токен Telegram бота (от @BotFather): " BOT_TOKEN
-if [ -z "$BOT_TOKEN" ]; then
-    echo -e "${RED}Ошибка: Токен бота обязателен.${NC}"
-    exit 1
-fi
+    # Load NVM
+    export NVM_DIR="/root/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
-read -p "Username бота без @ (например: maf_roles_auth_bot): " BOT_USERNAME
-if [ -z "$BOT_USERNAME" ]; then
-    echo -e "${RED}Ошибка: Username бота обязателен.${NC}"
-    exit 1
-fi
+    # Pull latest code
+    log_step "Step 1/5: Pulling latest code from Git"
+    if [ -d "$PROJECT_DEST_DIR/.git" ]; then
+        cd "$PROJECT_DEST_DIR"
+        git fetch origin
+        git reset --hard origin/main 2>/dev/null || git reset --hard origin/master
+        log_info "Git pull complete"
+    else
+        log_warn "Not a git repo, syncing from source directory..."
+        rsync -av --exclude='.git' --exclude='node_modules' --exclude='dist' \
+              --exclude='webapp-v2/node_modules' --exclude='webapp-v2/dist' \
+              "$PROJECT_SOURCE_DIR/" "$PROJECT_DEST_DIR/"
+    fi
 
-# Админ-панель
-echo ""
-echo -e "${YELLOW}--- Настройка админ-панели ---${NC}"
-read -p "Telegram ID администратора (узнать у @userinfobot): " ADMIN_TELEGRAM_ID
-if [ -z "$ADMIN_TELEGRAM_ID" ]; then
-    echo -e "${YELLOW}Предупреждение: Админ-панель будет недоступна до настройки admin-config.php${NC}"
-    ADMIN_TELEGRAM_ID="0"
-fi
+    # Install Node.js dependencies
+    log_step "Step 2/5: Updating Node.js dependencies"
+    cd "$PROJECT_DEST_DIR/websocket"
+    npm install --production
+    cd "$PROJECT_DEST_DIR/webapp/login"
+    npm install --production
 
-# Итог
-PROJECT_DEST_DIR="/var/www/$DOMAIN"
-LETSENCRYPT_EMAIL="admin@$DOMAIN"
+    # Rebuild webapp-v2
+    log_step "Step 3/5: Building webapp-v2"
+    cd "$PROJECT_DEST_DIR/webapp-v2"
+    npm install
+    npm run build
+    log_info "Build complete: $PROJECT_DEST_DIR/webapp-v2/dist/"
 
-echo ""
-echo -e "${CYAN}============================================================${NC}"
-echo -e "Домен:           ${GREEN}$DOMAIN${NC}"
-echo -e "Путь установки:  ${GREEN}$PROJECT_DEST_DIR${NC}"
-echo -e "БД:              ${GREEN}$DB_NAME${NC} (пользователь: ${GREEN}$DB_USER${NC})"
-echo -e "Telegram бот:    ${GREEN}@$BOT_USERNAME${NC}"
-echo -e "Админ ID:        ${GREEN}$ADMIN_TELEGRAM_ID${NC}"
-echo -e "${CYAN}============================================================${NC}"
-read -p "Всё верно? Начать установку? (y/n): " CONFIRM
-if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
-    echo "Установка отменена."
+    # Fix permissions
+    log_step "Step 4/5: Fixing permissions"
+    chown -R www-data:www-data "$PROJECT_DEST_DIR"
+    chmod -R 755 "$PROJECT_DEST_DIR"
+    chmod -R 775 "$PROJECT_DEST_DIR/websocket"
+
+    # Restart services
+    log_step "Step 5/5: Restarting services"
+    . "$NVM_DIR/nvm.sh"
+    pm2 restart "$BACKEND_SERVICE_NAME" 2>/dev/null || log_warn "WebSocket service not found"
+    pm2 restart "$BOT_SERVICE_NAME" 2>/dev/null || log_warn "Bot service not found"
+    systemctl reload nginx
+
+    echo ""
+    echo -e "${CYAN}============================================================${NC}"
+    echo -e "${GREEN}       UPDATE COMPLETE!${NC}"
+    echo -e "${CYAN}============================================================${NC}"
+    echo -e "  Site: ${GREEN}https://$DOMAIN${NC}"
+    echo ""
+    pm2 status
     exit 0
 fi
 
 # ==============================================================================
-# ШАГ 1: Установка системных зависимостей
+# FULL INSTALLATION
 # ==============================================================================
+
+if [ "$EUID" -ne 0 ]; then
+    log_error "Run with sudo: sudo bash install.sh"
+    exit 1
+fi
+
+echo -e "${CYAN}============================================================${NC}"
+echo -e "${CYAN}       MafBoard v2 — Full Installation                      ${NC}"
+echo -e "${CYAN}============================================================${NC}"
 echo ""
-echo -e "${GREEN}--- Шаг 1/8: Установка системных зависимостей ---${NC}"
-apt-get update
-apt-get install -y curl software-properties-common
-add-apt-repository -y ppa:ondrej/php
-apt-get update
+echo -e "  This script will install and configure:"
+echo -e "    ${BOLD}1.${NC} Nginx + SSL (Let's Encrypt)"
+echo -e "    ${BOLD}2.${NC} PHP ${PHP_VERSION}-FPM + MySQL 8"
+echo -e "    ${BOLD}3.${NC} Node.js ${NODE_VERSION} (NVM) + PM2"
+echo -e "    ${BOLD}4.${NC} WebSocket server"
+echo -e "    ${BOLD}5.${NC} Telegram authentication bot"
+echo -e "    ${BOLD}6.${NC} Build React app (Vite)"
+echo ""
+
+# ==============================================================================
+# INTERACTIVE INPUT
+# ==============================================================================
+
+# --- Domain ---
+echo -e "${YELLOW}${BOLD}=== Domain Configuration ===${NC}"
+read -p "Enter domain name (e.g. mafboard.example.com): " DOMAIN
+if [ -z "$DOMAIN" ]; then
+    log_error "Domain cannot be empty."
+    exit 1
+fi
+echo ""
+
+# --- Git Repository ---
+echo -e "${YELLOW}${BOLD}=== Git Repository ===${NC}"
+read -p "Git repository URL (leave empty to copy from current dir): " GIT_REPO_URL
+echo ""
+
+# --- MySQL ---
+echo -e "${YELLOW}${BOLD}=== MySQL Configuration ===${NC}"
+read -p "Database name [mafboard_db]: " DB_NAME
+DB_NAME=${DB_NAME:-mafboard_db}
+
+read -p "MySQL username [mafboard_user]: " DB_USER
+DB_USER=${DB_USER:-mafboard_user}
+
+read -s -p "MySQL password (leave empty to auto-generate): " DB_PASS
+echo ""
+if [ -z "$DB_PASS" ]; then
+    DB_PASS=$(openssl rand -base64 16 | tr -d '=/+' | head -c 20)
+    log_info "Generated password: ${YELLOW}$DB_PASS${NC}"
+fi
+
+DB_PORT="3306"
+echo ""
+
+# --- Telegram Bot ---
+echo -e "${YELLOW}${BOLD}=== Telegram Bot Configuration ===${NC}"
+echo -e "  Get bot token from ${CYAN}@BotFather${NC} in Telegram"
+echo -e "  Get your Telegram ID from ${CYAN}@userinfobot${NC}"
+echo ""
+
+read -p "Telegram Bot Token: " BOT_TOKEN
+if [ -z "$BOT_TOKEN" ]; then
+    log_error "Bot token is required."
+    exit 1
+fi
+
+read -p "Bot username without @ (e.g. mafboard_bot): " BOT_USERNAME
+if [ -z "$BOT_USERNAME" ]; then
+    log_error "Bot username is required."
+    exit 1
+fi
+
+read -p "Admin Telegram ID: " ADMIN_TELEGRAM_ID
+ADMIN_TELEGRAM_ID=${ADMIN_TELEGRAM_ID:-0}
+echo ""
+
+# --- SSL Email ---
+read -p "Email for SSL certificate [$DOMAIN admin]: " LETSENCRYPT_EMAIL
+LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL:-admin@$DOMAIN}
+echo ""
+
+# --- Computed variables ---
+PROJECT_DEST_DIR="/var/www/$DOMAIN"
+
+# --- Confirmation ---
+echo -e "${CYAN}============================================================${NC}"
+echo -e "  Domain:          ${GREEN}$DOMAIN${NC}"
+echo -e "  Install path:    ${GREEN}$PROJECT_DEST_DIR${NC}"
+echo -e "  Git repo:        ${GREEN}${GIT_REPO_URL:-local copy}${NC}"
+echo -e "  Database:        ${GREEN}$DB_NAME${NC} (user: ${GREEN}$DB_USER${NC})"
+echo -e "  Bot:             ${GREEN}@$BOT_USERNAME${NC}"
+echo -e "  Admin TG ID:     ${GREEN}$ADMIN_TELEGRAM_ID${NC}"
+echo -e "  SSL email:       ${GREEN}$LETSENCRYPT_EMAIL${NC}"
+echo -e "${CYAN}============================================================${NC}"
+read -p "Everything correct? Start installation? (y/n): " CONFIRM
+if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
+    echo "Installation cancelled."
+    exit 0
+fi
+
+# ==============================================================================
+# STEP 1: System Dependencies
+# ==============================================================================
+log_step "Step 1/10: Installing system dependencies"
+
+apt-get update -qq
+apt-get install -y curl wget gnupg2 software-properties-common git rsync unzip
+
+# PHP repository
+add-apt-repository -y ppa:ondrej/php 2>/dev/null || true
+apt-get update -qq
+
 apt-get install -y \
     nginx \
-    python3-certbot-nginx \
+    certbot python3-certbot-nginx \
     "php${PHP_VERSION}-fpm" \
     "php${PHP_VERSION}-mysql" \
     "php${PHP_VERSION}-curl" \
-    mysql-server
+    "php${PHP_VERSION}-mbstring" \
+    "php${PHP_VERSION}-xml" \
+    mysql-server \
+    ufw
 
-# Убедимся что MySQL запущен
-systemctl enable mysql
-systemctl start mysql
+systemctl enable nginx mysql "php${PHP_VERSION}-fpm"
+systemctl start nginx mysql "php${PHP_VERSION}-fpm"
 
-# Убедимся что PHP-FPM запущен
-systemctl enable "php${PHP_VERSION}-fpm"
-systemctl start "php${PHP_VERSION}-fpm"
+log_info "System dependencies installed"
 
 # ==============================================================================
-# ШАГ 2: Настройка MySQL — БД, пользователь, таблицы
+# STEP 2: MySQL Setup
 # ==============================================================================
-echo ""
-echo -e "${GREEN}--- Шаг 2/8: Настройка MySQL ---${NC}"
+log_step "Step 2/10: Configuring MySQL"
 
-# Создаём базу данных и пользователя
 mysql -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';"
 mysql -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';"
 mysql -e "FLUSH PRIVILEGES;"
-echo -e "${GREEN}База данных '${DB_NAME}' и пользователь '${DB_USER}' созданы.${NC}"
 
-# Создаём таблицы
 mysql "$DB_NAME" -e "
 CREATE TABLE IF NOT EXISTS \`players\` (
   \`id\` int(11) NOT NULL AUTO_INCREMENT,
@@ -186,51 +305,91 @@ CREATE TABLE IF NOT EXISTS \`auth_codes\` (
   KEY \`expires_at\` (\`expires_at\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 "
-echo -e "${GREEN}Таблицы БД созданы.${NC}"
+
+log_info "Database '${DB_NAME}' and tables created"
 
 # ==============================================================================
-# ШАГ 3: Копирование файлов проекта
+# STEP 3: Node.js via NVM
 # ==============================================================================
-echo ""
-echo -e "${GREEN}--- Шаг 3/8: Копирование файлов проекта ---${NC}"
+log_step "Step 3/10: Installing Node.js v${NODE_VERSION}"
+
+export NVM_DIR="/root/.nvm"
+if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+    mkdir -p "$NVM_DIR"
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+fi
+. "$NVM_DIR/nvm.sh"
+
+nvm install "$NODE_VERSION"
+nvm use "$NODE_VERSION"
+nvm alias default "$NODE_VERSION"
+
+NODE_PATH=$(which node)
+NPM_PATH=$(which npm)
+log_info "Node.js: $($NODE_PATH --version) at $NODE_PATH"
+
+# Install PM2 globally
+npm install pm2 -g
+log_info "PM2 installed"
+
+# ==============================================================================
+# STEP 4: Copy Project Files
+# ==============================================================================
+log_step "Step 4/10: Deploying project files"
+
 mkdir -p "$PROJECT_DEST_DIR"
-rsync -av --exclude='.git' --exclude='node_modules' "$PROJECT_SOURCE_DIR/" "$PROJECT_DEST_DIR/"
+
+if [ -n "$GIT_REPO_URL" ]; then
+    if [ -d "$PROJECT_DEST_DIR/.git" ]; then
+        cd "$PROJECT_DEST_DIR"
+        git pull origin main 2>/dev/null || git pull origin master
+    else
+        rm -rf "$PROJECT_DEST_DIR"
+        git clone "$GIT_REPO_URL" "$PROJECT_DEST_DIR"
+    fi
+else
+    rsync -av --exclude='.git' --exclude='node_modules' --exclude='webapp-v2/node_modules' \
+          --exclude='webapp-v2/dist' --exclude='*.log' \
+          "$PROJECT_SOURCE_DIR/" "$PROJECT_DEST_DIR/"
+fi
+
+log_info "Project files deployed to $PROJECT_DEST_DIR"
 
 # ==============================================================================
-# ШАГ 4: Настройка конфигурационных файлов
+# STEP 5: Configure PHP Backend
 # ==============================================================================
-echo ""
-echo -e "${GREEN}--- Шаг 4/8: Настройка конфигурации ---${NC}"
+log_step "Step 5/10: Configuring PHP backend"
 
-# --- db.php ---
-cat > "$PROJECT_DEST_DIR/$FRONTEND_DIR_NAME/api/db.php" <<PHPEOF
+# db.php
+cat > "$PROJECT_DEST_DIR/webapp/api/db.php" <<'PHPEOF'
 <?php
 
 require  'medoo.php';
 use Medoo\Medoo;
 
-\$database = new Medoo(array(
+$database = new Medoo(array(
 	'database_type' => 'mysql',
-	'database_name' => '${DB_NAME}',
+	'database_name' => 'DB_NAME_PLACEHOLDER',
 	'server' => 'localhost',
-	'username' => '${DB_USER}',
-	'password' => '${DB_PASS}',
+	'username' => 'DB_USER_PLACEHOLDER',
+	'password' => 'DB_PASS_PLACEHOLDER',
 	'charset' => 'utf8',
-	'port' => ${DB_PORT},
+	'port' => DB_PORT_PLACEHOLDER,
 	'prefix' => '',
 	'error' => PDO::ERRMODE_EXCEPTION,
 ));
 
-\$TABLE_PLAYERS = 'players';
+$TABLE_PLAYERS = 'players';
 PHPEOF
 
-# --- auth-config.php ---
-cat > "$PROJECT_DEST_DIR/$FRONTEND_DIR_NAME/login/auth-config.php" <<AUTHEOF
-<?php
-// =====================================================
-// Auth Configuration
-// =====================================================
+sed -i "s|DB_NAME_PLACEHOLDER|${DB_NAME}|g" "$PROJECT_DEST_DIR/webapp/api/db.php"
+sed -i "s|DB_USER_PLACEHOLDER|${DB_USER}|g" "$PROJECT_DEST_DIR/webapp/api/db.php"
+sed -i "s|DB_PASS_PLACEHOLDER|${DB_PASS}|g" "$PROJECT_DEST_DIR/webapp/api/db.php"
+sed -i "s|DB_PORT_PLACEHOLDER|${DB_PORT}|g" "$PROJECT_DEST_DIR/webapp/api/db.php"
 
+# auth-config.php
+cat > "$PROJECT_DEST_DIR/webapp/login/auth-config.php" <<AUTHEOF
+<?php
 define('BOT_TOKEN', '${BOT_TOKEN}');
 define('BOT_USERNAME', '${BOT_USERNAME}');
 define('SESSION_TTL_DAYS', 30);
@@ -238,120 +397,198 @@ define('CODE_TTL_SECONDS', 300);
 define('CODE_POLL_INTERVAL_MS', 2500);
 AUTHEOF
 
-# --- bot.js: подставляем URL и токен ---
-sed -i "s|const BOT_TOKEN = process.env.BOT_TOKEN || '.*';|const BOT_TOKEN = process.env.BOT_TOKEN || '${BOT_TOKEN}';|g" \
-    "$PROJECT_DEST_DIR/$FRONTEND_DIR_NAME/login/bot.js"
-sed -i "s|const CONFIRM_API_URL = process.env.CONFIRM_API_URL || '.*';|const CONFIRM_API_URL = process.env.CONFIRM_API_URL || 'https://${DOMAIN}/login/code-confirm.php';|g" \
-    "$PROJECT_DEST_DIR/$FRONTEND_DIR_NAME/login/bot.js"
-
-# --- admin-config.php ---
-cat > "$PROJECT_DEST_DIR/$FRONTEND_DIR_NAME/admin/api/admin-config.php" <<ADMINEOF
+# admin-config.php
+mkdir -p "$PROJECT_DEST_DIR/webapp/admin/api"
+cat > "$PROJECT_DEST_DIR/webapp/admin/api/admin-config.php" <<ADMINEOF
 <?php
-// =====================================================
-// Admin Configuration
-// Telegram ID пользователей с правами администратора
-// =====================================================
-
-// Добавьте сюда Telegram ID администраторов
-// Узнать свой ID можно у бота @userinfobot в Telegram
 define('ADMIN_TELEGRAM_IDS', [
     ${ADMIN_TELEGRAM_ID},
 ]);
-
-// Название панели
 define('ADMIN_PANEL_NAME', 'MafBoard Admin');
 ADMINEOF
 
-echo -e "${GREEN}Конфигурация настроена.${NC}"
+# bot.js — inject token and domain
+sed -i "s|const BOT_TOKEN = process.env.BOT_TOKEN || '.*';|const BOT_TOKEN = process.env.BOT_TOKEN || '${BOT_TOKEN}';|g" \
+    "$PROJECT_DEST_DIR/webapp/login/bot.js"
+sed -i "s|const CONFIRM_API_URL = process.env.CONFIRM_API_URL || '.*';|const CONFIRM_API_URL = process.env.CONFIRM_API_URL || 'https://${DOMAIN}/login/code-confirm.php';|g" \
+    "$PROJECT_DEST_DIR/webapp/login/bot.js"
 
-# --- Права на файлы ---
+log_info "PHP backend configured"
+
+# ==============================================================================
+# STEP 6: Install Node.js Dependencies
+# ==============================================================================
+log_step "Step 6/10: Installing Node.js dependencies"
+
+# WebSocket server
+cd "$PROJECT_DEST_DIR/websocket"
+npm install --production
+log_info "WebSocket dependencies installed"
+
+# Telegram auth bot
+cd "$PROJECT_DEST_DIR/webapp/login"
+npm install --production
+log_info "Auth bot dependencies installed"
+
+# webapp-v2
+cd "$PROJECT_DEST_DIR/webapp-v2"
+npm install
+log_info "webapp-v2 dependencies installed"
+
+# ==============================================================================
+# STEP 7: Build React App
+# ==============================================================================
+log_step "Step 7/10: Building webapp-v2 (React/Vite)"
+
+cd "$PROJECT_DEST_DIR/webapp-v2"
+npm run build
+
+if [ ! -f "$PROJECT_DEST_DIR/webapp-v2/dist/index.html" ]; then
+    log_error "Build failed — dist/index.html not found"
+    exit 1
+fi
+
+log_info "Build successful: $PROJECT_DEST_DIR/webapp-v2/dist/"
+
+# ==============================================================================
+# STEP 8: File Permissions
+# ==============================================================================
+log_step "Step 8/10: Setting file permissions"
+
 chown -R www-data:www-data "$PROJECT_DEST_DIR"
 chmod -R 755 "$PROJECT_DEST_DIR"
+chmod -R 775 "$PROJECT_DEST_DIR/websocket"
+
+# Create writable directories for WebSocket
+mkdir -p "$PROJECT_DEST_DIR/websocket/api"
+chown -R www-data:www-data "$PROJECT_DEST_DIR/websocket"
+
+log_info "Permissions set"
 
 # ==============================================================================
-# ШАГ 5: Установка Node.js
+# STEP 9: Nginx + SSL
 # ==============================================================================
-echo ""
-echo -e "${GREEN}--- Шаг 5/8: Установка Node.js v$NODE_VERSION ---${NC}"
-export NVM_DIR="/root/.nvm"
-if [ ! -s "$NVM_DIR/nvm.sh" ]; then
-    mkdir -p "$NVM_DIR"
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-fi
-. "$NVM_DIR/nvm.sh"
-nvm install $NODE_VERSION
-nvm use $NODE_VERSION
-NODE_PATH=$(which node)
-echo "Node.js: $NODE_PATH"
+log_step "Step 9/10: Configuring Nginx and SSL"
 
-# Установка зависимостей WebSocket сервера
-cd "$PROJECT_DEST_DIR/$BACKEND_DIR_NAME"
-npm install
-
-# Установка зависимостей Telegram бота
-cd "$PROJECT_DEST_DIR/$BOT_DIR_NAME"
-npm install
-
-cd "$PROJECT_DEST_DIR"
-
-# ==============================================================================
-# ШАГ 6: Настройка Nginx и SSL
-# ==============================================================================
-echo ""
-echo -e "${GREEN}--- Шаг 6/8: Настройка Nginx и SSL ---${NC}"
-
-# Временная конфигурация для получения SSL
+# Temporary HTTP config for SSL certificate
 cat <<EOF > "/etc/nginx/sites-available/$DOMAIN"
 server {
     listen 80;
     server_name $DOMAIN;
-    root $PROJECT_DEST_DIR/$FRONTEND_DIR_NAME;
+    root $PROJECT_DEST_DIR/webapp-v2/dist;
     location /.well-known/acme-challenge/ { allow all; }
     location / { return 301 https://\$host\$request_uri; }
 }
 EOF
+
 ln -sf "/etc/nginx/sites-available/$DOMAIN" "/etc/nginx/sites-enabled/"
 rm -f /etc/nginx/sites-enabled/default
-systemctl reload nginx
+nginx -t && systemctl reload nginx
 
-# Получение SSL-сертификата
+# Get SSL certificate
+log_info "Obtaining SSL certificate for $DOMAIN..."
 certbot --nginx --agree-tos --redirect --non-interactive -m "$LETSENCRYPT_EMAIL" -d "$DOMAIN"
 
-# Финальная конфигурация Nginx
+# Final Nginx configuration
 cat <<EOF > "/etc/nginx/sites-available/$DOMAIN"
+# ==============================================
+# MafBoard v2 — Nginx Configuration
+# Domain: $DOMAIN
+# Generated: $(date +%Y-%m-%d)
+# ==============================================
+
 server {
     listen 443 ssl http2;
     server_name $DOMAIN;
 
-    # SSL
+    # --- SSL ---
     ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
-    root $PROJECT_DEST_DIR/$FRONTEND_DIR_NAME;
-    index index.html index.htm;
+    # --- Security headers ---
+    add_header X-Frame-Allow "ALLOWALL";
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
 
-    # MPA — ищет файл, потом папку, потом .html, иначе 404
+    # --- SPA (webapp-v2 built files) ---
+    root $PROJECT_DEST_DIR/webapp-v2/dist;
+    index index.html;
+
+    # SPA fallback — all non-file routes serve index.html
     location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    # --- PHP API ---
+    location /api/ {
+        alias $PROJECT_DEST_DIR/webapp/api/;
+        location ~ \.php\$ {
+            fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
+            fastcgi_param SCRIPT_FILENAME \$request_filename;
+            include fastcgi_params;
+        }
+    }
+
+    # --- Auth / Login PHP ---
+    location /login/ {
+        alias $PROJECT_DEST_DIR/webapp/login/;
+        location ~ \.php\$ {
+            fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
+            fastcgi_param SCRIPT_FILENAME \$request_filename;
+            include fastcgi_params;
+        }
+    }
+
+    # --- Admin panel ---
+    location /admin/ {
+        alias $PROJECT_DEST_DIR/webapp/admin/;
+        location ~ \.php\$ {
+            fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
+            fastcgi_param SCRIPT_FILENAME \$request_filename;
+            include fastcgi_params;
+        }
+    }
+
+    # --- Old webapp (legacy panel.html, for backward compatibility) ---
+    location /panel {
+        alias $PROJECT_DEST_DIR/webapp;
         try_files \$uri \$uri/ \$uri.html =404;
+        location ~ \.php\$ {
+            fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
+            fastcgi_param SCRIPT_FILENAME \$request_filename;
+            include fastcgi_params;
+        }
     }
 
-    # PHP (API + авторизация)
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-    }
-
-    # WebSocket (Node.js)
+    # --- WebSocket proxy ---
     location /bridge {
-        proxy_pass http://localhost:$BACKEND_PORT;
+        proxy_pass http://127.0.0.1:$BACKEND_PORT;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_cache_bypass \$http_upgrade;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+
+    # --- Static file caching ---
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # --- Block sensitive files ---
+    location ~ /\.(?!well-known) {
+        deny all;
+    }
+    location ~ /(node_modules|\.git|\.env) {
+        deny all;
     }
 }
 
@@ -361,65 +598,102 @@ server {
     return 301 https://\$host\$request_uri;
 }
 EOF
-systemctl reload nginx
+
+nginx -t && systemctl reload nginx
+log_info "Nginx configured with SSL"
 
 # ==============================================================================
-# ШАГ 7: Настройка брандмауэра
+# STEP 10: Firewall + PM2
 # ==============================================================================
-echo ""
-echo -e "${GREEN}--- Шаг 7/8: Настройка брандмауэра ---${NC}"
+log_step "Step 10/10: Firewall and PM2 services"
+
+# Firewall
 ufw allow OpenSSH
 ufw allow 'Nginx Full'
 ufw --force enable
+log_info "Firewall configured"
 
-# ==============================================================================
-# ШАГ 8: Запуск сервисов через PM2
-# ==============================================================================
-echo ""
-echo -e "${GREEN}--- Шаг 8/8: Запуск сервисов через PM2 ---${NC}"
+# PM2 services
 . "$NVM_DIR/nvm.sh"
-npm install pm2 -g
 
-# WebSocket сервер
 pm2 delete "$BACKEND_SERVICE_NAME" 2>/dev/null || true
-pm2 start "$PROJECT_DEST_DIR/$BACKEND_DIR_NAME/$BACKEND_SCRIPT_NAME" \
-    --interpreter "$NODE_PATH" \
-    --name "$BACKEND_SERVICE_NAME"
-
-# Telegram бот авторизации
 pm2 delete "$BOT_SERVICE_NAME" 2>/dev/null || true
-pm2 start "$PROJECT_DEST_DIR/$BOT_DIR_NAME/bot.js" \
+
+# WebSocket server
+pm2 start "$PROJECT_DEST_DIR/websocket/ws.js" \
     --interpreter "$NODE_PATH" \
-    --name "$BOT_SERVICE_NAME"
+    --name "$BACKEND_SERVICE_NAME" \
+    --cwd "$PROJECT_DEST_DIR/websocket"
+
+# Telegram auth bot
+pm2 start "$PROJECT_DEST_DIR/webapp/login/bot.js" \
+    --interpreter "$NODE_PATH" \
+    --name "$BOT_SERVICE_NAME" \
+    --cwd "$PROJECT_DEST_DIR/webapp/login"
 
 pm2 save
-pm2 startup
+pm2 startup -u root --hp /root 2>/dev/null || pm2 startup
+
+log_info "PM2 services started"
 
 # ==============================================================================
-# ГОТОВО
+# Save installation config (for --update mode)
+# ==============================================================================
+mkdir -p /etc/mafboard
+cat > "$CONFIG_FILE" <<CFGEOF
+# MafBoard installation config — generated $(date +%Y-%m-%d)
+DOMAIN="$DOMAIN"
+PROJECT_DEST_DIR="$PROJECT_DEST_DIR"
+DB_NAME="$DB_NAME"
+DB_USER="$DB_USER"
+DB_PASS="$DB_PASS"
+DB_PORT="$DB_PORT"
+BOT_TOKEN="$BOT_TOKEN"
+BOT_USERNAME="$BOT_USERNAME"
+ADMIN_TELEGRAM_ID="$ADMIN_TELEGRAM_ID"
+LETSENCRYPT_EMAIL="$LETSENCRYPT_EMAIL"
+GIT_REPO_URL="$GIT_REPO_URL"
+CFGEOF
+chmod 600 "$CONFIG_FILE"
+
+# ==============================================================================
+# DONE
 # ==============================================================================
 echo ""
 echo -e "${CYAN}================================================================${NC}"
-echo -e "${GREEN}       УСТАНОВКА УСПЕШНО ЗАВЕРШЕНА!${NC}"
+echo -e "${GREEN}${BOLD}       INSTALLATION COMPLETE!${NC}"
 echo -e "${CYAN}================================================================${NC}"
 echo ""
-echo -e "  Сайт:         ${GREEN}https://$DOMAIN${NC}"
-echo -e "  Админ-панель: ${GREEN}https://$DOMAIN/admin/${NC}"
-echo -e "  База данных:  ${GREEN}$DB_NAME${NC}"
-echo -e "  DB юзер:      ${GREEN}$DB_USER${NC}"
-echo -e "  DB пароль:    ${GREEN}$DB_PASS${NC}"
-echo -e "  Telegram бот: ${GREEN}@$BOT_USERNAME${NC}"
-echo -e "  Админ ID:     ${GREEN}$ADMIN_TELEGRAM_ID${NC}"
+echo -e "  ${BOLD}Site:${NC}            ${GREEN}https://$DOMAIN${NC}"
+echo -e "  ${BOLD}Admin panel:${NC}     ${GREEN}https://$DOMAIN/admin/${NC}"
+echo -e "  ${BOLD}Legacy panel:${NC}    ${GREEN}https://$DOMAIN/panel.html${NC}"
 echo ""
-echo -e "  ${YELLOW}Сервисы PM2:${NC}"
-echo -e "    - ${CYAN}$BACKEND_SERVICE_NAME${NC} — WebSocket сервер"
-echo -e "    - ${CYAN}$BOT_SERVICE_NAME${NC} — Telegram бот авторизации"
+echo -e "  ${BOLD}Database:${NC}        ${GREEN}$DB_NAME${NC}"
+echo -e "  ${BOLD}DB user:${NC}         ${GREEN}$DB_USER${NC}"
+echo -e "  ${BOLD}DB password:${NC}     ${GREEN}$DB_PASS${NC}"
 echo ""
-echo -e "  ${YELLOW}Команды управления:${NC}"
-echo -e "    pm2 status              — статус сервисов"
-echo -e "    pm2 logs                — логи всех сервисов"
-echo -e "    pm2 restart all         — перезапуск"
-echo -e "    sudo bash uninstall.sh  — удаление"
+echo -e "  ${BOLD}Telegram bot:${NC}    ${GREEN}@$BOT_USERNAME${NC}"
+echo -e "  ${BOLD}Admin TG ID:${NC}     ${GREEN}$ADMIN_TELEGRAM_ID${NC}"
+echo ""
+echo -e "  ${YELLOW}PM2 Services:${NC}"
+echo -e "    - ${CYAN}$BACKEND_SERVICE_NAME${NC} — WebSocket server (port $BACKEND_PORT)"
+echo -e "    - ${CYAN}$BOT_SERVICE_NAME${NC} — Telegram auth bot"
+echo ""
+echo -e "  ${YELLOW}Useful commands:${NC}"
+echo -e "    pm2 status                          — service status"
+echo -e "    pm2 logs                            — all logs"
+echo -e "    pm2 logs $BACKEND_SERVICE_NAME      — WebSocket logs"
+echo -e "    pm2 logs $BOT_SERVICE_NAME          — Bot logs"
+echo -e "    pm2 restart all                     — restart services"
+echo -e "    sudo bash install.sh --update       — update from Git"
+echo -e "    sudo bash uninstall.sh              — uninstall"
+echo ""
+echo -e "  ${YELLOW}Config saved to:${NC} $CONFIG_FILE"
+echo ""
+echo -e "  ${YELLOW}Next steps:${NC}"
+echo -e "    1. Set your Telegram bot's Web App URL to ${GREEN}https://$DOMAIN${NC}"
+echo -e "       (BotFather → /mybots → your bot → Bot Settings → Menu Button)"
+echo -e "    2. Test auth: open ${GREEN}https://$DOMAIN${NC} in Telegram"
+echo -e "    3. Check logs: ${CYAN}pm2 logs${NC}"
 echo ""
 echo -e "${CYAN}================================================================${NC}"
-

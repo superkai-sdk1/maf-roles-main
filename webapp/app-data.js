@@ -584,11 +584,11 @@ let methodUpdateInterval = setInterval(() => {
         
         clearInterval(methodUpdateInterval);
     }
-}, 100); // Проверяем каждые 100мс
+}, 500); // PERF: was 100ms — startup-only check, 500ms is sufficient
 
-// Очищаем интервал через 5 секунд в любом случае
+// Очищаем интервал через 2 секунды в любом случае (PERF: was 5s)
 setTimeout(() => {
     if (methodUpdateInterval) {
         clearInterval(methodUpdateInterval);
     }
-}, 5000);
+}, 2000);

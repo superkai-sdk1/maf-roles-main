@@ -2033,10 +2033,10 @@ if (window.Telegram && window.Telegram.WebApp) {
                             <span class="day-status-label" v-else>Удалён</span>
                             <button class="day-return-btn"
                                     @click.stop.prevent
-                                    @touchstart.prevent.stop="startDayHold(playerData.roleKey, 'return')"
+                                    @touchstart.prevent.stop="startDayHold(playerData.roleKey, 'return', $event)"
                                     @touchend.prevent.stop="cancelDayHold()"
                                     @touchcancel.prevent.stop="cancelDayHold()"
-                                    @mousedown.prevent.stop="startDayHold(playerData.roleKey, 'return')"
+                                    @mousedown.prevent.stop="startDayHold(playerData.roleKey, 'return', $event)"
                                     @mouseup.prevent.stop="cancelDayHold()"
                                     @mouseleave.stop="cancelDayHold()">
                                 <i class="mdi mdi-heart"></i>
@@ -2049,22 +2049,22 @@ if (window.Telegram && window.Telegram.WebApp) {
                             <button class="day-foul-pill"
                                     :class="{ 'foul-warn': playerData.foul >= 3, 'foul-hot': playerData.foul >= 2 }"
                                     @click.stop.prevent
-                                    @touchstart.prevent.stop="startDayHold(playerData.roleKey, 'foul')"
+                                    @touchstart.prevent.stop="startDayHold(playerData.roleKey, 'foul', $event)"
                                     @touchend.prevent.stop="cancelDayHold()"
                                     @touchcancel.prevent.stop="cancelDayHold()"
-                                    @mousedown.prevent.stop="startDayHold(playerData.roleKey, 'foul')"
+                                    @mousedown.prevent.stop="startDayHold(playerData.roleKey, 'foul', $event)"
                                     @mouseup.prevent.stop="cancelDayHold()"
                                     @mouseleave.stop="cancelDayHold()">
                                 <span class="pill-label">Ф</span><span class="pill-count">{{playerData.foul}}</span>
                             </button>
-                            <!-- Тех.фол: тап +1, удержание -1 -->
-                            <button class="day-techfoul-pill"
+                            <!-- Тех.фол: тап +1, удержание -1 (не используется в городской мафии) -->
+                            <button v-if="!cityMode" class="day-techfoul-pill"
                                     :class="{ 'tf-warn': playerData.techFoul >= 1 }"
                                     @click.stop.prevent
-                                    @touchstart.prevent.stop="startDayHold(playerData.roleKey, 'techfoul')"
+                                    @touchstart.prevent.stop="startDayHold(playerData.roleKey, 'techfoul', $event)"
                                     @touchend.prevent.stop="cancelDayHold()"
                                     @touchcancel.prevent.stop="cancelDayHold()"
-                                    @mousedown.prevent.stop="startDayHold(playerData.roleKey, 'techfoul')"
+                                    @mousedown.prevent.stop="startDayHold(playerData.roleKey, 'techfoul', $event)"
                                     @mouseup.prevent.stop="cancelDayHold()"
                                     @mouseleave.stop="cancelDayHold()">
                                 <span class="pill-label">ТФ</span><span class="pill-count">{{playerData.techFoul}}</span>
@@ -2072,10 +2072,10 @@ if (window.Telegram && window.Telegram.WebApp) {
                             <!-- Удалить: только удержание -->
                             <button class="day-remove-btn"
                                     @click.stop.prevent
-                                    @touchstart.prevent.stop="startDayHold(playerData.roleKey, 'remove')"
+                                    @touchstart.prevent.stop="startDayHold(playerData.roleKey, 'remove', $event)"
                                     @touchend.prevent.stop="cancelDayHold()"
                                     @touchcancel.prevent.stop="cancelDayHold()"
-                                    @mousedown.prevent.stop="startDayHold(playerData.roleKey, 'remove')"
+                                    @mousedown.prevent.stop="startDayHold(playerData.roleKey, 'remove', $event)"
                                     @mouseup.prevent.stop="cancelDayHold()"
                                     @mouseleave.stop="cancelDayHold()">
                                 <i class="mdi mdi-account-remove"></i>

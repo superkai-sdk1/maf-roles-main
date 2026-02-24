@@ -127,7 +127,7 @@ class TimerModule {
                     if (onFinish) onFinish(playerKey);
                 }
             }
-        }, 250); // Проверяем чаще (250мс) для точности после возврата из фона
+        }, 1000); // PERF: was 250ms — timer shows whole seconds, 1s is sufficient
     }
 
     startTimer(playerKey, onUpdate, onFinish) {

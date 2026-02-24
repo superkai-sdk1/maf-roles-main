@@ -444,7 +444,7 @@ window.sessionManager = (function() {
         }
     });
 
-    // Периодическая фоновая синхронизация (каждые 30 сек)
+    // Периодическая фоновая синхронизация (каждые 120 сек — PERF: was 30s)
     setInterval(function() {
         if (document.visibilityState !== 'visible') return;
         if (!_getAuthToken()) return;
@@ -454,7 +454,7 @@ window.sessionManager = (function() {
                 window.app.loadMainMenu();
             }
         });
-    }, 30000);
+    }, 120000);
 
     return api;
 })();
