@@ -113,8 +113,11 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
 
   const foulHoldRef = useRef(null);
   const foulHoldActiveRef = useRef(false);
+  const foulLastTouchRef = useRef(0);
 
-  const handleFoulStart = useCallback((type) => {
+  const handleFoulStart = useCallback((type, e) => {
+    if (e?.type === 'mousedown' && Date.now() - foulLastTouchRef.current < 500) return;
+    if (e?.type === 'touchstart') foulLastTouchRef.current = Date.now();
     foulHoldActiveRef.current = false;
     foulHoldRef.current = setTimeout(() => {
       foulHoldActiveRef.current = true;
@@ -123,7 +126,8 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
     }, 500);
   }, [rk, removeFoul, removeTechFoul]);
 
-  const handleFoulEnd = useCallback((type) => {
+  const handleFoulEnd = useCallback((type, e) => {
+    if (e?.type === 'mouseup' && Date.now() - foulLastTouchRef.current < 500) return;
     clearTimeout(foulHoldRef.current);
     if (!foulHoldActiveRef.current) {
       if (type === 'foul') { addFoul(rk); triggerHaptic('warning'); }
@@ -132,16 +136,22 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
   }, [rk, addFoul, addTechFoul]);
 
   const removeHoldRef = useRef(null);
-  const handleRemoveStart = useCallback(() => {
+  const removeLastTouchRef = useRef(0);
+  const handleRemoveStart = useCallback((e) => {
+    if (e?.type === 'mousedown' && Date.now() - removeLastTouchRef.current < 500) return;
+    if (e?.type === 'touchstart') removeLastTouchRef.current = Date.now();
     removeHoldRef.current = setTimeout(() => {
       actionSet(rk, 'removed');
       triggerHaptic('heavy');
     }, 800);
   }, [rk, actionSet]);
-  const handleRemoveEnd = useCallback(() => {
+  const handleRemoveEnd = useCallback((e) => {
+    if (e?.type === 'mouseup' && Date.now() - removeLastTouchRef.current < 500) return;
     clearTimeout(removeHoldRef.current);
   }, []);
-  const handleReturnStart = useCallback(() => {
+  const handleReturnStart = useCallback((e) => {
+    if (e?.type === 'mousedown' && Date.now() - removeLastTouchRef.current < 500) return;
+    if (e?.type === 'touchstart') removeLastTouchRef.current = Date.now();
     removeHoldRef.current = setTimeout(() => {
       actionSet(rk, null);
       triggerHaptic('success');
@@ -219,10 +229,10 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
             <>
               <span className="day-status-label">{statusLabel}</span>
               <button className="day-return-btn"
-                onTouchStart={(e) => { e.stopPropagation(); handleReturnStart(); }}
-                onTouchEnd={(e) => { e.stopPropagation(); handleRemoveEnd(); }}
-                onMouseDown={(e) => { e.stopPropagation(); handleReturnStart(); }}
-                onMouseUp={(e) => { e.stopPropagation(); handleRemoveEnd(); }}
+                onTouchStart={(e) => { e.stopPropagation(); handleReturnStart(e); }}
+                onTouchEnd={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
+                onMouseDown={(e) => { e.stopPropagation(); handleReturnStart(e); }}
+                onMouseUp={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
                 onClick={(e) => e.stopPropagation()}>
                 ❤
               </button>
@@ -231,33 +241,33 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
             <>
               <button className={`foul-pill ${foulCount >= 3 ? 'foul-warn' : foulCount >= 2 ? 'foul-hot' : ''}`}
                 onClick={(e) => e.stopPropagation()}
-                onTouchStart={(e) => { e.stopPropagation(); handleFoulStart('foul'); }}
-                onTouchEnd={(e) => { e.stopPropagation(); handleFoulEnd('foul'); }}
+                onTouchStart={(e) => { e.stopPropagation(); handleFoulStart('foul', e); }}
+                onTouchEnd={(e) => { e.stopPropagation(); handleFoulEnd('foul', e); }}
                 onTouchCancel={() => clearTimeout(foulHoldRef.current)}
-                onMouseDown={(e) => { e.stopPropagation(); handleFoulStart('foul'); }}
-                onMouseUp={(e) => { e.stopPropagation(); handleFoulEnd('foul'); }}
+                onMouseDown={(e) => { e.stopPropagation(); handleFoulStart('foul', e); }}
+                onMouseUp={(e) => { e.stopPropagation(); handleFoulEnd('foul', e); }}
                 onMouseLeave={() => clearTimeout(foulHoldRef.current)}>
                 <span className="pill-label">Ф</span>
                 <span className="pill-count">{foulCount}</span>
               </button>
               <button className={`foul-pill ${techFoulCount >= 1 ? 'tf-warn' : ''}`}
                   onClick={(e) => e.stopPropagation()}
-                  onTouchStart={(e) => { e.stopPropagation(); handleFoulStart('tf'); }}
-                  onTouchEnd={(e) => { e.stopPropagation(); handleFoulEnd('tf'); }}
+                  onTouchStart={(e) => { e.stopPropagation(); handleFoulStart('tf', e); }}
+                  onTouchEnd={(e) => { e.stopPropagation(); handleFoulEnd('tf', e); }}
                   onTouchCancel={() => clearTimeout(foulHoldRef.current)}
-                  onMouseDown={(e) => { e.stopPropagation(); handleFoulStart('tf'); }}
-                  onMouseUp={(e) => { e.stopPropagation(); handleFoulEnd('tf'); }}
+                  onMouseDown={(e) => { e.stopPropagation(); handleFoulStart('tf', e); }}
+                  onMouseUp={(e) => { e.stopPropagation(); handleFoulEnd('tf', e); }}
                   onMouseLeave={() => clearTimeout(foulHoldRef.current)}>
                   <span className="pill-label">ТФ</span>
                   <span className="pill-count">{techFoulCount}</span>
                 </button>
               <button className="day-remove-btn"
                 onClick={(e) => e.stopPropagation()}
-                onTouchStart={(e) => { e.stopPropagation(); handleRemoveStart(); }}
-                onTouchEnd={(e) => { e.stopPropagation(); handleRemoveEnd(); }}
+                onTouchStart={(e) => { e.stopPropagation(); handleRemoveStart(e); }}
+                onTouchEnd={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
                 onTouchCancel={handleRemoveEnd}
-                onMouseDown={(e) => { e.stopPropagation(); handleRemoveStart(); }}
-                onMouseUp={(e) => { e.stopPropagation(); handleRemoveEnd(); }}
+                onMouseDown={(e) => { e.stopPropagation(); handleRemoveStart(e); }}
+                onMouseUp={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
                 onMouseLeave={handleRemoveEnd}>
                 ✕
               </button>
