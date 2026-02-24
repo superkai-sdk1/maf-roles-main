@@ -3,6 +3,7 @@ import { GameProvider, useGame } from './context/GameContext';
 import { MainMenu } from './components/MainMenu';
 import { ModeSelector } from './components/ModeSelector';
 import { GameScreen } from './components/GameScreen';
+import { AuthGate } from './components/AuthGate';
 import { loadSavedTheme, applyTheme } from './constants/themes';
 import { initTelegramApp } from './utils/telegram';
 import { useNativeScroll } from './hooks/useNativeScroll';
@@ -46,9 +47,11 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <GameProvider>
-        <Router />
-      </GameProvider>
+      <AuthGate>
+        <GameProvider>
+          <Router />
+        </GameProvider>
+      </AuthGate>
     </ErrorBoundary>
   );
 }
