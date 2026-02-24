@@ -34,6 +34,8 @@ if ($action === 'login') {
             $ch = curl_init('https://gomafia.pro/api/auth/csrf');
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => '',
                 CURLOPT_SSL_VERIFYPEER => false,
                 CURLOPT_TIMEOUT => 10,
                 CURLOPT_HTTPHEADER => [
@@ -106,31 +108,43 @@ echo json_encode(['success' => false, 'error' => 'Unknown action']);
 function getCSRFToken($cookieFile) {
     $userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-    // Strategy 1: NextAuth CSRF API
-    $ch = curl_init('https://gomafia.pro/api/auth/csrf');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_COOKIEJAR => $cookieFile,
-        CURLOPT_COOKIEFILE => $cookieFile,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_TIMEOUT => 15,
-        CURLOPT_HTTPHEADER => [
-            'Accept: application/json, text/plain, */*',
-            "User-Agent: $userAgent",
-            'Referer: https://gomafia.pro/login',
-            'Origin: https://gomafia.pro',
-        ],
-    ]);
-    $response = curl_exec($ch);
-    $curlError = curl_error($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    // Strategy 1: NextAuth CSRF API (POST — gomafia requires POST)
+    foreach (['POST', 'GET'] as $method) {
+        $ch = curl_init('https://gomafia.pro/api/auth/csrf');
+        $opts = [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_COOKIEJAR => $cookieFile,
+            CURLOPT_COOKIEFILE => $cookieFile,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/json, text/plain, */*',
+                "User-Agent: $userAgent",
+                'Referer: https://gomafia.pro/login',
+                'Origin: https://gomafia.pro',
+            ],
+        ];
+        if ($method === 'POST') {
+            $opts[CURLOPT_POST] = true;
+            $opts[CURLOPT_POSTFIELDS] = '';
+        }
+        curl_setopt_array($ch, $opts);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
 
-    if ($httpCode === 200 && $response) {
-        $data = json_decode($response, true);
-        if (isset($data['csrfToken'])) {
-            return $data['csrfToken'];
+        if ($httpCode === 200 && $response) {
+            $data = json_decode($response, true);
+            if (isset($data['csrfToken'])) {
+                return $data['csrfToken'];
+            }
+            if (isset($data['result']) && $data['result'] === 'ok' && isset($data['token'])) {
+                return $data['token'];
+            }
+            if (isset($data['data']['csrfToken'])) {
+                return $data['data']['csrfToken'];
+            }
         }
     }
 
@@ -198,10 +212,12 @@ function getCSRFToken($cookieFile) {
         }
     }
 
-    // Strategy 4: Retry CSRF API with cookies from login page
+    // Strategy 4: Retry CSRF API (POST) with cookies from login page
     $ch = curl_init('https://gomafia.pro/api/auth/csrf');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => '',
         CURLOPT_COOKIEJAR => $cookieFile,
         CURLOPT_COOKIEFILE => $cookieFile,
         CURLOPT_FOLLOWLOCATION => true,
@@ -222,6 +238,9 @@ function getCSRFToken($cookieFile) {
         $data = json_decode($response, true);
         if (isset($data['csrfToken'])) {
             return $data['csrfToken'];
+        }
+        if (isset($data['result']) && $data['result'] === 'ok' && isset($data['token'])) {
+            return $data['token'];
         }
     }
 
