@@ -313,6 +313,34 @@ export const goMafiaApi = {
   },
 };
 
+const AUTH_BASE = '/login/';
+
+export const sessionsApi = {
+  async getActiveSessions(token) {
+    try {
+      const response = await fetch(`${AUTH_BASE}sessions-list.php?token=${encodeURIComponent(token)}`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.sessions || [];
+    } catch {
+      return null;
+    }
+  },
+
+  async terminateSession(token, sessionId) {
+    try {
+      const response = await fetch(
+        `${AUTH_BASE}sessions-list.php?token=${encodeURIComponent(token)}&session_id=${sessionId}`,
+        { method: 'DELETE' }
+      );
+      if (!response.ok) return null;
+      return await response.json();
+    } catch {
+      return null;
+    }
+  },
+};
+
 export const profileApi = {
   async loadProfile(token) {
     try {

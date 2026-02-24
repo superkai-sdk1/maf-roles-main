@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { sessionManager } from '../services/sessionManager';
-import { goMafiaApi, profileApi } from '../services/api';
+import { goMafiaApi, profileApi, sessionsApi } from '../services/api';
 import { authService } from '../services/auth';
 import { COLOR_SCHEMES, applyTheme } from '../constants/themes';
 import { triggerHaptic } from '../utils/haptics';
@@ -17,6 +17,21 @@ import {
 const formatTime = (ts) => {
   if (!ts) return '';
   const d = new Date(ts);
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+};
+
+const formatSessionDate = (ts) => {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'только что';
+  if (diffMin < 60) return `${diffMin} мин назад`;
+  const diffHrs = Math.floor(diffMin / 60);
+  if (diffHrs < 24) return `${diffHrs} ч назад`;
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays < 7) return `${diffDays} дн назад`;
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 };
 
@@ -389,6 +404,10 @@ export function MainMenu() {
   const [goMafiaModal, setGoMafiaModal] = useState(false);
   const [goMafiaLogin, setGoMafiaLogin] = useState({ nickname: '', password: '', loading: false, error: '' });
 
+  const [activeSessions, setActiveSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [terminatingId, setTerminatingId] = useState(null);
+
   useEffect(() => {
     const token = authService.getStoredToken();
     if (!token) return;
@@ -432,6 +451,34 @@ export function MainMenu() {
         try { localStorage.setItem('maf_user_avatar', serverProfile.avatar_url); } catch {}
       }
     });
+  }, []);
+
+  const loadActiveSessions = useCallback(async () => {
+    const token = authService.getStoredToken();
+    if (!token) return;
+    setSessionsLoading(true);
+    const sessions = await sessionsApi.getActiveSessions(token);
+    if (sessions) setActiveSessions(sessions);
+    setSessionsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (menuScreen === 'profileSettings') {
+      loadActiveSessions();
+    }
+  }, [menuScreen, loadActiveSessions]);
+
+  const handleTerminateSession = useCallback(async (sessionId) => {
+    const token = authService.getStoredToken();
+    if (!token) return;
+    setTerminatingId(sessionId);
+    triggerHaptic('warning');
+    const result = await sessionsApi.terminateSession(token, sessionId);
+    if (result?.success) {
+      setActiveSessions(prev => prev.filter(s => s.id !== sessionId));
+      triggerHaptic('success');
+    }
+    setTerminatingId(null);
   }, []);
 
   const { groups, standalone } = useMemo(
@@ -1384,6 +1431,97 @@ export function MainMenu() {
                       </div>
                       <IconLink size={16} color="rgba(255,255,255,0.2)" />
                     </button>
+                  )}
+                </div>
+
+                {/* Active Devices */}
+                <div className="glass-card" style={{ padding: '20px', marginTop: 10, position: 'relative', zIndex: 1 }}>
+                  <div className="profile-settings-section-label">Активные устройства</div>
+
+                  {sessionsLoading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 0', gap: 8 }}>
+                      <div className="gomafia-modal-spinner" />
+                      <span style={{ fontSize: '0.8em', color: 'rgba(255,255,255,0.35)' }}>Загрузка...</span>
+                    </div>
+                  ) : activeSessions.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '0.8em', color: 'rgba(255,255,255,0.25)' }}>
+                      Нет активных сеансов
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {activeSessions.map(session => (
+                        <div
+                          key={session.id}
+                          className="active-device-card"
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            padding: '12px 14px', borderRadius: 14,
+                            background: session.is_current
+                              ? 'linear-gradient(135deg, rgba(168,85,247,0.08), rgba(99,102,241,0.04))'
+                              : 'rgba(255,255,255,0.03)',
+                            border: session.is_current
+                              ? '1px solid rgba(168,85,247,0.2)'
+                              : '1px solid rgba(255,255,255,0.06)',
+                          }}
+                        >
+                          <div style={{
+                            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: session.is_current
+                              ? 'rgba(168,85,247,0.15)'
+                              : 'rgba(255,255,255,0.06)',
+                          }}>
+                            {session.device_name?.includes('iPhone') || session.device_name?.includes('iPad') ? (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={session.is_current ? 'var(--accent-color, #a855f7)' : 'rgba(255,255,255,0.4)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                            ) : session.device_name?.includes('Mac') || session.device_name?.includes('Windows') || session.device_name?.includes('Linux') ? (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={session.is_current ? 'var(--accent-color, #a855f7)' : 'rgba(255,255,255,0.4)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                            ) : session.device_name?.includes('Android') ? (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={session.is_current ? 'var(--accent-color, #a855f7)' : 'rgba(255,255,255,0.4)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                            ) : (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={session.is_current ? 'var(--accent-color, #a855f7)' : 'rgba(255,255,255,0.4)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                            )}
+                          </div>
+
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: '0.85em', fontWeight: 700, color: '#fff' }}>
+                                {session.device_name || 'Неизвестное устройство'}
+                              </span>
+                              {session.is_current && (
+                                <span style={{
+                                  fontSize: '0.6em', fontWeight: 700, padding: '2px 6px',
+                                  borderRadius: 6, background: 'rgba(34,197,94,0.15)',
+                                  color: '#22c55e', letterSpacing: '0.02em',
+                                }}>
+                                  Текущее
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '0.7em', color: 'rgba(255,255,255,0.3)', marginTop: 3, display: 'flex', gap: 8 }}>
+                              {session.ip_address && <span>{session.ip_address}</span>}
+                              <span>{formatSessionDate(session.last_active)}</span>
+                            </div>
+                          </div>
+
+                          {!session.is_current && (
+                            <button
+                              onClick={() => handleTerminateSession(session.id)}
+                              disabled={terminatingId === session.id}
+                              style={{
+                                flexShrink: 0, padding: '6px 12px', borderRadius: 10,
+                                background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+                                color: '#ef4444', fontSize: '0.72em', fontWeight: 700,
+                                cursor: terminatingId === session.id ? 'wait' : 'pointer',
+                                opacity: terminatingId === session.id ? 0.5 : 1,
+                                transition: 'all 0.2s',
+                              }}
+                            >
+                              {terminatingId === session.id ? '...' : 'Выйти'}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
 

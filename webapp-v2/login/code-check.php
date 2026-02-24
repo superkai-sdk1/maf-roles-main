@@ -48,6 +48,20 @@ if (!$session) {
     ]);
 }
 
+// Обновляем сессию данными устройства браузера (сессия была создана ботом)
+$browserUA = $_SERVER['HTTP_USER_AGENT'] ?? null;
+$browserIP = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? null;
+if ($browserIP && strpos($browserIP, ',') !== false) {
+    $browserIP = trim(explode(',', $browserIP)[0]);
+}
+$database->update($TABLE_AUTH_SESSIONS, [
+    'user_agent' => $browserUA,
+    'ip_address' => $browserIP,
+    'device_name' => parseDeviceName($browserUA),
+], [
+    'id' => $session['id']
+]);
+
 jsonResponse([
     'confirmed' => true,
     'token' => $codeRow['token'],

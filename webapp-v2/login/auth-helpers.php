@@ -43,6 +43,9 @@ try {
             `telegram_username` varchar(255) DEFAULT NULL,
             `telegram_first_name` varchar(255) DEFAULT NULL,
             `telegram_last_name` varchar(255) DEFAULT NULL,
+            `user_agent` text DEFAULT NULL,
+            `ip_address` varchar(45) DEFAULT NULL,
+            `device_name` varchar(255) DEFAULT NULL,
             `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             `expires_at` datetime NOT NULL,
             `last_active` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -52,6 +55,14 @@ try {
             KEY `expires_at` (`expires_at`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+
+    // Миграция: добавляем колонки если их нет (для существующих таблиц)
+    $columns = $database->pdo->query("SHOW COLUMNS FROM `{$TABLE_AUTH_SESSIONS}`")->fetchAll(\PDO::FETCH_COLUMN);
+    if (!in_array('user_agent', $columns)) {
+        $database->pdo->exec("ALTER TABLE `{$TABLE_AUTH_SESSIONS}` ADD COLUMN `user_agent` text DEFAULT NULL AFTER `telegram_last_name`");
+        $database->pdo->exec("ALTER TABLE `{$TABLE_AUTH_SESSIONS}` ADD COLUMN `ip_address` varchar(45) DEFAULT NULL AFTER `user_agent`");
+        $database->pdo->exec("ALTER TABLE `{$TABLE_AUTH_SESSIONS}` ADD COLUMN `device_name` varchar(255) DEFAULT NULL AFTER `ip_address`");
+    }
     $database->pdo->exec("
         CREATE TABLE IF NOT EXISTS `{$TABLE_AUTH_CODES}` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -190,13 +201,59 @@ function extractUserFromInitData($initData) {
 }
 
 /**
+ * Распознать устройство из User-Agent
+ */
+function parseDeviceName($ua) {
+    if (empty($ua)) return 'Неизвестное устройство';
+
+    $device = '';
+    $browser = '';
+
+    // OS / Device
+    if (preg_match('/iPad/', $ua)) $device = 'iPad';
+    elseif (preg_match('/iPhone/', $ua)) $device = 'iPhone';
+    elseif (preg_match('/Macintosh|Mac OS/', $ua)) $device = 'Mac';
+    elseif (preg_match('/Android/', $ua)) {
+        if (preg_match('/Android[^;]*;\s*([^)]+)\)/', $ua, $m)) {
+            $raw = trim(preg_replace('/Build\/.*/', '', $m[1]));
+            $device = $raw ?: 'Android';
+        } else {
+            $device = 'Android';
+        }
+    }
+    elseif (preg_match('/Windows/', $ua)) $device = 'Windows';
+    elseif (preg_match('/Linux/', $ua)) $device = 'Linux';
+    elseif (preg_match('/CrOS/', $ua)) $device = 'ChromeOS';
+    else $device = 'Устройство';
+
+    // Browser
+    if (preg_match('/Telegram/', $ua)) $browser = 'Telegram';
+    elseif (preg_match('/EdgA?\//', $ua)) $browser = 'Edge';
+    elseif (preg_match('/OPR\/|Opera/', $ua)) $browser = 'Opera';
+    elseif (preg_match('/YaBrowser/', $ua)) $browser = 'Яндекс';
+    elseif (preg_match('/SamsungBrowser/', $ua)) $browser = 'Samsung Browser';
+    elseif (preg_match('/Chrome\//', $ua) && !preg_match('/Chromium/', $ua)) $browser = 'Chrome';
+    elseif (preg_match('/Safari\//', $ua) && !preg_match('/Chrome/', $ua)) $browser = 'Safari';
+    elseif (preg_match('/Firefox\//', $ua)) $browser = 'Firefox';
+
+    if ($browser) return "$device · $browser";
+    return $device;
+}
+
+/**
  * Создать или обновить сессию для пользователя
  */
-function createSession($database, $telegramId, $username = null, $firstName = null, $lastName = null) {
+function createSession($database, $telegramId, $username = null, $firstName = null, $lastName = null, $userAgent = null, $ipAddress = null) {
     global $TABLE_AUTH_SESSIONS;
 
     $token = generateToken();
     $expiresAt = date('Y-m-d H:i:s', time() + SESSION_TTL_DAYS * 24 * 60 * 60);
+
+    if ($userAgent === null) $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+    if ($ipAddress === null) $ipAddress = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? null;
+    if ($ipAddress && strpos($ipAddress, ',') !== false) {
+        $ipAddress = trim(explode(',', $ipAddress)[0]);
+    }
 
     $database->insert($TABLE_AUTH_SESSIONS, [
         'token' => $token,
@@ -204,6 +261,9 @@ function createSession($database, $telegramId, $username = null, $firstName = nu
         'telegram_username' => $username,
         'telegram_first_name' => $firstName,
         'telegram_last_name' => $lastName,
+        'user_agent' => $userAgent,
+        'ip_address' => $ipAddress,
+        'device_name' => parseDeviceName($userAgent),
         'created_at' => date('Y-m-d H:i:s'),
         'expires_at' => $expiresAt,
         'last_active' => date('Y-m-d H:i:s')
@@ -234,11 +294,23 @@ function validateSession($database, $token) {
         return null;
     }
 
-    // Обновляем last_active (sliding expiration)
-    $database->update($TABLE_AUTH_SESSIONS, [
+    // Обновляем last_active (sliding expiration) + backfill device info
+    $updateData = [
         'last_active' => date('Y-m-d H:i:s'),
         'expires_at' => date('Y-m-d H:i:s', time() + SESSION_TTL_DAYS * 24 * 60 * 60)
-    ], [
+    ];
+
+    $existingDevice = $database->get($TABLE_AUTH_SESSIONS, 'device_name', ['id' => $session['id']]);
+    if (empty($existingDevice)) {
+        $ua = $_SERVER['HTTP_USER_AGENT'] ?? null;
+        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? null;
+        if ($ip && strpos($ip, ',') !== false) $ip = trim(explode(',', $ip)[0]);
+        $updateData['user_agent'] = $ua;
+        $updateData['ip_address'] = $ip;
+        $updateData['device_name'] = parseDeviceName($ua);
+    }
+
+    $database->update($TABLE_AUTH_SESSIONS, $updateData, [
         'id' => $session['id']
     ]);
 
