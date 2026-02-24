@@ -324,4 +324,43 @@ export const goMafiaApi = {
   },
 };
 
+export const profileApi = {
+  async loadProfile(token) {
+    try {
+      const response = await fetch(`${API_BASE}profile-sync.php?token=${encodeURIComponent(token)}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch {
+      return null;
+    }
+  },
+
+  async saveProfile(token, profileData) {
+    try {
+      const response = await fetch(`${API_BASE}profile-sync.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, profile: profileData }),
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch {
+      return null;
+    }
+  },
+
+  async clearGoMafia(token) {
+    try {
+      const response = await fetch(
+        `${API_BASE}profile-sync.php?token=${encodeURIComponent(token)}&field=gomafia`,
+        { method: 'DELETE' }
+      );
+      if (!response.ok) return null;
+      return await response.json();
+    } catch {
+      return null;
+    }
+  },
+};
+
 export default goMafiaApi;

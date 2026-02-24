@@ -1,8 +1,9 @@
-import React, { useMemo, useState, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { sessionManager } from '../services/sessionManager';
-import { goMafiaApi } from '../services/api';
+import { goMafiaApi, profileApi } from '../services/api';
+import { authService } from '../services/auth';
 import { COLOR_SCHEMES, applyTheme } from '../constants/themes';
 import { triggerHaptic } from '../utils/haptics';
 import { useSwipeBack } from '../hooks/useSwipeBack';
@@ -387,6 +388,51 @@ export function MainMenu() {
   const [goMafiaProfile, setGoMafiaProfile] = useState(() => goMafiaApi.getStoredGoMafiaProfile());
   const [goMafiaModal, setGoMafiaModal] = useState(false);
   const [goMafiaLogin, setGoMafiaLogin] = useState({ nickname: '', password: '', loading: false, error: '' });
+
+  useEffect(() => {
+    const token = authService.getStoredToken();
+    if (!token) return;
+
+    profileApi.loadProfile(token).then(serverProfile => {
+      if (!serverProfile) return;
+
+      if (serverProfile.gomafia) {
+        const gm = serverProfile.gomafia;
+        const localProfile = {
+          nickname: gm.nickname,
+          avatar: gm.avatar,
+          id: gm.id,
+          title: gm.title,
+          connectedAt: gm.connectedAt ? new Date(gm.connectedAt).getTime() : Date.now(),
+        };
+        goMafiaApi.saveGoMafiaProfile(localProfile);
+        setGoMafiaProfile(localProfile);
+
+        if (gm.nickname && !localStorage.getItem('maf_user_display_name')) {
+          setUserDisplayName(gm.nickname);
+          try { localStorage.setItem('maf_user_display_name', gm.nickname); } catch {}
+        }
+        if (gm.avatar && !localStorage.getItem('maf_user_avatar')) {
+          setUserAvatarUrl(gm.avatar);
+          try { localStorage.setItem('maf_user_avatar', gm.avatar); } catch {}
+        }
+      } else {
+        const localGm = goMafiaApi.getStoredGoMafiaProfile();
+        if (localGm && localGm.nickname) {
+          profileApi.saveProfile(token, { gomafia: localGm });
+        }
+      }
+
+      if (serverProfile.display_name && !localStorage.getItem('maf_user_display_name')) {
+        setUserDisplayName(serverProfile.display_name);
+        try { localStorage.setItem('maf_user_display_name', serverProfile.display_name); } catch {}
+      }
+      if (serverProfile.avatar_url && !localStorage.getItem('maf_user_avatar')) {
+        setUserAvatarUrl(serverProfile.avatar_url);
+        try { localStorage.setItem('maf_user_avatar', serverProfile.avatar_url); } catch {}
+      }
+    });
+  }, []);
 
   const { groups, standalone } = useMemo(
     () => sessionManager.groupByTournament(sessionsList),
@@ -1149,6 +1195,8 @@ export function MainMenu() {
                   const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
                   setUserAvatarUrl(dataUrl);
                   try { localStorage.setItem('maf_user_avatar', dataUrl); } catch {}
+                  const token = authService.getStoredToken();
+                  if (token) profileApi.saveProfile(token, { avatar_url: dataUrl });
                   triggerHaptic('success');
                 };
                 img.src = reader.result;
@@ -1160,6 +1208,8 @@ export function MainMenu() {
               const trimmed = profileSettingsName.trim();
               setUserDisplayName(trimmed);
               try { localStorage.setItem('maf_user_display_name', trimmed); } catch {}
+              const token = authService.getStoredToken();
+              if (token) profileApi.saveProfile(token, { display_name: trimmed });
               triggerHaptic('success');
               setMenuScreen('profile');
             };
@@ -1167,6 +1217,8 @@ export function MainMenu() {
             const handleRemoveAvatar = () => {
               setUserAvatarUrl('');
               try { localStorage.removeItem('maf_user_avatar'); } catch {}
+              const token = authService.getStoredToken();
+              if (token) profileApi.saveProfile(token, { avatar_url: null });
               triggerHaptic('medium');
             };
 
@@ -1289,6 +1341,8 @@ export function MainMenu() {
                                   setUserAvatarUrl(updated.avatar);
                                   try { localStorage.setItem('maf_user_avatar', updated.avatar); } catch {}
                                 }
+                                const token = authService.getStoredToken();
+                                if (token) profileApi.saveProfile(token, { gomafia: updated });
                                 triggerHaptic('success');
                               }
                             } catch {}
@@ -1303,6 +1357,8 @@ export function MainMenu() {
                           onClick={() => {
                             goMafiaApi.removeGoMafiaProfile();
                             setGoMafiaProfile(null);
+                            const token = authService.getStoredToken();
+                            if (token) profileApi.clearGoMafia(token);
                             triggerHaptic('medium');
                           }}
                         >
@@ -1542,6 +1598,11 @@ export function MainMenu() {
         if (profile.avatar) {
           setUserAvatarUrl(profile.avatar);
           try { localStorage.setItem('maf_user_avatar', profile.avatar); } catch {}
+        }
+
+        const token = authService.getStoredToken();
+        if (token) {
+          profileApi.saveProfile(token, { gomafia: profile });
         }
 
         setGoMafiaModal(false);
