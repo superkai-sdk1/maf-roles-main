@@ -1253,16 +1253,52 @@ export function MainMenu() {
                           )}
                         </div>
                       </div>
-                      <button
-                        className="gomafia-disconnect-btn"
-                        onClick={() => {
-                          goMafiaApi.removeGoMafiaProfile();
-                          setGoMafiaProfile(null);
-                          triggerHaptic('medium');
-                        }}
-                      >
-                        <IconX size={12} /> Отключить
-                      </button>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          className="gomafia-disconnect-btn"
+                          style={{ flex: 1, background: 'rgba(99,102,241,0.12)', color: '#818cf8', borderColor: 'rgba(99,102,241,0.2)' }}
+                          onClick={async () => {
+                            triggerHaptic('light');
+                            try {
+                              const res = await goMafiaApi.lookupGoMafiaPlayer(goMafiaProfile.nickname);
+                              if (res.success && res.profile) {
+                                const updated = {
+                                  ...goMafiaProfile,
+                                  nickname: res.profile.nickname || goMafiaProfile.nickname,
+                                  avatar: res.profile.avatar || goMafiaProfile.avatar,
+                                  id: res.profile.id || goMafiaProfile.id,
+                                  title: res.profile.title || goMafiaProfile.title,
+                                };
+                                goMafiaApi.saveGoMafiaProfile(updated);
+                                setGoMafiaProfile(updated);
+                                if (updated.nickname) {
+                                  setUserDisplayName(updated.nickname);
+                                  try { localStorage.setItem('maf_user_display_name', updated.nickname); } catch {}
+                                }
+                                if (updated.avatar) {
+                                  setUserAvatarUrl(updated.avatar);
+                                  try { localStorage.setItem('maf_user_avatar', updated.avatar); } catch {}
+                                }
+                                triggerHaptic('success');
+                              }
+                            } catch {}
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                          Обновить
+                        </button>
+                        <button
+                          className="gomafia-disconnect-btn"
+                          style={{ flex: 1 }}
+                          onClick={() => {
+                            goMafiaApi.removeGoMafiaProfile();
+                            setGoMafiaProfile(null);
+                            triggerHaptic('medium');
+                          }}
+                        >
+                          <IconX size={12} /> Удалить
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <button
@@ -1478,25 +1514,26 @@ export function MainMenu() {
     try {
       const result = await goMafiaApi.loginGoMafia(nickname, password);
 
-      if (result.success && result.profile) {
+      if (result.success) {
         const profile = {
-          nickname: result.profile.nickname || nickname,
-          avatar: result.profile.avatar || null,
-          id: result.profile.id || null,
-          title: result.profile.title || null,
+          nickname: result.profile?.nickname || nickname,
+          avatar: result.profile?.avatar || null,
+          id: result.profile?.id || null,
+          title: result.profile?.title || null,
           connectedAt: Date.now(),
         };
         goMafiaApi.saveGoMafiaProfile(profile);
         setGoMafiaProfile(profile);
-        setGoMafiaModal(false);
-        triggerHaptic('success');
-        return;
-      }
 
-      if (result.success && !result.profile) {
-        const profile = { nickname, avatar: null, id: null, title: null, connectedAt: Date.now() };
-        goMafiaApi.saveGoMafiaProfile(profile);
-        setGoMafiaProfile(profile);
+        if (profile.nickname) {
+          setUserDisplayName(profile.nickname);
+          try { localStorage.setItem('maf_user_display_name', profile.nickname); } catch {}
+        }
+        if (profile.avatar) {
+          setUserAvatarUrl(profile.avatar);
+          try { localStorage.setItem('maf_user_avatar', profile.avatar); } catch {}
+        }
+
         setGoMafiaModal(false);
         triggerHaptic('success');
         return;
