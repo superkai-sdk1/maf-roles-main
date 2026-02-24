@@ -20,6 +20,14 @@ const BOT_SECRET = crypto.createHash('sha256').update(BOT_TOKEN).digest('hex');
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
+const recentlyProcessed = new Map();
+setInterval(() => {
+    const cutoff = Date.now() - 60_000;
+    for (const [id, ts] of recentlyProcessed) {
+        if (ts < cutoff) recentlyProcessed.delete(id);
+    }
+}, 60_000);
+
 console.log('🤖 MafBoard Auth Bot запущен...');
 
 // Обработка команды /start
@@ -27,8 +35,8 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const param = match[1] ? match[1].trim() : '';
 
-    // Если пришёл код через deep link (/start 1234)
     if (/^\d{4}$/.test(param)) {
+        recentlyProcessed.set(msg.message_id, Date.now());
         await handleCode(chatId, msg.from, param);
         return;
     }
@@ -43,19 +51,21 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
 
 // Обработка текстовых сообщений (коды)
 bot.on('message', async (msg) => {
+    if (recentlyProcessed.has(msg.message_id)) {
+        return;
+    }
+
     const chatId = msg.chat.id;
     const text = (msg.text || '').trim();
 
-    // Пропускаем команды (они обрабатываются отдельно)
     if (text.startsWith('/')) return;
 
-    // Проверяем, является ли сообщение 4-значным кодом
     if (/^\d{4}$/.test(text)) {
+        recentlyProcessed.set(msg.message_id, Date.now());
         await handleCode(chatId, msg.from, text);
         return;
     }
 
-    // Некорректное сообщение
     bot.sendMessage(chatId,
         '❓ Пожалуйста, отправьте 4-значный код авторизации.\n' +
         'Код отображается на экране входа в панель.',
@@ -66,7 +76,11 @@ bot.on('message', async (msg) => {
 /**
  * Обработка 4-значного кода авторизации
  */
+const confirmedCodes = new Set();
+
 async function handleCode(chatId, fromUser, code) {
+    if (confirmedCodes.has(code)) return;
+
     try {
         const response = await fetch(CONFIRM_API_URL, {
             method: 'POST',
@@ -84,6 +98,8 @@ async function handleCode(chatId, fromUser, code) {
         const result = await response.json();
 
         if (result.success) {
+            confirmedCodes.add(code);
+            setTimeout(() => confirmedCodes.delete(code), 300_000);
             const name = fromUser.first_name || fromUser.username || 'пользователь';
             bot.sendMessage(chatId,
                 `✅ Авторизация успешна!\n\n` +
