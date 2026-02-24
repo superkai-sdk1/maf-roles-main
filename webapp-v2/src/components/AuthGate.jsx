@@ -12,69 +12,24 @@ export function AuthGate({ children }) {
   const [error, setError] = useState('');
   const pollRef = useRef(null);
   const timerRef = useRef(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    let cancelled = false;
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
     (async () => {
       const result = await authService.tryAutoAuth();
-      if (cancelled) return;
+      if (!mountedRef.current) return;
       if (result.authenticated) {
         setUser(result.user);
         setState('ready');
       } else {
-        setState('need_code');
+        requestNewCode();
       }
     })();
-    return () => { cancelled = true; };
-  }, []);
-
-  const startCodeFlow = useCallback(async () => {
-    setError('');
-    setState('requesting_code');
-    const result = await authService.requestCode();
-    if (result.success) {
-      setCode(result.code);
-      setBotLink(result.botLink);
-      setBotUsername(result.botUsername);
-      setExpiresIn(result.expiresIn);
-      setState('show_code');
-      startPolling(result.code, result.expiresIn);
-    } else {
-      setError(result.error || 'Не удалось получить код');
-      setState('need_code');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (state === 'need_code') {
-      startCodeFlow();
-    }
-  }, [state, startCodeFlow]);
-
-  const startPolling = useCallback((codeVal, ttl) => {
-    stopPolling();
-    let remaining = ttl;
-
-    timerRef.current = setInterval(() => {
-      remaining--;
-      setExpiresIn(remaining);
-      if (remaining <= 0) {
-        stopPolling();
-        setState('expired');
-      }
-    }, 1000);
-
-    pollRef.current = setInterval(async () => {
-      const result = await authService.checkCode(codeVal);
-      if (result.confirmed) {
-        stopPolling();
-        setUser(result.user);
-        setState('ready');
-      } else if (result.expired) {
-        stopPolling();
-        setState('expired');
-      }
-    }, authService.POLL_INTERVAL);
   }, []);
 
   const stopPolling = useCallback(() => {
@@ -84,10 +39,50 @@ export function AuthGate({ children }) {
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
-  const handleRetry = () => {
-    stopPolling();
-    setState('need_code');
-  };
+  const requestNewCode = useCallback(async () => {
+    setError('');
+    setState('requesting_code');
+
+    const result = await authService.requestCode();
+    if (!mountedRef.current) return;
+
+    if (result.success) {
+      setCode(result.code);
+      setBotLink(result.botLink);
+      setBotUsername(result.botUsername);
+      setExpiresIn(result.expiresIn);
+      setState('show_code');
+
+      stopPolling();
+      let remaining = result.expiresIn;
+
+      timerRef.current = setInterval(() => {
+        remaining--;
+        if (!mountedRef.current) return;
+        setExpiresIn(remaining);
+        if (remaining <= 0) {
+          stopPolling();
+          setState('expired');
+        }
+      }, 1000);
+
+      pollRef.current = setInterval(async () => {
+        const check = await authService.checkCode(result.code);
+        if (!mountedRef.current) return;
+        if (check.confirmed) {
+          stopPolling();
+          setUser(check.user);
+          setState('ready');
+        } else if (check.expired) {
+          stopPolling();
+          setState('expired');
+        }
+      }, authService.POLL_INTERVAL);
+    } else {
+      setError(result.error || 'Не удалось получить код. Проверьте подключение к серверу.');
+      setState('error');
+    }
+  }, [stopPolling]);
 
   if (state === 'ready') return children;
 
@@ -143,8 +138,6 @@ export function AuthGate({ children }) {
           <div className="auth-hint">
             Ожидание подтверждения...
           </div>
-
-          {error && <div className="auth-error">{error}</div>}
         </div>
       </div>
     );
@@ -160,7 +153,7 @@ export function AuthGate({ children }) {
           <div className="auth-title">MafBoard</div>
           <div className="auth-subtitle">Код истёк</div>
           <div className="auth-hint">Время действия кода вышло</div>
-          <button className="auth-bot-btn" onClick={handleRetry}>
+          <button className="auth-bot-btn" onClick={requestNewCode}>
             Получить новый код
           </button>
         </div>
@@ -168,6 +161,7 @@ export function AuthGate({ children }) {
     );
   }
 
+  // state === 'error'
   return (
     <div className="auth-overlay">
       <div className="auth-card">
@@ -176,7 +170,7 @@ export function AuthGate({ children }) {
         </div>
         <div className="auth-title">MafBoard</div>
         {error && <div className="auth-error">{error}</div>}
-        <button className="auth-bot-btn" onClick={handleRetry}>
+        <button className="auth-bot-btn" onClick={requestNewCode}>
           Попробовать снова
         </button>
       </div>
