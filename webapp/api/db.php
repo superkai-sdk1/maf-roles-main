@@ -5,12 +5,12 @@ use Medoo\Medoo;
 
 $database = new Medoo(array(
 	'database_type' => 'mysql',
-	'database_name' => 'webrarium_mafia',
+	'database_name' => 'DB_NAME_PLACEHOLDER',
 	'server' => 'localhost',
-	'username' => 'kai',
-	'password' => 'Spotify0660',
+	'username' => 'DB_USER_PLACEHOLDER',
+	'password' => 'DB_PASS_PLACEHOLDER',
 	'charset' => 'utf8',
-	'port' => 3306,
+	'port' => DB_PORT_PLACEHOLDER,
 	'prefix' => '',
 	'error' => PDO::ERRMODE_EXCEPTION,
 ));

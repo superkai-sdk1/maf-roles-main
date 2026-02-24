@@ -68,17 +68,19 @@ if [ "$1" = "--update" ]; then
         exit 1
     fi
 
+    DEST="$PROJECT_DEST_DIR"
     log_info "Updating MafBoard for domain: ${GREEN}$DOMAIN${NC}"
-    log_info "Project directory: ${GREEN}$PROJECT_DEST_DIR${NC}"
+    log_info "Project directory: ${GREEN}$DEST${NC}"
 
     # Load NVM
     export NVM_DIR="/root/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+    NODE_PATH=$(which node)
 
     # Pull latest code
-    log_step "Step 1/5: Pulling latest code from Git"
-    if [ -d "$PROJECT_DEST_DIR/.git" ]; then
-        cd "$PROJECT_DEST_DIR"
+    log_step "Step 1/8: Pulling latest code from Git"
+    if [ -d "$DEST/.git" ]; then
+        cd "$DEST"
         git fetch origin
         git reset --hard origin/main 2>/dev/null || git reset --hard origin/master
         log_info "Git pull complete"
@@ -86,36 +88,134 @@ if [ "$1" = "--update" ]; then
         log_warn "Not a git repo, syncing from source directory..."
         rsync -av --exclude='.git' --exclude='node_modules' --exclude='dist' \
               --exclude='webapp-v2/node_modules' --exclude='webapp-v2/dist' \
-              "$PROJECT_SOURCE_DIR/" "$PROJECT_DEST_DIR/"
+              "$PROJECT_SOURCE_DIR/" "$DEST/"
+    fi
+
+    # Regenerate config files from config.env
+    log_step "Step 2/8: Regenerating config files"
+
+    DB_PORT=${DB_PORT:-3306}
+
+    cat > "$DEST/webapp-v2/api/db.php" <<'PHPEOF'
+<?php
+
+require  'medoo.php';
+use Medoo\Medoo;
+
+$database = new Medoo(array(
+	'database_type' => 'mysql',
+	'database_name' => 'DB_NAME_PLACEHOLDER',
+	'server' => 'localhost',
+	'username' => 'DB_USER_PLACEHOLDER',
+	'password' => 'DB_PASS_PLACEHOLDER',
+	'charset' => 'utf8',
+	'port' => DB_PORT_PLACEHOLDER,
+	'prefix' => '',
+	'error' => PDO::ERRMODE_EXCEPTION,
+));
+
+$TABLE_PLAYERS = 'players';
+PHPEOF
+    sed -i "s#DB_NAME_PLACEHOLDER#${DB_NAME}#g" "$DEST/webapp-v2/api/db.php"
+    sed -i "s#DB_USER_PLACEHOLDER#${DB_USER}#g" "$DEST/webapp-v2/api/db.php"
+    sed -i "s#DB_PASS_PLACEHOLDER#${DB_PASS}#g" "$DEST/webapp-v2/api/db.php"
+    sed -i "s#DB_PORT_PLACEHOLDER#${DB_PORT}#g" "$DEST/webapp-v2/api/db.php"
+    log_info "db.php configured (database: $DB_NAME, user: $DB_USER)"
+
+    cat > "$DEST/webapp-v2/login/auth-config.php" <<AUTHEOF
+<?php
+define('BOT_TOKEN', '${BOT_TOKEN}');
+define('BOT_USERNAME', '${BOT_USERNAME}');
+define('SESSION_TTL_DAYS', 30);
+define('CODE_TTL_SECONDS', 300);
+define('CODE_POLL_INTERVAL_MS', 2500);
+AUTHEOF
+    log_info "auth-config.php configured"
+
+    mkdir -p "$DEST/webapp-v2/admin/api"
+    cat > "$DEST/webapp-v2/admin/api/admin-config.php" <<ADMINEOF
+<?php
+define('ADMIN_TELEGRAM_IDS', [
+    ${ADMIN_TELEGRAM_ID},
+]);
+define('ADMIN_PANEL_NAME', 'MafBoard Admin');
+ADMINEOF
+    log_info "admin-config.php configured"
+
+    BOT_JS="$DEST/webapp-v2/login/bot.js"
+    if [ -f "$BOT_JS" ]; then
+        python3 -c "
+import re
+with open('$BOT_JS', 'r') as f:
+    content = f.read()
+content = re.sub(
+    r\"const BOT_TOKEN = process\\.env\\.BOT_TOKEN \\|\\| '[^']*';\",
+    \"const BOT_TOKEN = process.env.BOT_TOKEN || '${BOT_TOKEN}';\",
+    content
+)
+content = re.sub(
+    r\"const CONFIRM_API_URL = process\\.env\\.CONFIRM_API_URL \\|\\| '[^']*';\",
+    \"const CONFIRM_API_URL = process.env.CONFIRM_API_URL || 'https://${DOMAIN}/login/code-confirm.php';\",
+    content
+)
+with open('$BOT_JS', 'w') as f:
+    f.write(content)
+"
+        log_info "bot.js configured for domain $DOMAIN"
+    fi
+
+    # Update Nginx config — ensure all paths point to webapp-v2/
+    log_step "Step 3/8: Updating Nginx configuration"
+    NGINX_CONF="/etc/nginx/sites-available/$DOMAIN"
+    if [ -f "$NGINX_CONF" ]; then
+        sed -i "s|$DEST/webapp/api/|$DEST/webapp-v2/api/|g" "$NGINX_CONF"
+        sed -i "s|$DEST/webapp/login/|$DEST/webapp-v2/login/|g" "$NGINX_CONF"
+        sed -i "s|$DEST/webapp/admin/|$DEST/webapp-v2/admin/|g" "$NGINX_CONF"
+        # Remove legacy /panel block if present
+        sed -i '/# --- Old webapp/,/^    }/d' "$NGINX_CONF"
+        nginx -t && systemctl reload nginx
+        log_info "Nginx config updated"
+    else
+        log_warn "Nginx config not found at $NGINX_CONF, skipping"
     fi
 
     # Install Node.js dependencies
-    log_step "Step 2/5: Updating Node.js dependencies"
-    cd "$PROJECT_DEST_DIR/websocket"
+    log_step "Step 4/8: Updating Node.js dependencies"
+    cd "$DEST/websocket"
     npm install --production
-    cd "$PROJECT_DEST_DIR/webapp-v2/login"
+    cd "$DEST/webapp-v2/login"
     npm install --production
 
     # Rebuild webapp-v2
-    log_step "Step 3/5: Building webapp-v2"
-    cd "$PROJECT_DEST_DIR/webapp-v2"
+    log_step "Step 5/8: Building webapp-v2"
+    cd "$DEST/webapp-v2"
     npm install
     npm run build
-    log_info "Build complete: $PROJECT_DEST_DIR/webapp-v2/dist/"
+    log_info "Build complete: $DEST/webapp-v2/dist/"
 
     # Fix permissions
-    log_step "Step 4/5: Fixing permissions"
-    chown -R www-data:www-data "$PROJECT_DEST_DIR"
-    chmod -R 755 "$PROJECT_DEST_DIR"
-    chmod -R 775 "$PROJECT_DEST_DIR/websocket"
+    log_step "Step 6/8: Fixing permissions"
+    chown -R www-data:www-data "$DEST"
+    chmod -R 755 "$DEST"
+    chmod -R 775 "$DEST/websocket"
 
-    # Restart services
-    log_step "Step 5/5: Restarting services"
+    # Restart services — recreate bot if path changed
+    log_step "Step 7/8: Restarting services"
     . "$NVM_DIR/nvm.sh"
-    pm2 restart "$BACKEND_SERVICE_NAME" 2>/dev/null || log_warn "WebSocket service not found"
-    pm2 restart "$BOT_SERVICE_NAME" 2>/dev/null || log_warn "Bot service not found"
-    systemctl reload nginx
 
+    pm2 restart "$BACKEND_SERVICE_NAME" 2>/dev/null || log_warn "WebSocket service not found"
+
+    pm2 delete "$BOT_SERVICE_NAME" 2>/dev/null || true
+    pm2 start "$DEST/webapp-v2/login/bot.js" \
+        --interpreter "$NODE_PATH" \
+        --name "$BOT_SERVICE_NAME" \
+        --cwd "$DEST/webapp-v2/login"
+    pm2 save
+    log_info "PM2 services restarted"
+
+    # Verify
+    log_step "Step 8/8: Verification"
+    systemctl reload nginx
     echo ""
     echo -e "${CYAN}============================================================${NC}"
     echo -e "${GREEN}       UPDATE COMPLETE!${NC}"
