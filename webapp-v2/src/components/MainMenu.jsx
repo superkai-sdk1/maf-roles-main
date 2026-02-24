@@ -404,7 +404,7 @@ export function MainMenu() {
   const [goMafiaModal, setGoMafiaModal] = useState(false);
   const [goMafiaLogin, setGoMafiaLogin] = useState({ nickname: '', password: '', loading: false, error: '' });
 
-  const [activeSessions, setActiveSessions] = useState([]);
+  const [deviceSessions, setDeviceSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [terminatingId, setTerminatingId] = useState(null);
 
@@ -458,7 +458,7 @@ export function MainMenu() {
     if (!token) return;
     setSessionsLoading(true);
     const sessions = await sessionsApi.getActiveSessions(token);
-    if (sessions) setActiveSessions(sessions);
+    if (sessions) setDeviceSessions(sessions);
     setSessionsLoading(false);
   }, []);
 
@@ -475,7 +475,7 @@ export function MainMenu() {
     triggerHaptic('warning');
     const result = await sessionsApi.terminateSession(token, sessionId);
     if (result?.success) {
-      setActiveSessions(prev => prev.filter(s => s.id !== sessionId));
+      setDeviceSessions(prev => prev.filter(s => s.id !== sessionId));
       triggerHaptic('success');
     }
     setTerminatingId(null);
@@ -1443,13 +1443,13 @@ export function MainMenu() {
                       <div className="gomafia-modal-spinner" />
                       <span style={{ fontSize: '0.8em', color: 'rgba(255,255,255,0.35)' }}>Загрузка...</span>
                     </div>
-                  ) : activeSessions.length === 0 ? (
+                  ) : deviceSessions.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '0.8em', color: 'rgba(255,255,255,0.25)' }}>
                       Нет активных сеансов
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {activeSessions.map(session => (
+                      {deviceSessions.map(session => (
                         <div
                           key={session.id}
                           className="active-device-card"
