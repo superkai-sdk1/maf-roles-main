@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { PlayerCard } from './PlayerCard';
@@ -9,6 +9,7 @@ import { RolesPhase } from './RolesPhase';
 import { NightPanel } from './NightPanel';
 import { SlideConfirm } from './SlideConfirm';
 import { triggerHaptic } from '../utils/haptics';
+import { useSwipeBack } from '../hooks/useSwipeBack';
 
 export function GameScreen() {
   const {
@@ -40,6 +41,17 @@ export function GameScreen() {
   const [showSettingsScreen, setShowSettingsScreen] = useState(false);
   const [showResultsScreen, setShowResultsScreen] = useState(false);
   const [showRolesAlert, setShowRolesAlert] = useState(false);
+
+  const handleSwipeBack = useCallback(() => {
+    if (showVotingScreen) { setShowVotingScreen(false); setVotingScreenTab('voting'); }
+    else if (showSettingsScreen) setShowSettingsScreen(false);
+    else if (showResultsScreen) setShowResultsScreen(false);
+    else if (showRolesAlert) setShowRolesAlert(false);
+    else if (gameFinished) returnToMainMenu();
+    else setShowExitConfirm(true);
+  }, [showVotingScreen, showSettingsScreen, showResultsScreen, showRolesAlert, gameFinished, returnToMainMenu, setVotingScreenTab]);
+
+  useSwipeBack(handleSwipeBack);
 
   useEffect(() => {
     if (gamePhase !== 'day' && showVotingScreen) {

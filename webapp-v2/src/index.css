@@ -97,6 +97,46 @@ html {
 .scroll-stagger > *:nth-child(n+11) { animation-delay: 300ms; }
 
 /* ============================================= */
+/*  Swipe Back Gesture                           */
+/* ============================================= */
+
+.swipe-back-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  z-index: 99998;
+  pointer-events: none;
+}
+
+.swipe-back-indicator {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  width: 40px;
+  height: 40px;
+  margin-top: -20px;
+  z-index: 99999;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateX(-40px) scale(0.5);
+  will-change: transform, opacity;
+}
+
+.swipe-back-chevron {
+  width: 14px;
+  height: 14px;
+  border-left: 2.5px solid rgba(255, 255, 255, 0.85);
+  border-bottom: 2.5px solid rgba(255, 255, 255, 0.85);
+  transform: rotate(45deg);
+  border-radius: 2px;
+  filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.5));
+}
+
+/* ============================================= */
 /*  Nexus Glass Design System                    */
 /*  MafBoard React — replicated from original    */
 /* ============================================= */

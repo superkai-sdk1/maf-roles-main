@@ -5,6 +5,7 @@ import { sessionManager } from '../services/sessionManager';
 import { goMafiaApi } from '../services/api';
 import { COLOR_SCHEMES, applyTheme } from '../constants/themes';
 import { triggerHaptic } from '../utils/haptics';
+import { useSwipeBack } from '../hooks/useSwipeBack';
 import {
   IconPlayCircle, IconHistory, IconPlus, IconPalette, IconUser,
   IconTrophy, IconDice, IconChevronDown, IconTrash, IconStats, IconCards,
@@ -577,6 +578,15 @@ export function MainMenu() {
   }, [tableGroup]);
 
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+
+  const handleSwipeBack = useCallback(() => {
+    if (tableGroup) { setTableGroup(null); return; }
+    if (menuScreen === 'profileSettings') { setMenuScreen('profile'); return; }
+    if (menuScreen === 'profile' || menuScreen === 'themes') { setMenuScreen('game'); return; }
+  }, [tableGroup, menuScreen]);
+
+  const canSwipeBack = tableGroup || menuScreen !== 'game';
+  useSwipeBack(handleSwipeBack, canSwipeBack);
 
   return (
     <>

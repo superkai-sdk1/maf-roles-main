@@ -3,6 +3,7 @@ import { useGame } from '../context/GameContext';
 import { goMafiaApi } from '../services/api';
 import { sessionManager } from '../services/sessionManager';
 import { triggerHaptic } from '../utils/haptics';
+import { useSwipeBack } from '../hooks/useSwipeBack';
 import {
   CITY_ROLES_ALL, CITY_OPTIONAL_ROLES, getCityActiveRoles,
 } from '../constants/roles';
@@ -574,7 +575,7 @@ export function ModeSelector() {
     triggerHaptic('success');
   };
 
-  const goBack = () => {
+  const goBack = useCallback(() => {
     if (step === 'modes') returnToMainMenu();
     else if (step === 'game_select') setStep('browser');
     else if (step === 'gomafia') setStep('browser');
@@ -586,7 +587,9 @@ export function ModeSelector() {
       else setStep('modes');
     }
     else setStep('modes');
-  };
+  }, [step, cityStep, returnToMainMenu]);
+
+  useSwipeBack(goBack);
 
   const getTitle = () => {
     if (step === 'modes') return 'Новая игра';
