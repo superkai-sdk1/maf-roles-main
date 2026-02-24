@@ -382,10 +382,10 @@ $database = new Medoo(array(
 $TABLE_PLAYERS = 'players';
 PHPEOF
 
-sed -i "s|DB_NAME_PLACEHOLDER|${DB_NAME}|g" "$PROJECT_DEST_DIR/webapp/api/db.php"
-sed -i "s|DB_USER_PLACEHOLDER|${DB_USER}|g" "$PROJECT_DEST_DIR/webapp/api/db.php"
-sed -i "s|DB_PASS_PLACEHOLDER|${DB_PASS}|g" "$PROJECT_DEST_DIR/webapp/api/db.php"
-sed -i "s|DB_PORT_PLACEHOLDER|${DB_PORT}|g" "$PROJECT_DEST_DIR/webapp/api/db.php"
+sed -i "s#DB_NAME_PLACEHOLDER#${DB_NAME}#g" "$PROJECT_DEST_DIR/webapp/api/db.php"
+sed -i "s#DB_USER_PLACEHOLDER#${DB_USER}#g" "$PROJECT_DEST_DIR/webapp/api/db.php"
+sed -i "s#DB_PASS_PLACEHOLDER#${DB_PASS}#g" "$PROJECT_DEST_DIR/webapp/api/db.php"
+sed -i "s#DB_PORT_PLACEHOLDER#${DB_PORT}#g" "$PROJECT_DEST_DIR/webapp/api/db.php"
 
 # auth-config.php
 cat > "$PROJECT_DEST_DIR/webapp/login/auth-config.php" <<AUTHEOF
@@ -407,11 +407,25 @@ define('ADMIN_TELEGRAM_IDS', [
 define('ADMIN_PANEL_NAME', 'MafBoard Admin');
 ADMINEOF
 
-# bot.js — inject token and domain
-sed -i "s|const BOT_TOKEN = process.env.BOT_TOKEN || '.*';|const BOT_TOKEN = process.env.BOT_TOKEN || '${BOT_TOKEN}';|g" \
-    "$PROJECT_DEST_DIR/webapp/login/bot.js"
-sed -i "s|const CONFIRM_API_URL = process.env.CONFIRM_API_URL || '.*';|const CONFIRM_API_URL = process.env.CONFIRM_API_URL || 'https://${DOMAIN}/login/code-confirm.php';|g" \
-    "$PROJECT_DEST_DIR/webapp/login/bot.js"
+# bot.js — write config lines directly (sed can't handle || in JS)
+BOT_JS="$PROJECT_DEST_DIR/webapp/login/bot.js"
+python3 -c "
+import re, sys
+with open('$BOT_JS', 'r') as f:
+    content = f.read()
+content = re.sub(
+    r\"const BOT_TOKEN = process\\.env\\.BOT_TOKEN \\|\\| '[^']*';\",
+    \"const BOT_TOKEN = process.env.BOT_TOKEN || '${BOT_TOKEN}';\",
+    content
+)
+content = re.sub(
+    r\"const CONFIRM_API_URL = process\\.env\\.CONFIRM_API_URL \\|\\| '[^']*';\",
+    \"const CONFIRM_API_URL = process.env.CONFIRM_API_URL || 'https://${DOMAIN}/login/code-confirm.php';\",
+    content
+)
+with open('$BOT_JS', 'w') as f:
+    f.write(content)
+"
 
 log_info "PHP backend configured"
 
