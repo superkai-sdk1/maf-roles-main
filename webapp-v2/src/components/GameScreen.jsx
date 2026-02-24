@@ -269,7 +269,7 @@ export function GameScreen() {
 
             {/* Player cards (day, discussion, freeSeating — not night) */}
             {(gamePhase === 'day' || gamePhase === 'discussion' || gamePhase === 'freeSeating') && (
-              <div className="animate-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="animate-stagger scroll-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {tableOut.map(p => (
                   <PlayerCard key={p.roleKey} player={p} mode={effectiveMode}
                     isSpeaking={currentSpeaker?.roleKey === p.roleKey}

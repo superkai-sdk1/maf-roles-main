@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import { MainMenu } from './components/MainMenu';
 import { ModeSelector } from './components/ModeSelector';
 import { GameScreen } from './components/GameScreen';
 import { loadSavedTheme, applyTheme } from './constants/themes';
 import { initTelegramApp } from './utils/telegram';
+import { useNativeScroll } from './hooks/useNativeScroll';
 
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -32,11 +33,16 @@ function Router() {
 }
 
 export default function App() {
+  const rootRef = useRef(null);
+
   useEffect(() => {
+    rootRef.current = document.getElementById('root');
     initTelegramApp();
     const color = loadSavedTheme();
     applyTheme(color);
   }, []);
+
+  useNativeScroll(rootRef);
 
   return (
     <ErrorBoundary>

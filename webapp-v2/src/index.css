@@ -25,15 +25,76 @@ html, body {
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
-  overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
 }
 
 html {
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
 }
+
+/* Native-feel scroll containers */
+.native-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+.native-scroll::-webkit-scrollbar { display: none; }
+
+/* Scroll fade edges — top/bottom gradient masks */
+.scroll-fade {
+  position: relative;
+}
+.scroll-fade::before,
+.scroll-fade::after {
+  content: "";
+  position: sticky;
+  left: 0; right: 0;
+  height: 32px;
+  z-index: 10;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.scroll-fade::before {
+  top: 0;
+  background: linear-gradient(to bottom, var(--maf-bg-main, #040410) 0%, transparent 100%);
+  display: block;
+  margin-bottom: -32px;
+}
+.scroll-fade::after {
+  bottom: 0;
+  background: linear-gradient(to top, var(--maf-bg-main, #040410) 0%, transparent 100%);
+  display: block;
+  margin-top: -32px;
+}
+
+/* Scroll velocity transform — subtle parallax feel */
+@keyframes scrollReveal {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.scroll-item {
+  animation: scrollReveal 0.35s var(--ease-spring) both;
+}
+
+/* Stagger children for cascade appearance */
+.scroll-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.scroll-stagger > *:nth-child(2) { animation-delay: 30ms; }
+.scroll-stagger > *:nth-child(3) { animation-delay: 60ms; }
+.scroll-stagger > *:nth-child(4) { animation-delay: 90ms; }
+.scroll-stagger > *:nth-child(5) { animation-delay: 120ms; }
+.scroll-stagger > *:nth-child(6) { animation-delay: 150ms; }
+.scroll-stagger > *:nth-child(7) { animation-delay: 180ms; }
+.scroll-stagger > *:nth-child(8) { animation-delay: 210ms; }
+.scroll-stagger > *:nth-child(9) { animation-delay: 240ms; }
+.scroll-stagger > *:nth-child(10) { animation-delay: 270ms; }
+.scroll-stagger > *:nth-child(n+11) { animation-delay: 300ms; }
 
 /* ============================================= */
 /*  Nexus Glass Design System                    */
@@ -282,9 +343,11 @@ body {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  overscroll-behavior: none;
+  overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+#root::-webkit-scrollbar { display: none; }
 
 body::before {
   content: "";
@@ -1655,9 +1718,12 @@ body::after {
   z-index: 2000;
   background: var(--maf-bg-main, #0a0a12);
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: none;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
 }
+.fullscreen-page::-webkit-scrollbar { display: none; }
 .fullscreen-page-container {
   max-width: 480px;
   margin: 0 auto;
@@ -3096,13 +3162,13 @@ body::after {
 }
 
 /* ============================================= */
-/*  Scrollbar                                    */
+/*  Scrollbar — Hidden for native feel           */
 /* ============================================= */
 
-::-webkit-scrollbar { width: 3px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.15); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.3); }
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar { display: none; }
 
 /* ============================================= */
 /*  Theme Selector                               */
@@ -3269,8 +3335,12 @@ body::after {
   justify-content: center;
   background: var(--maf-bg-main, #040410);
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
 }
+.mode-selector-overlay::-webkit-scrollbar { display: none; }
 
 .mode-selector-container {
   width: 100%;

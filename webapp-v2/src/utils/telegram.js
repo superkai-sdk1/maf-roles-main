@@ -68,6 +68,44 @@ export function initTelegramApp() {
   document.addEventListener('touchstart', (e) => {
     if (e.touches.length > 1) e.preventDefault();
   }, { passive: false });
+
+  initScrollEdgeHaptics();
+}
+
+function initScrollEdgeHaptics() {
+  const EDGE = 2;
+  const COOLDOWN = 400;
+  let lastTime = 0;
+  const state = new WeakMap();
+
+  const fire = () => {
+    const now = Date.now();
+    if (now - lastTime < COOLDOWN) return;
+    lastTime = now;
+    try {
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('soft');
+      else if (window.navigator.vibrate) window.navigator.vibrate(5);
+    } catch (e) { /* ignore */ }
+  };
+
+  document.addEventListener('scroll', (e) => {
+    const el = e.target;
+    if (el === document || el === document.documentElement) return;
+    if (!el || !el.scrollHeight) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const atTop = scrollTop <= EDGE;
+    const atBottom = scrollTop + clientHeight >= scrollHeight - EDGE;
+
+    let s = state.get(el);
+    if (!s) { s = { top: true, bottom: false }; state.set(el, s); }
+
+    if (atTop && !s.top) fire();
+    if (atBottom && !s.bottom) fire();
+
+    s.top = atTop;
+    s.bottom = atBottom;
+  }, true);
 }
 
 export function refreshTelegramColors() {
