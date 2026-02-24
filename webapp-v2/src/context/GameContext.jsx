@@ -1373,7 +1373,7 @@ export const GameProvider = ({ children }) => {
           updatedAt: Date.now(),
         };
         const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-        navigator.sendBeacon?.(`${import.meta.env.DEV ? '/api/' : 'https://titanmafia.pro/api/'}sessions-sync.php?za`, blob);
+        navigator.sendBeacon?.('/api/sessions-sync.php?za', blob);
         sessionManager.saveSession(data);
       }
     };

@@ -13,7 +13,7 @@
  *   node sync-players.js --range 1-5000
  *
  *   # С указанием URL вашего сервера (по умолчанию http://localhost:31006)
- *   node sync-players.js --range 1-3000 --api-url https://titanmafia.pro
+ *   node sync-players.js --range 1-3000 --api-url https://your-domain.com
  *
  * Что делает:
  *   1. Получает buildId с gomafia.pro (нужен для API)
@@ -86,7 +86,7 @@ function printHelp() {
 Примеры:
   node sync-players.js --tournament 12345
   node sync-players.js --range 1-5000
-  node sync-players.js --range 1-3000 --api-url https://titanmafia.pro
+  node sync-players.js --range 1-3000 --api-url https://your-domain.com
 `);
 }
 

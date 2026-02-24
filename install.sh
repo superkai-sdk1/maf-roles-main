@@ -93,7 +93,7 @@ if [ "$1" = "--update" ]; then
     log_step "Step 2/5: Updating Node.js dependencies"
     cd "$PROJECT_DEST_DIR/websocket"
     npm install --production
-    cd "$PROJECT_DEST_DIR/webapp/login"
+    cd "$PROJECT_DEST_DIR/webapp-v2/login"
     npm install --production
 
     # Rebuild webapp-v2
@@ -361,7 +361,7 @@ log_info "Project files deployed to $PROJECT_DEST_DIR"
 log_step "Step 5/10: Configuring PHP backend"
 
 # db.php
-cat > "$PROJECT_DEST_DIR/webapp/api/db.php" <<'PHPEOF'
+cat > "$PROJECT_DEST_DIR/webapp-v2/api/db.php" <<'PHPEOF'
 <?php
 
 require  'medoo.php';
@@ -382,13 +382,13 @@ $database = new Medoo(array(
 $TABLE_PLAYERS = 'players';
 PHPEOF
 
-sed -i "s#DB_NAME_PLACEHOLDER#${DB_NAME}#g" "$PROJECT_DEST_DIR/webapp/api/db.php"
-sed -i "s#DB_USER_PLACEHOLDER#${DB_USER}#g" "$PROJECT_DEST_DIR/webapp/api/db.php"
-sed -i "s#DB_PASS_PLACEHOLDER#${DB_PASS}#g" "$PROJECT_DEST_DIR/webapp/api/db.php"
-sed -i "s#DB_PORT_PLACEHOLDER#${DB_PORT}#g" "$PROJECT_DEST_DIR/webapp/api/db.php"
+sed -i "s#DB_NAME_PLACEHOLDER#${DB_NAME}#g" "$PROJECT_DEST_DIR/webapp-v2/api/db.php"
+sed -i "s#DB_USER_PLACEHOLDER#${DB_USER}#g" "$PROJECT_DEST_DIR/webapp-v2/api/db.php"
+sed -i "s#DB_PASS_PLACEHOLDER#${DB_PASS}#g" "$PROJECT_DEST_DIR/webapp-v2/api/db.php"
+sed -i "s#DB_PORT_PLACEHOLDER#${DB_PORT}#g" "$PROJECT_DEST_DIR/webapp-v2/api/db.php"
 
 # auth-config.php
-cat > "$PROJECT_DEST_DIR/webapp/login/auth-config.php" <<AUTHEOF
+cat > "$PROJECT_DEST_DIR/webapp-v2/login/auth-config.php" <<AUTHEOF
 <?php
 define('BOT_TOKEN', '${BOT_TOKEN}');
 define('BOT_USERNAME', '${BOT_USERNAME}');
@@ -398,8 +398,8 @@ define('CODE_POLL_INTERVAL_MS', 2500);
 AUTHEOF
 
 # admin-config.php
-mkdir -p "$PROJECT_DEST_DIR/webapp/admin/api"
-cat > "$PROJECT_DEST_DIR/webapp/admin/api/admin-config.php" <<ADMINEOF
+mkdir -p "$PROJECT_DEST_DIR/webapp-v2/admin/api"
+cat > "$PROJECT_DEST_DIR/webapp-v2/admin/api/admin-config.php" <<ADMINEOF
 <?php
 define('ADMIN_TELEGRAM_IDS', [
     ${ADMIN_TELEGRAM_ID},
@@ -408,7 +408,7 @@ define('ADMIN_PANEL_NAME', 'MafBoard Admin');
 ADMINEOF
 
 # bot.js — write config lines directly (sed can't handle || in JS)
-BOT_JS="$PROJECT_DEST_DIR/webapp/login/bot.js"
+BOT_JS="$PROJECT_DEST_DIR/webapp-v2/login/bot.js"
 python3 -c "
 import re, sys
 with open('$BOT_JS', 'r') as f:
@@ -440,7 +440,7 @@ npm install --production
 log_info "WebSocket dependencies installed"
 
 # Telegram auth bot
-cd "$PROJECT_DEST_DIR/webapp/login"
+cd "$PROJECT_DEST_DIR/webapp-v2/login"
 npm install --production
 log_info "Auth bot dependencies installed"
 
@@ -537,7 +537,7 @@ server {
 
     # --- PHP API ---
     location /api/ {
-        alias $PROJECT_DEST_DIR/webapp/api/;
+        alias $PROJECT_DEST_DIR/webapp-v2/api/;
         location ~ \.php\$ {
             fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
             fastcgi_param SCRIPT_FILENAME \$request_filename;
@@ -547,7 +547,7 @@ server {
 
     # --- Auth / Login PHP ---
     location /login/ {
-        alias $PROJECT_DEST_DIR/webapp/login/;
+        alias $PROJECT_DEST_DIR/webapp-v2/login/;
         location ~ \.php\$ {
             fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
             fastcgi_param SCRIPT_FILENAME \$request_filename;
@@ -557,18 +557,7 @@ server {
 
     # --- Admin panel ---
     location /admin/ {
-        alias $PROJECT_DEST_DIR/webapp/admin/;
-        location ~ \.php\$ {
-            fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
-            fastcgi_param SCRIPT_FILENAME \$request_filename;
-            include fastcgi_params;
-        }
-    }
-
-    # --- Old webapp (legacy panel.html, for backward compatibility) ---
-    location /panel {
-        alias $PROJECT_DEST_DIR/webapp;
-        try_files \$uri \$uri/ \$uri.html =404;
+        alias $PROJECT_DEST_DIR/webapp-v2/admin/;
         location ~ \.php\$ {
             fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
             fastcgi_param SCRIPT_FILENAME \$request_filename;
@@ -640,10 +629,10 @@ pm2 start "$PROJECT_DEST_DIR/websocket/ws.js" \
     --cwd "$PROJECT_DEST_DIR/websocket"
 
 # Telegram auth bot
-pm2 start "$PROJECT_DEST_DIR/webapp/login/bot.js" \
+pm2 start "$PROJECT_DEST_DIR/webapp-v2/login/bot.js" \
     --interpreter "$NODE_PATH" \
     --name "$BOT_SERVICE_NAME" \
-    --cwd "$PROJECT_DEST_DIR/webapp/login"
+    --cwd "$PROJECT_DEST_DIR/webapp-v2/login"
 
 pm2 save
 pm2 startup -u root --hp /root 2>/dev/null || pm2 startup
@@ -680,7 +669,6 @@ echo -e "${CYAN}================================================================
 echo ""
 echo -e "  ${BOLD}Site:${NC}            ${GREEN}https://$DOMAIN${NC}"
 echo -e "  ${BOLD}Admin panel:${NC}     ${GREEN}https://$DOMAIN/admin/${NC}"
-echo -e "  ${BOLD}Legacy panel:${NC}    ${GREEN}https://$DOMAIN/panel.html${NC}"
 echo ""
 echo -e "  ${BOLD}Database:${NC}        ${GREEN}$DB_NAME${NC}"
 echo -e "  ${BOLD}DB user:${NC}         ${GREEN}$DB_USER${NC}"

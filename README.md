@@ -16,7 +16,7 @@
          │                          │
     webapp-v2/dist         websocket/ws.js
                                     │
-                           webapp/login/bot.js
+                           webapp-v2/login/bot.js
                            (Telegram Auth Bot)
 ```
 
@@ -39,37 +39,13 @@ MafBoard/
 ├── README.md
 ├── .gitignore
 │
-├── webapp-v2/              # React SPA (фронтенд v2)
+├── webapp-v2/              # React SPA + PHP Backend + Auth + Admin
 │   ├── index.html
 │   ├── package.json
 │   ├── vite.config.js
 │   ├── tailwind.config.js
 │   ├── postcss.config.js
 │   ├── dist/               # Собранные файлы (gitignored)
-│   └── src/
-│       ├── main.jsx
-│       ├── App.jsx
-│       ├── index.css
-│       ├── components/     # React-компоненты
-│       │   ├── GameScreen.jsx
-│       │   ├── MainMenu.jsx
-│       │   ├── ModeSelector.jsx
-│       │   ├── NightPanel.jsx
-│       │   ├── PlayerCard.jsx
-│       │   ├── ResultsPanel.jsx
-│       │   ├── RolesPhase.jsx
-│       │   ├── SettingsPanel.jsx
-│       │   ├── TimerPhase.jsx
-│       │   ├── VotingPanel.jsx
-│       │   └── SlideConfirm.jsx
-│       ├── constants/      # Роли, темы
-│       ├── context/        # GameContext (состояние игры)
-│       ├── hooks/          # useTimer
-│       ├── services/       # API, WebSocket, Sessions
-│       ├── utils/          # Иконки, хаптика
-│       └── media/          # SVG-ассеты
-│
-├── webapp/                 # Legacy фронтенд + PHP API
 │   ├── api/                # PHP API эндпоинты
 │   │   ├── db.php          # Подключение к MySQL
 │   │   ├── medoo.php       # Medoo ORM
@@ -89,11 +65,25 @@ MafBoard/
 │   │   ├── code-generate.php
 │   │   ├── code-confirm.php
 │   │   ├── code-check.php
-│   │   ├── session-validate.php
-│   │   ├── auth.js         # Клиентский скрипт авторизации
-│   │   └── auth.css
+│   │   └── session-validate.php
 │   ├── admin/              # Админ-панель
-│   └── panel.html          # Legacy панель (Vue.js)
+│   │   ├── index.html
+│   │   ├── admin.js
+│   │   ├── admin.css
+│   │   └── api/            # Admin API PHP
+│   └── src/
+│       ├── main.jsx
+│       ├── App.jsx
+│       ├── index.css
+│       ├── components/     # React-компоненты
+│       ├── constants/      # Роли, темы
+│       ├── context/        # GameContext (состояние игры)
+│       ├── hooks/          # useTimer, useSwipeBack, useNativeScroll
+│       ├── services/       # API, WebSocket, Sessions, Auth
+│       ├── utils/          # Иконки, хаптика, Telegram SDK
+│       └── media/          # SVG-ассеты
+│
+├── webapp/                 # Legacy (не используется)
 │
 └── websocket/              # WebSocket сервер
     ├── ws.js               # Сервер (Node.js)
@@ -203,7 +193,7 @@ bash start-dev.sh
 
 Откройте `http://localhost:5173`.
 
-API-запросы проксируются через Vite к `https://titanmafia.pro` (настраивается в `vite.config.js`).
+API-запросы проксируются через Vite к `http://localhost` (настраивается в `vite.config.js`).
 
 ## Управление
 

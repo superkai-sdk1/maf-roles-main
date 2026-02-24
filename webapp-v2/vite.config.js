@@ -8,16 +8,9 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     proxy: {
-      '/api': {
-        target: 'https://titanmafia.pro',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/login': {
-        target: 'https://titanmafia.pro',
-        changeOrigin: true,
-        secure: false,
-      }
+      '/api': { target: 'http://localhost', changeOrigin: true },
+      '/login': { target: 'http://localhost', changeOrigin: true },
+      '/admin': { target: 'http://localhost', changeOrigin: true },
     }
   },
   build: {
