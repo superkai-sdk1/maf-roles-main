@@ -1,12 +1,60 @@
 const STORAGE_KEY = 'mafboard_sessions';
+const SYNC_API = '/api/sessions-sync.php';
 const MAX_SESSIONS = 50;
 const SESSION_TTL = 365 * 24 * 60 * 60 * 1000;
+const SERVER_PUSH_DEBOUNCE = 2000;
 
 class SessionManager {
   constructor() {
     this._sessions = this._loadFromStorage();
     this._tgCloud = null;
+    this._authToken = null;
+    this._pushTimer = null;
     this._initTelegramCloud();
+  }
+
+  setAuthToken(token) {
+    this._authToken = token;
+  }
+
+  async syncWithServer() {
+    const token = this._authToken;
+    if (!token) return;
+    try {
+      const res = await fetch(`${SYNC_API}?token=${encodeURIComponent(token)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.sessions) && data.sessions.length > 0) {
+        this._mergeSessions(data.sessions);
+      } else if (this._sessions.length > 0) {
+        this._pushToServerNow();
+      }
+    } catch { /* ignore */ }
+  }
+
+  _schedulePush() {
+    if (!this._authToken) return;
+    if (this._pushTimer) clearTimeout(this._pushTimer);
+    this._pushTimer = setTimeout(() => {
+      this._pushTimer = null;
+      this._pushToServerNow();
+    }, SERVER_PUSH_DEBOUNCE);
+  }
+
+  async _pushToServerNow() {
+    const token = this._authToken;
+    if (!token) return;
+    try {
+      const sessions = this._sessions.map(s => ({
+        ...s,
+        timestamp: s.updatedAt || s.timestamp || Date.now(),
+      }));
+      await fetch(SYNC_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, sessions }),
+      });
+    } catch { /* ignore */ }
   }
 
   _initTelegramCloud() {
@@ -40,12 +88,14 @@ class SessionManager {
     }
     for (const s of remoteSessions) {
       const existing = map.get(s.sessionId);
-      if (!existing || (s.updatedAt || 0) > (existing.updatedAt || 0)) {
+      const remoteTs = s.updatedAt || s.timestamp || 0;
+      const localTs = existing ? (existing.updatedAt || existing.timestamp || 0) : 0;
+      if (!existing || remoteTs > localTs) {
         map.set(s.sessionId, s);
       }
     }
     this._sessions = Array.from(map.values())
-      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+      .sort((a, b) => (b.updatedAt || b.timestamp || 0) - (a.updatedAt || a.timestamp || 0))
       .slice(0, MAX_SESSIONS);
     this._saveToStorage();
   }
@@ -88,7 +138,8 @@ class SessionManager {
   saveSession(sessionData) {
     if (!sessionData || !sessionData.sessionId) return;
     const idx = this._sessions.findIndex(s => s.sessionId === sessionData.sessionId);
-    const data = { ...sessionData, updatedAt: Date.now() };
+    const now = Date.now();
+    const data = { ...sessionData, updatedAt: now, timestamp: now };
     if (idx >= 0) {
       this._sessions[idx] = data;
     } else {
@@ -98,11 +149,13 @@ class SessionManager {
       this._sessions = this._sessions.slice(0, MAX_SESSIONS);
     }
     this._saveToStorage();
+    this._schedulePush();
   }
 
   removeSession(sessionId) {
     this._sessions = this._sessions.filter(s => s.sessionId !== sessionId);
     this._saveToStorage();
+    this._schedulePush();
   }
 
   hasSignificantData(session) {
@@ -177,15 +230,20 @@ class SessionManager {
 
   archiveSeries(tournamentId) {
     let changed = false;
+    const now = Date.now();
     for (const s of this._sessions) {
       if (s.tournamentId === tournamentId) {
         s.gameFinished = true;
         s.seriesArchived = true;
-        s.updatedAt = Date.now();
+        s.updatedAt = now;
+        s.timestamp = now;
         changed = true;
       }
     }
-    if (changed) this._saveToStorage();
+    if (changed) {
+      this._saveToStorage();
+      this._schedulePush();
+    }
     return changed;
   }
 

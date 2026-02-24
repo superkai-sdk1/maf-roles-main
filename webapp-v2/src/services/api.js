@@ -244,17 +244,6 @@ export const goMafiaApi = {
     } catch (e) { return null; }
   },
 
-  // Sync sessions with server
-  async syncSessions(sessions) {
-    const fd = new FormData();
-    fd.set('sessions', JSON.stringify(sessions));
-    try {
-      const response = await fetch(`${API_BASE}sessions-sync.php?za`, { method: 'POST', body: fd });
-      if (!response.ok) return null;
-      return await response.json();
-    } catch (e) { return null; }
-  },
-
   // Save summary
   async saveSummary(data) {
     const fd = new FormData();

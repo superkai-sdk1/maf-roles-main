@@ -4,6 +4,7 @@ import { isBlackRole, getCityBestMoveMax } from '../constants/roles';
 import { sessionManager } from '../services/sessionManager';
 import { timerModule } from '../services/timerModule';
 import { goMafiaApi } from '../services/api';
+import { authService } from '../services/auth';
 import { triggerHaptic } from '../utils/haptics';
 
 const GameContext = createContext();
@@ -1257,8 +1258,17 @@ export const GameProvider = ({ children }) => {
     setActiveTab('table');
   }, [saveGameToHistory, saveCurrentSession, gameSelected, tableSelected, getGames, loadAvatars]);
 
-  // Load sessions on mount
-  useEffect(() => { setSessionsList(sessionManager.getSessions()); }, []);
+  // Load sessions on mount + sync with server
+  useEffect(() => {
+    setSessionsList(sessionManager.getSessions());
+    const token = authService.getStoredToken();
+    if (token) {
+      sessionManager.setAuthToken(token);
+      sessionManager.syncWithServer().then(() => {
+        setSessionsList(sessionManager.getSessions());
+      });
+    }
+  }, []);
 
   // =================== Day Speaker Flow ===================
   const activePlayers = useMemo(() => {
@@ -1359,6 +1369,7 @@ export const GameProvider = ({ children }) => {
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (currentSessionId) {
+        const now = Date.now();
         const data = {
           sessionId: currentSessionId, tournamentId, tournamentName, gameMode,
           gameSelected, tableSelected, roles, playersActions, fouls, techFouls,
@@ -1370,11 +1381,20 @@ export const GameProvider = ({ children }) => {
           doctorHealHistory, nightMisses, killedOnNight,
           judgeNickname, judgeAvatar,
           gamesHistory,
-          updatedAt: Date.now(),
+          updatedAt: now, timestamp: now,
         };
-        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-        navigator.sendBeacon?.('/api/sessions-sync.php?za', blob);
         sessionManager.saveSession(data);
+        const token = sessionManager._authToken;
+        if (token) {
+          const sessions = sessionManager.getSessions().map(s => ({
+            ...s, timestamp: s.updatedAt || s.timestamp || now,
+          }));
+          const blob = new Blob(
+            [JSON.stringify({ token, sessions })],
+            { type: 'application/json' }
+          );
+          navigator.sendBeacon?.('/api/sessions-sync.php', blob);
+        }
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
