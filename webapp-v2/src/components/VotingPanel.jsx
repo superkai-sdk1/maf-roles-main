@@ -3,6 +3,7 @@ import { useGame } from '../context/GameContext';
 import { useTimer } from '../hooks/useTimer';
 import { SlideConfirm } from './SlideConfirm';
 import { triggerHaptic } from '../utils/haptics';
+import { DialerPad, dialerBtn } from './DialerPad';
 
 export function VotingPanel() {
   const {
@@ -172,11 +173,10 @@ export function VotingPanel() {
   };
 
   const getDialerBtnClasses = ({ voted, votedElsewhere, prefilled }) => {
-    const base = 'h-11 rounded-full border text-sm font-bold active:scale-90 transition-all duration-150 ease-spring';
-    if (voted) return `${base} bg-accent text-white border-transparent shadow-glow-accent`;
-    if (votedElsewhere) return `${base} bg-white/[0.02] border-white/[0.04] text-white/15 opacity-[0.18] grayscale pointer-events-none`;
-    if (prefilled) return `${base} bg-white/[0.06] border-white/10 text-white/50`;
-    return `${base} bg-white/[0.04] border-white/[0.08] text-white/70`;
+    if (voted) return `${dialerBtn.base} ${dialerBtn.selected}`;
+    if (votedElsewhere) return `${dialerBtn.base} ${dialerBtn.disabled}`;
+    if (prefilled) return `${dialerBtn.base} ${dialerBtn.prefilled}`;
+    return `${dialerBtn.base} ${dialerBtn.normal}`;
   };
 
   return (
@@ -389,20 +389,18 @@ export function VotingPanel() {
                     Кто за подъём?
                   </div>
 
-                  <div className="grid grid-cols-5 gap-2 mb-3">
-                    {tableOut.map(p => {
-                      const alive = isPlayerActive(p.roleKey);
-                      const voted = votingLiftResults.includes(p.num);
-                      return (
-                        <button key={p.num}
-                          onClick={() => { if (alive) { toggleLiftVote(p.num); triggerHaptic('selection'); } }}
-                          className={getDialerBtnClasses({ voted, votedElsewhere: !alive, prefilled: false })}
-                          disabled={!alive}>
-                          {p.num}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <DialerPad items={tableOut} className="mb-3" renderButton={(p) => {
+                    const alive = isPlayerActive(p.roleKey);
+                    const voted = votingLiftResults.includes(p.num);
+                    return (
+                      <button
+                        onClick={() => { if (alive) { toggleLiftVote(p.num); triggerHaptic('selection'); } }}
+                        className={getDialerBtnClasses({ voted, votedElsewhere: !alive, prefilled: false })}
+                        disabled={!alive}>
+                        {p.num}
+                      </button>
+                    );
+                  }} />
 
                   <div className="flex items-center justify-between">
                     <span className="text-[0.85em] text-white/40">
@@ -447,23 +445,21 @@ export function VotingPanel() {
                         className="w-[52px] h-[52px] rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring text-[1.5em] p-0 flex items-center justify-center">+</button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-5 gap-2 mb-3">
-                      {tableOut.map(p => {
-                        const alive = isPlayerActive(p.roleKey);
-                        const voted = currentVotes.includes(p.num);
-                        const votedElsewhere = alreadyVotedElsewhere.has(p.num);
-                        const prefilled = alive && isLastCandidate && !voted && !votedElsewhere;
-                        const isDisabled = !alive || votedElsewhere;
-                        return (
-                          <button key={p.num}
-                            onClick={() => { if (!isDisabled) { toggleVotingSelection(p.num); triggerHaptic('selection'); } }}
-                            className={getDialerBtnClasses({ voted, votedElsewhere: isDisabled, prefilled })}
-                            disabled={isDisabled}>
-                            {p.num}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <DialerPad items={tableOut} className="mb-3" renderButton={(p) => {
+                      const alive = isPlayerActive(p.roleKey);
+                      const voted = currentVotes.includes(p.num);
+                      const votedElsewhere = alreadyVotedElsewhere.has(p.num);
+                      const prefilled = alive && isLastCandidate && !voted && !votedElsewhere;
+                      const isDisabled = !alive || votedElsewhere;
+                      return (
+                        <button
+                          onClick={() => { if (!isDisabled) { toggleVotingSelection(p.num); triggerHaptic('selection'); } }}
+                          className={getDialerBtnClasses({ voted, votedElsewhere: isDisabled, prefilled })}
+                          disabled={isDisabled}>
+                          {p.num}
+                        </button>
+                      );
+                    }} />
                   )}
 
                   <div className="flex items-center justify-between">

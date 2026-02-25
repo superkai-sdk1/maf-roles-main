@@ -3,6 +3,7 @@ import { useGame } from '../context/GameContext';
 import { SlideConfirm } from './SlideConfirm';
 import { triggerHaptic } from '../utils/haptics';
 import { NightTimerBar } from './NightTimerBar';
+import { DialerPad, dialerBtn } from './DialerPad';
 
 export const NightPanel = () => {
   const {
@@ -166,22 +167,16 @@ export const NightPanel = () => {
               {showTimer && <NightTimerBar duration={15} />}
               <h3 className="text-base font-extrabold text-yellow-400 text-center mb-1">Лучший ход</h3>
               <p className="text-xs text-white/35 text-center mb-3.5">Убитый называет 3 подозреваемых</p>
-              <div className="grid grid-cols-5 gap-2 mb-3">
-                {allPlayers.map(p => {
-                  const selected = bestMove.includes(p.num);
-                  return (
-                    <button key={p.num}
-                      onClick={() => { toggleBestMove(p.num); triggerHaptic('selection'); }}
-                      className={`h-11 rounded-full border text-sm font-bold
-                        active:scale-90 transition-all duration-150 ease-spring
-                        ${selected
-                          ? 'bg-accent text-white border-transparent shadow-glow-accent'
-                          : 'bg-white/[0.04] border-white/[0.08] text-white/60 hover:bg-white/[0.06]'}`}>
-                      {p.num}
-                    </button>
-                  );
-                })}
-              </div>
+              <DialerPad items={allPlayers} className="mb-3" renderButton={(p) => {
+                const selected = bestMove.includes(p.num);
+                return (
+                  <button
+                    onClick={() => { toggleBestMove(p.num); triggerHaptic('selection'); }}
+                    className={`${dialerBtn.base} ${selected ? dialerBtn.selected : dialerBtn.normal}`}>
+                    {p.num}
+                  </button>
+                );
+              }} />
               {bestMove.length > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-yellow-400">ЛХ: {bestMove.join(', ')}</span>
@@ -243,24 +238,18 @@ export const NightPanel = () => {
 
 function DialerGrid({ allPlayers, isPlayerActive, onSelect, borderColor }) {
   return (
-    <div className="grid grid-cols-5 gap-2">
-      {allPlayers.map(p => {
-        const alive = isPlayerActive(p.roleKey);
-        return (
-          <button key={p.num}
-            onClick={() => alive && onSelect(p.num)}
-            disabled={!alive}
-            className={`h-11 rounded-full border text-sm font-bold
-              active:scale-90 transition-all duration-150 ease-spring
-              ${!alive
-                ? 'bg-white/[0.02] border-white/[0.04] text-white/15 opacity-[0.18] grayscale pointer-events-none'
-                : 'bg-white/[0.04] text-white/70 hover:bg-white/[0.08] cursor-pointer'}`}
-            style={{ borderColor: alive ? borderColor : undefined }}>
-            {p.num}
-          </button>
-        );
-      })}
-    </div>
+    <DialerPad items={allPlayers} renderButton={(p) => {
+      const alive = isPlayerActive(p.roleKey);
+      return (
+        <button
+          onClick={() => alive && onSelect(p.num)}
+          disabled={!alive}
+          className={`${dialerBtn.base} ${!alive ? dialerBtn.disabled : dialerBtn.normal}`}
+          style={{ borderColor: alive ? borderColor : undefined }}>
+          {p.num}
+        </button>
+      );
+    }} />
   );
 }
 
@@ -288,16 +277,13 @@ function NightCheckStep({ title, subtitle, icon, accentColor, borderColor, bgCol
           <div className="text-sm text-white/40 mt-1">Игрок #{result.target}</div>
         </div>
       ) : (
-        <div className="grid grid-cols-5 gap-2">
-          {allPlayers.map(p => (
-            <button key={p.num} onClick={() => onCheck(p.num)}
-              className="h-11 rounded-full bg-white/[0.04] text-white/70 text-sm font-bold
-                active:scale-90 transition-all duration-150 ease-spring hover:bg-white/[0.08]"
-              style={{ border: `1px solid ${borderColor}` }}>
-              {p.num}
-            </button>
-          ))}
-        </div>
+        <DialerPad items={allPlayers} renderButton={(p) => (
+          <button onClick={() => onCheck(p.num)}
+            className={`${dialerBtn.base} ${dialerBtn.normal}`}
+            style={{ borderColor }}>
+            {p.num}
+          </button>
+        )} />
       )}
     </div>
   );

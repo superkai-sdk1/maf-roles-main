@@ -4,6 +4,7 @@ import { useTimer } from '../hooks/useTimer';
 import { getRoleLabel, getCityBestMoveMax } from '../constants/roles';
 import { triggerHaptic } from '../utils/haptics';
 import { NightTimerBar } from './NightTimerBar';
+import { DialerPad, dialerBtn } from './DialerPad';
 
 export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mode = 'day' }) => {
   const {
@@ -364,18 +365,13 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
               <div className="text-[0.8em] font-bold text-red-400 mb-2">
                 Лучший ход (ЛХ) — выберите до {cityMode ? (getCityBestMoveMax(tableOut.length) || 3) : 3} игроков
               </div>
-              <div className="grid grid-cols-5 gap-1.5">
-                {tableOut.filter(t => isPlayerActive(t.roleKey) && t.roleKey !== rk).map(t => (
-                  <button key={t.num}
-                    className={`h-10 rounded-xl border text-sm font-bold active:scale-90 transition-all duration-150 ease-spring
-                      ${bestMove.includes(t.num)
-                        ? 'bg-accent text-white border-transparent shadow-glow-accent'
-                        : 'bg-white/[0.04] border-white/[0.08] text-white/60'}`}
-                    onClick={() => { toggleBestMove(t.num); triggerHaptic('selection'); }}>
-                    {t.num}
-                  </button>
-                ))}
-              </div>
+              <DialerPad items={tableOut.filter(t => isPlayerActive(t.roleKey) && t.roleKey !== rk)} renderButton={(t) => (
+                <button
+                  className={`${dialerBtn.compact} ${bestMove.includes(t.num) ? dialerBtn.selected : dialerBtn.normal}`}
+                  onClick={() => { toggleBestMove(t.num); triggerHaptic('selection'); }}>
+                  {t.num}
+                </button>
+              )} />
               <div className="flex gap-2 mt-2.5">
                 <button className="flex-1 px-3.5 py-2.5 rounded-xl bg-accent text-white text-sm font-bold
                   disabled:opacity-40 active:scale-[0.97] transition-transform duration-150 ease-spring"
@@ -526,25 +522,20 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
           {gamePhase === 'day' && !nominationsLocked && active && !isDead && !cityMode && (
             <div className="mt-3">
               <div className="text-[0.7em] font-bold text-white/40 mb-2">Выставить:</div>
-              <div className="grid grid-cols-5 gap-1.5">
-                {tableOut.map(t => {
-                  const tActive = isPlayerActive(t.roleKey);
-                  const isMyNomination = nominations?.[rk]?.includes(t.num);
-                  const nominatedByOther = !isMyNomination && Object.entries(nominations || {}).some(([fromRK, targets]) => fromRK !== rk && targets?.includes(t.num));
-                  const isDisabled = !tActive || nominatedByOther;
-                  return (
-                    <button key={t.num}
-                      disabled={isDisabled}
-                      className={`h-10 rounded-xl border text-sm font-bold active:scale-90 transition-all duration-150 ease-spring
-                        ${isMyNomination ? 'bg-accent text-white border-transparent shadow-glow-accent' :
-                          isDisabled ? 'bg-white/[0.02] border-white/[0.04] text-white/15 cursor-default' :
-                          'bg-white/[0.04] border-white/[0.08] text-white/60'}`}
-                      onClick={() => { if (!isDisabled) { toggleNomination(rk, t.num); triggerHaptic('selection'); } }}>
-                      {t.num}
-                    </button>
-                  );
-                })}
-              </div>
+              <DialerPad items={tableOut} renderButton={(t) => {
+                const tActive = isPlayerActive(t.roleKey);
+                const isMyNomination = nominations?.[rk]?.includes(t.num);
+                const nominatedByOther = !isMyNomination && Object.entries(nominations || {}).some(([fromRK, targets]) => fromRK !== rk && targets?.includes(t.num));
+                const isDisabled = !tActive || nominatedByOther;
+                return (
+                  <button
+                    disabled={isDisabled}
+                    className={`${dialerBtn.compact} ${isMyNomination ? dialerBtn.selected : isDisabled ? dialerBtn.disabled : dialerBtn.normal}`}
+                    onClick={() => { if (!isDisabled) { toggleNomination(rk, t.num); triggerHaptic('selection'); } }}>
+                    {t.num}
+                  </button>
+                );
+              }} />
             </div>
           )}
 
@@ -556,16 +547,13 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
               </div>
               {!nightChecks?.[rk] ? (
                 <>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {tableOut.map(t => (
-                      <button key={t.num}
-                        className="h-10 rounded-xl bg-white/[0.04] border border-white/[0.08]
-                          text-white/60 text-sm font-bold active:scale-90 transition-all duration-150 ease-spring"
-                        onClick={() => { performNightCheck(rk, t.num); triggerHaptic('medium'); }}>
-                        {t.num}
-                      </button>
-                    ))}
-                  </div>
+                  <DialerPad items={tableOut} renderButton={(t) => (
+                    <button
+                      className={`${dialerBtn.compact} ${dialerBtn.normal}`}
+                      onClick={() => { performNightCheck(rk, t.num); triggerHaptic('medium'); }}>
+                      {t.num}
+                    </button>
+                  )} />
                   {isDead && (
                     <button className="w-full mt-2.5 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08]
                       text-white/50 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring"
@@ -589,19 +577,14 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
             <div className="mt-3">
               <div className="text-sm font-bold mb-2">Лечение Доктора</div>
               {!doctorHeal ? (
-                <div className="grid grid-cols-5 gap-1.5">
-                  {tableOut.map(t => (
-                    <button key={t.num}
-                      className={`h-10 rounded-xl border text-sm font-bold active:scale-90 transition-all duration-150 ease-spring
-                        ${!canDoctorHealTarget?.(t.num)
-                          ? 'bg-white/[0.02] border-white/[0.04] text-white/15 cursor-default'
-                          : 'bg-white/[0.04] border-white/[0.08] text-white/60'}`}
-                      disabled={!canDoctorHealTarget?.(t.num)}
-                      onClick={() => { performDoctorHeal?.(t.num); triggerHaptic('medium'); }}>
-                      {t.num}
-                    </button>
-                  ))}
-                </div>
+                <DialerPad items={tableOut} renderButton={(t) => (
+                  <button
+                    className={`${dialerBtn.compact} ${!canDoctorHealTarget?.(t.num) ? dialerBtn.disabled : dialerBtn.normal}`}
+                    disabled={!canDoctorHealTarget?.(t.num)}
+                    onClick={() => { performDoctorHeal?.(t.num); triggerHaptic('medium'); }}>
+                    {t.num}
+                  </button>
+                )} />
               ) : (
                 <div className="text-center py-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                   <div className="font-bold">Лечит игрока {doctorHeal.target}</div>
