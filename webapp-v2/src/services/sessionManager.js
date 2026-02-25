@@ -1,11 +1,14 @@
 const STORAGE_KEY = 'mafboard_sessions';
+const TOMBSTONE_KEY = 'mafboard_deleted';
 const SYNC_API = '/api/sessions-sync.php';
 const MAX_SESSIONS = 50;
 const SESSION_TTL = 365 * 24 * 60 * 60 * 1000;
+const TOMBSTONE_TTL = 30 * 24 * 60 * 60 * 1000;
 const SERVER_PUSH_DEBOUNCE = 2000;
 
 class SessionManager {
   constructor() {
+    this._deletedIds = this._loadTombstones();
     this._sessions = this._loadFromStorage();
     this._tgCloud = null;
     this._authToken = null;
@@ -69,6 +72,19 @@ class SessionManager {
   _syncFromTelegramCloud() {
     if (!this._tgCloud) return;
     try {
+      this._tgCloud.getItem(TOMBSTONE_KEY, (err, value) => {
+        if (!err && value) {
+          try {
+            const remote = JSON.parse(value);
+            if (Array.isArray(remote)) {
+              const now = Date.now();
+              for (const e of remote) {
+                if ((now - e.ts) < TOMBSTONE_TTL) this._deletedIds.add(e.id);
+              }
+            }
+          } catch { /* ignore */ }
+        }
+      });
       this._tgCloud.getItem(STORAGE_KEY, (err, value) => {
         if (err || !value) return;
         try {
@@ -87,6 +103,7 @@ class SessionManager {
       map.set(s.sessionId, s);
     }
     for (const s of remoteSessions) {
+      if (this._deletedIds.has(s.sessionId)) continue;
       const existing = map.get(s.sessionId);
       const remoteTs = s.updatedAt || s.timestamp || 0;
       const localTs = existing ? (existing.updatedAt || existing.timestamp || 0) : 0;
@@ -106,10 +123,50 @@ class SessionManager {
       if (!raw) return [];
       const sessions = JSON.parse(raw);
       const now = Date.now();
-      return sessions.filter(s => !s.updatedAt || (now - s.updatedAt) < SESSION_TTL);
+      return sessions.filter(s =>
+        (!s.updatedAt || (now - s.updatedAt) < SESSION_TTL) &&
+        !this._deletedIds.has(s.sessionId)
+      );
     } catch (e) {
       return [];
     }
+  }
+
+  _loadTombstones() {
+    try {
+      const raw = localStorage.getItem(TOMBSTONE_KEY);
+      if (!raw) return new Set();
+      const entries = JSON.parse(raw);
+      const now = Date.now();
+      const alive = entries.filter(e => (now - e.ts) < TOMBSTONE_TTL);
+      if (alive.length !== entries.length) {
+        localStorage.setItem(TOMBSTONE_KEY, JSON.stringify(alive));
+      }
+      return new Set(alive.map(e => e.id));
+    } catch {
+      return new Set();
+    }
+  }
+
+  _addTombstones(sessionIds) {
+    const now = Date.now();
+    for (const id of sessionIds) {
+      this._deletedIds.add(id);
+    }
+    try {
+      const raw = localStorage.getItem(TOMBSTONE_KEY);
+      const existing = raw ? JSON.parse(raw) : [];
+      const existingSet = new Set(existing.map(e => e.id));
+      for (const id of sessionIds) {
+        if (!existingSet.has(id)) {
+          existing.push({ id, ts: now });
+        }
+      }
+      localStorage.setItem(TOMBSTONE_KEY, JSON.stringify(existing));
+      if (this._tgCloud) {
+        this._tgCloud.setItem(TOMBSTONE_KEY, JSON.stringify(existing), () => {});
+      }
+    } catch { /* ignore */ }
   }
 
   _saveToStorage() {
@@ -155,6 +212,7 @@ class SessionManager {
   }
 
   removeSession(sessionId) {
+    this._addTombstones([sessionId]);
     this._sessions = this._sessions.filter(s => s.sessionId !== sessionId);
     this._saveToStorage();
     this._pushToServerNow();
@@ -250,12 +308,12 @@ class SessionManager {
   }
 
   removeSeries(tournamentId) {
-    const before = this._sessions.length;
+    const toDelete = this._sessions.filter(s => s.tournamentId === tournamentId).map(s => s.sessionId);
+    if (toDelete.length === 0) return;
+    this._addTombstones(toDelete);
     this._sessions = this._sessions.filter(s => s.tournamentId !== tournamentId);
-    if (this._sessions.length !== before) {
-      this._saveToStorage();
-      this._pushToServerNow();
-    }
+    this._saveToStorage();
+    this._pushToServerNow();
   }
 
   getLastActiveSession() {
