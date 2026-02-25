@@ -214,7 +214,7 @@ class SessionManager {
     }
 
     for (const g of Object.values(groups)) {
-      g.allGamesFinished = g.sessions.length > 0 && g.sessions.every(s => s.gameFinished);
+      g.allGamesFinished = g.sessions.length > 0 && g.sessions.every(s => s.gameFinished && s.winnerTeam);
       g.sessions.sort((a, b) => (a.gameSelected || 0) - (b.gameSelected || 0));
     }
 
@@ -245,6 +245,15 @@ class SessionManager {
       this._schedulePush();
     }
     return changed;
+  }
+
+  removeSeries(tournamentId) {
+    const before = this._sessions.length;
+    this._sessions = this._sessions.filter(s => s.tournamentId !== tournamentId);
+    if (this._sessions.length !== before) {
+      this._saveToStorage();
+      this._schedulePush();
+    }
   }
 
   getLastActiveSession() {

@@ -89,35 +89,56 @@ const getWinnerColorClass = (team) => {
   return '';
 };
 
-function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession, onArchive, onNewGame, onShowTable }) {
-  const [archiveConfirm, setArchiveConfirm] = useState(false);
+function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession, onArchive, onDeleteSeries, onNewGame, onShowTable }) {
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const modeLabel = group.isFunky ? 'Фанки' : getModeLabel(group.gameMode);
   const totalGames = group.totalGamesForTable || group.totalGamesInTournament || group.sessions.length;
   const completedGames = group.sessions.filter(s => s.winnerTeam).length;
   const progress = totalGames > 0 ? (completedGames / totalGames) * 100 : 0;
   const hasFinishedGames = completedGames > 0;
+  const isGameComplete = (s) => s.winnerTeam && s.gameFinished;
 
-  const handleArchiveClick = useCallback((e) => {
+  const handleDeleteSeriesClick = useCallback((e) => {
     e.stopPropagation();
-    if (!archiveConfirm) {
-      setArchiveConfirm(true);
+    if (confirmAction !== 'delete') {
+      setConfirmAction('delete');
+      triggerHaptic('warning');
+      return;
+    }
+    onDeleteSeries(group.tournamentId);
+    setConfirmAction(null);
+  }, [confirmAction, onDeleteSeries, group.tournamentId]);
+
+  const handleSaveSeriesClick = useCallback((e) => {
+    e.stopPropagation();
+    if (confirmAction !== 'save') {
+      setConfirmAction('save');
       triggerHaptic('warning');
       return;
     }
     onArchive(group.tournamentId);
-    setArchiveConfirm(false);
-  }, [archiveConfirm, onArchive, group.tournamentId]);
+    setConfirmAction(null);
+  }, [confirmAction, onArchive, group.tournamentId]);
 
-  const handleCancelArchive = useCallback((e) => {
+  const handleCancelConfirm = useCallback((e) => {
     e.stopPropagation();
-    setArchiveConfirm(false);
+    setConfirmAction(null);
   }, []);
 
   const handleToggle = useCallback(() => {
     onToggle();
-    setArchiveConfirm(false);
+    setConfirmAction(null);
   }, [onToggle]);
+
+  const handleGameRowClick = useCallback((s) => {
+    if (isGameComplete(s)) {
+      onLoadSession(s.sessionId, { viewOnly: true });
+    } else {
+      onLoadSession(s.sessionId);
+    }
+    triggerHaptic('light');
+  }, [onLoadSession]);
 
   return (
     <div className={`series-card ${expanded ? 'series-card--expanded' : ''} ${group.archived ? 'series-card--archived' : ''}`}>
@@ -172,7 +193,7 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                   <div
                     key={s.sessionId}
                     className={`series-game-row ${s.seriesArchived ? 'series-game-row--archived' : ''}`}
-                    onClick={() => { if (!s.seriesArchived) { onLoadSession(s.sessionId); triggerHaptic('light'); } }}
+                    onClick={() => handleGameRowClick(s)}
                   >
                     <div className="series-game-left">
                       <span className="series-game-number">
@@ -186,7 +207,7 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                       <span className={`result-dot ${getResultDotClass(s)}`} />
                       <span className="series-game-result">{getResultText(s)}</span>
                       <span className="series-game-date">{formatTime(s.timestamp || s.updatedAt)}</span>
-                      {!s.seriesArchived && (
+                      {!s.seriesArchived && !isGameComplete(s) && (
                         <button
                           className="series-game-delete"
                           onClick={(e) => { e.stopPropagation(); onDeleteSession(s.sessionId); triggerHaptic('warning'); }}
@@ -194,9 +215,7 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                           <IconTrash size={13} color="rgba(255,255,255,0.4)" />
                         </button>
                       )}
-                      {!s.seriesArchived && (
-                        <IconArrowRight size={14} color="rgba(255,255,255,0.15)" />
-                      )}
+                      <IconArrowRight size={14} color="rgba(255,255,255,0.15)" />
                     </div>
                   </div>
                 ))}
@@ -222,19 +241,36 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                   </button>
                 )}
                 {!group.archived && !group.allGamesFinished && (
-                  archiveConfirm ? (
+                  confirmAction === 'delete' ? (
                     <div className="series-archive-confirm">
-                      <span className="series-archive-confirm-text">{group.isFunky ? 'Удалить?' : 'Завершить?'}</span>
-                      <button className="series-archive-confirm-yes" onClick={handleArchiveClick}>Да</button>
-                      <button className="series-archive-confirm-no" onClick={handleCancelArchive}>Нет</button>
+                      <span className="series-archive-confirm-text">Удалить все игры серии?</span>
+                      <button className="series-archive-confirm-yes" onClick={handleDeleteSeriesClick}>Да</button>
+                      <button className="series-archive-confirm-no" onClick={handleCancelConfirm}>Нет</button>
                     </div>
                   ) : (
                     <button
                       className="series-action-btn series-action-archive"
-                      onClick={handleArchiveClick}
+                      onClick={handleDeleteSeriesClick}
                     >
-                      {group.isFunky ? <IconTrash size={15} /> : <IconArchive size={15} />}
-                      <span>{group.isFunky ? 'Удалить' : 'Завершить серию'}</span>
+                      <IconTrash size={15} />
+                      <span>Удалить серию</span>
+                    </button>
+                  )
+                )}
+                {!group.archived && group.allGamesFinished && (
+                  confirmAction === 'save' ? (
+                    <div className="series-archive-confirm">
+                      <span className="series-archive-confirm-text">Сохранить серию в историю?</span>
+                      <button className="series-archive-confirm-yes" onClick={handleSaveSeriesClick}>Да</button>
+                      <button className="series-archive-confirm-no" onClick={handleCancelConfirm}>Нет</button>
+                    </div>
+                  ) : (
+                    <button
+                      className="series-action-btn series-action-newgame"
+                      onClick={handleSaveSeriesClick}
+                    >
+                      <IconCheck size={15} />
+                      <span>Сохранить серию</span>
                     </button>
                   )
                 )}
@@ -389,7 +425,7 @@ function StandaloneCard({ session, onLoad, onDelete }) {
 
 export function MainMenu() {
   const {
-    sessionsList, startNewGame, loadSession, deleteSession, archiveSeries,
+    sessionsList, startNewGame, loadSession, deleteSession, archiveSeries, deleteSeries,
     startTournamentGameFromMenu, startNewFunkyFromMenu,
     selectedColorScheme, setSelectedColorScheme,
   } = useGame();
@@ -1171,7 +1207,8 @@ export function MainMenu() {
                         onToggle={() => toggleExpanded(g.tournamentId)}
                         onLoadSession={loadSession}
                         onDeleteSession={deleteSession}
-                        onArchive={g.isFunky ? () => { deleteSession(g._originalSessionId); triggerHaptic('medium'); } : archiveSeries}
+                        onArchive={archiveSeries}
+                        onDeleteSeries={g.isFunky ? () => { deleteSession(g._originalSessionId); triggerHaptic('medium'); } : deleteSeries}
                         onNewGame={g.gameMode === 'gomafia' ? handleNewGameInTournament : g.isFunky ? () => startNewFunkyFromMenu(g._originalSessionId) : null}
                         onShowTable={(grp) => { setTableGroup(grp); triggerHaptic('light'); }}
                       />

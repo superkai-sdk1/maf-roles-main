@@ -115,6 +115,7 @@ export const GameProvider = ({ children }) => {
   const [winnerTeam, setWinnerTeam] = useState(null);
   const [playerScores, setPlayerScores] = useState({});
   const [gameFinished, setGameFinished] = useState(false);
+  const [viewOnly, setViewOnly] = useState(false);
 
   // === Games History (multiple games per session) ===
   const [gamesHistory, setGamesHistory] = useState([]);
@@ -1004,7 +1005,7 @@ export const GameProvider = ({ children }) => {
     });
   }, [currentSessionId, tournamentId, tournamentName, gameMode, gameSelected, tableSelected, roles, playersActions, fouls, techFouls, removed, gamePhase, dayNumber, nightNumber, rolesDistributed, nightCheckHistory, votingHistory, bestMove, bestMoveAccepted, firstKilledPlayer, firstKilledEver, bestMoveSelected, winnerTeam, playerScores, gameFinished, protocolData, opinionData, opinionText, roomId, cityMode, funkyMode, manualMode, players, avatars, doctorHealHistory, nightMisses, killedOnNight, judgeNickname, judgeAvatar, killedCardPhase, protocolAccepted, killedPlayerBlink, nightPhase, nightChecks, dayVoteOuts, nominations, nominationOrder, nominationsLocked, discussionTimeLeft, freeSeatingTimeLeft, currentDaySpeakerIndex, tournament, gamesHistory]);
 
-  const loadSession = useCallback((sid) => {
+  const loadSession = useCallback((sid, options) => {
     const s = sessionManager.getSession(sid);
     if (!s) return;
     setCurrentSessionId(s.sessionId);
@@ -1022,6 +1023,7 @@ export const GameProvider = ({ children }) => {
     setBestMoveSelected(s.bestMoveSelected || false);
     setWinnerTeam(s.winnerTeam || null); setPlayerScores(s.playerScores || {});
     setGameFinished(s.gameFinished || false);
+    setViewOnly(options?.viewOnly || false);
     setProtocolData(s.protocolData || {}); setOpinionData(s.opinionData || {}); setOpinionText(s.opinionText || {});
     setRoomId(s.roomId || null); setCityMode(s.cityMode || false);
     setFunkyMode(s.funkyMode || false); setManualMode(s.manualMode || false);
@@ -1065,7 +1067,7 @@ export const GameProvider = ({ children }) => {
     setVotingOrder([]); setVotingCurrentIndex(0); setVotingResults({});
     setVotingFinished(false); setVotingWinners([]); setVotingHistory([]);
     setShowVotingModal(false); setDayVoteOuts({});
-    setWinnerTeam(null); setPlayerScores({}); setGameFinished(false);
+    setWinnerTeam(null); setPlayerScores({}); setGameFinished(false); setViewOnly(false);
     setHighlightedPlayer(null); setCurrentDaySpeakerIndex(-1);
     setMainInfoText(''); setAdditionalInfoText('');
     setGamesHistory([]);
@@ -1160,6 +1162,12 @@ export const GameProvider = ({ children }) => {
 
   const archiveSeries = useCallback((tournamentId) => {
     sessionManager.archiveSeries(tournamentId);
+    setSessionsList(sessionManager.getSessions());
+    triggerHaptic('medium');
+  }, []);
+
+  const deleteSeries = useCallback((tournamentId) => {
+    sessionManager.removeSeries(tournamentId);
     setSessionsList(sessionManager.getSessions());
     triggerHaptic('medium');
   }, []);
@@ -1574,7 +1582,7 @@ export const GameProvider = ({ children }) => {
     votingLastSpeechPlayerIdx, setVotingLastSpeechPlayerIdx,
     // Scores
     winnerTeam, setWinnerTeam, playerScores, setPlayerScores,
-    gameFinished, setGameFinished,
+    gameFinished, setGameFinished, viewOnly, setViewOnly,
     calculatePlayerScore, adjustScore, toggleReveal,
     // Broadcast
     mainInfoText, setMainInfoText, additionalInfoText, setAdditionalInfoText,
@@ -1603,7 +1611,7 @@ export const GameProvider = ({ children }) => {
     tournamentsFilters, setTournamentsFilters, tournamentsHasMore, setTournamentsHasMore,
     tournamentsPage, setTournamentsPage,
     // Session
-    saveCurrentSession, loadSession, resetGameState, startNewGame, returnToMainMenu, deleteSession, archiveSeries,
+    saveCurrentSession, loadSession, resetGameState, startNewGame, returnToMainMenu, deleteSession, archiveSeries, deleteSeries,
     startNextTournamentGame, startTournamentGameFromMenu, saveSummaryToServer,
     // Games History
     gamesHistory, currentGameNumber, saveGameToHistory, startNextGameInSession,

@@ -19,6 +19,7 @@ export const ResultsPanel = () => {
     nightMisses, doctorHealHistory, cityMode,
     killedOnNight, dayNumber, nightNumber, dayVoteOuts,
     gamesHistory, currentGameNumber,
+    viewOnly,
   } = useGame();
 
   const [summaryTab, setSummaryTab] = useState('scores');
@@ -167,42 +168,67 @@ export const ResultsPanel = () => {
                         </div>
 
                         {/* Bonus / Penalty controls */}
-                        <div className="grid grid-cols-2 gap-2 mb-3">
-                          <div className="rounded-xl p-2.5" style={{ background: 'rgba(76,175,80,0.06)', border: '1px solid rgba(76,175,80,0.15)' }}>
-                            <div className="text-[0.65rem] font-bold text-green-400/70 text-center mb-2 uppercase tracking-wide">＋ Доп</div>
-                            <div className="flex items-center justify-center gap-2">
-                              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all active:scale-90"
-                                style={{ background: 'rgba(76,175,80,0.1)', border: '1px solid rgba(76,175,80,0.2)', color: '#4caf50' }}
-                                onClick={() => { adjustScore(rk, 'bonus', -0.1); triggerHaptic('light'); }}>−</button>
-                              <span className="text-lg font-extrabold text-green-400 tabular-nums min-w-[36px] text-center">{(ps.bonus || 0).toFixed(1)}</span>
-                              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all active:scale-90"
-                                style={{ background: 'rgba(76,175,80,0.1)', border: '1px solid rgba(76,175,80,0.2)', color: '#4caf50' }}
-                                onClick={() => { adjustScore(rk, 'bonus', 0.1); triggerHaptic('light'); }}>＋</button>
+                        {!viewOnly && (
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div className="rounded-xl p-2.5" style={{ background: 'rgba(76,175,80,0.06)', border: '1px solid rgba(76,175,80,0.15)' }}>
+                              <div className="text-[0.65rem] font-bold text-green-400/70 text-center mb-2 uppercase tracking-wide">＋ Доп</div>
+                              <div className="flex items-center justify-center gap-2">
+                                <button className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all active:scale-90"
+                                  style={{ background: 'rgba(76,175,80,0.1)', border: '1px solid rgba(76,175,80,0.2)', color: '#4caf50' }}
+                                  onClick={() => { adjustScore(rk, 'bonus', -0.1); triggerHaptic('light'); }}>−</button>
+                                <span className="text-lg font-extrabold text-green-400 tabular-nums min-w-[36px] text-center">{(ps.bonus || 0).toFixed(1)}</span>
+                                <button className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all active:scale-90"
+                                  style={{ background: 'rgba(76,175,80,0.1)', border: '1px solid rgba(76,175,80,0.2)', color: '#4caf50' }}
+                                  onClick={() => { adjustScore(rk, 'bonus', 0.1); triggerHaptic('light'); }}>＋</button>
+                              </div>
+                            </div>
+                            <div className="rounded-xl p-2.5" style={{ background: 'rgba(244,67,54,0.06)', border: '1px solid rgba(244,67,54,0.15)' }}>
+                              <div className="text-[0.65rem] font-bold text-red-400/70 text-center mb-2 uppercase tracking-wide">− Штраф</div>
+                              <div className="flex items-center justify-center gap-2">
+                                <button className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all active:scale-90"
+                                  style={{ background: 'rgba(244,67,54,0.1)', border: '1px solid rgba(244,67,54,0.2)', color: '#f44336' }}
+                                  onClick={() => { adjustScore(rk, 'penalty', -0.1); triggerHaptic('light'); }}>−</button>
+                                <span className="text-lg font-extrabold text-red-400 tabular-nums min-w-[36px] text-center">{(ps.penalty || 0).toFixed(1)}</span>
+                                <button className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all active:scale-90"
+                                  style={{ background: 'rgba(244,67,54,0.1)', border: '1px solid rgba(244,67,54,0.2)', color: '#f44336' }}
+                                  onClick={() => { adjustScore(rk, 'penalty', 0.1); triggerHaptic('light'); }}>＋</button>
+                              </div>
                             </div>
                           </div>
-                          <div className="rounded-xl p-2.5" style={{ background: 'rgba(244,67,54,0.06)', border: '1px solid rgba(244,67,54,0.15)' }}>
-                            <div className="text-[0.65rem] font-bold text-red-400/70 text-center mb-2 uppercase tracking-wide">− Штраф</div>
-                            <div className="flex items-center justify-center gap-2">
-                              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all active:scale-90"
-                                style={{ background: 'rgba(244,67,54,0.1)', border: '1px solid rgba(244,67,54,0.2)', color: '#f44336' }}
-                                onClick={() => { adjustScore(rk, 'penalty', -0.1); triggerHaptic('light'); }}>−</button>
-                              <span className="text-lg font-extrabold text-red-400 tabular-nums min-w-[36px] text-center">{(ps.penalty || 0).toFixed(1)}</span>
-                              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-all active:scale-90"
-                                style={{ background: 'rgba(244,67,54,0.1)', border: '1px solid rgba(244,67,54,0.2)', color: '#f44336' }}
-                                onClick={() => { adjustScore(rk, 'penalty', 0.1); triggerHaptic('light'); }}>＋</button>
-                            </div>
+                        )}
+                        {viewOnly && (ps.bonus > 0 || ps.penalty > 0) && (
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            {ps.bonus > 0 && (
+                              <div className="rounded-xl p-2.5 text-center" style={{ background: 'rgba(76,175,80,0.06)', border: '1px solid rgba(76,175,80,0.15)' }}>
+                                <div className="text-[0.65rem] font-bold text-green-400/70 uppercase tracking-wide mb-1">Доп</div>
+                                <span className="text-lg font-extrabold text-green-400 tabular-nums">+{(ps.bonus || 0).toFixed(1)}</span>
+                              </div>
+                            )}
+                            {ps.penalty > 0 && (
+                              <div className="rounded-xl p-2.5 text-center" style={{ background: 'rgba(244,67,54,0.06)', border: '1px solid rgba(244,67,54,0.15)' }}>
+                                <div className="text-[0.65rem] font-bold text-red-400/70 uppercase tracking-wide mb-1">Штраф</div>
+                                <span className="text-lg font-extrabold text-red-400 tabular-nums">-{(ps.penalty || 0).toFixed(1)}</span>
+                              </div>
+                            )}
                           </div>
-                        </div>
+                        )}
 
                         {/* Reveal toggle */}
-                        <button onClick={() => { toggleReveal(rk); triggerHaptic('light'); }}
-                          className={`w-full rounded-xl py-2.5 px-4 text-xs font-bold tracking-wide transition-all active:scale-[0.98] mb-3 ${
-                            ps.reveal
-                              ? 'bg-purple-500/15 border border-purple-500/30 text-purple-300'
-                              : 'bg-white/[0.03] border border-white/10 text-white/40'
-                          }`}>
-                          {ps.reveal ? '◉ Вскрытие: Да' : '○ Вскрытие: Нет'}
-                        </button>
+                        {!viewOnly && (
+                          <button onClick={() => { toggleReveal(rk); triggerHaptic('light'); }}
+                            className={`w-full rounded-xl py-2.5 px-4 text-xs font-bold tracking-wide transition-all active:scale-[0.98] mb-3 ${
+                              ps.reveal
+                                ? 'bg-purple-500/15 border border-purple-500/30 text-purple-300'
+                                : 'bg-white/[0.03] border border-white/10 text-white/40'
+                            }`}>
+                            {ps.reveal ? '◉ Вскрытие: Да' : '○ Вскрытие: Нет'}
+                          </button>
+                        )}
+                        {viewOnly && ps.reveal && (
+                          <div className="w-full rounded-xl py-2.5 px-4 text-xs font-bold tracking-wide mb-3 bg-purple-500/15 border border-purple-500/30 text-purple-300 text-center">
+                            Вскрытие: Да
+                          </div>
+                        )}
 
                         {/* Best Move */}
                         {hasBM && (
@@ -460,42 +486,44 @@ export const ResultsPanel = () => {
           )}
 
           {/* Actions */}
-          <div className="flex flex-col gap-2.5 mt-3">
-            <button className="glass-btn w-full opacity-50" onClick={() => { setWinnerTeam(null); triggerHaptic('light'); }}>
-              ← Изменить победителя
-            </button>
-
-            {hasNextTournamentGame && (
-              <button className="glass-btn btn-primary w-full py-3 text-sm font-bold"
-                onClick={() => { startNextTournamentGame(); triggerHaptic('success'); }}>
-                ▶ Следующая игра в турнире
+          {!viewOnly && (
+            <div className="flex flex-col gap-2.5 mt-3">
+              <button className="glass-btn w-full opacity-50" onClick={() => { setWinnerTeam(null); triggerHaptic('light'); }}>
+                ← Изменить победителя
               </button>
-            )}
 
-            {!hasNextTournamentGame && (
-              <button className="glass-btn btn-primary w-full py-3 text-sm font-bold flex items-center justify-center gap-2"
-                onClick={() => { startNextGameInSession(); triggerHaptic('success'); }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-                Следующая игра
-              </button>
-            )}
+              {hasNextTournamentGame && (
+                <button className="glass-btn btn-primary w-full py-3 text-sm font-bold"
+                  onClick={() => { startNextTournamentGame(); triggerHaptic('success'); }}>
+                  ▶ Следующая игра в турнире
+                </button>
+              )}
 
-            <SlideConfirm
-              label="Сохранить и выйти"
-              color="emerald"
-              onConfirm={async () => {
-                saveGameToHistory();
-                saveCurrentSession();
-                triggerHaptic('success');
-                try {
-                  await saveSummaryToServer();
-                } catch {}
-                returnToMainMenu();
-              }}
-            />
-          </div>
+              {!hasNextTournamentGame && (
+                <button className="glass-btn btn-primary w-full py-3 text-sm font-bold flex items-center justify-center gap-2"
+                  onClick={() => { startNextGameInSession(); triggerHaptic('success'); }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                  Следующая игра
+                </button>
+              )}
+
+              <SlideConfirm
+                label="Сохранить и выйти"
+                color="emerald"
+                onConfirm={async () => {
+                  saveGameToHistory();
+                  saveCurrentSession();
+                  triggerHaptic('success');
+                  try {
+                    await saveSummaryToServer();
+                  } catch {}
+                  returnToMainMenu();
+                }}
+              />
+            </div>
+          )}
         </>
       )}
     </div>

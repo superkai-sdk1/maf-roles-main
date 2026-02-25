@@ -29,7 +29,7 @@ export function GameScreen() {
     currentSpeaker, currentDaySpeakerIndex, startDaySpeakerFlow, nextDaySpeaker,
     activePlayers, isPlayerActive,
     killedPlayerBlink,
-    gameFinished, setGameFinished, cityMode,
+    gameFinished, setGameFinished, viewOnly, setViewOnly, cityMode,
     nominations, getNominatedCandidates,
     votingScreenTab, setVotingScreenTab,
     startVoting,
@@ -43,13 +43,14 @@ export function GameScreen() {
   const [showRolesAlert, setShowRolesAlert] = useState(false);
 
   const handleSwipeBack = useCallback(() => {
+    if (viewOnly) { returnToMainMenu(); return; }
     if (showVotingScreen) { setShowVotingScreen(false); setVotingScreenTab('voting'); }
     else if (showSettingsScreen) setShowSettingsScreen(false);
     else if (showResultsScreen) setShowResultsScreen(false);
     else if (showRolesAlert) setShowRolesAlert(false);
     else if (gameFinished) returnToMainMenu();
     else setShowExitConfirm(true);
-  }, [showVotingScreen, showSettingsScreen, showResultsScreen, showRolesAlert, gameFinished, returnToMainMenu, setVotingScreenTab]);
+  }, [viewOnly, showVotingScreen, showSettingsScreen, showResultsScreen, showRolesAlert, gameFinished, returnToMainMenu, setVotingScreenTab]);
 
   useSwipeBack(handleSwipeBack);
 
@@ -58,6 +59,12 @@ export function GameScreen() {
       setShowVotingScreen(false);
     }
   }, [gamePhase, showVotingScreen]);
+
+  useEffect(() => {
+    if (viewOnly && gameFinished) {
+      setShowResultsScreen(true);
+    }
+  }, [viewOnly, gameFinished]);
 
   const effectiveMode = gamePhase === 'night' ? 'night' : 'day';
   const phaseTitle = gamePhase === 'discussion'
@@ -132,10 +139,20 @@ export function GameScreen() {
           <div className="fullscreen-page-container">
             <div className="fullscreen-page-header">
               <button className="fullscreen-back-btn"
-                onClick={() => { setShowResultsScreen(false); triggerHaptic('light'); }}>
-                ← Назад
+                onClick={() => {
+                  if (viewOnly) { returnToMainMenu(); }
+                  else { setShowResultsScreen(false); }
+                  triggerHaptic('light');
+                }}>
+                ← {viewOnly ? 'В меню' : 'Назад'}
               </button>
               <span className="fullscreen-page-title">Итоги</span>
+              {viewOnly && (
+                <button className="fullscreen-back-btn" style={{ marginLeft: 'auto' }}
+                  onClick={() => { setViewOnly(false); setShowResultsScreen(false); triggerHaptic('medium'); }}>
+                  Редактировать
+                </button>
+              )}
             </div>
             <ResultsPanel />
           </div>
@@ -357,7 +374,7 @@ export function GameScreen() {
             )}
 
             {/* Game action buttons */}
-            {rolesDistributed && (gamePhase === 'day' || gamePhase === 'night') && (
+            {rolesDistributed && (gamePhase === 'day' || gamePhase === 'night') && !viewOnly && (
               <div className="game-actions-container">
                 {!gameFinished && (
                   <SlideConfirm
