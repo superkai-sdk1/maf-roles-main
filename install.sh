@@ -122,14 +122,25 @@ PHPEOF
     sed -i "s#DB_PORT_PLACEHOLDER#${DB_PORT}#g" "$DEST/webapp-v2/api/db.php"
     log_info "db.php configured (database: $DB_NAME, user: $DB_USER)"
 
-    cat > "$DEST/webapp-v2/login/auth-config.php" <<AUTHEOF
+    cat > "$DEST/webapp-v2/login/auth-config.php" <<'AUTHEOF'
 <?php
-define('BOT_TOKEN', '${BOT_TOKEN}');
-define('BOT_USERNAME', '${BOT_USERNAME}');
+define('BOT_TOKEN', 'BOT_TOKEN_PLACEHOLDER');
+define('BOT_USERNAME', 'BOT_USERNAME_PLACEHOLDER');
 define('SESSION_TTL_DAYS', 30);
 define('CODE_TTL_SECONDS', 300);
 define('CODE_POLL_INTERVAL_MS', 2500);
+
+// WebAuthn / PassKey
+$_rpHost = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
+$_rpHostParts = explode(':', $_rpHost);
+define('WEBAUTHN_RP_ID', $_rpHostParts[0]);
+define('WEBAUTHN_RP_NAME', 'MafBoard');
+$_rpScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+define('WEBAUTHN_ORIGIN', "{$_rpScheme}://{$_rpHost}");
+define('CHALLENGE_TTL_SECONDS', 300);
 AUTHEOF
+    sed -i "s#BOT_TOKEN_PLACEHOLDER#${BOT_TOKEN}#g" "$DEST/webapp-v2/login/auth-config.php"
+    sed -i "s#BOT_USERNAME_PLACEHOLDER#${BOT_USERNAME}#g" "$DEST/webapp-v2/login/auth-config.php"
     log_info "auth-config.php configured"
 
     mkdir -p "$DEST/webapp-v2/admin/api"
@@ -488,14 +499,25 @@ sed -i "s#DB_PASS_PLACEHOLDER#${DB_PASS}#g" "$PROJECT_DEST_DIR/webapp-v2/api/db.
 sed -i "s#DB_PORT_PLACEHOLDER#${DB_PORT}#g" "$PROJECT_DEST_DIR/webapp-v2/api/db.php"
 
 # auth-config.php
-cat > "$PROJECT_DEST_DIR/webapp-v2/login/auth-config.php" <<AUTHEOF
+cat > "$PROJECT_DEST_DIR/webapp-v2/login/auth-config.php" <<'AUTHEOF'
 <?php
-define('BOT_TOKEN', '${BOT_TOKEN}');
-define('BOT_USERNAME', '${BOT_USERNAME}');
+define('BOT_TOKEN', 'BOT_TOKEN_PLACEHOLDER');
+define('BOT_USERNAME', 'BOT_USERNAME_PLACEHOLDER');
 define('SESSION_TTL_DAYS', 30);
 define('CODE_TTL_SECONDS', 300);
 define('CODE_POLL_INTERVAL_MS', 2500);
+
+// WebAuthn / PassKey
+$_rpHost = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
+$_rpHostParts = explode(':', $_rpHost);
+define('WEBAUTHN_RP_ID', $_rpHostParts[0]);
+define('WEBAUTHN_RP_NAME', 'MafBoard');
+$_rpScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+define('WEBAUTHN_ORIGIN', "{$_rpScheme}://{$_rpHost}");
+define('CHALLENGE_TTL_SECONDS', 300);
 AUTHEOF
+sed -i "s#BOT_TOKEN_PLACEHOLDER#${BOT_TOKEN}#g" "$PROJECT_DEST_DIR/webapp-v2/login/auth-config.php"
+sed -i "s#BOT_USERNAME_PLACEHOLDER#${BOT_USERNAME}#g" "$PROJECT_DEST_DIR/webapp-v2/login/auth-config.php"
 
 # admin-config.php
 mkdir -p "$PROJECT_DEST_DIR/webapp-v2/admin/api"
