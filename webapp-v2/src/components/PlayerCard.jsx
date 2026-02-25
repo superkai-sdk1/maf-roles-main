@@ -228,7 +228,8 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
       className={`glass-card rounded-2xl relative overflow-hidden transition-all duration-300 ease-spring
         ${isHighlighted && !isDead ? 'border-accent-soft !bg-accent-soft shadow-[0_0_20px_rgba(var(--accent-rgb),0.18),inset_0_1px_0_rgba(255,255,255,0.1)] scale-[1.01]' : ''}
         ${isSpeaking && !isDead ? 'border-accent-soft !bg-accent-soft shadow-[0_0_24px_rgba(var(--accent-rgb),0.22),inset_0_1px_0_rgba(255,255,255,0.1)] scale-[1.01]' : ''}
-        ${isKilled || isVoted ? 'opacity-[0.18] saturate-[0.25] brightness-[0.7] !border-red-500/20 !bg-red-500/[0.03]' : ''}
+        ${(isKilled && cardPhase === 'done') || isVoted ? 'opacity-[0.18] saturate-[0.25] brightness-[0.7] !border-red-500/20 !bg-red-500/[0.03]' : ''}
+        ${isKilled && cardPhase !== 'done' ? '!border-red-500/25' : ''}
         ${isRemoved ? 'opacity-[0.15] saturate-[0.2] brightness-[0.65] !border-white/[0.06] !bg-white/[0.02]' : ''}
         ${isBlinking ? 'animate-killed-blink' : ''}
         ${isNightDon ? 'animate-don-pulse' : ''}
