@@ -426,6 +426,7 @@ export function MainMenu() {
   const linkPollRef = useRef(null);
   const linkTimerRef = useRef(null);
   const [passkeyRegistering, setPasskeyRegistering] = useState(false);
+  const [passkeyError, setPasskeyError] = useState('');
 
   useEffect(() => {
     const token = authService.getStoredToken();
@@ -1653,36 +1654,43 @@ export function MainMenu() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="auth-method-name">PassKey</div>
                           <div className="auth-method-detail" style={{ color: linkedAccounts.passkeys?.length > 0 ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.2)' }}>
-                            {linkedAccounts.passkeys?.length > 0
-                              ? `${linkedAccounts.passkeys.length} ключ${linkedAccounts.passkeys.length > 1 ? (linkedAccounts.passkeys.length < 5 ? 'а' : 'ей') : ''}`
-                              : 'Не настроен'
+                            {authService.isTelegramWebView()
+                              ? 'Откройте в браузере для настройки'
+                              : !authService.isPasskeySupported()
+                                ? 'Не поддерживается в этом браузере'
+                                : linkedAccounts.passkeys?.length > 0
+                                  ? `${linkedAccounts.passkeys.length} ключ${linkedAccounts.passkeys.length > 1 ? (linkedAccounts.passkeys.length < 5 ? 'а' : 'ей') : ''}`
+                                  : 'Не настроен'
                             }
                           </div>
                         </div>
-                        <button
-                          className="auth-method-link-btn"
-                          disabled={passkeyRegistering}
-                          onClick={async () => {
-                            if (!authService.isPasskeySupported()) {
-                              triggerHaptic('error');
-                              return;
-                            }
-                            setPasskeyRegistering(true);
-                            triggerHaptic('light');
-                            const token = authService.getStoredToken();
-                            const result = await authService.passkeyRegister(token);
-                            setPasskeyRegistering(false);
-                            if (result.success) {
-                              loadLinkedAccounts();
-                              triggerHaptic('success');
-                            } else {
-                              triggerHaptic('error');
-                            }
-                          }}
-                        >
-                          {passkeyRegistering ? '...' : 'Добавить'}
-                        </button>
+                        {!authService.isTelegramWebView() && authService.isPasskeySupported() && (
+                          <button
+                            className="auth-method-link-btn"
+                            disabled={passkeyRegistering}
+                            onClick={async () => {
+                              setPasskeyError('');
+                              setPasskeyRegistering(true);
+                              triggerHaptic('light');
+                              const token = authService.getStoredToken();
+                              const result = await authService.passkeyRegister(token);
+                              setPasskeyRegistering(false);
+                              if (result.success) {
+                                loadLinkedAccounts();
+                                triggerHaptic('success');
+                              } else {
+                                setPasskeyError(result.error || 'Не удалось добавить PassKey');
+                                triggerHaptic('error');
+                              }
+                            }}
+                          >
+                            {passkeyRegistering ? '...' : 'Добавить'}
+                          </button>
+                        )}
                       </div>
+                      {passkeyError && (
+                        <div style={{ fontSize: '0.75em', color: '#ff453a', padding: '4px 14px' }}>{passkeyError}</div>
+                      )}
 
                       {/* PassKey list */}
                       {linkedAccounts.passkeys?.length > 0 && linkedAccounts.passkeys.map(pk => (

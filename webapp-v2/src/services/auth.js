@@ -124,9 +124,15 @@ async function gomafiaLogin(nickname, password) {
 // PassKey (WebAuthn) authentication
 // =====================================================
 
+function isTelegramWebView() {
+  return !!(window.Telegram?.WebApp);
+}
+
 function isPasskeySupported() {
+  if (isTelegramWebView()) return false;
   return !!(window.PublicKeyCredential &&
-    typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function');
+    typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function' &&
+    typeof navigator.credentials?.create === 'function');
 }
 
 async function isPasskeyAvailable() {
@@ -318,6 +324,7 @@ export const authService = {
   passkeyRegister,
   isPasskeySupported,
   isPasskeyAvailable,
+  isTelegramWebView,
   getLinkedAccounts,
   linkGomafia,
   unlinkMethod,

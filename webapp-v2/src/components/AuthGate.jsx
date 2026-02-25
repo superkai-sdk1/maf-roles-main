@@ -237,9 +237,25 @@ function PasskeyTab({ onSuccess }) {
     );
   }
 
-  if (!supported && !authService.isPasskeySupported()) {
+  if (authService.isTelegramWebView()) {
     return (
       <div className="auth-tab-content">
+        <div className="auth-passkey-icon">🔐</div>
+        <div className="auth-instructions" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          PassKey недоступен в Telegram
+        </div>
+        <div className="auth-hint">
+          Откройте MafBoard в браузере (Safari, Chrome) для входа через PassKey.
+          <br />В Telegram используйте авторизацию через Telegram или GoMafia.
+        </div>
+      </div>
+    );
+  }
+
+  if (!authService.isPasskeySupported()) {
+    return (
+      <div className="auth-tab-content">
+        <div className="auth-passkey-icon">🔐</div>
         <div className="auth-hint">
           Ваш браузер не поддерживает PassKey.
           <br />Используйте Telegram или GoMafia для входа.
@@ -252,7 +268,11 @@ function PasskeyTab({ onSuccess }) {
     <div className="auth-tab-content">
       <div className="auth-passkey-icon">🔐</div>
       <div className="auth-instructions">
-        Используйте биометрию или ключ безопасности
+        Войдите с помощью сохранённого PassKey
+      </div>
+      <div className="auth-hint" style={{ marginBottom: 8 }}>
+        Если вы ранее добавили PassKey в настройках профиля, нажмите кнопку ниже.
+        Браузер предложит выбрать сохранённый ключ или использовать биометрию.
       </div>
       {error && <div className="auth-error">{error}</div>}
       <button
@@ -266,8 +286,9 @@ function PasskeyTab({ onSuccess }) {
           'Войти с PassKey'
         )}
       </button>
-      <div className="auth-hint">
-        Для использования PassKey сначала добавьте его в настройках после входа другим способом
+      <div className="auth-hint" style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, lineHeight: 1.5 }}>
+        Ещё нет PassKey? Войдите через Telegram или GoMafia,
+        затем добавьте PassKey в Профиль → Настройки → Способы авторизации.
       </div>
     </div>
   );
