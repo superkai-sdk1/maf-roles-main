@@ -239,7 +239,6 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
       style={{
         '--i': player.num - 1,
         ...(showTimerWave ? {
-          '--wave-progress': `${timerProgress * 100}%`,
           '--wave-anim': isRunning && !isPaused ? 'running' : 'paused',
         } : {}),
       }}

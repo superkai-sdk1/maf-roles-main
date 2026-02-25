@@ -373,15 +373,15 @@ body {
 .animate-profile-ring { animation: profileRingRotate 8s linear infinite; }
 .animate-spin { animation: spin 1s linear infinite; }
 
-/* Timer wave overlay on player cards */
-@keyframes timerWaveShimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(400%); }
+/* Timer wave border on player cards */
+@keyframes borderWaveRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .card-timer-wave {
   position: absolute;
-  inset: 0;
+  inset: -2px;
   border-radius: inherit;
   overflow: hidden;
   pointer-events: none;
@@ -391,37 +391,43 @@ body {
 .card-timer-wave::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: var(--wave-progress, 0%);
-  background: var(--wave-color, rgba(var(--accent-rgb), 0.08));
-  transition: width 0.4s ease-out;
-  border-radius: inherit;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    rgba(var(--accent-rgb), 0.6) 25%,
+    rgba(var(--accent-rgb), 0.9) 50%,
+    rgba(var(--accent-rgb), 0.6) 75%,
+    transparent 100%
+  );
+  animation: borderWaveRotate 2.5s linear infinite;
+  animation-play-state: var(--wave-anim, paused);
 }
 
 .card-timer-wave::after {
   content: '';
   position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 60px;
-  left: calc(var(--wave-progress, 0%) - 30px);
-  background: linear-gradient(90deg, transparent, var(--wave-shimmer, rgba(255,255,255,0.08)), transparent);
-  transition: left 0.4s ease-out;
-  animation: timerWaveShimmer 2s ease-in-out infinite;
-  animation-play-state: var(--wave-anim, paused);
+  inset: 2px;
+  border-radius: inherit;
+  background: var(--glass-surface, rgba(12, 10, 28, 0.68));
 }
 
 .card-timer-wave.wave-low::before {
-  background: rgba(255, 69, 58, 0.1);
-}
-.card-timer-wave.wave-low::after {
-  background: linear-gradient(90deg, transparent, rgba(255, 69, 58, 0.12), transparent);
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    rgba(255, 69, 58, 0.6) 25%,
+    rgba(255, 69, 58, 0.95) 50%,
+    rgba(255, 69, 58, 0.6) 75%,
+    transparent 100%
+  );
 }
 
-.card-timer-wave.wave-paused::after {
+.card-timer-wave.wave-paused::before {
   animation-play-state: paused;
+  opacity: 0.5;
 }
 
 /* Scroll fade pseudo-elements — hard to do with pure utilities */
