@@ -1232,9 +1232,8 @@ export function MainMenu() {
         </div>
       )}
 
-      <div className="h-screen h-[100dvh] flex flex-col items-center overflow-hidden" style={{ background: 'var(--maf-gradient-bg)' }}>
-        <div className="native-scroll w-full flex-1 min-h-0 flex flex-col items-center" style={{ padding: 'var(--safe-top, 0px) 0 calc(120px + var(--safe-bottom, env(safe-area-inset-bottom, 0px))) 0' }}>
-          <div className="w-full max-w-[480px] px-5 pt-10 pb-10 flex flex-col items-center min-h-full">
+      <div className="h-[100dvh] native-scroll" style={{ background: 'var(--maf-gradient-bg)', paddingTop: 'var(--safe-top, 0px)', paddingBottom: 'calc(120px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))' }}>
+        <div className="w-full max-w-[480px] mx-auto px-5 pt-10 pb-10 flex flex-col items-center">
           {/* Header */}
           <div className="flex flex-col items-center mb-7 pt-8 animate-float-up">
             <div className="w-16 h-16 rounded-[20px] bg-gradient-to-br from-accent/15 to-indigo-500/10 border border-accent/25 flex items-center justify-center text-3xl text-accent mb-4 shadow-[0_8px_32px_rgba(168,85,247,0.2),0_0_60px_rgba(168,85,247,0.06)] backdrop-blur-xl">
@@ -2007,7 +2006,6 @@ export function MainMenu() {
           )}
 
         </div>
-      </div>
       </div>
 
       {createPortal(
