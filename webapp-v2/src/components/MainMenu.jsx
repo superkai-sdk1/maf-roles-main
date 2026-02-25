@@ -7,6 +7,7 @@ import { authService } from '../services/auth';
 import { COLOR_SCHEMES, applyTheme } from '../constants/themes';
 import { triggerHaptic } from '../utils/haptics';
 import { useSwipeBack } from '../hooks/useSwipeBack';
+import { TwGameList } from './MainMenuTw';
 import {
   IconPlayCircle, IconHistory, IconPlus, IconPalette, IconUser,
   IconTrophy, IconDice, IconChevronDown, IconTrash, IconStats, IconMafBoard,
@@ -433,6 +434,15 @@ export function MainMenu() {
   const [activeTab, setActiveTab] = useState('active');
   const [expandedSeries, setExpandedSeries] = useState({});
   const [menuScreen, setMenuScreen] = useState('game');
+
+  const [useTailwindUI, setUseTailwindUI] = useState(() => {
+    try { return localStorage.getItem('maf_ui_tailwind') === '1'; } catch { return false; }
+  });
+  const toggleTailwindUI = useCallback((val) => {
+    setUseTailwindUI(val);
+    try { localStorage.setItem('maf_ui_tailwind', val ? '1' : '0'); } catch {}
+    triggerHaptic('success');
+  }, []);
 
   const [newGameModal, setNewGameModal] = useState({
     visible: false, loading: false, error: '',
@@ -1182,56 +1192,74 @@ export function MainMenu() {
 
           {/* =================== GAME SCREEN =================== */}
           {menuScreen === 'game' && (
-            <>
-              <div className="main-menu-section-label">
-                {activeTab === 'active' ? 'Активные игры' : 'История игр'}
-                <span className="main-menu-count-badge">{totalCount}</span>
-              </div>
+            useTailwindUI ? (
+              <TwGameList
+                displayGroups={displayGroups}
+                displayStandalone={displayStandalone}
+                activeTab={activeTab}
+                totalCount={totalCount}
+                expandedSeries={expandedSeries}
+                toggleExpanded={toggleExpanded}
+                loadSession={loadSession}
+                deleteSession={deleteSession}
+                archiveSeries={archiveSeries}
+                deleteSeries={deleteSeries}
+                handleNewGameInTournament={handleNewGameInTournament}
+                startNewFunkyFromMenu={startNewFunkyFromMenu}
+                setTableGroup={setTableGroup}
+              />
+            ) : (
+              <>
+                <div className="main-menu-section-label">
+                  {activeTab === 'active' ? 'Активные игры' : 'История игр'}
+                  <span className="main-menu-count-badge">{totalCount}</span>
+                </div>
 
-              <div className="main-menu-list">
-                {displayGroups.length === 0 && displayStandalone.length === 0 ? (
-                  <div className="main-menu-empty">
-                    <div className="main-menu-empty-icon">
-                      <IconDice size={48} color="rgba(255,255,255,0.15)" />
-                    </div>
-                    <div className="main-menu-empty-text">
-                      Нет {activeTab === 'active' ? 'активных' : 'завершенных'} игр
-                    </div>
-                    {activeTab === 'active' && (
-                      <div className="main-menu-empty-hint">
-                        Создайте новую игру — она сохранится автоматически
+                <div className="main-menu-list">
+                  {displayGroups.length === 0 && displayStandalone.length === 0 ? (
+                    <div className="main-menu-empty">
+                      <div className="main-menu-empty-icon">
+                        <IconDice size={48} color="rgba(255,255,255,0.15)" />
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    {displayGroups.map(g => (
-                      <SeriesCard
-                        key={g.tournamentId}
-                        group={g}
-                        expanded={!!expandedSeries[g.tournamentId]}
-                        onToggle={() => toggleExpanded(g.tournamentId)}
-                        onLoadSession={loadSession}
-                        onDeleteSession={deleteSession}
-                        onArchive={archiveSeries}
-                        onDeleteSeries={g.isFunky ? () => { deleteSession(g._originalSessionId); triggerHaptic('medium'); } : deleteSeries}
-                        onNewGame={g.gameMode === 'gomafia' ? handleNewGameInTournament : g.isFunky ? () => startNewFunkyFromMenu(g._originalSessionId) : null}
-                        onShowTable={(grp) => { setTableGroup(grp); triggerHaptic('light'); }}
-                      />
-                    ))}
+                      <div className="main-menu-empty-text">
+                        Нет {activeTab === 'active' ? 'активных' : 'завершенных'} игр
+                      </div>
+                      {activeTab === 'active' && (
+                        <div className="main-menu-empty-hint">
+                          Создайте новую игру — она сохранится автоматически
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {displayGroups.map(g => (
+                        <SeriesCard
+                          key={g.tournamentId}
+                          group={g}
+                          expanded={!!expandedSeries[g.tournamentId]}
+                          onToggle={() => toggleExpanded(g.tournamentId)}
+                          onLoadSession={loadSession}
+                          onDeleteSession={deleteSession}
+                          onArchive={archiveSeries}
+                          onDeleteSeries={g.isFunky ? () => { deleteSession(g._originalSessionId); triggerHaptic('medium'); } : deleteSeries}
+                          onNewGame={g.gameMode === 'gomafia' ? handleNewGameInTournament : g.isFunky ? () => startNewFunkyFromMenu(g._originalSessionId) : null}
+                          onShowTable={(grp) => { setTableGroup(grp); triggerHaptic('light'); }}
+                        />
+                      ))}
 
-                    {displayStandalone.map(s => (
-                      <StandaloneCard
-                        key={s.sessionId}
-                        session={s}
-                        onLoad={loadSession}
-                        onDelete={deleteSession}
-                      />
-                    ))}
-                  </>
-                )}
-              </div>
-            </>
+                      {displayStandalone.map(s => (
+                        <StandaloneCard
+                          key={s.sessionId}
+                          session={s}
+                          onLoad={loadSession}
+                          onDelete={deleteSession}
+                        />
+                      ))}
+                    </>
+                  )}
+                </div>
+              </>
+            )
           )}
 
           {/* =================== PROFILE SCREEN =================== */}
@@ -1453,6 +1481,39 @@ export function MainMenu() {
                           <IconTrash size={11} /> Удалить фото
                         </button>
                       )}
+                    </div>
+                  </div>
+
+                  {/* UI Style Toggle */}
+                  <div className="settings-card" style={{ padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.82em', fontWeight: 700, color: '#fff', marginBottom: 2 }}>Tailwind UI</div>
+                        <div style={{ fontSize: '0.68em', color: 'rgba(255,255,255,0.3)', lineHeight: 1.3 }}>
+                          Новый дизайн главного экрана (Активные и История)
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => toggleTailwindUI(!useTailwindUI)}
+                        style={{
+                          width: 48, height: 28, borderRadius: 14, border: 'none', cursor: 'pointer',
+                          background: useTailwindUI
+                            ? 'linear-gradient(135deg, var(--accent-color, #a855f7), #6366f1)'
+                            : 'rgba(255,255,255,0.08)',
+                          position: 'relative', transition: 'background 0.3s',
+                          flexShrink: 0,
+                          boxShadow: useTailwindUI ? '0 0 12px rgba(168,85,247,0.3)' : 'none',
+                        }}
+                      >
+                        <div style={{
+                          width: 22, height: 22, borderRadius: 11,
+                          background: useTailwindUI ? '#fff' : 'rgba(255,255,255,0.3)',
+                          position: 'absolute', top: 3,
+                          left: useTailwindUI ? 23 : 3,
+                          transition: 'left 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.25s',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                        }} />
+                      </button>
                     </div>
                   </div>
 
