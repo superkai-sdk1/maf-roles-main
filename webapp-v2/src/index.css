@@ -5990,13 +5990,44 @@ body::after {
   gap: 14px;
 }
 
-/* Settings screen */
+/* ── Settings Screen ── */
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.settings-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-title {
+  font-size: 1.2em;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.settings-version {
+  font-size: 0.6em;
+  font-weight: 700;
+  color: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.05);
+  padding: 4px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
 
 .profile-settings-back {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.1);
   background: rgba(255,255,255,0.04);
   display: flex;
   align-items: center;
@@ -6011,6 +6042,518 @@ body::after {
   background: rgba(255,255,255,0.08);
 }
 
+.settings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-card {
+  background: rgba(18, 18, 26, 0.8);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Profile card (avatar + name) */
+
+.settings-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.settings-profile-card::before {
+  content: '';
+  position: absolute;
+  top: -24px;
+  right: -24px;
+  width: 96px;
+  height: 96px;
+  background: var(--accent-color);
+  opacity: 0.04;
+  filter: blur(40px);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.settings-profile-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.settings-profile-avatar-ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  padding: 2px;
+  background: linear-gradient(135deg, var(--accent-color), #6366f1);
+}
+
+.settings-profile-avatar-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(10,10,12,1);
+  padding: 3px;
+  overflow: hidden;
+}
+
+.settings-profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.9;
+}
+
+.settings-profile-avatar-initials {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-color), #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6em;
+  font-weight: 800;
+  color: #fff;
+}
+
+.settings-profile-camera {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-color, #a855f7);
+  border: 3px solid rgba(18,18,26,1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(168,85,247,0.4);
+  transition: transform 0.15s var(--ease-spring);
+}
+
+.settings-profile-camera:active {
+  transform: scale(0.88);
+}
+
+.settings-profile-fields {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-field-label {
+  font-size: 0.55em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.2);
+  margin-bottom: 4px;
+  margin-left: 2px;
+}
+
+.settings-inline-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #fff;
+  font-size: 0.85em;
+  font-weight: 700;
+  outline: none;
+  transition: border-color 0.25s;
+  font-family: var(--font-family);
+}
+
+.settings-inline-input:focus {
+  border-color: rgba(168,85,247,0.3);
+}
+
+.settings-inline-input::placeholder {
+  color: rgba(255,255,255,0.2);
+  font-weight: 500;
+}
+
+.settings-remove-photo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 2px;
+  font-size: 0.6em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(239,68,68,0.45);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.settings-remove-photo:active {
+  color: #ef4444;
+}
+
+/* Integration card */
+
+.settings-integration-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.settings-integration-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(137,119,254,0.15), rgba(10,232,240,0.08));
+  border: 1px solid rgba(137,119,254,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-integration-icon--green {
+  background: rgba(34,197,94,0.1);
+  border-color: rgba(34,197,94,0.2);
+}
+
+.settings-integration-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-integration-name {
+  font-size: 0.78em;
+  font-weight: 700;
+  color: #fff;
+}
+
+.settings-integration-status {
+  font-size: 0.58em;
+  font-weight: 600;
+  color: rgba(34,197,94,0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.settings-integration-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.settings-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.settings-icon-btn:active {
+  transform: scale(0.9);
+  color: #fff;
+}
+
+.settings-icon-btn--danger {
+  background: rgba(239,68,68,0.06);
+  color: rgba(239,68,68,0.4);
+}
+
+.settings-icon-btn--danger:active {
+  color: #ef4444;
+}
+
+.settings-integration-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 16px;
+}
+
+.settings-integration-profile-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.1);
+  object-fit: cover;
+}
+
+.settings-integration-profile-avatar--initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(137,119,254,0.15);
+  font-size: 0.7em;
+  font-weight: 700;
+  color: #fff;
+}
+
+.settings-integration-profile-name {
+  font-size: 0.78em;
+  font-weight: 700;
+  color: rgba(255,255,255,0.6);
+}
+
+.settings-gomafia-connect {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.15s var(--ease-spring);
+}
+
+.settings-gomafia-connect:active {
+  transform: scale(0.98);
+}
+
+/* Auth grid */
+
+.settings-auth-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.settings-auth-tile {
+  position: relative;
+  background: rgba(18, 18, 26, 0.8);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 26px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  transition: transform 0.15s var(--ease-spring);
+}
+
+.settings-auth-tile:active {
+  transform: scale(0.96);
+}
+
+.settings-auth-tile-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.settings-auth-tile-label {
+  font-size: 0.78em;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 1px;
+}
+
+.settings-auth-tile-sub {
+  font-size: 0.58em;
+  font-weight: 500;
+  color: rgba(255,255,255,0.2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-auth-dot {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.settings-auth-dot--green {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34,197,94,0.4);
+}
+
+.settings-auth-dot--purple {
+  background: var(--accent-color, #a855f7);
+  box-shadow: 0 0 8px rgba(168,85,247,0.4);
+}
+
+.settings-auth-tile-action {
+  display: none;
+}
+
+/* Sessions */
+
+.settings-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.2);
+  margin-bottom: 12px;
+  padding: 0 2px;
+}
+
+.settings-session-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 16px;
+}
+
+.settings-session-row--current {
+  background: rgba(168,85,247,0.06);
+  border-color: rgba(168,85,247,0.15);
+}
+
+.settings-session-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-session-icon--current {
+  background: rgba(168,85,247,0.12);
+  color: var(--accent-color, #a855f7);
+}
+
+.settings-session-name {
+  font-size: 0.72em;
+  font-weight: 700;
+  color: #fff;
+}
+
+.settings-session-meta {
+  font-size: 0.58em;
+  font-weight: 500;
+  color: rgba(255,255,255,0.2);
+  margin-top: 1px;
+  letter-spacing: 0.01em;
+}
+
+.settings-session-exit {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 0.56em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(239,68,68,0.4);
+  cursor: pointer;
+  transition: color 0.15s;
+  padding: 4px;
+}
+
+.settings-session-exit:active {
+  color: #ef4444;
+}
+
+.settings-logout-all {
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px;
+  background: rgba(239,68,68,0.05);
+  border: 1px solid rgba(239,68,68,0.1);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: rgba(239,68,68,0.55);
+  font-size: 0.6em;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.settings-logout-all:active {
+  transform: scale(0.98);
+  background: rgba(239,68,68,0.1);
+  color: #ef4444;
+}
+
+/* Save button */
+
+.profile-save-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 15px 20px;
+  margin-top: 16px;
+  border-radius: var(--radius-m);
+  background: var(--accent-color, #a855f7);
+  border: none;
+  color: #fff;
+  font-size: 0.95em;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(168,85,247,0.3);
+  transition: all 0.25s var(--ease-spring);
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-save-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 50%);
+  pointer-events: none;
+}
+
+.profile-save-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 12px rgba(168,85,247,0.4);
+}
+
+/* Legacy compat */
+
 .profile-settings-section-label {
   font-size: 0.72em;
   font-weight: 700;
@@ -6018,78 +6561,6 @@ body::after {
   text-transform: uppercase;
   letter-spacing: 0.8px;
   margin-bottom: 14px;
-}
-
-.profile-settings-avatar-wrap {
-  position: relative;
-  width: 108px;
-  height: 108px;
-  margin: 0 auto 18px;
-}
-
-.profile-settings-avatar-img {
-  width: 108px;
-  height: 108px;
-  border-radius: 50%;
-  background-size: cover;
-  background-position: center;
-  border: 3px solid var(--accent-color);
-  box-shadow: 0 4px 24px rgba(168,85,247,0.25);
-}
-
-.profile-settings-avatar-initials {
-  width: 108px;
-  height: 108px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-color), #6366f1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.6em;
-  font-weight: 800;
-  color: #fff;
-  box-shadow: 0 4px 24px rgba(168,85,247,0.25);
-}
-
-.profile-settings-camera-btn {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--accent-color, #a855f7);
-  border: 3px solid rgba(15,12,35,0.95);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 2px 12px rgba(168,85,247,0.4);
-  transition: all 0.2s var(--ease-spring);
-}
-
-.profile-settings-camera-btn:active {
-  transform: scale(0.88);
-}
-
-.profile-settings-remove-avatar {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 7px 16px;
-  border-radius: 10px;
-  background: rgba(255,69,58,0.08);
-  border: 1px solid rgba(255,69,58,0.15);
-  color: #ff453a;
-  font-size: 0.75em;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.profile-settings-remove-avatar:active {
-  transform: scale(0.95);
-  background: rgba(255,69,58,0.15);
 }
 
 .profile-settings-input {
@@ -6118,32 +6589,6 @@ body::after {
   font-weight: 500;
 }
 
-.profile-settings-hint {
-  font-size: 0.7em;
-  color: rgba(255,255,255,0.25);
-  margin-top: 8px;
-  line-height: 1.4;
-}
-
-.profile-gomafia-card {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(137,119,254,0.06), rgba(10,232,240,0.03));
-  border: 1px solid rgba(137,119,254,0.12);
-  cursor: pointer;
-  transition: all 0.25s var(--ease-spring);
-  text-align: left;
-}
-
-.profile-gomafia-card:active {
-  transform: scale(0.98);
-  background: linear-gradient(135deg, rgba(137,119,254,0.1), rgba(10,232,240,0.05));
-}
-
 .profile-gomafia-icon {
   width: 44px;
   height: 44px;
@@ -6154,64 +6599,6 @@ body::after {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.profile-save-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 15px 20px;
-  margin-top: 20px;
-  border-radius: var(--radius-m);
-  background: var(--accent-color, #a855f7);
-  border: none;
-  color: #fff;
-  font-size: 0.95em;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 4px 20px rgba(168,85,247,0.3);
-  transition: all 0.25s var(--ease-spring);
-  position: relative;
-  overflow: hidden;
-}
-
-.profile-save-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 50%);
-  pointer-events: none;
-}
-
-.profile-save-btn:active {
-  transform: scale(0.97);
-  box-shadow: 0 2px 12px rgba(168,85,247,0.4);
-}
-
-.profile-logout-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 14px 20px;
-  margin-top: 12px;
-  border-radius: var(--radius-m);
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-  font-size: 0.88em;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s var(--ease-spring);
-}
-
-.profile-logout-btn:active {
-  transform: scale(0.97);
-  background: rgba(239, 68, 68, 0.18);
 }
 
 /* ===== GoMafia Profile Badge (profile screen) ===== */

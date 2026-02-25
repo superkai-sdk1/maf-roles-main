@@ -1386,247 +1386,282 @@ export function MainMenu() {
 
             return (
               <div className="animate-fadeIn" style={{ width: '100%', maxWidth: 400, paddingBottom: 100 }}>
+
                 {/* Header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                  <button
-                    className="profile-settings-back"
-                    onClick={() => { setMenuScreen('profile'); triggerHaptic('light'); }}
-                  >
-                    <IconArrowRight size={16} color="rgba(255,255,255,0.5)" style={{ transform: 'rotate(180deg)' }} />
-                  </button>
-                  <h2 style={{ fontSize: '1.15em', fontWeight: 800, margin: 0, letterSpacing: '-0.01em' }}>Настройки</h2>
-                </div>
-
-                {/* Avatar section */}
-                <div className="glass-card" style={{ padding: '24px 20px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
-                  <div className="profile-settings-section-label">Аватар</div>
-
-                  <div className="profile-settings-avatar-wrap">
-                    {avatarSrc ? (
-                      <div className="profile-settings-avatar-img" style={{ backgroundImage: `url(${avatarSrc})` }} />
-                    ) : (
-                      <div className="profile-settings-avatar-initials">{initials}</div>
-                    )}
+                <div className="settings-header">
+                  <div className="settings-header-left">
                     <button
-                      className="profile-settings-camera-btn"
-                      onClick={() => avatarInputRef.current?.click()}
+                      className="profile-settings-back"
+                      onClick={() => { setMenuScreen('profile'); triggerHaptic('light'); }}
                     >
-                      <IconCamera size={15} color="#fff" />
+                      <IconArrowRight size={16} color="rgba(255,255,255,0.7)" style={{ transform: 'rotate(180deg)' }} />
                     </button>
-                    <input
-                      ref={avatarInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                      style={{ display: 'none' }}
-                    />
+                    <h2 className="settings-title">Настройки</h2>
                   </div>
-
-                  {userAvatarUrl && (
-                    <button className="profile-settings-remove-avatar" onClick={handleRemoveAvatar}>
-                      <IconX size={12} /> Удалить
-                    </button>
-                  )}
+                  <div className="settings-version">v2.1</div>
                 </div>
 
-                {/* Name section */}
-                <div className="glass-card" style={{ padding: '20px', marginTop: 10, position: 'relative', zIndex: 1 }}>
-                  <div className="profile-settings-section-label">Имя</div>
-                  <input
-                    className="profile-settings-input"
-                    type="text"
-                    value={profileSettingsName}
-                    onChange={e => setProfileSettingsName(e.target.value)}
-                    placeholder="Введите имя..."
-                    maxLength={40}
-                  />
-                  <div className="profile-settings-hint">
-                    Отображается в профиле и при отправке результатов
-                  </div>
-                </div>
+                <div className="settings-sections">
 
-                {/* GoMafia connect */}
-                <div className="glass-card" style={{ padding: '20px', marginTop: 10, position: 'relative', zIndex: 1 }}>
-                  <div className="profile-settings-section-label">Интеграции</div>
-                  {goMafiaProfile ? (
-                    <div className="gomafia-connected-card">
-                      <div className="gomafia-connected-header">
-                        <div className="profile-gomafia-icon gomafia-connected-icon">
-                          <IconGoMafia size={22} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="gomafia-connected-label">GoMafia подключён</div>
-                          <div className="gomafia-connected-status">gomafia.pro</div>
-                        </div>
-                        <div className="gomafia-connected-check">
-                          <IconCheck size={14} color="#22c55e" />
-                        </div>
-                      </div>
-                      <div className="gomafia-connected-profile">
-                        <div className="gomafia-connected-avatar">
-                          {goMafiaProfile.avatar ? (
-                            <img src={goMafiaProfile.avatar} alt="" />
+                  {/* Profile block (avatar + name) */}
+                  <div className="settings-card settings-profile-card">
+                    <div className="settings-profile-avatar-wrap">
+                      <div className="settings-profile-avatar-ring">
+                        <div className="settings-profile-avatar-inner">
+                          {avatarSrc ? (
+                            <div className="settings-profile-avatar-img" style={{ backgroundImage: `url(${avatarSrc})` }} />
                           ) : (
-                            <span>{(goMafiaProfile.nickname || '?')[0].toUpperCase()}</span>
-                          )}
-                        </div>
-                        <div className="gomafia-connected-info">
-                          <div className="gomafia-connected-nickname">{goMafiaProfile.nickname}</div>
-                          {goMafiaProfile.title && (
-                            <div className="gomafia-connected-title">{goMafiaProfile.title}</div>
+                            <div className="settings-profile-avatar-initials">{initials}</div>
                           )}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                          className="gomafia-disconnect-btn"
-                          style={{ flex: 1, background: 'rgba(99,102,241,0.12)', color: '#818cf8', borderColor: 'rgba(99,102,241,0.2)' }}
-                          onClick={async () => {
-                            triggerHaptic('light');
-                            try {
-                              const res = await goMafiaApi.lookupGoMafiaPlayer(goMafiaProfile.nickname);
-                              if (res.success && res.profile) {
-                                const updated = {
-                                  ...goMafiaProfile,
-                                  nickname: res.profile.nickname || goMafiaProfile.nickname,
-                                  avatar: res.profile.avatar || goMafiaProfile.avatar,
-                                  id: res.profile.id || goMafiaProfile.id,
-                                  title: res.profile.title || goMafiaProfile.title,
-                                };
-                                goMafiaApi.saveGoMafiaProfile(updated);
-                                setGoMafiaProfile(updated);
-                                if (updated.nickname) {
-                                  setUserDisplayName(updated.nickname);
-                                  try { localStorage.setItem('maf_user_display_name', updated.nickname); } catch {}
-                                }
-                                if (updated.avatar) {
-                                  setUserAvatarUrl(updated.avatar);
-                                  try { localStorage.setItem('maf_user_avatar', updated.avatar); } catch {}
-                                }
-                                const token = authService.getStoredToken();
-                                if (token) profileApi.saveProfile(token, { gomafia: updated });
-                                triggerHaptic('success');
-                              }
-                            } catch {}
-                          }}
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
-                          Обновить
+                      <button
+                        className="settings-profile-camera"
+                        onClick={() => avatarInputRef.current?.click()}
+                      >
+                        <IconCamera size={13} color="#fff" />
+                      </button>
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        style={{ display: 'none' }}
+                      />
+                    </div>
+
+                    <div className="settings-profile-fields">
+                      <div>
+                        <div className="settings-field-label">Никнейм</div>
+                        <input
+                          className="settings-inline-input"
+                          type="text"
+                          value={profileSettingsName}
+                          onChange={e => setProfileSettingsName(e.target.value)}
+                          placeholder="Введите имя..."
+                          maxLength={40}
+                        />
+                      </div>
+                      {userAvatarUrl && (
+                        <button className="settings-remove-photo" onClick={handleRemoveAvatar}>
+                          <IconTrash size={11} /> Удалить фото
                         </button>
-                        <button
-                          className="gomafia-disconnect-btn"
-                          style={{ flex: 1 }}
-                          onClick={() => {
-                            goMafiaApi.removeGoMafiaProfile();
-                            setGoMafiaProfile(null);
-                            const token = authService.getStoredToken();
-                            if (token) profileApi.clearGoMafia(token);
-                            triggerHaptic('medium');
-                          }}
-                        >
-                          <IconX size={12} /> Удалить
-                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* GoMafia integration */}
+                  {goMafiaProfile ? (
+                    <div className="settings-card">
+                      <div className="settings-integration-header">
+                        <div className="settings-integration-icon settings-integration-icon--green">
+                          <IconGoMafia size={16} />
+                        </div>
+                        <div className="settings-integration-info">
+                          <div className="settings-integration-name">GoMafia</div>
+                          <div className="settings-integration-status">Подключено</div>
+                        </div>
+                        <div className="settings-integration-actions">
+                          <button
+                            className="settings-icon-btn"
+                            onClick={async () => {
+                              triggerHaptic('light');
+                              try {
+                                const res = await goMafiaApi.lookupGoMafiaPlayer(goMafiaProfile.nickname);
+                                if (res.success && res.profile) {
+                                  const updated = {
+                                    ...goMafiaProfile,
+                                    nickname: res.profile.nickname || goMafiaProfile.nickname,
+                                    avatar: res.profile.avatar || goMafiaProfile.avatar,
+                                    id: res.profile.id || goMafiaProfile.id,
+                                    title: res.profile.title || goMafiaProfile.title,
+                                  };
+                                  goMafiaApi.saveGoMafiaProfile(updated);
+                                  setGoMafiaProfile(updated);
+                                  if (updated.nickname) {
+                                    setUserDisplayName(updated.nickname);
+                                    try { localStorage.setItem('maf_user_display_name', updated.nickname); } catch {}
+                                  }
+                                  if (updated.avatar) {
+                                    setUserAvatarUrl(updated.avatar);
+                                    try { localStorage.setItem('maf_user_avatar', updated.avatar); } catch {}
+                                  }
+                                  const token = authService.getStoredToken();
+                                  if (token) profileApi.saveProfile(token, { gomafia: updated });
+                                  triggerHaptic('success');
+                                }
+                              } catch {}
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                          </button>
+                          <button
+                            className="settings-icon-btn settings-icon-btn--danger"
+                            onClick={() => {
+                              goMafiaApi.removeGoMafiaProfile();
+                              setGoMafiaProfile(null);
+                              const token = authService.getStoredToken();
+                              if (token) profileApi.clearGoMafia(token);
+                              triggerHaptic('medium');
+                            }}
+                          >
+                            <IconX size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="settings-integration-profile">
+                        {goMafiaProfile.avatar ? (
+                          <img src={goMafiaProfile.avatar} alt="" className="settings-integration-profile-avatar" />
+                        ) : (
+                          <div className="settings-integration-profile-avatar settings-integration-profile-avatar--initials">
+                            {(goMafiaProfile.nickname || '?')[0].toUpperCase()}
+                          </div>
+                        )}
+                        <span className="settings-integration-profile-name">{goMafiaProfile.nickname}</span>
                       </div>
                     </div>
                   ) : (
                     <button
-                      className="profile-gomafia-card"
+                      className="settings-card settings-gomafia-connect"
                       onClick={() => {
                         setGoMafiaModal(true);
                         setGoMafiaLogin({ nickname: '', password: '', loading: false, error: '' });
                         triggerHaptic('light');
                       }}
                     >
-                      <div className="profile-gomafia-icon">
-                        <IconGoMafia size={22} />
+                      <div className="settings-integration-icon">
+                        <IconGoMafia size={16} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.9em', fontWeight: 700, color: '#fff' }}>Подключить GoMafia</div>
-                        <div style={{ fontSize: '0.72em', color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>Привяжите аккаунт gomafia.pro</div>
+                        <div style={{ fontSize: '0.82em', fontWeight: 700, color: '#fff' }}>Подключить GoMafia</div>
+                        <div style={{ fontSize: '0.68em', color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Привяжите аккаунт gomafia.pro</div>
                       </div>
-                      <IconLink size={16} color="rgba(255,255,255,0.2)" />
+                      <IconLink size={15} color="rgba(255,255,255,0.2)" />
                     </button>
                   )}
-                </div>
 
-                {/* Auth Methods */}
-                <div className="glass-card" style={{ padding: '20px', marginTop: 10, position: 'relative', zIndex: 1 }}>
-                  <div className="profile-settings-section-label">Способы авторизации</div>
-
+                  {/* Auth grid */}
                   {!linkedAccounts ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 0', gap: 8 }}>
+                    <div className="settings-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0', gap: 8 }}>
                       <div className="gomafia-modal-spinner" />
                       <span style={{ fontSize: '0.8em', color: 'rgba(255,255,255,0.35)' }}>Загрузка...</span>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {/* Telegram */}
-                      <div className="auth-method-card">
-                        <div className="auth-method-icon" style={{ background: 'rgba(56,163,224,0.12)' }}>
-                          <span style={{ fontSize: '1.1em' }}>✈️</span>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="auth-method-name">Telegram</div>
-                          {linkedAccounts.telegram?.linked ? (
-                            <div className="auth-method-detail">
-                              {linkedAccounts.telegram.username ? `@${linkedAccounts.telegram.username}` : (linkedAccounts.telegram.first_name || 'Привязан')}
-                            </div>
-                          ) : (
-                            <div className="auth-method-detail" style={{ color: 'rgba(255,255,255,0.2)' }}>Не привязан</div>
+                    <>
+                      <div className="settings-auth-grid">
+                        {/* Telegram */}
+                        <div className="settings-auth-tile">
+                          <div className="settings-auth-tile-icon" style={{ background: 'rgba(56,163,224,0.1)', color: '#38a3e0' }}>
+                            <span style={{ fontSize: '1em' }}>✈️</span>
+                          </div>
+                          <div className="settings-auth-tile-label">Telegram</div>
+                          <div className="settings-auth-tile-sub">
+                            {linkedAccounts.telegram?.linked
+                              ? (linkedAccounts.telegram.username ? `@${linkedAccounts.telegram.username}` : 'Привязан')
+                              : 'Не привязан'
+                            }
+                          </div>
+                          {linkedAccounts.telegram?.linked && (
+                            <div className="settings-auth-dot settings-auth-dot--green" />
+                          )}
+                          {!linkedAccounts.telegram?.linked && !linkTelegramMode && (
+                            <button
+                              className="settings-auth-tile-action"
+                              onClick={async () => {
+                                triggerHaptic('light');
+                                const token = authService.getStoredToken();
+                                if (!token) return;
+                                const res = await fetch('/login/code-generate.php', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ link_token: token }),
+                                }).then(r => r.json());
+                                if (!res.code) return;
+                                setLinkTelegramMode({ code: res.code, expiresIn: res.expires_in, botLink: res.bot_link, botUsername: res.bot_username });
+                                stopLinkPolling();
+                                let remaining = res.expires_in;
+                                linkTimerRef.current = setInterval(() => {
+                                  remaining--;
+                                  setLinkTelegramMode(prev => prev ? { ...prev, expiresIn: remaining } : null);
+                                  if (remaining <= 0) { stopLinkPolling(); setLinkTelegramMode(null); }
+                                }, 1000);
+                                linkPollRef.current = setInterval(async () => {
+                                  const check = await authService.checkCode(res.code);
+                                  if (check.confirmed) {
+                                    stopLinkPolling();
+                                    setLinkTelegramMode(null);
+                                    authService.storeAuth(check.token, check.user);
+                                    loadLinkedAccounts();
+                                    triggerHaptic('success');
+                                  } else if (check.expired) {
+                                    stopLinkPolling();
+                                    setLinkTelegramMode(null);
+                                  }
+                                }, 2500);
+                              }}
+                            >
+                              Привязать
+                            </button>
                           )}
                         </div>
-                        {linkedAccounts.telegram?.linked ? (
-                          <span className="auth-method-badge auth-method-badge--active">
-                            <IconCheck size={10} /> Привязан
-                          </span>
-                        ) : linkTelegramMode ? (
-                          <span className="auth-method-badge" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                            {linkTelegramMode.code}
-                          </span>
-                        ) : (
+
+                        {/* PassKey */}
+                        <div className="settings-auth-tile">
+                          <div className="settings-auth-tile-icon" style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
+                            <span style={{ fontSize: '1em' }}>🔐</span>
+                          </div>
+                          <div className="settings-auth-tile-label">PassKey</div>
+                          <div className="settings-auth-tile-sub">
+                            {linkedAccounts.passkeys?.length > 0
+                              ? `${linkedAccounts.passkeys.length} ключ${linkedAccounts.passkeys.length > 1 ? (linkedAccounts.passkeys.length < 5 ? 'а' : 'ей') : ''}`
+                              : 'Не настроен'
+                            }
+                          </div>
+                          {linkedAccounts.passkeys?.length > 0 && (
+                            <div className="settings-auth-dot settings-auth-dot--purple" />
+                          )}
                           <button
-                            className="auth-method-link-btn"
+                            className="settings-auth-tile-action"
+                            disabled={passkeyRegistering}
                             onClick={async () => {
+                              setPasskeyError('');
                               triggerHaptic('light');
                               const token = authService.getStoredToken();
-                              if (!token) return;
-                              const res = await fetch('/login/code-generate.php', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ link_token: token }),
-                              }).then(r => r.json());
-                              if (!res.code) return;
-                              setLinkTelegramMode({ code: res.code, expiresIn: res.expires_in, botLink: res.bot_link, botUsername: res.bot_username });
-                              stopLinkPolling();
-                              let remaining = res.expires_in;
-                              linkTimerRef.current = setInterval(() => {
-                                remaining--;
-                                setLinkTelegramMode(prev => prev ? { ...prev, expiresIn: remaining } : null);
-                                if (remaining <= 0) { stopLinkPolling(); setLinkTelegramMode(null); }
-                              }, 1000);
-                              linkPollRef.current = setInterval(async () => {
-                                const check = await authService.checkCode(res.code);
-                                if (check.confirmed) {
-                                  stopLinkPolling();
-                                  setLinkTelegramMode(null);
-                                  authService.storeAuth(check.token, check.user);
-                                  loadLinkedAccounts();
-                                  triggerHaptic('success');
-                                } else if (check.expired) {
-                                  stopLinkPolling();
-                                  setLinkTelegramMode(null);
+
+                              if (authService.isTelegramWebView()) {
+                                const url = `${window.location.origin}/login/passkey-setup.php?token=${encodeURIComponent(token)}`;
+                                if (window.Telegram?.WebApp?.openLink) {
+                                  window.Telegram.WebApp.openLink(url);
+                                } else {
+                                  window.open(url, '_blank');
                                 }
-                              }, 2500);
+                                return;
+                              }
+
+                              setPasskeyRegistering(true);
+                              const result = await authService.passkeyRegister(token);
+                              setPasskeyRegistering(false);
+                              if (result.success) {
+                                loadLinkedAccounts();
+                                triggerHaptic('success');
+                              } else {
+                                setPasskeyError(result.error || 'Не удалось добавить PassKey');
+                                triggerHaptic('error');
+                              }
                             }}
                           >
-                            Привязать
+                            {passkeyRegistering ? '...' : 'Добавить'}
                           </button>
-                        )}
+                        </div>
                       </div>
+
+                      {passkeyError && (
+                        <div style={{ fontSize: '0.75em', color: '#ff453a', padding: '4px 4px 0' }}>{passkeyError}</div>
+                      )}
 
                       {/* Telegram link code display */}
                       {linkTelegramMode && (
-                        <div className="auth-method-link-panel">
+                        <div className="settings-card" style={{ textAlign: 'center', padding: '20px' }}>
                           <div style={{ fontSize: '1.8em', fontWeight: 900, letterSpacing: 8, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>
                             {linkTelegramMode.code}
                           </div>
@@ -1654,227 +1689,144 @@ export function MainMenu() {
                         </div>
                       )}
 
-                      {/* GoMafia */}
-                      <div className="auth-method-card">
-                        <div className="auth-method-icon" style={{ background: 'rgba(168,85,247,0.12)' }}>
-                          <span style={{ fontSize: '1.1em' }}>🎭</span>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="auth-method-name">GoMafia</div>
-                          {linkedAccounts.gomafia?.linked ? (
-                            <div className="auth-method-detail">{linkedAccounts.gomafia.nickname}</div>
-                          ) : goMafiaProfile ? (
-                            <div className="auth-method-detail" style={{ color: 'rgba(255,200,50,0.6)' }}>Интеграция есть, авторизация не привязана</div>
-                          ) : (
-                            <div className="auth-method-detail" style={{ color: 'rgba(255,255,255,0.2)' }}>Не привязан</div>
-                          )}
-                        </div>
-                        {linkedAccounts.gomafia?.linked ? (
-                          <span className="auth-method-badge auth-method-badge--active">
-                            <IconCheck size={10} /> Привязан
-                          </span>
-                        ) : (
-                          <button
-                            className="auth-method-link-btn"
-                            onClick={() => {
-                              setGoMafiaModal(true);
-                              setGoMafiaLogin({ nickname: goMafiaProfile?.nickname || '', password: '', loading: false, error: '' });
-                              triggerHaptic('light');
-                            }}
-                          >
-                            Привязать
-                          </button>
-                        )}
-                      </div>
-
-                      {/* PassKey */}
-                      <div className="auth-method-card">
-                        <div className="auth-method-icon" style={{ background: 'rgba(34,197,94,0.12)' }}>
-                          <span style={{ fontSize: '1.1em' }}>🔐</span>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="auth-method-name">PassKey</div>
-                          <div className="auth-method-detail" style={{ color: linkedAccounts.passkeys?.length > 0 ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.2)' }}>
-                            {linkedAccounts.passkeys?.length > 0
-                              ? `${linkedAccounts.passkeys.length} ключ${linkedAccounts.passkeys.length > 1 ? (linkedAccounts.passkeys.length < 5 ? 'а' : 'ей') : ''}`
-                              : 'Не настроен'
-                            }
+                      {/* GoMafia auth (separate from integration) */}
+                      {linkedAccounts.gomafia && (
+                        <div className="settings-card" style={{ padding: '12px 16px' }}>
+                          <div className="auth-method-card" style={{ background: 'none', border: 'none', padding: 0 }}>
+                            <div className="auth-method-icon" style={{ background: 'rgba(168,85,247,0.12)' }}>
+                              <span style={{ fontSize: '1.1em' }}>🎭</span>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div className="auth-method-name">GoMafia</div>
+                              {linkedAccounts.gomafia.linked ? (
+                                <div className="auth-method-detail">{linkedAccounts.gomafia.nickname}</div>
+                              ) : goMafiaProfile ? (
+                                <div className="auth-method-detail" style={{ color: 'rgba(255,200,50,0.6)' }}>Интеграция есть, авторизация не привязана</div>
+                              ) : (
+                                <div className="auth-method-detail" style={{ color: 'rgba(255,255,255,0.2)' }}>Не привязан</div>
+                              )}
+                            </div>
+                            {linkedAccounts.gomafia.linked ? (
+                              <span className="auth-method-badge auth-method-badge--active">
+                                <IconCheck size={10} /> Привязан
+                              </span>
+                            ) : (
+                              <button
+                                className="auth-method-link-btn"
+                                onClick={() => {
+                                  setGoMafiaModal(true);
+                                  setGoMafiaLogin({ nickname: goMafiaProfile?.nickname || '', password: '', loading: false, error: '' });
+                                  triggerHaptic('light');
+                                }}
+                              >
+                                Привязать
+                              </button>
+                            )}
                           </div>
                         </div>
-                        <button
-                          className="auth-method-link-btn"
-                          disabled={passkeyRegistering}
-                          onClick={async () => {
-                            setPasskeyError('');
-                            triggerHaptic('light');
-                            const token = authService.getStoredToken();
-
-                            if (authService.isTelegramWebView()) {
-                              const url = `${window.location.origin}/login/passkey-setup.php?token=${encodeURIComponent(token)}`;
-                              if (window.Telegram?.WebApp?.openLink) {
-                                window.Telegram.WebApp.openLink(url);
-                              } else {
-                                window.open(url, '_blank');
-                              }
-                              return;
-                            }
-
-                            setPasskeyRegistering(true);
-                            const result = await authService.passkeyRegister(token);
-                            setPasskeyRegistering(false);
-                            if (result.success) {
-                              loadLinkedAccounts();
-                              triggerHaptic('success');
-                            } else {
-                              setPasskeyError(result.error || 'Не удалось добавить PassKey');
-                              triggerHaptic('error');
-                            }
-                          }}
-                        >
-                          {passkeyRegistering ? '...' : 'Добавить'}
-                        </button>
-                      </div>
-                      {passkeyError && (
-                        <div style={{ fontSize: '0.75em', color: '#ff453a', padding: '4px 14px' }}>{passkeyError}</div>
                       )}
 
                       {/* PassKey list */}
-                      {linkedAccounts.passkeys?.length > 0 && linkedAccounts.passkeys.map(pk => (
-                        <div key={pk.id} className="auth-method-card" style={{ paddingLeft: 48 }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div className="auth-method-name" style={{ fontSize: '0.8em' }}>{pk.device_name || 'PassKey'}</div>
-                            <div className="auth-method-detail">
-                              {pk.last_used_at ? `Использован ${formatSessionDate(pk.last_used_at)}` : `Создан ${formatSessionDate(pk.created_at)}`}
-                            </div>
+                      {linkedAccounts.passkeys?.length > 0 && (
+                        <div className="settings-card" style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {linkedAccounts.passkeys.map(pk => (
+                              <div key={pk.id} className="settings-session-row">
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div className="settings-session-name">{pk.device_name || 'PassKey'}</div>
+                                  <div className="settings-session-meta">
+                                    {pk.last_used_at ? `Использован ${formatSessionDate(pk.last_used_at)}` : `Создан ${formatSessionDate(pk.created_at)}`}
+                                  </div>
+                                </div>
+                                <button
+                                  className="settings-session-exit"
+                                  onClick={async () => {
+                                    triggerHaptic('warning');
+                                    const token = authService.getStoredToken();
+                                    await authService.unlinkMethod(token, 'passkey', pk.id);
+                                    loadLinkedAccounts();
+                                    triggerHaptic('success');
+                                  }}
+                                >
+                                  <IconX size={12} />
+                                </button>
+                              </div>
+                            ))}
                           </div>
-                          <button
-                            className="auth-method-link-btn"
-                            style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)' }}
-                            onClick={async () => {
-                              triggerHaptic('warning');
-                              const token = authService.getStoredToken();
-                              await authService.unlinkMethod(token, 'passkey', pk.id);
-                              loadLinkedAccounts();
-                              triggerHaptic('success');
-                            }}
-                          >
-                            <IconX size={12} />
-                          </button>
                         </div>
-                      ))}
-                    </div>
+                      )}
+                    </>
                   )}
-                </div>
 
-                {/* Active Devices */}
-                <div className="glass-card" style={{ padding: '20px', marginTop: 10, position: 'relative', zIndex: 1 }}>
-                  <div className="profile-settings-section-label">Активные устройства</div>
-
-                  {sessionsLoading ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 0', gap: 8 }}>
-                      <div className="gomafia-modal-spinner" />
-                      <span style={{ fontSize: '0.8em', color: 'rgba(255,255,255,0.35)' }}>Загрузка...</span>
+                  {/* Sessions */}
+                  <div className="settings-card">
+                    <div className="settings-section-header">
+                      <IconLock size={13} color="rgba(255,255,255,0.2)" />
+                      <span>Сессии</span>
                     </div>
-                  ) : deviceSessions.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '0.8em', color: 'rgba(255,255,255,0.25)' }}>
-                      Нет активных сеансов
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {deviceSessions.map(session => (
-                        <div
-                          key={session.id}
-                          className="active-device-card"
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 12,
-                            padding: '12px 14px', borderRadius: 14,
-                            background: session.is_current
-                              ? 'linear-gradient(135deg, rgba(168,85,247,0.08), rgba(99,102,241,0.04))'
-                              : 'rgba(255,255,255,0.03)',
-                            border: session.is_current
-                              ? '1px solid rgba(168,85,247,0.2)'
-                              : '1px solid rgba(255,255,255,0.06)',
-                          }}
-                        >
-                          <div style={{
-                            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: session.is_current
-                              ? 'rgba(168,85,247,0.15)'
-                              : 'rgba(255,255,255,0.06)',
-                          }}>
-                            {session.device_name?.includes('iPhone') || session.device_name?.includes('iPad') ? (
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={session.is_current ? 'var(--accent-color, #a855f7)' : 'rgba(255,255,255,0.4)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-                            ) : session.device_name?.includes('Mac') || session.device_name?.includes('Windows') || session.device_name?.includes('Linux') ? (
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={session.is_current ? 'var(--accent-color, #a855f7)' : 'rgba(255,255,255,0.4)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                            ) : session.device_name?.includes('Android') ? (
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={session.is_current ? 'var(--accent-color, #a855f7)' : 'rgba(255,255,255,0.4)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-                            ) : (
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={session.is_current ? 'var(--accent-color, #a855f7)' : 'rgba(255,255,255,0.4)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                            )}
-                          </div>
 
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: '0.85em', fontWeight: 700, color: '#fff' }}>
-                                {session.device_name || 'Неизвестное устройство'}
-                              </span>
-                              {session.is_current && (
-                                <span style={{
-                                  fontSize: '0.6em', fontWeight: 700, padding: '2px 6px',
-                                  borderRadius: 6, background: 'rgba(34,197,94,0.15)',
-                                  color: '#22c55e', letterSpacing: '0.02em',
-                                }}>
-                                  Текущее
-                                </span>
+                    {sessionsLoading ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 0', gap: 8 }}>
+                        <div className="gomafia-modal-spinner" />
+                        <span style={{ fontSize: '0.8em', color: 'rgba(255,255,255,0.35)' }}>Загрузка...</span>
+                      </div>
+                    ) : deviceSessions.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '0.8em', color: 'rgba(255,255,255,0.25)' }}>
+                        Нет активных сеансов
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {deviceSessions.map(session => (
+                          <div key={session.id} className={`settings-session-row ${session.is_current ? 'settings-session-row--current' : ''}`}>
+                            <div className={`settings-session-icon ${session.is_current ? 'settings-session-icon--current' : ''}`}>
+                              {session.device_name?.includes('iPhone') || session.device_name?.includes('iPad') || session.device_name?.includes('Android') ? (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                              ) : (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                               )}
                             </div>
-                            <div style={{ fontSize: '0.7em', color: 'rgba(255,255,255,0.3)', marginTop: 3, display: 'flex', gap: 8 }}>
-                              {session.ip_address && <span>{session.ip_address}</span>}
-                              <span>{formatSessionDate(session.last_active)}</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div className="settings-session-name">{session.device_name || 'Неизвестное устройство'}</div>
+                              <div className="settings-session-meta">
+                                {session.is_current ? 'Текущее' : formatSessionDate(session.last_active)}
+                              </div>
                             </div>
+                            {!session.is_current && (
+                              <button
+                                className="settings-session-exit"
+                                onClick={() => handleTerminateSession(session.id)}
+                                disabled={terminatingId === session.id}
+                                style={{ opacity: terminatingId === session.id ? 0.5 : 1 }}
+                              >
+                                {terminatingId === session.id ? '...' : 'Exit'}
+                              </button>
+                            )}
                           </div>
+                        ))}
+                      </div>
+                    )}
 
-                          {!session.is_current && (
-                            <button
-                              onClick={() => handleTerminateSession(session.id)}
-                              disabled={terminatingId === session.id}
-                              style={{
-                                flexShrink: 0, padding: '6px 12px', borderRadius: 10,
-                                background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
-                                color: '#ef4444', fontSize: '0.72em', fontWeight: 700,
-                                cursor: terminatingId === session.id ? 'wait' : 'pointer',
-                                opacity: terminatingId === session.id ? 0.5 : 1,
-                                transition: 'all 0.2s',
-                              }}
-                            >
-                              {terminatingId === session.id ? '...' : 'Выйти'}
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                    {!window.Telegram?.WebApp?.initData && (
+                      <button
+                        className="settings-logout-all"
+                        onClick={() => {
+                          authService.logout();
+                          triggerHaptic('medium');
+                          window.location.reload();
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        Выйти отовсюду
+                      </button>
+                    )}
+                  </div>
+
                 </div>
 
                 {/* Save button */}
                 <button className="profile-save-btn" onClick={handleSaveName}>
                   <IconCheck size={16} /> Сохранить
                 </button>
-
-                {!window.Telegram?.WebApp?.initData && (
-                  <button
-                    className="profile-logout-btn"
-                    onClick={() => {
-                      authService.logout();
-                      triggerHaptic('medium');
-                      window.location.reload();
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    Выйти из аккаунта
-                  </button>
-                )}
               </div>
             );
           })()}
