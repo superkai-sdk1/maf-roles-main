@@ -139,7 +139,9 @@ class SessionManager {
     if (!sessionData || !sessionData.sessionId) return;
     const idx = this._sessions.findIndex(s => s.sessionId === sessionData.sessionId);
     const now = Date.now();
+    const prev = idx >= 0 ? this._sessions[idx] : null;
     const data = { ...sessionData, updatedAt: now, timestamp: now };
+    if (prev?.seriesArchived) data.seriesArchived = true;
     if (idx >= 0) {
       this._sessions[idx] = data;
     } else {
@@ -155,7 +157,7 @@ class SessionManager {
   removeSession(sessionId) {
     this._sessions = this._sessions.filter(s => s.sessionId !== sessionId);
     this._saveToStorage();
-    this._schedulePush();
+    this._pushToServerNow();
   }
 
   hasSignificantData(session) {
@@ -252,7 +254,7 @@ class SessionManager {
     this._sessions = this._sessions.filter(s => s.tournamentId !== tournamentId);
     if (this._sessions.length !== before) {
       this._saveToStorage();
-      this._schedulePush();
+      this._pushToServerNow();
     }
   }
 
