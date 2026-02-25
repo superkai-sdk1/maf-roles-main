@@ -95,7 +95,7 @@ export function GameScreen() {
             <VotingPanel />
           </div>
           {createPortal(
-            <nav className="fixed z-50 left-4 right-4 flex items-center justify-around rounded-3xl glass-surface shadow-nav-bar py-2 animate-nav-slide-in" style={{ bottom: 'calc(16px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))' }}>
+            <nav className="fixed z-50 left-4 right-4 flex items-center justify-around rounded-3xl glass-card-md py-2 animate-nav-slide-in" style={{ bottom: 'calc(16px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))' }}>
               <button className={`flex flex-col items-center gap-0.5 py-2 px-1 min-w-[60px] text-white/40 transition-all duration-300 ease-spring ${votingScreenTab === 'voting' ? 'text-white' : ''}`}
                 onClick={() => { setVotingScreenTab('voting'); triggerHaptic('selection'); }}>
                 <span className="text-2xl transition-all duration-300 ease-spring flex items-center justify-center">⚖</span>
@@ -165,8 +165,8 @@ export function GameScreen() {
           {/* Roles validation alert */}
           {showRolesAlert && (
             <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowRolesAlert(false); }}>
-              <div className="w-full max-w-[320px] glass-surface rounded-3xl p-6 shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
-                <div className="text-4xl">🎭</div>
+              <div className="w-full max-w-[320px] glass-card-md rounded-3xl p-6 !shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
+                <div className="text-4xl relative z-[1]">🎭</div>
                 <div className="text-sm text-white/60 font-medium leading-relaxed">Невозможно начать договорку — проверьте роли</div>
                 <div className="flex gap-3 w-full mt-2">
                   <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setShowRolesAlert(false); triggerHaptic('light'); }}>Понятно</button>
@@ -178,9 +178,9 @@ export function GameScreen() {
           {/* Exit confirmation overlay */}
           {showExitConfirm && (
             <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowExitConfirm(false); }}>
-              <div className="w-full max-w-[320px] glass-surface rounded-3xl p-6 shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
-                <div className="text-4xl">⚠️</div>
-                <div className="text-sm text-white/60 font-medium leading-relaxed">Выйти из игры? Прогресс будет сохранён.</div>
+              <div className="w-full max-w-[320px] glass-card-md rounded-3xl p-6 !shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
+                <div className="text-4xl relative z-[1]">⚠️</div>
+                <div className="text-sm text-white/60 font-medium leading-relaxed relative z-[1]">Выйти из игры? Прогресс будет сохранён.</div>
                 <div className="flex gap-3 w-full mt-2">
                   <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => setShowExitConfirm(false)}>Остаться</button>
                   <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { returnToMainMenu(); triggerHaptic('heavy'); }}>Выйти</button>
@@ -192,9 +192,9 @@ export function GameScreen() {
           {/* No-voting alert overlay */}
           {showNoVotingAlert && (
             <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowNoVotingAlert(false); }}>
-              <div className="w-full max-w-[320px] glass-surface rounded-3xl p-6 shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
-                <div className="text-4xl">⚠️</div>
-                <div className="text-sm text-white/60 font-medium leading-relaxed">В этом дне не было голосования. Вы уверены что хотите начать ночь?</div>
+              <div className="w-full max-w-[320px] glass-card-md rounded-3xl p-6 !shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
+                <div className="text-4xl relative z-[1]">⚠️</div>
+                <div className="text-sm text-white/60 font-medium leading-relaxed relative z-[1]">В этом дне не было голосования. Вы уверены что хотите начать ночь?</div>
                 <div className="flex gap-3 w-full mt-2">
                   <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => { setShowNoVotingAlert(false); triggerHaptic('light'); }}>Нет</button>
                   <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setShowNoVotingAlert(false); setMode('night'); triggerHaptic('medium'); }}>Да</button>
@@ -206,8 +206,8 @@ export function GameScreen() {
           {/* Go to night after all speeches */}
           {showGoToNightPrompt && (
             <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowGoToNightPrompt(false); }}>
-              <div className="w-full max-w-[320px] glass-surface rounded-3xl p-6 shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
-                <div className="text-4xl">🌙</div>
+              <div className="w-full max-w-[320px] glass-card-md rounded-3xl p-6 !shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
+                <div className="text-4xl relative z-[1]">🌙</div>
                 <div className="text-sm text-white/60 font-medium leading-relaxed">Все игроки высказались. Перейти в ночь?</div>
                 <div className="flex gap-3 w-full mt-2">
                   <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => { setShowGoToNightPrompt(false); triggerHaptic('light'); }}>Нет</button>
@@ -247,7 +247,7 @@ export function GameScreen() {
 
             {/* Inline timer card (discussion / free seating) */}
             {rolesDistributed && isTimerPhase && !winnerTeam && (
-              <div className={`relative rounded-2xl overflow-hidden glass-surface shadow-glass-md mb-3 ${timerTimeLeft <= 10 && timerRunning ? 'border border-red-500/20 shadow-[0_0_20px_rgba(255,69,58,0.08)]' : ''}`}>
+              <div className={`relative rounded-2xl overflow-hidden glass-card-md mb-3 ${timerTimeLeft <= 10 && timerRunning ? '!border-red-500/20 !shadow-[0_0_20px_rgba(255,69,58,0.08)]' : ''}`}>
                 <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-[var(--accent-color)] to-indigo-500/80 transition-[width] duration-500 ease-linear opacity-30" style={{ width: `${timerProgress * 100}%` }} />
                 <div className="relative z-[1] flex items-center justify-between px-4 py-3">
                   <div className={`text-2xl font-extrabold tabular-nums text-white/70 ${timerTimeLeft <= 10 && timerRunning ? 'text-red-400 animate-timer-pulse' : ''}`}>
@@ -274,7 +274,7 @@ export function GameScreen() {
 
             {/* Day speaker indicator */}
             {gamePhase === 'day' && currentSpeaker && (
-              <div className="flex items-center justify-between px-4 py-3 rounded-2xl glass-surface shadow-glass-sm mb-3 animate-fade-in">
+              <div className="flex items-center justify-between px-4 py-3 rounded-2xl glass-card mb-3 animate-fade-in">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-white">#{currentSpeaker.num} {currentSpeaker.login || `Игрок ${currentSpeaker.num}`}</span>
                   <span className="text-xs text-white/40 font-medium">{currentDaySpeakerIndex + 1}/{activePlayers?.length}</span>

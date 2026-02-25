@@ -1,12 +1,13 @@
 import React from 'react';
 import { useGame } from '../context/GameContext';
-import { COLOR_SCHEMES, applyTheme } from '../constants/themes';
+import { COLOR_SCHEMES, applyTheme, applyDarkMode } from '../constants/themes';
 import { triggerHaptic } from '../utils/haptics';
 
 export function SettingsPanel() {
   const {
     roomId, roomInput, setRoomInput, joinRoom,
     selectedColorScheme, setSelectedColorScheme,
+    darkMode, setDarkMode,
     mainInfoText, setMainInfoText,
     additionalInfoText, setAdditionalInfoText,
     hideSeating, setHideSeating,
@@ -44,7 +45,7 @@ export function SettingsPanel() {
   return (
     <div className="flex flex-col gap-[14px] animate-fade-in">
       {/* Room */}
-      <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+      <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
         <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-3">
           {roomId ? '📡' : '📴'} Комната трансляции
         </h3>
@@ -73,13 +74,13 @@ export function SettingsPanel() {
       </div>
 
       {/* Judge */}
-      <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+      <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
         <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-3">
           👨‍⚖️ Ведущий
         </h3>
         <div className="flex flex-col gap-2.5">
           <div>
-            <label className="block text-[0.7em] font-bold text-white/40 uppercase tracking-wider">Ник ведущего</label>
+            <label className="block text-[0.7em] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Ник ведущего</label>
             <input
               type="text"
               placeholder="Ваш ник"
@@ -89,7 +90,7 @@ export function SettingsPanel() {
             />
           </div>
           <div>
-            <label className="block text-[0.7em] font-bold text-white/40 uppercase tracking-wider">Аватар (URL)</label>
+            <label className="block text-[0.7em] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Аватар (URL)</label>
             <input
               type="text"
               placeholder="https://..."
@@ -106,20 +107,20 @@ export function SettingsPanel() {
                 className="w-10 h-10 rounded-full object-cover border-2 border-accent"
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
-              <span className="text-[0.8em] text-white/50">{judgeNickname || 'Ведущий'}</span>
+              <span className="text-[0.8em]" style={{ color: 'var(--text-secondary)' }}>{judgeNickname || 'Ведущий'}</span>
             </div>
           )}
         </div>
       </div>
 
       {/* Broadcast */}
-      <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+      <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
         <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-3">
           🖥 Трансляция
         </h3>
         <div className="flex flex-col gap-2.5">
           <div>
-            <label className="block text-[0.7em] font-bold text-white/40 uppercase tracking-wider">Основной текст</label>
+            <label className="block text-[0.7em] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Основной текст</label>
             <input
               type="text"
               value={mainInfoText || ''}
@@ -128,7 +129,7 @@ export function SettingsPanel() {
             />
           </div>
           <div>
-            <label className="block text-[0.7em] font-bold text-white/40 uppercase tracking-wider">Дополнительный текст</label>
+            <label className="block text-[0.7em] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Дополнительный текст</label>
             <input
               type="text"
               value={additionalInfoText || ''}
@@ -146,10 +147,13 @@ export function SettingsPanel() {
       </div>
 
       {/* Themes */}
-      <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+      <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
         <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-3.5">
           🎨 Тема оформления
         </h3>
+
+        {/* Dark / Light mode toggle */}
+        <DarkModeToggle darkMode={darkMode} onChange={(val) => { setDarkMode(val); applyDarkMode(val); triggerHaptic('medium'); }} />
 
         {/* Current theme indicator */}
         <div
@@ -168,7 +172,7 @@ export function SettingsPanel() {
           />
           <div>
             <div className="text-[0.85em] font-bold" style={{ color: currentScheme.accent }}>{currentScheme.name}</div>
-            <div className="text-[0.7em] text-white/35 font-medium">Текущая тема</div>
+            <div className="text-[0.7em] font-medium" style={{ color: 'var(--text-muted)' }}>Текущая тема</div>
           </div>
         </div>
 
@@ -182,9 +186,10 @@ export function SettingsPanel() {
                 onClick={() => selectColor(c.key)}
                 className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all active:scale-95 ${
                   isActive
-                    ? 'bg-accent/10 border-accent/30'
-                    : 'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.12]'
+                    ? 'border-accent/30'
+                    : 'border-transparent hover:border-[var(--surface-border-hover)]'
                 }`}
+                style={isActive ? { background: 'var(--accent-surface)' } : { background: 'var(--surface-primary)' }}
               >
                 <div className="relative w-6 h-6 rounded-lg flex-shrink-0" style={{ background: `linear-gradient(135deg, ${c.gradient[0]}, ${c.gradient[1]})` }}>
                   {isActive && (
@@ -203,11 +208,11 @@ export function SettingsPanel() {
       </div>
 
       {/* Game info */}
-      <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+      <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
         <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-2.5">
           ℹ Информация
         </h3>
-        <div className="flex flex-col gap-1 text-[0.8em] text-white/40">
+        <div className="flex flex-col gap-1 text-[0.8em]" style={{ color: 'var(--text-muted)' }}>
           {judgeNickname && <div>Ведущий: {judgeNickname}</div>}
           {tournamentName && <div>Турнир: {tournamentName}</div>}
           {tournamentId && <div>ID: {tournamentId}</div>}
@@ -229,11 +234,43 @@ function ToggleBtn({ label, value, onChange }) {
       className={`flex items-center justify-between py-2 px-3 rounded-[10px] text-[0.8em] font-bold cursor-pointer transition-all duration-150 ${
         value
           ? 'bg-accent/10 border border-accent/20 text-accent'
-          : 'bg-white/[0.03] border border-white/[0.06] text-white/35'
+          : 'border'
       }`}
+      style={value ? {} : { background: 'var(--surface-primary)', borderColor: 'var(--surface-border)', color: 'var(--text-muted)' }}
     >
       <span>{label}</span>
       <span>{value ? '✓' : '✕'}</span>
     </button>
+  );
+}
+
+function DarkModeToggle({ darkMode, onChange }) {
+  return (
+    <div className="flex items-center gap-2 mb-4 p-1 rounded-[14px]" style={{ background: 'var(--surface-primary)', border: '1px solid var(--surface-border)' }}>
+      <button
+        onClick={() => onChange(true)}
+        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[10px] text-[0.8em] font-bold transition-all duration-200 ${
+          darkMode ? 'text-white shadow-glass-sm' : ''
+        }`}
+        style={darkMode ? { background: 'var(--accent-color)', color: '#fff' } : { color: 'var(--text-secondary)' }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        Тёмная
+      </button>
+      <button
+        onClick={() => onChange(false)}
+        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[10px] text-[0.8em] font-bold transition-all duration-200 ${
+          !darkMode ? 'shadow-glass-sm' : ''
+        }`}
+        style={!darkMode ? { background: 'var(--accent-color)', color: '#fff' } : { color: 'var(--text-secondary)' }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        Светлая
+      </button>
+    </div>
   );
 }

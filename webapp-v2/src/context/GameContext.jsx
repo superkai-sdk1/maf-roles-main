@@ -158,6 +158,12 @@ export const GameProvider = ({ children }) => {
   const [selectedColorScheme, setSelectedColorScheme] = useState(() => {
     try { return localStorage.getItem('maf_color_scheme') || 'purple'; } catch { return 'purple'; }
   });
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      const val = localStorage.getItem('maf_dark_mode');
+      return val !== 'light';
+    } catch { return true; }
+  });
 
   // === Judge / Broadcast ===
   const [judgeNickname, setJudgeNickname] = useState('');
@@ -1698,7 +1704,7 @@ export const GameProvider = ({ children }) => {
     funkyGameNumber, setFunkyGameNumber,
     funkyEditSessionId, setFunkyEditSessionId, startNewFunkyFromMenu,
     // Theme
-    selectedColorScheme, setSelectedColorScheme,
+    selectedColorScheme, setSelectedColorScheme, darkMode, setDarkMode,
     // Judge
     judgeNickname, setJudgeNickname, judgeAvatar, setJudgeAvatar,
     // Tournament Browser

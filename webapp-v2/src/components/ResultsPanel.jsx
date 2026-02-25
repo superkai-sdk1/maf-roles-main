@@ -132,31 +132,31 @@ export const ResultsPanel = () => {
         <div className="flex flex-col gap-2.5">
           <h2 className="text-center text-[1.1em] font-extrabold mb-1">Выберите победителя</h2>
           <div
-            className="flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all active:scale-[0.98] bg-red-500/[0.06] border-red-500/20 hover:border-red-500/30"
+            className="glass-card flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all active:scale-[0.98] !border-red-500/20 hover:!border-red-500/35 hover:shadow-glass-md"
             onClick={() => selectWinner('civilians')}
           >
-            <div className="text-2xl">👥</div>
-            <div>
+            <div className="text-2xl relative z-[1]">👥</div>
+            <div className="relative z-[1]">
               <div className="font-bold">Победа мирных</div>
               <div className="text-[0.8em]" style={{ color: 'var(--text-secondary)' }}>Красная команда</div>
             </div>
           </div>
           <div
-            className="flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all active:scale-[0.98] bg-blue-400/[0.06] border-blue-400/20 hover:border-blue-400/30"
+            className="glass-card flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all active:scale-[0.98] !border-blue-400/20 hover:!border-blue-400/35 hover:shadow-glass-md"
             onClick={() => selectWinner('mafia')}
           >
-            <div className="text-2xl">💀</div>
-            <div>
+            <div className="text-2xl relative z-[1]">💀</div>
+            <div className="relative z-[1]">
               <div className="font-bold">Победа мафии</div>
               <div className="text-[0.8em]" style={{ color: 'var(--text-secondary)' }}>Черная команда</div>
             </div>
           </div>
           <div
-            className="flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all active:scale-[0.98] bg-white/[0.03] border-white/[0.08] hover:border-white/[0.15]"
+            className="glass-card flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all active:scale-[0.98] hover:!border-white/[0.18] hover:shadow-glass-md"
             onClick={() => selectWinner('draw')}
           >
-            <div className="text-2xl">🤝</div>
-            <div>
+            <div className="text-2xl relative z-[1]">🤝</div>
+            <div className="relative z-[1]">
               <div className="font-bold">Ничья</div>
               <div className="text-[0.8em]" style={{ color: 'var(--text-secondary)' }}>Равный результат</div>
             </div>
@@ -225,7 +225,7 @@ export const ResultsPanel = () => {
 
                 return (
                   <div key={rk}
-                    className={`rounded-2xl border border-white/[0.08] bg-white/[0.03] shadow-glass-sm cursor-pointer transition-all duration-200 overflow-hidden active:scale-[0.985] ${expanded ? 'ring-1 ring-white/10' : ''}`}
+                    className={`glass-card rounded-2xl cursor-pointer transition-all duration-200 active:scale-[0.985] hover:border-white/[0.18] hover:shadow-glass-md ${expanded ? '!border-white/[0.16] shadow-glass-md' : ''}`}
                     onClick={() => { setHighlightedPlayer(expanded ? null : rk); triggerHaptic('selection'); }}>
 
                     {/* Header row */}
@@ -406,7 +406,7 @@ export const ResultsPanel = () => {
                 const STAGE_LABELS = { main: 'Основное', tie: 'Повторное', lift: 'За подъём' };
 
                 return (
-                  <div key={round} className="relative z-[1] rounded-2xl glass-surface shadow-glass-md overflow-hidden">
+                  <div key={round} className="relative z-[1] rounded-2xl glass-card-md overflow-hidden">
                     {/* Night block */}
                     <div className="px-3.5 py-3.5 pb-2.5 bg-indigo-500/[0.04] border-b border-white/[0.04]">
                       <div className="flex items-center gap-2 mb-2.5">

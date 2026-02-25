@@ -60,7 +60,7 @@ export const NightPanel = () => {
     <div className="flex flex-col gap-3.5 animate-fade-in">
       {/* Step 1: Mafia Kill */}
       {(!nightPhase || nightPhase === 'kill') && (
-        <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md border border-red-500/20 bg-red-500/[0.03] animate-glass-reveal">
+        <div className="relative z-[1] p-4 rounded-2xl glass-card-md !border-red-500/20 animate-glass-reveal">
           {showTimer && <NightTimerBar duration={15} />}
           <h3 className="text-base font-extrabold text-red-400 text-center mb-1">
             Мафия убивает
@@ -103,8 +103,8 @@ export const NightPanel = () => {
 
       {/* Doctor heal (City mode) */}
       {nightPhase === 'doctor' && cityMode && doctorKey && (
-        <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md animate-glass-reveal"
-          style={{ borderColor: 'rgba(76,175,80,0.3)', background: 'rgba(76,175,80,0.05)' }}>
+        <div className="relative z-[1] p-4 rounded-2xl glass-card-md animate-glass-reveal"
+          style={{ borderColor: 'rgba(76,175,80,0.3)' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[0.9em] font-bold text-green-400 flex items-center gap-2">
               💊 Доктор лечит
@@ -134,7 +134,7 @@ export const NightPanel = () => {
       {/* Step 4: Night Done */}
       {nightPhase === 'done' && (
         <div className="flex flex-col gap-3.5 animate-fade-in">
-          <div className="relative z-[1] p-5 rounded-2xl glass-surface shadow-glass-md text-center"
+          <div className="relative z-[1] p-5 rounded-2xl glass-card-md text-center"
             style={{
               borderColor: killedThisNight.length > 0 ? 'rgba(255,69,58,0.3)' : 'rgba(255,255,255,0.1)',
               background: killedThisNight.length > 0 ? 'rgba(255,69,58,0.05)' : 'rgba(255,255,255,0.02)',
@@ -162,8 +162,8 @@ export const NightPanel = () => {
 
           {/* Best Move */}
           {firstKilledPlayer && !bestMoveAccepted && killedThisNight.length > 0 && (
-            <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md animate-fade-in"
-              style={{ borderColor: 'rgba(255,214,10,0.3)', background: 'rgba(255,214,10,0.05)' }}>
+            <div className="relative z-[1] p-4 rounded-2xl glass-card-md animate-fade-in"
+              style={{ borderColor: 'rgba(255,214,10,0.3)' }}>
               {showTimer && <NightTimerBar duration={15} />}
               <h3 className="text-base font-extrabold text-yellow-400 text-center mb-1">Лучший ход</h3>
               <p className="text-xs text-white/35 text-center mb-3.5">Убитый называет 3 подозреваемых</p>
@@ -206,7 +206,7 @@ export const NightPanel = () => {
 
       {/* Check history */}
       {nightCheckHistory.length > 0 && nightPhase === 'done' && (
-        <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+        <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
           <h4 className="text-[0.7em] font-bold text-white/40 uppercase tracking-wider mb-2.5">История проверок</h4>
           <div className="flex flex-col gap-1.5">
             {nightCheckHistory.map((h, i) => (
@@ -223,7 +223,7 @@ export const NightPanel = () => {
 
       {/* Doctor heal history */}
       {cityMode && doctorHealHistory.length > 0 && nightPhase === 'done' && (
-        <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+        <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
           <h4 className="text-[0.7em] font-bold text-white/40 uppercase tracking-wider mb-2.5">История лечения</h4>
           <div className="flex flex-col gap-1">
             {doctorHealHistory.map((h, i) => (
@@ -255,8 +255,8 @@ function DialerGrid({ allPlayers, isPlayerActive, onSelect, borderColor }) {
 
 function NightCheckStep({ title, subtitle, icon, accentColor, borderColor, bgColor, result, allPlayers, onCheck, onSkip, timerDuration }) {
   return (
-    <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md animate-glass-reveal"
-      style={{ borderColor, background: bgColor }}>
+    <div className="relative z-[1] p-4 rounded-2xl glass-card-md animate-glass-reveal"
+      style={{ borderColor }}>
       {timerDuration > 0 && <NightTimerBar duration={timerDuration} />}
       <div className="flex items-center justify-between mb-3">
         <div>

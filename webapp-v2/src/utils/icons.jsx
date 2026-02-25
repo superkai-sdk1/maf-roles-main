@@ -161,6 +161,10 @@ export const IconEdit = (p) => (
   <Icon {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></Icon>
 );
 
+export const IconBell = (p) => (
+  <Icon {...p}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></Icon>
+);
+
 export const IconMafBoard = ({ size = 24, color = 'currentColor' }) => (
   <svg width={size} height={size} viewBox="0 0 1500 1500" fill="none" preserveAspectRatio="xMidYMid meet" style={s}>
     <defs>

@@ -221,17 +221,17 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
 
   return (
     <div
-      className={`rounded-2xl border transition-all duration-300 ease-spring relative overflow-hidden
-        ${isHighlighted && !isDead ? 'border-accent-soft bg-accent-soft shadow-[0_0_16px_rgba(var(--accent-rgb),0.15)] scale-[1.01]' : ''}
-        ${isSpeaking && !isDead ? 'border-accent-soft bg-accent-soft shadow-[0_0_20px_rgba(var(--accent-rgb),0.2)] scale-[1.01]' : ''}
-        ${isKilled || isVoted ? 'opacity-[0.18] saturate-[0.25] brightness-[0.7] border-red-500/20 bg-red-500/[0.03]' : ''}
-        ${isRemoved ? 'opacity-[0.15] saturate-[0.2] brightness-[0.65] border-white/[0.06] bg-white/[0.02]' : ''}
+      className={`glass-card rounded-2xl transition-all duration-300 ease-spring
+        ${isHighlighted && !isDead ? 'border-accent-soft !bg-accent-soft shadow-[0_0_20px_rgba(var(--accent-rgb),0.18),inset_0_1px_0_rgba(255,255,255,0.1)] scale-[1.01]' : ''}
+        ${isSpeaking && !isDead ? 'border-accent-soft !bg-accent-soft shadow-[0_0_24px_rgba(var(--accent-rgb),0.22),inset_0_1px_0_rgba(255,255,255,0.1)] scale-[1.01]' : ''}
+        ${isKilled || isVoted ? 'opacity-[0.18] saturate-[0.25] brightness-[0.7] !border-red-500/20 !bg-red-500/[0.03]' : ''}
+        ${isRemoved ? 'opacity-[0.15] saturate-[0.2] brightness-[0.65] !border-white/[0.06] !bg-white/[0.02]' : ''}
         ${isBlinking ? 'animate-killed-blink' : ''}
         ${isNightDon ? 'animate-don-pulse' : ''}
         ${isNightSheriff ? 'animate-sheriff-pulse' : ''}
         ${isNightDoctor ? 'animate-doctor-pulse' : ''}
-        ${!isDead && !isHighlighted && !isSpeaking ? 'border-white/[0.08] bg-white/[0.03] hover:border-white/[0.12]' : ''}
-        ${expanded ? 'shadow-glass-md' : 'shadow-glass-sm'}`}
+        ${!isDead && !isHighlighted && !isSpeaking ? 'hover:border-white/[0.18] hover:shadow-glass-md' : ''}
+        ${expanded ? 'shadow-glass-md !border-white/[0.16]' : ''}`}
       style={{ '--i': player.num - 1 }}
     >
       {/* Main row */}

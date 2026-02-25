@@ -4,14 +4,14 @@ import { useGame } from '../context/GameContext';
 import { sessionManager } from '../services/sessionManager';
 import { goMafiaApi, profileApi, sessionsApi } from '../services/api';
 import { authService } from '../services/auth';
-import { COLOR_SCHEMES, applyTheme } from '../constants/themes';
+import { COLOR_SCHEMES, applyTheme, applyDarkMode } from '../constants/themes';
 import { triggerHaptic } from '../utils/haptics';
 import { useSwipeBack } from '../hooks/useSwipeBack';
 import {
   IconPlayCircle, IconHistory, IconPlus, IconPalette, IconUser,
   IconTrophy, IconDice, IconChevronDown, IconTrash, IconStats, IconMafBoard,
   IconCheck, IconArrowRight, IconLock, IconArchive, IconX, IconList,
-  IconGoMafia, IconSettings, IconCamera, IconLink, IconEdit,
+  IconGoMafia, IconSettings, IconCamera, IconLink, IconEdit, IconBell,
 } from '../utils/icons';
 
 const formatTime = (ts) => {
@@ -432,6 +432,7 @@ export function MainMenu() {
     sessionsList, startNewGame, loadSession, deleteSession, archiveSeries, deleteSeries,
     startTournamentGameFromMenu, startNewFunkyFromMenu,
     selectedColorScheme, setSelectedColorScheme,
+    darkMode, setDarkMode,
   } = useGame();
 
   const [activeTab, setActiveTab] = useState('active');
@@ -795,7 +796,7 @@ export function MainMenu() {
   const handleSwipeBack = useCallback(() => {
     if (tableGroup) { setTableGroup(null); return; }
     if (menuScreen === 'profileSettings') { setMenuScreen('profile'); return; }
-    if (menuScreen === 'profile' || menuScreen === 'themes') { setMenuScreen('game'); return; }
+    if (menuScreen === 'profile' || menuScreen === 'themes' || menuScreen === 'notifications') { setMenuScreen('game'); return; }
   }, [tableGroup, menuScreen]);
 
   const canSwipeBack = tableGroup || menuScreen !== 'game';
@@ -894,7 +895,7 @@ export function MainMenu() {
             </div>
 
             {!tableData ? (
-              <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md p-8 text-center">
+              <div className="relative z-[1] p-4 rounded-2xl glass-card-md p-8 text-center">
                 <div className="text-4xl mb-2 opacity-30">📊</div>
                 <p className="text-sm text-white/35">Нет завершённых игр для формирования таблицы</p>
               </div>
@@ -912,7 +913,7 @@ export function MainMenu() {
 
                       return (
                         <div key={p.login}
-                          className={`score-card transition-all duration-200 cursor-pointer ${topClass} ${topBg} ${expanded ? 'ring-1 ring-purple-500/20' : ''}`}
+                          className={`glass-card rounded-2xl transition-all duration-200 cursor-pointer ${topClass} ${topBg} ${expanded ? 'ring-1 ring-purple-500/20' : ''}`}
                           onClick={() => { setTableExpanded(expanded ? null : p.login); triggerHaptic('selection'); }}>
 
                           <div className="flex items-center gap-3 px-3 py-2.5">
@@ -1075,7 +1076,7 @@ export function MainMenu() {
                       const accentColor = isCiv ? 'rgba(255,82,82,' : 'rgba(79,195,247,';
                       return (
                         <div key={game.gameNum}
-                          className="score-card cursor-pointer transition-all duration-200"
+                          className="glass-card rounded-2xl cursor-pointer transition-all duration-200"
                           style={{ boxShadow: `inset 0 0 0 1px ${accentColor}0.2)` }}
                           onClick={() => { setTableGameExpanded(expanded ? null : game.gameNum); setTablePlayerExpanded(null); triggerHaptic('selection'); }}>
 
@@ -1364,7 +1365,7 @@ export function MainMenu() {
 
                   {/* Stats 2x2 grid */}
                   <div className="grid grid-cols-2 gap-3 w-full animate-stagger">
-                    <div className="relative glass-surface shadow-glass-sm rounded-2xl p-4 flex flex-col items-center gap-2 overflow-hidden group hover:border-accent/20 transition-colors">
+                    <div className="relative glass-card rounded-2xl p-4 flex flex-col items-center gap-2 overflow-hidden group hover:border-accent/20 transition-colors">
                       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-accent to-transparent opacity-40" />
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent/10 border border-accent/15">
                         <IconStats size={20} color="var(--accent-color, #a855f7)" />
@@ -1373,7 +1374,7 @@ export function MainMenu() {
                       <div className="text-[0.6rem] font-bold text-white/35 uppercase tracking-widest">{pluralGames(totalGames)} проведено</div>
                     </div>
 
-                    <div className="relative glass-surface shadow-glass-sm rounded-2xl p-4 flex flex-col items-center gap-2 overflow-hidden group hover:border-[rgba(137,119,254,0.25)] transition-colors">
+                    <div className="relative glass-card rounded-2xl p-4 flex flex-col items-center gap-2 overflow-hidden group hover:border-[rgba(137,119,254,0.25)] transition-colors">
                       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#8977fe] to-transparent opacity-40" />
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(137,119,254,0.15), rgba(10,232,240,0.08))', border: '1px solid rgba(137,119,254,0.2)' }}>
                         <IconGoMafia size={20} />
@@ -1382,7 +1383,7 @@ export function MainMenu() {
                       <div className="text-[0.6rem] font-bold text-white/35 uppercase tracking-widest">Турниры</div>
                     </div>
 
-                    <div className="relative glass-surface shadow-glass-sm rounded-2xl p-4 flex flex-col items-center gap-2 overflow-hidden group hover:border-[rgba(255,213,0,0.25)] transition-colors">
+                    <div className="relative glass-card rounded-2xl p-4 flex flex-col items-center gap-2 overflow-hidden group hover:border-[rgba(255,213,0,0.25)] transition-colors">
                       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#ffd700] to-transparent opacity-40" />
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(255,213,0,0.12), rgba(255,170,0,0.06))', border: '1px solid rgba(255,213,0,0.2)' }}>
                         <IconTrophy size={20} color="#ffd700" />
@@ -1391,7 +1392,7 @@ export function MainMenu() {
                       <div className="text-[0.6rem] font-bold text-white/35 uppercase tracking-widest">Миникапы</div>
                     </div>
 
-                    <div className="relative glass-surface shadow-glass-sm rounded-2xl p-4 flex flex-col items-center gap-2 overflow-hidden group hover:border-accent/20 transition-colors">
+                    <div className="relative glass-card rounded-2xl p-4 flex flex-col items-center gap-2 overflow-hidden group hover:border-accent/20 transition-colors">
                       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-accent to-transparent opacity-40" />
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.12), rgba(139,92,246,0.06))', border: '1px solid rgba(168,85,247,0.2)' }}>
                         <IconDice size={20} color="var(--accent-color, #a855f7)" />
@@ -1410,7 +1411,7 @@ export function MainMenu() {
                       { count: otherGames, color: 'rgba(255,255,255,0.15)', label: 'Другие' },
                     ].filter(s => s.count > 0);
                     return (
-                      <div className="w-full glass-surface shadow-glass-sm rounded-2xl p-4 animate-fade-in">
+                      <div className="w-full glass-card rounded-2xl p-4 animate-fade-in">
                         <div className="text-[0.6rem] font-bold text-white/30 uppercase tracking-widest mb-3">Активность</div>
                         <div className="flex w-full h-2 rounded-full overflow-hidden gap-[2px]">
                           {segments.map(s => (
@@ -1433,7 +1434,7 @@ export function MainMenu() {
                   {/* Quick actions */}
                   <div className="grid grid-cols-2 gap-3 w-full">
                     <button
-                      className="flex items-center gap-3 p-4 rounded-2xl glass-surface shadow-glass-sm active:scale-[0.97] transition-all duration-200 hover:border-accent/20 group"
+                      className="flex items-center gap-3 p-4 rounded-2xl glass-card active:scale-[0.97] transition-all duration-200 hover:border-accent/20 group"
                       onClick={() => {
                         const name = userDisplayName || (tgUser ? `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}` : '');
                         setProfileSettingsName(name);
@@ -1451,7 +1452,7 @@ export function MainMenu() {
                     </button>
 
                     <button
-                      className="flex items-center gap-3 p-4 rounded-2xl glass-surface shadow-glass-sm active:scale-[0.97] transition-all duration-200 hover:border-accent/20 group"
+                      className="flex items-center gap-3 p-4 rounded-2xl glass-card active:scale-[0.97] transition-all duration-200 hover:border-accent/20 group"
                       onClick={() => { setMenuScreen('themes'); triggerHaptic('light'); }}
                     >
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-accent/10 border border-accent/15 group-hover:bg-accent/15 transition-colors">
@@ -1529,7 +1530,7 @@ export function MainMenu() {
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2.5">
                     <button
-                      className="w-9 h-9 rounded-xl flex items-center justify-center glass-surface shadow-glass-sm cursor-pointer active:scale-90 transition-transform"
+                      className="w-9 h-9 rounded-xl flex items-center justify-center glass-card cursor-pointer active:scale-90 transition-transform"
                       onClick={() => { setMenuScreen('profile'); triggerHaptic('light'); }}
                     >
                       <IconArrowRight size={16} color="rgba(255,255,255,0.7)" style={{ transform: 'rotate(180deg)' }} />
@@ -1542,7 +1543,7 @@ export function MainMenu() {
                 <div className="flex flex-col gap-4 animate-stagger">
 
                   {/* ── Profile card ── */}
-                  <div className="relative glass-surface shadow-glass-md rounded-[22px] p-5 overflow-hidden">
+                  <div className="relative glass-card-md rounded-[22px] p-5 overflow-hidden">
                     <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-accent to-transparent opacity-50" />
                     <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-[0.04]" style={{ background: 'var(--accent-color)' }} />
 
@@ -1595,7 +1596,7 @@ export function MainMenu() {
                   </div>
 
                   {goMafiaProfile ? (
-                    <div className="relative glass-surface shadow-glass-sm rounded-[22px] p-5 overflow-hidden">
+                    <div className="relative glass-card rounded-[22px] p-5 overflow-hidden">
                       <div className="absolute top-0 left-0 w-[3px] h-full bg-gradient-to-b from-[#22c55e] to-[#22c55e]/20 rounded-l-full" />
 
                       <div className="flex items-center gap-3 mb-3.5">
@@ -1669,7 +1670,7 @@ export function MainMenu() {
                     </div>
                   ) : (
                     <button
-                      className="relative glass-surface shadow-glass-sm rounded-[22px] p-5 overflow-hidden flex items-center gap-4 cursor-pointer text-left active:scale-[0.98] transition-all hover:border-[rgba(137,119,254,0.2)] group"
+                      className="relative glass-card rounded-[22px] p-5 overflow-hidden flex items-center gap-4 cursor-pointer text-left active:scale-[0.98] transition-all hover:border-[rgba(137,119,254,0.2)] group"
                       onClick={() => { setGoMafiaModal(true); setGoMafiaLogin({ nickname: '', password: '', loading: false, error: '' }); triggerHaptic('light'); }}
                     >
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[rgba(137,119,254,0.15)] to-[rgba(10,232,240,0.08)] border border-[rgba(137,119,254,0.2)] flex items-center justify-center group-hover:shadow-[0_0_16px_rgba(137,119,254,0.15)] transition-shadow">
@@ -1691,14 +1692,14 @@ export function MainMenu() {
                   </div>
 
                   {!linkedAccounts ? (
-                    <div className="glass-surface shadow-glass-sm rounded-[22px] p-6 flex items-center justify-center gap-2">
+                    <div className="glass-card rounded-[22px] p-6 flex items-center justify-center gap-2">
                       <div className="w-5 h-5 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
                       <span className="text-[0.8em] text-white/35">Загрузка...</span>
                     </div>
                   ) : (
                     <>
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="relative glass-surface shadow-glass-sm rounded-[22px] p-4 flex flex-col items-center gap-2.5 text-center overflow-hidden cursor-pointer transition-all active:scale-[0.97] hover:border-[rgba(56,163,224,0.2)]">
+                        <div className="relative glass-card rounded-[22px] p-4 flex flex-col items-center gap-2.5 text-center overflow-hidden cursor-pointer transition-all active:scale-[0.97] hover:border-[rgba(56,163,224,0.2)]">
                           <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-[#38a3e0] to-transparent opacity-50" />
                           <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-[rgba(56,163,224,0.08)] border border-[rgba(56,163,224,0.12)]">
                             <span className="text-lg">✈️</span>
@@ -1735,7 +1736,7 @@ export function MainMenu() {
                         </div>
 
                         <div
-                          className="relative glass-surface shadow-glass-sm rounded-[22px] p-4 flex flex-col items-center gap-2.5 text-center overflow-hidden cursor-pointer transition-all active:scale-[0.97] hover:border-[rgba(34,197,94,0.2)]"
+                          className="relative glass-card rounded-[22px] p-4 flex flex-col items-center gap-2.5 text-center overflow-hidden cursor-pointer transition-all active:scale-[0.97] hover:border-[rgba(34,197,94,0.2)]"
                           onClick={() => { setMenuScreen('passkeys'); triggerHaptic('light'); }}
                         >
                           <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-[#22c55e] to-transparent opacity-50" />
@@ -1756,7 +1757,7 @@ export function MainMenu() {
                       </div>
 
                       {linkTelegramMode && (
-                        <div className="glass-surface shadow-glass-md rounded-[22px] p-5 text-center overflow-hidden animate-scale-in">
+                        <div className="glass-card-md rounded-[22px] p-5 text-center overflow-hidden animate-scale-in">
                           <div className="text-[1.8em] font-black tracking-[8px] text-white tabular-nums py-1">{linkTelegramMode.code}</div>
                           <div className="text-[0.72em] text-white/35 mt-1">
                             Отправьте код боту · <span className="tabular-nums">{Math.floor(linkTelegramMode.expiresIn / 60)}:{String(linkTelegramMode.expiresIn % 60).padStart(2, '0')}</span>
@@ -1781,7 +1782,7 @@ export function MainMenu() {
                   )}
 
                   {/* ── Sessions ── */}
-                  <div className="glass-surface shadow-glass-sm rounded-[22px] p-5 overflow-hidden">
+                  <div className="glass-card rounded-[22px] p-5 overflow-hidden">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-7 h-7 rounded-lg bg-white/[0.04] flex items-center justify-center">
                         <IconLock size={13} color="rgba(255,255,255,0.25)" />
@@ -1972,10 +1973,41 @@ export function MainMenu() {
 
           {/* =================== THEMES SCREEN =================== */}
           {menuScreen === 'themes' && (
-            <div className="animate-fade-in w-full max-w-[400px] pb-[100px]">
-              <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+            <div className="animate-fade-in w-full max-w-[400px] pb-[100px] flex flex-col gap-3">
+              {/* Dark / Light mode */}
+              <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
+                <h3 style={{ fontSize: '0.9em', fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {darkMode ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color, #a855f7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color, #a855f7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                  )}
+                  Режим
+                </h3>
+                <div className="flex items-center gap-2 p-1 rounded-[14px]" style={{ background: 'var(--surface-primary)', border: '1px solid var(--surface-border)' }}>
+                  <button
+                    onClick={() => { setDarkMode(true); applyDarkMode(true); triggerHaptic('medium'); }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[10px] text-[0.8em] font-bold transition-all duration-200 ${darkMode ? 'shadow-glass-sm' : ''}`}
+                    style={darkMode ? { background: 'var(--accent-color)', color: '#fff' } : { color: 'var(--text-secondary)' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    Тёмная
+                  </button>
+                  <button
+                    onClick={() => { setDarkMode(false); applyDarkMode(false); triggerHaptic('medium'); }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[10px] text-[0.8em] font-bold transition-all duration-200 ${!darkMode ? 'shadow-glass-sm' : ''}`}
+                    style={!darkMode ? { background: 'var(--accent-color)', color: '#fff' } : { color: 'var(--text-secondary)' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    Светлая
+                  </button>
+                </div>
+              </div>
+
+              {/* Accent color */}
+              <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
                 <h3 style={{ fontSize: '0.9em', fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <IconPalette size={16} color="var(--accent-color, #a855f7)" /> Тема оформления
+                  <IconPalette size={16} color="var(--accent-color, #a855f7)" /> Акцент
                 </h3>
 
                 {/* Current theme */}
@@ -1995,7 +2027,7 @@ export function MainMenu() {
                       }} />
                       <div>
                         <div style={{ fontSize: '0.85em', fontWeight: 700, color: cur.accent }}>{cur.name}</div>
-                        <div style={{ fontSize: '0.7em', color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>Текущая тема</div>
+                        <div style={{ fontSize: '0.7em', fontWeight: 500, color: 'var(--text-muted)' }}>Текущая тема</div>
                       </div>
                     </div>
                   );
@@ -2010,9 +2042,10 @@ export function MainMenu() {
                         onClick={() => selectColor(c.key)}
                         className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all active:scale-95 ${
                           isActive
-                            ? 'bg-accent/10 border-accent/30'
-                            : 'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.12]'
+                            ? 'border-accent/30'
+                            : 'border-transparent hover:border-[var(--surface-border-hover)]'
                         }`}
+                        style={isActive ? { background: 'var(--accent-surface)' } : { background: 'var(--surface-primary)' }}
                       >
                         <div className="relative w-6 h-6 rounded-lg shrink-0" style={{ background: `linear-gradient(135deg, ${c.gradient[0]}, ${c.gradient[1]})` }}>
                           {isActive && (
@@ -2030,11 +2063,82 @@ export function MainMenu() {
             </div>
           )}
 
+          {/* =================== NOTIFICATIONS SCREEN =================== */}
+          {menuScreen === 'notifications' && (
+            <div className="animate-fade-in w-full max-w-[400px] pb-[100px] flex flex-col gap-3">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-[1.3em] font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>Уведомления</h2>
+                <span className="text-[0.65em] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full text-accent" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
+                  скоро
+                </span>
+              </div>
+
+              <div className="text-[0.8em] font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
+                Здесь будут отображаться уведомления о турнирах, играх и важных событиях.
+              </div>
+
+              {/* Example notifications */}
+              <div className="flex flex-col gap-2.5 opacity-60 pointer-events-none select-none">
+                <NotificationCard
+                  icon="🏆"
+                  accentColor="#ffd700"
+                  title="Турнир «Кубок Города» начинается"
+                  description="Через 30 минут стартует ваш стол #3. Подготовьтесь к судейству."
+                  time="30 мин назад"
+                  isNew
+                />
+                <NotificationCard
+                  icon="📡"
+                  accentColor="var(--accent-color)"
+                  title="Зритель подключился к комнате"
+                  description="К вашей трансляции подключился новый зритель. Всего: 12."
+                  time="1 ч назад"
+                  isNew
+                />
+                <NotificationCard
+                  icon="🎮"
+                  accentColor="#30d158"
+                  title="Игра #4 завершена"
+                  description="Результаты сохранены. Победа мирных жителей. Баллы начислены."
+                  time="2 ч назад"
+                />
+                <NotificationCard
+                  icon="👤"
+                  accentColor="#4fc3f7"
+                  title="Новый аккаунт GoMafia привязан"
+                  description="Аккаунт player_42 успешно привязан к вашему профилю."
+                  time="вчера"
+                />
+                <NotificationCard
+                  icon="🔔"
+                  accentColor="#ff6fcb"
+                  title="Обновление MafBoard"
+                  description="Вышла версия 2.1 — новые темы, улучшенные голосования и исправления."
+                  time="2 дня назад"
+                />
+              </div>
+
+              {/* Empty state hint */}
+              <div className="flex flex-col items-center gap-3 mt-6 py-8">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
+                  <IconBell size={28} color="var(--accent-color)" />
+                </div>
+                <div className="text-center">
+                  <div className="text-[0.95em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Уведомления скоро появятся</div>
+                  <div className="text-[0.8em] font-medium max-w-[280px]" style={{ color: 'var(--text-muted)' }}>
+                    Мы работаем над системой уведомлений. Вы будете получать оповещения о турнирах, результатах игр и обновлениях.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
 
       {createPortal(
-        <nav className="fixed z-50 left-4 right-4 flex items-center justify-around rounded-3xl glass-surface shadow-nav-bar py-2 animate-nav-slide-in" style={{ bottom: 'calc(16px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))' }}>
+        <nav className="fixed z-50 left-4 right-4 flex items-center justify-around rounded-3xl glass-card-md py-2 animate-nav-slide-in" style={{ bottom: 'calc(16px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))' }}>
           <NavItem active={!tableGroup && menuScreen === 'game' && activeTab === 'active'}
             onClick={() => { setTableGroup(null); setMenuScreen('game'); setActiveTab('active'); triggerHaptic('selection'); }}
             icon={<IconPlayCircle size={20} />} label="Активные" />
@@ -2044,9 +2148,9 @@ export function MainMenu() {
           <NavItem primary
             onClick={() => { setTableGroup(null); startNewGame(); triggerHaptic('medium'); }}
             icon={<IconPlus size={22} />} label="Новая" />
-          <NavItem active={!tableGroup && menuScreen === 'themes'}
-            onClick={() => { setTableGroup(null); setMenuScreen('themes'); triggerHaptic('light'); }}
-            icon={<IconPalette size={20} />} label="Темы" />
+          <NavItem active={!tableGroup && menuScreen === 'notifications'}
+            onClick={() => { setTableGroup(null); setMenuScreen('notifications'); triggerHaptic('light'); }}
+            icon={<IconBell size={20} />} label="События" />
           <NavItem active={!tableGroup && (menuScreen === 'profile' || menuScreen === 'profileSettings')}
             onClick={() => { setTableGroup(null); setMenuScreen('profile'); triggerHaptic('light'); }}
             icon={<IconUser size={20} />} label="Профиль" />
@@ -2249,6 +2353,32 @@ function NavItem({ active, primary, onClick, icon, label }) {
       <span className="text-2xl flex items-center justify-center">{icon}</span>
       <span className="text-[0.55em] font-bold tracking-wider uppercase">{label}</span>
     </button>
+  );
+}
+
+function NotificationCard({ icon, accentColor, title, description, time, isNew }) {
+  return (
+    <div
+      className="relative p-4 rounded-2xl glass-card flex gap-3"
+      style={isNew ? { borderLeft: `3px solid ${accentColor}` } : {}}
+    >
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg"
+        style={{ background: `${accentColor}15`, border: `1px solid ${accentColor}20` }}
+      >
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="text-[0.82em] font-bold" style={{ color: 'var(--text-primary)' }}>{title}</div>
+          {isNew && (
+            <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: accentColor, boxShadow: `0 0 6px ${accentColor}` }} />
+          )}
+        </div>
+        <div className="text-[0.72em] font-medium mt-0.5 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{description}</div>
+        <div className="text-[0.62em] font-medium mt-1.5" style={{ color: 'var(--text-muted)' }}>{time}</div>
+      </div>
+    </div>
   );
 }
 

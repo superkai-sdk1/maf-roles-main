@@ -50,7 +50,8 @@ html,body{width:100%;height:100%;font-family:var(--font);background:var(--bg);co
    ========================================================================== */
 .admin-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:var(--bg);animation:fadeIn .3s var(--ease)}
 .admin-overlay.fade-out{animation:fadeOut .4s var(--ease) forwards}
-.admin-auth-card{width:100%;max-width:380px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-xl);padding:44px 32px 32px;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06)}
+.admin-auth-card{width:100%;max-width:380px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-xl);padding:44px 32px 32px;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.08);backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);position:relative;overflow:hidden}
+.admin-auth-card::after{content:'';position:absolute;inset:0;background:linear-gradient(165deg,rgba(255,255,255,0.05) 0%,transparent 50%);pointer-events:none;border-radius:inherit}
 .admin-auth-logo{margin-bottom:20px}
 .admin-auth-card h2{font-size:1.4em;font-weight:800;margin-bottom:6px;letter-spacing:-.02em}
 .admin-auth-subtitle{color:var(--text-2);font-size:.88em;margin-bottom:16px}
@@ -114,17 +115,19 @@ html,body{width:100%;height:100%;font-family:var(--font);background:var(--bg);co
 /* ==========================================================================
    Cards
    ========================================================================== */
-.admin-card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-l);padding:20px;transition:border-color .15s}
-.admin-card:hover{border-color:var(--border-strong)}
+.admin-card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-l);padding:20px;transition:border-color .2s,box-shadow .2s,background .2s;backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);box-shadow:0 2px 8px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.06)}
+.admin-card:hover{border-color:var(--border-strong);box-shadow:0 4px 20px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.08)}
 .admin-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px}
 .admin-card-title{font-size:.92em;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
 .admin-card-subtitle{font-size:.78em;color:var(--text-3);margin-top:2px}
 
 /* Stat Cards */
 .admin-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
-.admin-stat-card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-l);padding:16px 18px;display:flex;flex-direction:column;gap:6px;transition:all .2s var(--ease);position:relative;overflow:hidden}
+.admin-stat-card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-l);padding:16px 18px;display:flex;flex-direction:column;gap:6px;transition:all .2s var(--ease);position:relative;overflow:hidden;backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);box-shadow:0 2px 8px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.06)}
 .admin-stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);opacity:0;transition:opacity .2s}
+.admin-stat-card::after{content:'';position:absolute;inset:0;background:linear-gradient(165deg,rgba(255,255,255,0.04) 0%,transparent 50%);pointer-events:none;border-radius:inherit}
 .admin-stat-card:hover::before{opacity:1}
+.admin-stat-card:hover{box-shadow:0 4px 20px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.08)}
 .admin-stat-card.clickable{cursor:pointer}
 .admin-stat-card.clickable:hover{border-color:var(--border-accent);background:var(--accent-dim);transform:translateY(-1px)}
 .admin-stat-card.clickable:active{transform:translateY(0) scale(.99)}
@@ -292,8 +295,9 @@ html,body{width:100%;height:100%;font-family:var(--font);background:var(--bg);co
 /* ==========================================================================
    Game Cards
    ========================================================================== */
-.admin-game-card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-m);padding:14px;cursor:pointer;transition:all .15s var(--ease)}
-.admin-game-card:hover{border-color:var(--border-accent);background:var(--accent-dim)}
+.admin-game-card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-m);padding:14px;cursor:pointer;transition:all .2s var(--ease);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);box-shadow:0 2px 8px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.06);position:relative;overflow:hidden}
+.admin-game-card::after{content:'';position:absolute;inset:0;background:linear-gradient(165deg,rgba(255,255,255,0.04) 0%,transparent 50%);pointer-events:none;border-radius:inherit}
+.admin-game-card:hover{border-color:var(--border-accent);background:var(--accent-dim);box-shadow:0 4px 20px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.08)}
 .admin-game-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 .admin-game-card-title{font-weight:700;font-size:.88em}
 .admin-game-card-meta{display:flex;flex-wrap:wrap;gap:6px;font-size:.74em;color:var(--text-3)}
@@ -341,8 +345,9 @@ html,body{width:100%;height:100%;font-family:var(--font);background:var(--bg);co
    Rooms
    ========================================================================== */
 .rooms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
-.room-card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-m);padding:14px;cursor:pointer;transition:all .15s var(--ease);position:relative}
-.room-card:hover{border-color:var(--border-accent);background:var(--accent-dim);transform:translateY(-1px)}
+.room-card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-m);padding:14px;cursor:pointer;transition:all .2s var(--ease);position:relative;overflow:hidden;backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);box-shadow:0 2px 8px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.06)}
+.room-card::after{content:'';position:absolute;inset:0;background:linear-gradient(165deg,rgba(255,255,255,0.04) 0%,transparent 50%);pointer-events:none;border-radius:inherit}
+.room-card:hover{border-color:var(--border-accent);background:var(--accent-dim);transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.08)}
 .room-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .room-card-id{font-size:1.1em;font-weight:800;color:var(--accent)}
 .room-card-stats{display:flex;gap:8px;margin-bottom:10px}
@@ -443,8 +448,9 @@ html,body{width:100%;height:100%;font-family:var(--font);background:var(--bg);co
 /* ==========================================================================
    Profile Cards
    ========================================================================== */
-.profile-card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-l);padding:16px;display:flex;gap:14px;transition:all .15s;cursor:pointer}
-.profile-card:hover{border-color:var(--border-accent);background:var(--accent-dim)}
+.profile-card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-l);padding:16px;display:flex;gap:14px;transition:all .2s;cursor:pointer;backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);box-shadow:0 2px 8px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.06);position:relative;overflow:hidden}
+.profile-card::after{content:'';position:absolute;inset:0;background:linear-gradient(165deg,rgba(255,255,255,0.04) 0%,transparent 50%);pointer-events:none;border-radius:inherit}
+.profile-card:hover{border-color:var(--border-accent);background:var(--accent-dim);box-shadow:0 4px 20px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.08)}
 .profile-avatar{width:48px;height:48px;border-radius:50%;background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1em;flex-shrink:0;overflow:hidden}
 .profile-avatar img{width:100%;height:100%;object-fit:cover}
 .profile-info{flex:1;min-width:0}

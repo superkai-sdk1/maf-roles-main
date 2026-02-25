@@ -7,7 +7,7 @@ import { GameScreen } from './components/GameScreen';
 import { Header } from './components/Header';
 import { AuthModal } from './components/AuthModal';
 import { LandingPage } from './components/LandingPage';
-import { loadSavedTheme, applyTheme } from './constants/themes';
+import { loadSavedTheme, applyTheme, loadSavedDarkMode, applyDarkMode } from './constants/themes';
 import { initTelegramApp } from './utils/telegram';
 import { useNativeScroll } from './hooks/useNativeScroll';
 
@@ -149,6 +149,8 @@ function AppShell() {
 export default function App() {
   useEffect(() => {
     initTelegramApp();
+    const isDark = loadSavedDarkMode();
+    applyDarkMode(isDark);
     const color = loadSavedTheme();
     applyTheme(color);
   }, []);

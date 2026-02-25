@@ -310,7 +310,7 @@ function PasskeySuggestModal({ onDone }) {
   return (
     <div className="fixed inset-0 z-[100000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
       onClick={state !== 'creating' ? onDone : undefined}>
-      <div className="w-full max-w-[360px] glass-surface rounded-3xl p-6 shadow-glass-lg flex flex-col items-center text-center gap-2 animate-scale-in"
+      <div className="w-full max-w-[360px] glass-card-md rounded-3xl p-6 !shadow-glass-lg flex flex-col items-center text-center gap-2 animate-scale-in"
         onClick={e => e.stopPropagation()}>
         {state === 'done' ? (
           <>
@@ -366,7 +366,7 @@ export function AuthModal() {
   return (
     <div className="fixed inset-0 z-[100000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
       onClick={hideAuthModal}>
-      <div className="relative w-full max-w-[360px] glass-surface rounded-3xl p-6 shadow-glass-lg
+      <div className="relative w-full max-w-[360px] glass-card-md rounded-3xl p-6 !shadow-glass-lg
         flex flex-col items-center text-center gap-2 animate-scale-in"
         onClick={e => e.stopPropagation()}>
         <button
@@ -378,12 +378,15 @@ export function AuthModal() {
           </svg>
         </button>
 
-        <div className="w-[72px] h-[72px] rounded-[22px] bg-gradient-to-br from-purple-500/15 to-indigo-500/[0.08]
-          border border-purple-500/25 flex items-center justify-center
-          shadow-[0_8px_32px_rgba(168,85,247,0.2),0_0_60px_rgba(168,85,247,0.06)] mb-2">
+        <div className="w-[72px] h-[72px] rounded-[22px] flex items-center justify-center mb-2"
+          style={{
+            background: `linear-gradient(135deg, rgba(var(--accent-rgb), 0.15), rgba(var(--accent-rgb), 0.05))`,
+            border: '1px solid rgba(var(--accent-rgb), 0.25)',
+            boxShadow: `0 8px 32px rgba(var(--accent-rgb), 0.2), 0 0 60px rgba(var(--accent-rgb), 0.06)`,
+          }}>
           <IconMafBoard size={40} color="var(--accent-color, #a855f7)" />
         </div>
-        <div className="text-[1.6em] font-black tracking-tight text-white">Вход в MafBoard</div>
+        <div className="text-[1.6em] font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>Вход в MafBoard</div>
 
         <TelegramSection onSuccess={handleAuthSuccess} />
         <AltMethods onSuccess={handleAuthSuccess} />

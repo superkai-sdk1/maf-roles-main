@@ -16,6 +16,13 @@ export const COLOR_SCHEMES = [
   { key: 'silver', name: 'Серебро', accent: '#b0c4de', gradient: ['#b0c4de', '#8e99a4'] },
 ];
 
+const LIGHT_ACCENT_OVERRIDES = {
+  gold: '#c9a800',
+  lime: '#7cb305',
+  silver: '#6b7b8d',
+  orange: '#e08c00',
+};
+
 function hexToRgb(hex) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -25,20 +32,84 @@ function hexToRgb(hex) {
 
 export function applyTheme(colorKey) {
   const color = COLOR_SCHEMES.find(c => c.key === colorKey) || COLOR_SCHEMES[0];
-  const rgb = hexToRgb(color.accent);
+  const isLight = document.documentElement.classList.contains('light-mode');
+  const effectiveAccent = isLight && LIGHT_ACCENT_OVERRIDES[colorKey]
+    ? LIGHT_ACCENT_OVERRIDES[colorKey]
+    : color.accent;
+  const rgb = hexToRgb(effectiveAccent);
+  const gradRgb0 = hexToRgb(color.gradient[0]);
+  const gradRgb1 = hexToRgb(color.gradient[1]);
 
-  document.documentElement.style.setProperty('--maf-accent', color.accent);
-  document.documentElement.style.setProperty('--maf-accent-color', color.accent);
-  document.documentElement.style.setProperty('--accent-color', color.accent);
-  document.documentElement.style.setProperty('--accent-rgb', rgb);
-  document.documentElement.style.setProperty('--accent-glow', `0 0 24px rgba(${rgb}, 0.5)`);
-  document.documentElement.style.setProperty('--nexus-glow', `0 0 10px rgba(${rgb}, 0.5)`);
-  document.documentElement.style.setProperty('--nexus-glow-strong', `0 0 20px rgba(${rgb}, 0.6), 0 0 40px rgba(${rgb}, 0.2)`);
+  const root = document.documentElement.style;
+  root.setProperty('--maf-accent', effectiveAccent);
+  root.setProperty('--maf-accent-color', effectiveAccent);
+  root.setProperty('--accent-color', effectiveAccent);
+  root.setProperty('--accent-rgb', rgb);
+  root.setProperty('--accent-gradient', `linear-gradient(135deg, ${color.gradient[0]}, ${color.gradient[1]})`);
+  root.setProperty('--accent-gradient-rgb-0', gradRgb0);
+  root.setProperty('--accent-gradient-rgb-1', gradRgb1);
+
+  if (isLight) {
+    root.setProperty('--accent-glow', `0 0 16px rgba(${rgb}, 0.25)`);
+    root.setProperty('--nexus-glow', `0 0 8px rgba(${rgb}, 0.2)`);
+    root.setProperty('--nexus-glow-strong', `0 0 14px rgba(${rgb}, 0.3), 0 0 28px rgba(${rgb}, 0.1)`);
+    root.setProperty('--accent-surface', `rgba(${rgb}, 0.06)`);
+    root.setProperty('--accent-surface-hover', `rgba(${rgb}, 0.10)`);
+    root.setProperty('--accent-border', `rgba(${rgb}, 0.12)`);
+    root.setProperty('--accent-border-strong', `rgba(${rgb}, 0.22)`);
+  } else {
+    root.setProperty('--accent-glow', `0 0 24px rgba(${rgb}, 0.5)`);
+    root.setProperty('--nexus-glow', `0 0 10px rgba(${rgb}, 0.5)`);
+    root.setProperty('--nexus-glow-strong', `0 0 20px rgba(${rgb}, 0.6), 0 0 40px rgba(${rgb}, 0.2)`);
+    root.setProperty('--accent-surface', `rgba(${rgb}, 0.1)`);
+    root.setProperty('--accent-surface-hover', `rgba(${rgb}, 0.15)`);
+    root.setProperty('--accent-border', `rgba(${rgb}, 0.15)`);
+    root.setProperty('--accent-border-strong', `rgba(${rgb}, 0.3)`);
+  }
 
   try {
     localStorage.setItem('maf_color_scheme', colorKey);
   } catch (e) { /* ignore */ }
 
+  updateTelegramColors();
+}
+
+export function applyDarkMode(isDark) {
+  const html = document.documentElement;
+  if (isDark) {
+    html.classList.remove('light-mode');
+  } else {
+    html.classList.add('light-mode');
+  }
+
+  try {
+    localStorage.setItem('maf_dark_mode', isDark ? 'dark' : 'light');
+  } catch (e) { /* ignore */ }
+
+  const savedColor = loadSavedTheme();
+  applyTheme(savedColor);
+  updateTelegramColors();
+}
+
+export function loadSavedTheme() {
+  try {
+    return localStorage.getItem('maf_color_scheme') || 'purple';
+  } catch (e) {
+    return 'purple';
+  }
+}
+
+export function loadSavedDarkMode() {
+  try {
+    const val = localStorage.getItem('maf_dark_mode');
+    if (val === 'light') return false;
+    return true;
+  } catch (e) {
+    return true;
+  }
+}
+
+function updateTelegramColors() {
   try {
     const tg = window.Telegram?.WebApp;
     if (tg) {
@@ -49,12 +120,4 @@ export function applyTheme(colorKey) {
       tg.setBottomBarColor?.(bg);
     }
   } catch (e) { /* ignore */ }
-}
-
-export function loadSavedTheme() {
-  try {
-    return localStorage.getItem('maf_color_scheme') || 'purple';
-  } catch (e) {
-    return 'purple';
-  }
 }

@@ -20,21 +20,25 @@
   --safe-bottom: calc(var(--tg-safe-area-inset-bottom) + var(--tg-content-safe-area-inset-bottom));
 
   /* Glass layers */
-  --glass-layer-1: rgba(255, 255, 255, 0.03);
-  --glass-layer-2: rgba(255, 255, 255, 0.05);
-  --glass-layer-3: rgba(255, 255, 255, 0.08);
-  --glass-surface: rgba(10, 8, 20, 0.75);
-  --glass-surface-light: rgba(20, 18, 40, 0.6);
-  --glass-border: rgba(255, 255, 255, 0.10);
-  --glass-border-strong: rgba(255, 255, 255, 0.18);
-  --glass-specular: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.04) 40%, rgba(255,255,255,0) 60%);
-  --shimmer-gradient: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.05) 50%, transparent 70%);
+  --glass-layer-1: rgba(255, 255, 255, 0.04);
+  --glass-layer-2: rgba(255, 255, 255, 0.06);
+  --glass-layer-3: rgba(255, 255, 255, 0.10);
+  --glass-surface: rgba(12, 10, 28, 0.68);
+  --glass-surface-light: rgba(22, 18, 48, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-border-strong: rgba(255, 255, 255, 0.22);
+  --glass-specular: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 35%, rgba(255,255,255,0) 55%);
+  --shimmer-gradient: linear-gradient(120deg, transparent 25%, rgba(255,255,255,0.07) 50%, transparent 75%);
+
+  /* Glass card inner highlight */
+  --glass-inner-highlight: inset 0 1px 0 0 rgba(255,255,255,0.10), inset 0 0 0 0.5px rgba(255,255,255,0.05);
+  --glass-frost-bg: linear-gradient(165deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 40%, transparent 70%);
 
   /* Shadows */
-  --glass-shadow-sm: 0 2px 12px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
-  --glass-shadow-md: 0 8px 32px 0 rgba(0,0,0,0.8), 0 2px 8px rgba(0,0,0,0.4);
-  --glass-shadow-lg: 0 16px 48px rgba(0,0,0,0.9), 0 4px 16px rgba(0,0,0,0.5);
-  --glass-shadow-glow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 0 rgba(255,255,255,0.08), inset 0 0 20px 0 rgba(168,85,247,0.03);
+  --glass-shadow-sm: 0 2px 8px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.07);
+  --glass-shadow-md: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
+  --glass-shadow-lg: 0 16px 48px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.10);
+  --glass-shadow-glow: 0 8px 32px rgba(0,0,0,0.45), 0 0 24px rgba(var(--accent-rgb,168,85,247),0.06), inset 0 1px 0 rgba(255,255,255,0.10), inset 0 0 24px rgba(var(--accent-rgb,168,85,247),0.04);
 
   /* Accent (set dynamically by applyTheme) */
   --maf-accent: #a855f7;
@@ -43,6 +47,13 @@
   --accent-glow: 0 0 24px rgba(168, 85, 247, 0.5);
   --nexus-glow: 0 0 10px rgba(168, 85, 247, 0.5);
   --nexus-glow-strong: 0 0 20px rgba(168,85,247,0.6), 0 0 40px rgba(168,85,247,0.2);
+  --accent-gradient: linear-gradient(135deg, #a855f7, #7c3aed);
+  --accent-gradient-rgb-0: 168, 85, 247;
+  --accent-gradient-rgb-1: 124, 58, 237;
+  --accent-surface: rgba(168, 85, 247, 0.1);
+  --accent-surface-hover: rgba(168, 85, 247, 0.15);
+  --accent-border: rgba(168, 85, 247, 0.15);
+  --accent-border-strong: rgba(168, 85, 247, 0.3);
 
   /* Role glows */
   --glow-sheriff: 0 0 10px rgba(255, 213, 79, 0.5);
@@ -60,13 +71,77 @@
   --maf-bg-secondary: #0d0a2a;
   --maf-gradient-bg: linear-gradient(135deg, #040410 0%, #0d0a2a 25%, #1a0f4a 50%, #0d0a2a 75%, #040410 100%);
 
-  /* Text */
+  /* Semantic text (adaptive) */
+  --text-primary: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.6);
   --text-muted: rgba(255, 255, 255, 0.30);
+  --text-inverted: #040410;
+
+  /* Semantic surfaces */
+  --surface-primary: rgba(255, 255, 255, 0.03);
+  --surface-secondary: rgba(255, 255, 255, 0.05);
+  --surface-hover: rgba(255, 255, 255, 0.08);
+  --surface-active: rgba(255, 255, 255, 0.12);
+  --surface-border: rgba(255, 255, 255, 0.08);
+  --surface-border-hover: rgba(255, 255, 255, 0.14);
+  --surface-divider: rgba(255, 255, 255, 0.06);
+  --surface-input-bg: rgba(0, 0, 0, 0.35);
+
+  /* Nav bar */
+  --nav-shadow: 0 8px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.08);
 
   /* Component sizes */
   --role-btn-size: 42px;
   --timer-btn-size: 46px;
+}
+
+/* ==============================
+   LIGHT MODE
+   ============================== */
+
+:root.light-mode {
+  --maf-bg-main: #f2f2f7;
+  --maf-bg-secondary: #e5e5ea;
+  --maf-gradient-bg: linear-gradient(135deg, #f2f2f7 0%, #e8e6f0 25%, #e0dced 50%, #e8e6f0 75%, #f2f2f7 100%);
+
+  --glass-layer-1: rgba(255, 255, 255, 0.60);
+  --glass-layer-2: rgba(255, 255, 255, 0.70);
+  --glass-layer-3: rgba(255, 255, 255, 0.80);
+  --glass-surface: rgba(255, 255, 255, 0.65);
+  --glass-surface-light: rgba(255, 255, 255, 0.50);
+  --glass-border: rgba(255, 255, 255, 0.70);
+  --glass-border-strong: rgba(255, 255, 255, 0.85);
+  --glass-specular: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.5) 35%, rgba(255,255,255,0) 55%);
+  --shimmer-gradient: linear-gradient(120deg, transparent 25%, rgba(255,255,255,0.7) 50%, transparent 75%);
+
+  --glass-inner-highlight: inset 0 1px 0 0 rgba(255,255,255,0.85), inset 0 0 0 0.5px rgba(255,255,255,0.4);
+  --glass-frost-bg: linear-gradient(165deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 40%, transparent 70%);
+
+  --glass-shadow-sm: 0 1px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.7);
+  --glass-shadow-md: 0 4px 20px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.75);
+  --glass-shadow-lg: 0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.85);
+  --glass-shadow-glow: 0 4px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 0 16px rgba(var(--accent-rgb,168,85,247),0.03);
+
+  --glow-sheriff: 0 0 8px rgba(255, 179, 0, 0.25);
+  --glow-mafia: 0 0 8px rgba(168, 85, 247, 0.25);
+  --glow-don: 0 0 8px rgba(180, 100, 200, 0.25);
+  --glow-peace: 0 0 8px rgba(33, 150, 243, 0.2);
+
+  --text-primary: #1c1c1e;
+  --text-secondary: rgba(0, 0, 0, 0.55);
+  --text-muted: rgba(0, 0, 0, 0.30);
+  --text-inverted: #ffffff;
+
+  --surface-primary: rgba(0, 0, 0, 0.02);
+  --surface-secondary: rgba(0, 0, 0, 0.04);
+  --surface-hover: rgba(0, 0, 0, 0.06);
+  --surface-active: rgba(0, 0, 0, 0.08);
+  --surface-border: rgba(0, 0, 0, 0.06);
+  --surface-border-hover: rgba(0, 0, 0, 0.10);
+  --surface-divider: rgba(0, 0, 0, 0.06);
+  --surface-input-bg: rgba(0, 0, 0, 0.04);
+
+  --nav-shadow: 0 -1px 0 rgba(0,0,0,0.06), 0 4px 20px rgba(0,0,0,0.06);
 }
 
 body {
@@ -74,10 +149,99 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Rounded",
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: var(--maf-bg-main);
-  color: #fff;
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
+
+/* ==============================
+   Light mode color overrides
+   ============================== */
+
+.light-mode body,
+.light-mode {
+  color: var(--text-primary);
+}
+
+/* Text overrides for light mode */
+.light-mode .text-white {
+  color: var(--text-primary) !important;
+}
+.light-mode .text-white\/40,
+.light-mode .text-white\/\[0\.4\] {
+  color: var(--text-muted) !important;
+}
+.light-mode .text-white\/50 {
+  color: var(--text-secondary) !important;
+}
+.light-mode .text-white\/60 {
+  color: var(--text-secondary) !important;
+}
+.light-mode .text-white\/35,
+.light-mode .text-white\/30,
+.light-mode .text-white\/\[0\.3\] {
+  color: var(--text-muted) !important;
+}
+.light-mode .text-white\/20 {
+  color: rgba(0,0,0,0.15) !important;
+}
+
+/* Background overrides */
+.light-mode .bg-white\/\[0\.03\],
+.light-mode .bg-white\/\[0\.04\],
+.light-mode .bg-white\/\[0\.05\] {
+  background-color: var(--surface-primary) !important;
+}
+.light-mode .bg-white\/\[0\.06\],
+.light-mode .bg-white\/\[0\.08\] {
+  background-color: var(--surface-secondary) !important;
+}
+
+/* Border overrides */
+.light-mode .border-white\/\[0\.06\],
+.light-mode .border-white\/\[0\.08\] {
+  border-color: var(--surface-border) !important;
+}
+.light-mode .border-white\/\[0\.10\],
+.light-mode .border-white\/\[0\.12\] {
+  border-color: var(--surface-border-hover) !important;
+}
+
+/* Hover overrides */
+.light-mode .hover\:border-white\/\[0\.12\]:hover {
+  border-color: var(--surface-border-hover) !important;
+}
+.light-mode .hover\:bg-white\/\[0\.04\]:hover,
+.light-mode .hover\:bg-white\/\[0\.05\]:hover {
+  background-color: var(--surface-hover) !important;
+}
+
+/* Divider lines */
+.light-mode .bg-white\/\[0\.06\] {
+  background-color: var(--surface-divider) !important;
+}
+
+/* Header & nav in light mode */
+.light-mode .bg-maf-bg\/80,
+.light-mode .bg-maf-bg {
+  background-color: var(--maf-bg-main) !important;
+}
+.light-mode header.bg-maf-bg\/80 {
+  background-color: rgba(242, 242, 247, 0.85) !important;
+}
+
+/* Fix buttons that must stay white text on accent bg */
+.light-mode .bg-accent .text-white,
+.light-mode .bg-accent.text-white,
+.light-mode button.bg-accent,
+.light-mode [class*="bg-accent"]:not(.bg-accent-soft):not([class*="bg-accent\/"]) {
+  color: #ffffff !important;
+}
+
+/* Fix status badges */
+.light-mode .text-status-error { color: #d32f2f !important; }
+.light-mode .text-status-success { color: #1b8a3f !important; }
 
 /* Keyframes used by tailwind.config animation classes */
 @keyframes authSpin {
@@ -210,3 +374,29 @@ body {
 .animate-stagger > *:nth-child(9) { animation-delay: 100ms; }
 .animate-stagger > *:nth-child(10) { animation-delay: 110ms; }
 .animate-stagger > *:nth-child(n+11) { animation-delay: 120ms; }
+
+/* ==============================
+   Glass card shimmer animation
+   ============================== */
+@keyframes glassShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes glassBreath {
+  0%, 100% { box-shadow: var(--glass-shadow-md); }
+  50% { box-shadow: var(--glass-shadow-md), 0 0 20px rgba(var(--accent-rgb,168,85,247), 0.04); }
+}
+
+/* ==============================
+   Mode transition smoothing
+   ============================== */
+.glass-surface,
+.glass-card,
+.glass-card-md,
+.input-field,
+.bg-maf-bg,
+nav,
+header {
+  transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, color 0.35s ease, backdrop-filter 0.35s ease;
+}

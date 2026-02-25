@@ -198,9 +198,9 @@ export function VotingPanel() {
         <>
           {/* No candidates nominated */}
           {!showVotingModal && candidates.length === 0 && (
-            <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-fade-in p-8 text-center">
-              <div className="text-[2.5em] mb-3 opacity-30">⚖️</div>
-              <h3 className="text-base font-bold mb-1.5">Нет выставленных игроков</h3>
+            <div className="relative z-[1] rounded-2xl glass-card-md animate-fade-in p-8 text-center">
+              <div className="text-[2.5em] mb-3 opacity-30 relative z-[1]">⚖️</div>
+              <h3 className="text-base font-bold mb-1.5 relative z-[1]">Нет выставленных игроков</h3>
               <p className="text-[0.85em] text-white/35">
                 Выставите кандидатов в карточках игроков, чтобы начать голосование
               </p>
@@ -212,8 +212,8 @@ export function VotingPanel() {
             <div className="flex flex-col gap-[14px]">
               {/* Day 0: single candidate — no voting */}
               {votingDay0SingleCandidate && (
-                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-fade-in p-6 text-center">
-                  <div className="text-[2.5em] mb-3 opacity-40">☝️</div>
+                <div className="relative z-[1] rounded-2xl glass-card-md animate-fade-in p-6 text-center">
+                  <div className="text-[2.5em] mb-3 opacity-40 relative z-[1]">☝️</div>
                   <h3 className="text-base font-bold mb-2">
                     Выставлен 1 кандидат — #{votingDay0SingleCandidate}
                   </h3>
@@ -229,8 +229,8 @@ export function VotingPanel() {
 
               {/* Day 0: triple tie — no re-vote possible */}
               {votingDay0TripleTie && (
-                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-fade-in p-6 text-center">
-                  <div className="text-[2.5em] mb-3 opacity-40">⚖️</div>
+                <div className="relative z-[1] rounded-2xl glass-card-md animate-fade-in p-6 text-center">
+                  <div className="text-[2.5em] mb-3 opacity-40 relative z-[1]">⚖️</div>
                   <h3 className="text-base font-bold mb-2">
                     Ничья {votingDay0TripleTiePlayers.length} игроков
                   </h3>
@@ -253,7 +253,7 @@ export function VotingPanel() {
 
               {/* Tie — split players with controllable timer */}
               {votingTieTimerActive && (
-                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-fade-in p-4 text-center border-[rgba(255,214,10,0.3)] bg-[rgba(255,214,10,0.05)]">
+                <div className="relative z-[1] rounded-2xl glass-card-md animate-fade-in p-4 text-center !border-[rgba(255,214,10,0.3)]">
                   <h3 className="text-base font-extrabold text-[#ffd60a] mb-2.5">Деление игроков</h3>
                   <div className="flex items-center gap-2 flex-wrap mb-3.5 justify-center">
                     {votingTiePlayers.map((num, i) => {
@@ -325,7 +325,7 @@ export function VotingPanel() {
 
               {/* Last speech with controllable timer + slide to night */}
               {votingLastSpeechActive && votingWinners.length > 0 && (
-                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-fade-in p-4 text-center border-[rgba(255,69,58,0.3)] bg-[rgba(255,69,58,0.05)]">
+                <div className="relative z-[1] rounded-2xl glass-card-md animate-fade-in p-4 text-center !border-[rgba(255,69,58,0.3)]">
                   <h3 className="text-base font-extrabold text-[#ff453a] mb-2.5">Крайняя речь</h3>
                   {votingWinners.map(num => {
                     const p = tableOut[num - 1];
@@ -368,8 +368,8 @@ export function VotingPanel() {
 
               {/* Lift voting */}
               {votingStage === 'lift' && !votingFinished && (
-                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-glass-reveal p-4">
-                  <div className="flex items-center justify-between mb-3">
+                <div className="relative z-[1] rounded-2xl glass-card-md animate-glass-reveal p-4">
+                  <div className="flex items-center justify-between mb-3 relative z-[1]">
                     <h3 className="text-[0.9em] font-bold">Голосование за подъём</h3>
                     <span className="text-[0.75em] text-white/40 font-bold">
                       {votingLiftResults.length} / {Math.ceil(alivePlayers.length / 2 + 0.1)} нужно
@@ -416,8 +416,8 @@ export function VotingPanel() {
 
               {/* Main/Tie voting */}
               {(votingStage === 'main' || votingStage === 'tie') && !votingFinished && !votingTieTimerActive && (
-                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-glass-reveal p-4">
-                  <div className="flex items-center justify-between mb-3">
+                <div className="relative z-[1] rounded-2xl glass-card-md animate-glass-reveal p-4">
+                  <div className="flex items-center justify-between mb-3 relative z-[1]">
                     <h3 className="text-[0.9em] font-bold">
                       {votingStage === 'tie' ? 'Повторное голосование' : 'Голосование'}
                     </h3>
@@ -498,7 +498,7 @@ export function VotingPanel() {
 
               {/* No winners */}
               {votingFinished && votingWinners.length === 0 && !votingTieTimerActive && (
-                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-fade-in p-4 text-center">
+                <div className="relative z-[1] rounded-2xl glass-card-md animate-fade-in p-4 text-center">
                   {votingStage === 'lift' ? (
                     <>
                       <h3 className="text-[0.9em] font-bold mb-2">Голосов за подъём недостаточно</h3>
@@ -539,7 +539,7 @@ export function VotingPanel() {
             </div>
           ) : (
             [...votingHistory].reverse().map((v, i) => (
-              <div key={i} className="relative z-[1] rounded-2xl glass-surface shadow-glass-md p-4">
+              <div key={i} className="relative z-[1] rounded-2xl glass-card-md p-4">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[0.7em] font-bold text-white/40 uppercase tracking-wider">

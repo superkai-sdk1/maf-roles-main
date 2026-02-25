@@ -76,20 +76,23 @@ export function LandingPage({ onNavigate }) {
   };
 
   return (
-    <div className="min-h-screen bg-maf-bg text-white" style={{ background: 'var(--maf-gradient-bg)' }}>
+    <div className="min-h-screen bg-maf-bg" style={{ background: 'var(--maf-gradient-bg)', color: 'var(--text-primary)' }}>
       {/* Hero */}
       <section className="relative flex flex-col items-center justify-center text-center px-6 pt-24 pb-16 overflow-hidden">
         <div className="absolute w-64 h-64 rounded-full bg-[var(--accent-color)] opacity-[0.06] blur-[100px] top-0" />
         <div className="relative flex flex-col items-center gap-4 animate-float-up">
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-[rgba(168,85,247,0.15)] to-[rgba(99,102,241,0.08)]
-            border border-purple-500/25 flex items-center justify-center
-            shadow-[0_8px_32px_rgba(168,85,247,0.2),0_0_60px_rgba(168,85,247,0.06)]">
+          <div className="w-20 h-20 rounded-3xl flex items-center justify-center"
+            style={{
+              background: `linear-gradient(135deg, rgba(var(--accent-rgb), 0.15), rgba(var(--accent-rgb), 0.05))`,
+              border: '1px solid rgba(var(--accent-rgb), 0.25)',
+              boxShadow: `0 8px 32px rgba(var(--accent-rgb), 0.2), 0 0 60px rgba(var(--accent-rgb), 0.06)`,
+            }}>
             <IconMafBoard size={56} color="var(--accent-color, #a855f7)" />
           </div>
-          <h1 className="text-[3em] font-black tracking-[-1.5px] leading-[1.1] bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+          <h1 className="text-[3em] font-black tracking-[-1.5px] leading-[1.1]" style={{ background: `linear-gradient(to right, var(--text-primary), var(--text-secondary))`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             MafBoard
           </h1>
-          <p className="max-w-sm text-white/50 text-sm leading-relaxed font-medium">
+          <p className="max-w-sm text-sm leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
             Панель ведущего для игры в мафию.
             Управляйте ролями, таймерами, голосованиями
             и турнирами — всё в одном месте.
@@ -112,21 +115,20 @@ export function LandingPage({ onNavigate }) {
 
       {/* Features */}
       <section className="px-5 pb-16 max-w-2xl mx-auto">
-        <h2 className="text-white text-[1.8em] font-black text-center mb-10">
+        <h2 className="text-[1.8em] font-black text-center mb-10" style={{ color: 'var(--text-primary)' }}>
           Возможности
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 animate-stagger">
           {FEATURES.map((f, i) => (
             <div
               key={i}
-              className="flex flex-col gap-2 p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06]
-                hover:border-white/[0.12] hover:bg-white/[0.05] hover:shadow-glass-sm transition-colors duration-200"
+              className="glass-card flex flex-col gap-2 p-5 rounded-2xl hover:!border-white/[0.18] hover:shadow-glass-md transition-all duration-300"
             >
-              <div className="w-11 h-11 rounded-xl bg-accent-soft flex items-center justify-center text-accent">
+              <div className="w-11 h-11 rounded-xl bg-accent-soft flex items-center justify-center text-accent relative z-[1]">
                 {f.icon}
               </div>
-              <h3 className="text-white text-sm font-bold mt-1">{f.title}</h3>
-              <p className="text-white/40 text-xs leading-relaxed">{f.desc}</p>
+              <h3 className="text-sm font-bold mt-1 relative z-[1]" style={{ color: 'var(--text-primary)' }}>{f.title}</h3>
+              <p className="text-xs leading-relaxed relative z-[1]" style={{ color: 'var(--text-muted)' }}>{f.desc}</p>
             </div>
           ))}
         </div>
@@ -134,8 +136,8 @@ export function LandingPage({ onNavigate }) {
 
       {/* CTA */}
       <section className="flex flex-col items-center text-center px-6 pb-16">
-        <h2 className="text-xl font-extrabold tracking-tight text-white mb-2">Готовы вести?</h2>
-        <p className="text-white/40 text-sm mb-5">
+        <h2 className="text-xl font-extrabold tracking-tight mb-2" style={{ color: 'var(--text-primary)' }}>Готовы вести?</h2>
+        <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
           Авторизуйтесь через Telegram и начните первую игру за минуту.
         </p>
         <button
@@ -148,7 +150,7 @@ export function LandingPage({ onNavigate }) {
       </section>
 
       {/* Footer */}
-      <footer className="flex items-center justify-center gap-2 py-8 text-white/20 text-xs font-medium">
+      <footer className="flex items-center justify-center gap-2 py-8 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
         <span>MafBoard</span>
         <span>·</span>
         <span>Панель ведущего мафии</span>

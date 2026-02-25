@@ -25,23 +25,24 @@ function ProfileDropdown({ onNavigate, onClose }) {
   return (
     <div
       ref={dropdownRef}
-      className="absolute right-0 top-full mt-2 w-56 rounded-2xl glass-surface shadow-glass-md animate-slide-down z-50"
+      className="absolute right-0 top-full mt-2 w-56 rounded-2xl glass-card-md animate-slide-down z-50"
     >
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="w-9 h-9 rounded-full bg-accent-soft border border-accent-soft flex items-center justify-center text-accent text-sm font-bold shrink-0">
           {displayName.charAt(0).toUpperCase()}
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-white text-sm font-bold truncate">{displayName}</span>
-          {user?.username && <span className="text-white/40 text-xs truncate">@{user.username}</span>}
+          <span className="text-sm font-bold truncate" style={{ color: 'var(--text-primary)' }}>{displayName}</span>
+          {user?.username && <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>@{user.username}</span>}
         </div>
       </div>
 
-      <div className="h-px bg-white/[0.06] mx-3" />
+      <div className="h-px mx-3" style={{ background: 'var(--surface-divider)' }} />
 
       <div className="py-1.5">
         <button
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-white/60 text-sm font-semibold hover:text-white hover:bg-white/[0.04] transition-colors duration-150"
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors duration-150"
+          style={{ color: 'var(--text-secondary)' }}
           onClick={() => { onNavigate('panel'); onClose(); }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -51,18 +52,20 @@ function ProfileDropdown({ onNavigate, onClose }) {
         </button>
 
         <button
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-white/30 text-sm font-semibold cursor-default"
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold cursor-default"
+          style={{ color: 'var(--text-muted)' }}
           onClick={() => { onNavigate('overlay'); onClose(); }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
           </svg>
           <span>Оверлей</span>
-          <span className="ml-auto text-[0.6rem] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-full bg-[rgba(168,85,247,0.12)] text-[var(--accent-color)]">скоро</span>
+          <span className="ml-auto text-[0.6rem] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-full text-accent" style={{ background: 'var(--accent-surface)' }}>скоро</span>
         </button>
 
         <button
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-white/60 text-sm font-semibold hover:text-white hover:bg-white/[0.04] transition-colors duration-150"
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors duration-150"
+          style={{ color: 'var(--text-secondary)' }}
           onClick={() => { window.location.href = '/admin/'; }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -72,7 +75,7 @@ function ProfileDropdown({ onNavigate, onClose }) {
         </button>
       </div>
 
-      <div className="h-px bg-white/[0.06] mx-3" />
+      <div className="h-px mx-3" style={{ background: 'var(--surface-divider)' }} />
 
       <div className="py-1.5">
         <button
@@ -96,15 +99,15 @@ export function Header({ onNavigate }) {
   const displayName = user?.first_name || user?.username || 'U';
 
   return (
-    <header className="sticky top-0 z-50 w-full backdrop-blur-glass-heavy bg-maf-bg/80 border-b border-white/[0.06]"
-      style={{ paddingTop: 'var(--safe-top, 0px)' }}>
+    <header className="sticky top-0 z-50 w-full backdrop-blur-glass-heavy bg-maf-bg/80 border-b"
+      style={{ paddingTop: 'var(--safe-top, 0px)', borderColor: 'var(--surface-divider)' }}>
       <div className="flex items-center justify-between h-14 px-4 max-w-5xl mx-auto">
         <button
           className="flex items-center gap-2 bg-transparent border-none cursor-pointer"
           onClick={() => onNavigate('landing')}
         >
           <IconMafBoard size={28} color="var(--accent-color, #a855f7)" />
-          <span className="text-base font-extrabold tracking-tight text-white">MafBoard</span>
+          <span className="text-base font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>MafBoard</span>
         </button>
 
         <div className="flex items-center gap-3">
@@ -129,8 +132,9 @@ export function Header({ onNavigate }) {
             </div>
           ) : (
             <button
-              className="px-4 py-2 rounded-xl bg-accent text-white text-sm font-bold
-                hover:shadow-[0_4px_20px_rgba(168,85,247,0.2)] active:scale-95 transition-transform duration-150 ease-spring"
+              className="px-4 py-2 rounded-xl bg-accent text-sm font-bold
+                active:scale-95 transition-transform duration-150 ease-spring"
+              style={{ color: '#fff', boxShadow: '0 4px 20px rgba(var(--accent-rgb), 0.2)' }}
               onClick={showAuthModal}
             >
               Войти

@@ -678,7 +678,7 @@ export function ModeSelector() {
         {step === 'modes' && (
           <div className="flex flex-col gap-3 animate-stagger">
             <button
-              className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-surface shadow-glass-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-accent/20"
+              className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-card-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-accent/20"
               onClick={() => { openBrowser(); triggerHaptic('selection'); }}
             >
               <div className="absolute top-0 left-0 w-[3px] h-full bg-gradient-to-b from-accent to-indigo-500 rounded-l-full" />
@@ -694,7 +694,7 @@ export function ModeSelector() {
             </button>
 
             <button
-              className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-surface shadow-glass-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-accent/20"
+              className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-card-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-accent/20"
               onClick={() => { initFunky(); triggerHaptic('selection'); }}
             >
               <div className="absolute top-0 left-0 w-[3px] h-full bg-gradient-to-b from-accent to-purple-400 rounded-l-full" />
@@ -710,7 +710,7 @@ export function ModeSelector() {
             </button>
 
             <button
-              className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-surface shadow-glass-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-[rgba(79,195,247,0.2)]"
+              className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-card-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-[rgba(79,195,247,0.2)]"
               onClick={() => { initCity(); triggerHaptic('selection'); }}
             >
               <div className="absolute top-0 left-0 w-[3px] h-full bg-gradient-to-b from-[#4fc3f7] to-[#0288d1] rounded-l-full" />
@@ -731,7 +731,7 @@ export function ModeSelector() {
               <div className="h-px flex-1 bg-white/[0.06]" />
             </div>
 
-            <div className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-surface shadow-glass-sm overflow-hidden text-left opacity-40 cursor-default">
+            <div className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-card overflow-hidden text-left opacity-40 cursor-default">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border border-white/[0.06] bg-white/[0.02]">
                 <IconCrown size={24} color="rgba(255,255,255,0.2)" />
               </div>
@@ -741,7 +741,7 @@ export function ModeSelector() {
               </div>
             </div>
 
-            <div className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-surface shadow-glass-sm overflow-hidden text-left opacity-40 cursor-default">
+            <div className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-card overflow-hidden text-left opacity-40 cursor-default">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border border-white/[0.06] bg-white/[0.02]">
                 <IconGlobe size={24} color="rgba(255,255,255,0.2)" />
               </div>
@@ -764,7 +764,7 @@ export function ModeSelector() {
         {/* ===== GoMafia manual ID (fallback from browser) ===== */}
         {step === 'gomafia' && (
           <div className="flex flex-col gap-3 animate-fade-in">
-            <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md flex flex-col gap-3">
+            <div className="relative z-[1] p-4 rounded-2xl glass-card-md flex flex-col gap-3">
               <div className="flex items-center gap-3 relative z-[1]">
                 <div className="w-[42px] h-[42px] rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
                   <IconTrophy size={20} color="#ffd700" />
