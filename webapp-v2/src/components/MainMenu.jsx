@@ -1328,14 +1328,112 @@ export function MainMenu() {
             const avatarSrc = userAvatarUrl || tgUser?.photo_url || '';
             const displayName = userDisplayName || (tgUser ? `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}` : 'Ведущий');
             const initials = (displayName[0] || '?').toUpperCase();
+            const { totalGames, gomafiaTournamentsCount, gomafiaGamesCount, minicapsCount, minicapGamesCount, funkyGamesCount } = profileStats;
+            const otherGames = Math.max(0, totalGames - gomafiaGamesCount - minicapGamesCount - funkyGamesCount);
             return (
               <div className="animate-fade-in w-full max-w-[400px] pb-[100px]">
-                <div className="flex flex-col items-center gap-4 py-6 px-6">
+                <div className="flex flex-col items-center gap-5 py-4 px-4">
 
-                  {/* Profile card */}
-                  <div className="relative w-full flex flex-col items-center gap-4">
+                  {/* Hero section */}
+                  <div className="relative w-full flex flex-col items-center pt-4 pb-6 animate-float-up">
+                    <div className="absolute top-8 left-1/2 -translate-x-1/2 w-32 h-32 rounded-full opacity-30 blur-[50px]" style={{ background: 'var(--accent-color, #a855f7)' }} />
+
+                    <div className="relative mb-4">
+                      <div className="absolute -inset-1 rounded-full animate-pulse-glow" style={{ background: 'linear-gradient(135deg, var(--accent-color), #6366f1)', opacity: 0.3, filter: 'blur(8px)' }} />
+                      <div className="relative w-24 h-24 rounded-full p-[3px]" style={{ background: 'linear-gradient(135deg, var(--accent-color), #6366f1)' }}>
+                        <div className="w-full h-full rounded-full bg-[#0a0a0c] p-[2px] overflow-hidden">
+                          {avatarSrc ? (
+                            <div className="w-full h-full rounded-full bg-cover bg-center" style={{ backgroundImage: `url(${avatarSrc})` }} />
+                          ) : (
+                            <div className="w-full h-full rounded-full bg-gradient-to-br from-accent/20 to-indigo-500/20 flex items-center justify-center text-3xl font-black text-white">{initials}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <h2 className="text-2xl font-black tracking-tight text-white mb-1">{displayName}</h2>
+                    {tgUser?.username && <div className="text-sm font-medium text-white/40 mb-0.5">@{tgUser.username}</div>}
+                    {tgUser?.id && <div className="text-[0.7em] text-white/20 tabular-nums">ID {tgUser.id}</div>}
+                    {goMafiaProfile && (
+                      <div className="flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-xl bg-accent/10 border border-accent/20 shadow-[0_0_16px_rgba(var(--accent-rgb),0.1)]">
+                        <IconGoMafia size={14} />
+                        <span className="text-accent text-sm font-bold">{goMafiaProfile.nickname}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Stats 2x2 grid */}
+                  <div className="grid grid-cols-2 gap-3 w-full animate-stagger">
+                    <div className="relative glass-surface shadow-glass-sm rounded-2xl p-4 flex flex-col items-center gap-2 overflow-hidden group hover:border-accent/20 transition-colors">
+                      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-accent to-transparent opacity-40" />
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent/10 border border-accent/15">
+                        <IconStats size={20} color="var(--accent-color, #a855f7)" />
+                      </div>
+                      <div className="text-2xl font-black text-white tabular-nums">{totalGames}</div>
+                      <div className="text-[0.6rem] font-bold text-white/35 uppercase tracking-widest">{pluralGames(totalGames)} проведено</div>
+                    </div>
+
+                    <div className="relative glass-surface shadow-glass-sm rounded-2xl p-4 flex flex-col items-center gap-2 overflow-hidden group hover:border-[rgba(137,119,254,0.25)] transition-colors">
+                      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#8977fe] to-transparent opacity-40" />
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(137,119,254,0.15), rgba(10,232,240,0.08))', border: '1px solid rgba(137,119,254,0.2)' }}>
+                        <IconGoMafia size={20} />
+                      </div>
+                      <div className="text-2xl font-black text-white tabular-nums">{gomafiaTournamentsCount}</div>
+                      <div className="text-[0.6rem] font-bold text-white/35 uppercase tracking-widest">Турниры</div>
+                    </div>
+
+                    <div className="relative glass-surface shadow-glass-sm rounded-2xl p-4 flex flex-col items-center gap-2 overflow-hidden group hover:border-[rgba(255,213,0,0.25)] transition-colors">
+                      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#ffd700] to-transparent opacity-40" />
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(255,213,0,0.12), rgba(255,170,0,0.06))', border: '1px solid rgba(255,213,0,0.2)' }}>
+                        <IconTrophy size={20} color="#ffd700" />
+                      </div>
+                      <div className="text-2xl font-black text-white tabular-nums">{minicapsCount}</div>
+                      <div className="text-[0.6rem] font-bold text-white/35 uppercase tracking-widest">Миникапы</div>
+                    </div>
+
+                    <div className="relative glass-surface shadow-glass-sm rounded-2xl p-4 flex flex-col items-center gap-2 overflow-hidden group hover:border-accent/20 transition-colors">
+                      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-accent to-transparent opacity-40" />
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.12), rgba(139,92,246,0.06))', border: '1px solid rgba(168,85,247,0.2)' }}>
+                        <IconDice size={20} color="var(--accent-color, #a855f7)" />
+                      </div>
+                      <div className="text-2xl font-black text-white tabular-nums">{funkyGamesCount}</div>
+                      <div className="text-[0.6rem] font-bold text-white/35 uppercase tracking-widest">Фанки</div>
+                    </div>
+                  </div>
+
+                  {/* Activity breakdown bar */}
+                  {totalGames > 0 && (() => {
+                    const segments = [
+                      { count: gomafiaGamesCount, color: '#8977fe', label: 'GoMafia' },
+                      { count: minicapGamesCount, color: '#ffd700', label: 'Миникап' },
+                      { count: funkyGamesCount, color: 'var(--accent-color, #a855f7)', label: 'Фанки' },
+                      { count: otherGames, color: 'rgba(255,255,255,0.15)', label: 'Другие' },
+                    ].filter(s => s.count > 0);
+                    return (
+                      <div className="w-full glass-surface shadow-glass-sm rounded-2xl p-4 animate-fade-in">
+                        <div className="text-[0.6rem] font-bold text-white/30 uppercase tracking-widest mb-3">Активность</div>
+                        <div className="flex w-full h-2 rounded-full overflow-hidden gap-[2px]">
+                          {segments.map(s => (
+                            <div key={s.label} className="h-full rounded-full transition-all duration-500" style={{ width: `${(s.count / totalGames) * 100}%`, background: s.color, minWidth: s.count > 0 ? 4 : 0 }} />
+                          ))}
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2.5">
+                          {segments.map(s => (
+                            <div key={s.label} className="flex items-center gap-1.5">
+                              <div className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
+                              <span className="text-[0.65rem] font-semibold text-white/40">{s.label}</span>
+                              <span className="text-[0.65rem] font-bold text-white/60 tabular-nums">{Math.round((s.count / totalGames) * 100)}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Quick actions */}
+                  <div className="grid grid-cols-2 gap-3 w-full">
                     <button
-                      className="absolute top-0 right-0 w-9 h-9 rounded-xl flex items-center justify-center bg-white/[0.04] border border-white/[0.08] active:scale-95 transition-transform"
+                      className="flex items-center gap-3 p-4 rounded-2xl glass-surface shadow-glass-sm active:scale-[0.97] transition-all duration-200 hover:border-accent/20 group"
                       onClick={() => {
                         const name = userDisplayName || (tgUser ? `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}` : '');
                         setProfileSettingsName(name);
@@ -1343,74 +1441,27 @@ export function MainMenu() {
                         triggerHaptic('light');
                       }}
                     >
-                      <IconSettings size={16} color="rgba(255,255,255,0.4)" />
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-accent/10 border border-accent/15 group-hover:bg-accent/15 transition-colors">
+                        <IconSettings size={18} color="var(--accent-color, #a855f7)" />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-[0.8em] font-bold text-white">Настройки</div>
+                        <div className="text-[0.6em] text-white/30 font-medium">Профиль и аккаунт</div>
+                      </div>
                     </button>
 
-                    <div className="relative">
-                      <div className="absolute inset-0 rounded-3xl border-2 border-accent/30 animate-pulse" />
-                      {avatarSrc ? (
-                        <div className="w-20 h-20 rounded-3xl bg-white/[0.06] border-2 border-accent flex items-center justify-center text-2xl font-bold text-white overflow-hidden bg-cover bg-center" style={{ backgroundImage: `url(${avatarSrc})` }} />
-                      ) : (
-                        <div className="w-20 h-20 rounded-3xl bg-white/[0.06] border-2 border-accent flex items-center justify-center text-2xl font-bold text-white overflow-hidden">{initials}</div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="text-xl font-extrabold tracking-tight text-white">{displayName}</div>
-                      {tgUser?.username && <div className="text-sm text-white/40">@{tgUser.username}</div>}
-                      {tgUser?.id && <div className="text-xs text-white/30">UID {tgUser.id}</div>}
-                      {goMafiaProfile && (
-                        <div className="flex items-center gap-1.5 mt-1 px-2 py-1 rounded-lg bg-accent/10 border border-accent/20 text-accent text-sm font-bold">
-                          <IconGoMafia size={14} />
-                          <span>{goMafiaProfile.nickname}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Status placeholder */}
-                  <div className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/[0.04]">
-                      <IconHistory size={18} color="rgba(255,255,255,0.2)" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white/40 uppercase tracking-wider">Статус</div>
-                      <div className="text-sm font-bold text-white/60">Скоро</div>
-                    </div>
-                  </div>
-
-                  {/* Stats grid */}
-                  <div className="grid grid-cols-3 gap-3 w-full">
-                    <div className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
-                      <IconStats size={18} color="rgba(255,255,255,0.4)" className="mb-1" />
-                      <div className="text-lg font-extrabold text-accent tabular-nums">{profileStats.totalGames}</div>
-                      <div className="text-[0.65rem] font-bold text-white/40 uppercase tracking-wider text-center">{pluralGames(profileStats.totalGames)}<br/>проведено</div>
-                    </div>
-                    <div className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-1" style={{ background: 'linear-gradient(135deg, rgba(137,119,254,0.15), rgba(10,232,240,0.08))', border: '1px solid rgba(137,119,254,0.2)' }}>
-                        <IconGoMafia size={18} />
+                    <button
+                      className="flex items-center gap-3 p-4 rounded-2xl glass-surface shadow-glass-sm active:scale-[0.97] transition-all duration-200 hover:border-accent/20 group"
+                      onClick={() => { setMenuScreen('themes'); triggerHaptic('light'); }}
+                    >
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-accent/10 border border-accent/15 group-hover:bg-accent/15 transition-colors">
+                        <IconPalette size={18} color="var(--accent-color, #a855f7)" />
                       </div>
-                      <div className="text-lg font-extrabold text-accent tabular-nums">{profileStats.gomafiaTournamentsCount}</div>
-                      <div className="text-[0.65rem] font-bold text-white/40 uppercase tracking-wider">Турниры</div>
-                    </div>
-                    <div className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-1" style={{ background: 'linear-gradient(135deg, rgba(255,213,0,0.12), rgba(255,170,0,0.06))', border: '1px solid rgba(255,213,0,0.2)' }}>
-                        <IconTrophy size={17} color="#ffd700" />
+                      <div className="text-left">
+                        <div className="text-[0.8em] font-bold text-white">Темы</div>
+                        <div className="text-[0.6em] text-white/30 font-medium">Оформление</div>
                       </div>
-                      <div className="text-lg font-extrabold text-accent tabular-nums">{profileStats.minicapsCount}</div>
-                      <div className="text-[0.65rem] font-bold text-white/40 uppercase tracking-wider">Миникапы</div>
-                    </div>
-                  </div>
-
-                  {/* Funky — full width */}
-                  <div className="w-full flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.12), rgba(139,92,246,0.06))', border: '1px solid rgba(168,85,247,0.2)' }}>
-                        <IconDice size={17} color="var(--accent-color, #a855f7)" />
-                      </div>
-                      <div className="text-[0.65rem] font-bold text-white/40 uppercase tracking-wider">Фанки</div>
-                    </div>
-                    <div className="text-lg font-extrabold text-accent tabular-nums">{profileStats.funkyGamesCount}</div>
+                    </button>
                   </div>
 
                 </div>
@@ -1469,108 +1520,105 @@ export function MainMenu() {
               triggerHaptic('medium');
             };
 
+            const nameDirty = profileSettingsName !== (userDisplayName || (tgUser ? `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}` : ''));
+
             return (
               <div className="animate-fade-in w-full max-w-[400px] pb-[100px]">
 
                 {/* Header */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2.5">
                     <button
-                      className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.04] border border-white/[0.08] cursor-pointer active:scale-90 transition-transform"
+                      className="w-9 h-9 rounded-xl flex items-center justify-center glass-surface shadow-glass-sm cursor-pointer active:scale-90 transition-transform"
                       onClick={() => { setMenuScreen('profile'); triggerHaptic('light'); }}
                     >
                       <IconArrowRight size={16} color="rgba(255,255,255,0.7)" style={{ transform: 'rotate(180deg)' }} />
                     </button>
-                    <h2 className="text-[1.1em] font-extrabold text-white">Настройки</h2>
+                    <h2 className="text-[1.2em] font-black text-white tracking-tight">Настройки</h2>
                   </div>
-                  <div className="text-[0.65em] font-semibold text-white/[0.15] tracking-[0.05em]">v2.1</div>
+                  <div className="px-2 py-0.5 rounded-md bg-white/[0.04] text-[0.6em] font-bold text-white/20 tracking-wider">v2.1</div>
                 </div>
 
-                <div className="flex flex-col gap-3.5">
+                <div className="flex flex-col gap-4 animate-stagger">
 
-                  {/* Profile block (avatar + name) */}
-                  <div className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden flex items-center gap-[18px]">
-                    <div className="relative shrink-0">
-                      <div className="w-[72px] h-[72px] rounded-full p-[2px] bg-gradient-to-br from-[var(--accent-color)] to-[#6366f1]">
-                        <div className="w-full h-full rounded-full bg-[rgba(10,10,12,1)] p-[3px] overflow-hidden">
-                          {avatarSrc ? (
-                            <div className="w-full h-full rounded-full bg-cover bg-center opacity-90" style={{ backgroundImage: `url(${avatarSrc})` }} />
-                          ) : (
-                            <div className="w-full h-full rounded-full bg-gradient-to-br from-[var(--accent-color)] to-[#6366f1] flex items-center justify-center text-[1.6em] font-bold text-white">{initials}</div>
-                          )}
+                  {/* ── Profile card ── */}
+                  <div className="relative glass-surface shadow-glass-md rounded-[22px] p-5 overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-accent to-transparent opacity-50" />
+                    <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-[0.04]" style={{ background: 'var(--accent-color)' }} />
+
+                    <div className="flex items-center gap-5">
+                      <div className="relative shrink-0">
+                        <div className="w-20 h-20 rounded-full p-[2.5px]" style={{ background: 'linear-gradient(135deg, var(--accent-color), #6366f1)' }}>
+                          <div className="w-full h-full rounded-full bg-[#0a0a0c] p-[2px] overflow-hidden">
+                            {avatarSrc ? (
+                              <div className="w-full h-full rounded-full bg-cover bg-center" style={{ backgroundImage: `url(${avatarSrc})` }} />
+                            ) : (
+                              <div className="w-full h-full rounded-full bg-gradient-to-br from-accent/20 to-indigo-500/20 flex items-center justify-center text-2xl font-black text-white">{initials}</div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <button
-                        className="absolute -bottom-0.5 -right-0.5 w-[26px] h-[26px] rounded-full bg-accent border-[3px] border-[rgba(18,18,26,1)] flex items-center justify-center cursor-pointer active:scale-[0.88] transition-transform duration-150"
-                        onClick={() => avatarInputRef.current?.click()}
-                      >
-                        <IconCamera size={13} color="#fff" />
-                      </button>
-                      <input
-                        ref={avatarInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarChange}
-                        style={{ display: 'none' }}
-                      />
-                    </div>
-
-                    <div className="flex-1 min-w-0 flex flex-col gap-2">
-                      <div>
-                        <div className="text-[0.55em] font-bold uppercase tracking-[0.12em] text-white/20 mb-1 ml-0.5">Никнейм</div>
-                        <input
-                          className="input-field"
-                          type="text"
-                          value={profileSettingsName}
-                          onChange={e => setProfileSettingsName(e.target.value)}
-                          placeholder="Введите имя..."
-                          maxLength={40}
-                        />
-                      </div>
-                      {userAvatarUrl && (
-                        <button className="flex items-center gap-1.5 text-[0.68em] font-semibold text-red-400/50 bg-transparent border-none cursor-pointer mt-1 hover:text-red-400" onClick={handleRemoveAvatar}>
-                          <IconTrash size={11} /> Удалить фото
+                        <button
+                          className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-accent border-[3px] border-[#0a0a0c] flex items-center justify-center cursor-pointer active:scale-[0.85] transition-transform shadow-[0_2px_8px_rgba(var(--accent-rgb),0.4)]"
+                          onClick={() => avatarInputRef.current?.click()}
+                        >
+                          <IconCamera size={13} color="#fff" />
                         </button>
-                      )}
+                        <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
+                      </div>
+
+                      <div className="flex-1 min-w-0 flex flex-col gap-2.5">
+                        <div>
+                          <div className="text-[0.55em] font-bold uppercase tracking-[0.15em] text-white/25 mb-1.5 ml-0.5">Никнейм</div>
+                          <input
+                            className="input-field w-full"
+                            type="text"
+                            value={profileSettingsName}
+                            onChange={e => setProfileSettingsName(e.target.value)}
+                            placeholder="Введите имя..."
+                            maxLength={40}
+                          />
+                        </div>
+                        {userAvatarUrl && (
+                          <button className="flex items-center gap-1.5 text-[0.68em] font-semibold text-red-400/40 bg-transparent border-none cursor-pointer hover:text-red-400 transition-colors" onClick={handleRemoveAvatar}>
+                            <IconTrash size={11} /> Удалить фото
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* GoMafia (integration + auth) */}
+                  {/* ── Section: Интеграции ── */}
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="h-px flex-1 bg-white/[0.06]" />
+                    <span className="text-[0.6rem] font-bold text-white/20 uppercase tracking-[0.15em]">Интеграции</span>
+                    <div className="h-px flex-1 bg-white/[0.06]" />
+                  </div>
+
                   {goMafiaProfile ? (
-                    <div className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden">
-                      <div className="flex items-center gap-2.5 mb-3">
-                        <div className="w-9 h-9 rounded-xl bg-[rgba(34,197,94,0.1)] border border-[rgba(34,197,94,0.2)] flex items-center justify-center text-white/60">
-                          <IconGoMafia size={16} />
+                    <div className="relative glass-surface shadow-glass-sm rounded-[22px] p-5 overflow-hidden">
+                      <div className="absolute top-0 left-0 w-[3px] h-full bg-gradient-to-b from-[#22c55e] to-[#22c55e]/20 rounded-l-full" />
+
+                      <div className="flex items-center gap-3 mb-3.5">
+                        <div className="w-10 h-10 rounded-xl bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.15)] flex items-center justify-center">
+                          <IconGoMafia size={18} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-[0.78em] font-bold text-white">GoMafia</div>
-                          <div className="text-[0.58em] font-semibold text-[rgba(34,197,94,0.6)] uppercase tracking-[0.03em]">Подключено</div>
+                          <div className="text-[0.85em] font-bold text-white">GoMafia</div>
+                          <div className="text-[0.6em] font-semibold text-[#22c55e]/70 uppercase tracking-[0.05em]">Подключено</div>
                         </div>
                         <div className="flex gap-1.5">
                           <button
-                            className="w-8 h-8 rounded-lg bg-white/[0.04] border-none flex items-center justify-center text-white/30 cursor-pointer active:scale-90 transition-transform"
+                            className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center text-white/30 cursor-pointer active:scale-90 transition-transform hover:bg-white/[0.08]"
                             onClick={async () => {
                               triggerHaptic('light');
                               try {
                                 const res = await goMafiaApi.lookupGoMafiaPlayer(goMafiaProfile.nickname);
                                 if (res.success && res.profile) {
-                                  const updated = {
-                                    ...goMafiaProfile,
-                                    nickname: res.profile.nickname || goMafiaProfile.nickname,
-                                    avatar: res.profile.avatar || goMafiaProfile.avatar,
-                                    id: res.profile.id || goMafiaProfile.id,
-                                    title: res.profile.title || goMafiaProfile.title,
-                                  };
+                                  const updated = { ...goMafiaProfile, nickname: res.profile.nickname || goMafiaProfile.nickname, avatar: res.profile.avatar || goMafiaProfile.avatar, id: res.profile.id || goMafiaProfile.id, title: res.profile.title || goMafiaProfile.title };
                                   goMafiaApi.saveGoMafiaProfile(updated);
                                   setGoMafiaProfile(updated);
-                                  if (updated.nickname) {
-                                    setUserDisplayName(updated.nickname);
-                                    try { localStorage.setItem('maf_user_display_name', updated.nickname); } catch {}
-                                  }
-                                  if (updated.avatar) {
-                                    setUserAvatarUrl(updated.avatar);
-                                    try { localStorage.setItem('maf_user_avatar', updated.avatar); } catch {}
-                                  }
+                                  if (updated.nickname) { setUserDisplayName(updated.nickname); try { localStorage.setItem('maf_user_display_name', updated.nickname); } catch {} }
+                                  if (updated.avatar) { setUserAvatarUrl(updated.avatar); try { localStorage.setItem('maf_user_avatar', updated.avatar); } catch {} }
                                   const token = authService.getStoredToken();
                                   if (token) profileApi.saveProfile(token, { gomafia: updated });
                                   triggerHaptic('success');
@@ -1581,44 +1629,37 @@ export function MainMenu() {
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
                           </button>
                           <button
-                            className="w-8 h-8 rounded-lg bg-white/[0.04] border-none flex items-center justify-center text-white/30 cursor-pointer active:scale-90 transition-transform bg-[rgba(239,68,68,0.06)] text-[rgba(239,68,68,0.4)]"
-                            onClick={() => {
-                              goMafiaApi.removeGoMafiaProfile();
-                              setGoMafiaProfile(null);
-                              const token = authService.getStoredToken();
-                              if (token) profileApi.clearGoMafia(token);
-                              triggerHaptic('medium');
-                            }}
+                            className="w-8 h-8 rounded-lg bg-[rgba(239,68,68,0.06)] flex items-center justify-center text-[rgba(239,68,68,0.4)] cursor-pointer active:scale-90 transition-transform hover:text-red-400"
+                            onClick={() => { goMafiaApi.removeGoMafiaProfile(); setGoMafiaProfile(null); const token = authService.getStoredToken(); if (token) profileApi.clearGoMafia(token); triggerHaptic('medium'); }}
                           >
                             <IconX size={14} />
                           </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2.5 py-2.5 px-3 bg-white/[0.02] border border-white/[0.05] rounded-2xl">
+
+                      <div className="flex items-center gap-3 py-2.5 px-3.5 bg-white/[0.02] border border-white/[0.05] rounded-xl">
                         {goMafiaProfile.avatar ? (
-                          <img src={goMafiaProfile.avatar} alt="" className="w-7 h-7 rounded-full border border-white/10 object-cover" />
+                          <img src={goMafiaProfile.avatar} alt="" className="w-8 h-8 rounded-full border border-white/10 object-cover" />
                         ) : (
-                          <div className="w-7 h-7 rounded-full border border-white/10 object-cover flex items-center justify-center bg-[rgba(137,119,254,0.15)] text-[0.7em] font-bold text-white">
+                          <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center bg-[rgba(137,119,254,0.15)] text-[0.75em] font-bold text-white">
                             {(goMafiaProfile.nickname || '?')[0].toUpperCase()}
                           </div>
                         )}
-                        <span className="text-[0.78em] font-bold text-white/60">{goMafiaProfile.nickname}</span>
+                        <span className="text-[0.82em] font-bold text-white/70">{goMafiaProfile.nickname}</span>
+                        {goMafiaProfile.title && <span className="text-[0.65em] text-white/25 font-medium ml-auto">{goMafiaProfile.title}</span>}
                       </div>
+
                       {linkedAccounts && (
-                        <div className="flex items-center justify-between mt-2.5 py-2.5 px-3 bg-white/[0.02] border border-white/[0.05] rounded-[14px]">
-                          <div className="text-[0.7em] font-semibold text-white/30">Авторизация</div>
+                        <div className="flex items-center justify-between mt-3 py-2.5 px-3.5 bg-white/[0.02] border border-white/[0.05] rounded-xl">
+                          <div className="text-[0.72em] font-semibold text-white/30">Авторизация</div>
                           {linkedAccounts.gomafia?.linked ? (
-                            <span className="inline-flex items-center gap-1 text-[0.62em] font-bold py-0.5 px-2 rounded-lg bg-[rgba(34,197,94,0.1)] text-[#22c55e]">
+                            <span className="inline-flex items-center gap-1 text-[0.62em] font-bold py-0.5 px-2 rounded-md bg-[rgba(34,197,94,0.1)] text-[#22c55e]">
                               <IconCheck size={10} /> Привязан
                             </span>
                           ) : (
                             <button
                               className="text-[0.65em] font-bold py-1 px-2.5 rounded-lg bg-accent/10 border border-accent/20 text-accent cursor-pointer active:scale-[0.92] transition-transform"
-                              onClick={() => {
-                                setGoMafiaModal(true);
-                                setGoMafiaLogin({ nickname: goMafiaProfile?.nickname || '', password: '', loading: false, error: '' });
-                                triggerHaptic('light');
-                              }}
+                              onClick={() => { setGoMafiaModal(true); setGoMafiaLogin({ nickname: goMafiaProfile?.nickname || '', password: '', loading: false, error: '' }); triggerHaptic('light'); }}
                             >
                               Привязать
                             </button>
@@ -1628,39 +1669,41 @@ export function MainMenu() {
                     </div>
                   ) : (
                     <button
-                      className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden flex items-center gap-3.5 cursor-pointer text-left active:scale-[0.98] transition-transform"
-                      onClick={() => {
-                        setGoMafiaModal(true);
-                        setGoMafiaLogin({ nickname: '', password: '', loading: false, error: '' });
-                        triggerHaptic('light');
-                      }}
+                      className="relative glass-surface shadow-glass-sm rounded-[22px] p-5 overflow-hidden flex items-center gap-4 cursor-pointer text-left active:scale-[0.98] transition-all hover:border-[rgba(137,119,254,0.2)] group"
+                      onClick={() => { setGoMafiaModal(true); setGoMafiaLogin({ nickname: '', password: '', loading: false, error: '' }); triggerHaptic('light'); }}
                     >
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[rgba(137,119,254,0.15)] to-[rgba(10,232,240,0.08)] border border-[rgba(137,119,254,0.2)] flex items-center justify-center text-white/60">
-                        <IconGoMafia size={16} />
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[rgba(137,119,254,0.15)] to-[rgba(10,232,240,0.08)] border border-[rgba(137,119,254,0.2)] flex items-center justify-center group-hover:shadow-[0_0_16px_rgba(137,119,254,0.15)] transition-shadow">
+                        <IconGoMafia size={18} />
                       </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.82em', fontWeight: 700, color: '#fff' }}>Подключить GoMafia</div>
-                        <div style={{ fontSize: '0.68em', color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Привяжите аккаунт gomafia.pro</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[0.85em] font-bold text-white">Подключить GoMafia</div>
+                        <div className="text-[0.68em] text-white/30 mt-0.5">Привяжите аккаунт gomafia.pro</div>
                       </div>
-                      <IconLink size={15} color="rgba(255,255,255,0.2)" />
+                      <IconArrowRight size={14} color="rgba(255,255,255,0.15)" />
                     </button>
                   )}
 
-                  {/* Auth grid */}
+                  {/* ── Section: Безопасность ── */}
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="h-px flex-1 bg-white/[0.06]" />
+                    <span className="text-[0.6rem] font-bold text-white/20 uppercase tracking-[0.15em]">Безопасность</span>
+                    <div className="h-px flex-1 bg-white/[0.06]" />
+                  </div>
+
                   {!linkedAccounts ? (
-                    <div className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden flex items-center justify-center py-6 gap-2">
+                    <div className="glass-surface shadow-glass-sm rounded-[22px] p-6 flex items-center justify-center gap-2">
                       <div className="w-5 h-5 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
-                      <span style={{ fontSize: '0.8em', color: 'rgba(255,255,255,0.35)' }}>Загрузка...</span>
+                      <span className="text-[0.8em] text-white/35">Загрузка...</span>
                     </div>
                   ) : (
                     <>
-                      <div className="grid grid-cols-2 gap-2.5">
-                        {/* Telegram */}
-                        <div className="relative p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center gap-2 text-center cursor-pointer transition-all active:scale-[0.97]">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(56,163,224,0.1)', color: '#38a3e0' }}>
-                            <span style={{ fontSize: '1em' }}>✈️</span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="relative glass-surface shadow-glass-sm rounded-[22px] p-4 flex flex-col items-center gap-2.5 text-center overflow-hidden cursor-pointer transition-all active:scale-[0.97] hover:border-[rgba(56,163,224,0.2)]">
+                          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-[#38a3e0] to-transparent opacity-50" />
+                          <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-[rgba(56,163,224,0.08)] border border-[rgba(56,163,224,0.12)]">
+                            <span className="text-lg">✈️</span>
                           </div>
-                          <div className="text-[0.8em] font-bold text-white">Telegram</div>
+                          <div className="text-[0.82em] font-bold text-white">Telegram</div>
                           <div className="text-[0.62em] text-white/30 font-medium">
                             {linkedAccounts.telegram?.linked
                               ? (linkedAccounts.telegram.username ? `@${linkedAccounts.telegram.username}` : 'Привязан')
@@ -1668,42 +1711,22 @@ export function MainMenu() {
                             }
                           </div>
                           {linkedAccounts.telegram?.linked && (
-                            <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-[#22c55e] shadow-[0_0_6px_rgba(34,197,94,0.5)]" />
+                            <div className="absolute top-3.5 right-3.5 w-2.5 h-2.5 rounded-full bg-[#22c55e] shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-role-dot" />
                           )}
                           {!linkedAccounts.telegram?.linked && !linkTelegramMode && (
                             <button
-                              className="text-[0.6em] font-bold py-1 px-2 rounded-lg bg-accent/10 border border-accent/20 text-accent cursor-pointer active:scale-[0.92] transition-transform mt-0.5"
+                              className="text-[0.62em] font-bold py-1 px-3 rounded-lg bg-[rgba(56,163,224,0.1)] border border-[rgba(56,163,224,0.2)] text-[#38a3e0] cursor-pointer active:scale-[0.92] transition-transform mt-0.5"
                               onClick={async () => {
                                 triggerHaptic('light');
                                 const token = authService.getStoredToken();
                                 if (!token) return;
-                                const res = await fetch('/login/code-generate.php', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ link_token: token }),
-                                }).then(r => r.json());
+                                const res = await fetch('/login/code-generate.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ link_token: token }) }).then(r => r.json());
                                 if (!res.code) return;
                                 setLinkTelegramMode({ code: res.code, expiresIn: res.expires_in, botLink: res.bot_link, botUsername: res.bot_username });
                                 stopLinkPolling();
                                 let remaining = res.expires_in;
-                                linkTimerRef.current = setInterval(() => {
-                                  remaining--;
-                                  setLinkTelegramMode(prev => prev ? { ...prev, expiresIn: remaining } : null);
-                                  if (remaining <= 0) { stopLinkPolling(); setLinkTelegramMode(null); }
-                                }, 1000);
-                                linkPollRef.current = setInterval(async () => {
-                                  const check = await authService.checkCode(res.code);
-                                  if (check.confirmed) {
-                                    stopLinkPolling();
-                                    setLinkTelegramMode(null);
-                                    authService.storeAuth(check.token, check.user);
-                                    loadLinkedAccounts();
-                                    triggerHaptic('success');
-                                  } else if (check.expired) {
-                                    stopLinkPolling();
-                                    setLinkTelegramMode(null);
-                                  }
-                                }, 2500);
+                                linkTimerRef.current = setInterval(() => { remaining--; setLinkTelegramMode(prev => prev ? { ...prev, expiresIn: remaining } : null); if (remaining <= 0) { stopLinkPolling(); setLinkTelegramMode(null); } }, 1000);
+                                linkPollRef.current = setInterval(async () => { const check = await authService.checkCode(res.code); if (check.confirmed) { stopLinkPolling(); setLinkTelegramMode(null); authService.storeAuth(check.token, check.user); loadLinkedAccounts(); triggerHaptic('success'); } else if (check.expired) { stopLinkPolling(); setLinkTelegramMode(null); } }, 2500);
                               }}
                             >
                               Привязать
@@ -1711,15 +1734,15 @@ export function MainMenu() {
                           )}
                         </div>
 
-                        {/* PassKey */}
                         <div
-                          className="relative p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center gap-2 text-center cursor-pointer transition-all active:scale-[0.97]"
+                          className="relative glass-surface shadow-glass-sm rounded-[22px] p-4 flex flex-col items-center gap-2.5 text-center overflow-hidden cursor-pointer transition-all active:scale-[0.97] hover:border-[rgba(34,197,94,0.2)]"
                           onClick={() => { setMenuScreen('passkeys'); triggerHaptic('light'); }}
                         >
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
-                            <span style={{ fontSize: '1em' }}>🔐</span>
+                          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-[#22c55e] to-transparent opacity-50" />
+                          <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.12)]">
+                            <span className="text-lg">🔐</span>
                           </div>
-                          <div className="text-[0.8em] font-bold text-white">PassKey</div>
+                          <div className="text-[0.82em] font-bold text-white">PassKey</div>
                           <div className="text-[0.62em] text-white/30 font-medium">
                             {linkedAccounts.passkeys?.length > 0
                               ? `${linkedAccounts.passkeys.length} ключ${linkedAccounts.passkeys.length > 1 ? (linkedAccounts.passkeys.length < 5 ? 'а' : 'ей') : ''}`
@@ -1727,65 +1750,60 @@ export function MainMenu() {
                             }
                           </div>
                           {linkedAccounts.passkeys?.length > 0 && (
-                            <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-accent shadow-[0_0_6px_rgba(168,85,247,0.5)]" />
+                            <div className="absolute top-3.5 right-3.5 w-2.5 h-2.5 rounded-full bg-accent shadow-[0_0_8px_rgba(168,85,247,0.6)] animate-role-dot" />
                           )}
                         </div>
                       </div>
 
-                      {/* Telegram link code display */}
                       {linkTelegramMode && (
-                        <div className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden text-center py-5">
-                          <div style={{ fontSize: '1.8em', fontWeight: 900, letterSpacing: 8, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>
-                            {linkTelegramMode.code}
+                        <div className="glass-surface shadow-glass-md rounded-[22px] p-5 text-center overflow-hidden animate-scale-in">
+                          <div className="text-[1.8em] font-black tracking-[8px] text-white tabular-nums py-1">{linkTelegramMode.code}</div>
+                          <div className="text-[0.72em] text-white/35 mt-1">
+                            Отправьте код боту · <span className="tabular-nums">{Math.floor(linkTelegramMode.expiresIn / 60)}:{String(linkTelegramMode.expiresIn % 60).padStart(2, '0')}</span>
                           </div>
-                          <div style={{ fontSize: '0.72em', color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
-                            Отправьте код боту • {Math.floor(linkTelegramMode.expiresIn / 60)}:{String(linkTelegramMode.expiresIn % 60).padStart(2, '0')}
-                          </div>
-                          {linkTelegramMode.botLink && (
-                            <a
-                              href={linkTelegramMode.botLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center py-2 px-4 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-bold cursor-pointer active:scale-95 transition-transform"
-                              style={{ marginTop: 8, display: 'inline-flex', textDecoration: 'none', padding: '8px 16px' }}
+                          <div className="flex items-center justify-center gap-2 mt-3">
+                            {linkTelegramMode.botLink && (
+                              <a href={linkTelegramMode.botLink} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center py-2 px-4 rounded-xl bg-[rgba(56,163,224,0.1)] border border-[rgba(56,163,224,0.2)] text-[#38a3e0] text-xs font-bold no-underline cursor-pointer active:scale-95 transition-transform">
+                                Открыть @{linkTelegramMode.botUsername || 'бота'}
+                              </a>
+                            )}
+                            <button
+                              className="inline-flex items-center justify-center py-2 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/30 text-xs font-bold cursor-pointer active:scale-95 transition-transform"
+                              onClick={() => { stopLinkPolling(); setLinkTelegramMode(null); }}
                             >
-                              Открыть @{linkTelegramMode.botUsername || 'бота'}
-                            </a>
-                          )}
-                          <button
-                            className="inline-flex items-center justify-center py-2 px-4 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-bold cursor-pointer active:scale-95 transition-transform"
-                            style={{ marginTop: 4, color: 'rgba(255,255,255,0.3)', borderColor: 'rgba(255,255,255,0.08)' }}
-                            onClick={() => { stopLinkPolling(); setLinkTelegramMode(null); }}
-                          >
-                            Отмена
-                          </button>
+                              Отмена
+                            </button>
+                          </div>
                         </div>
                       )}
-
                     </>
                   )}
 
-                  {/* Sessions */}
-                  <div className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden">
-                    <div className="flex items-center gap-2 text-[0.7em] font-bold text-white/30 uppercase tracking-wider mb-2.5">
-                      <IconLock size={13} color="rgba(255,255,255,0.2)" />
-                      <span>Сессии</span>
+                  {/* ── Sessions ── */}
+                  <div className="glass-surface shadow-glass-sm rounded-[22px] p-5 overflow-hidden">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-7 h-7 rounded-lg bg-white/[0.04] flex items-center justify-center">
+                        <IconLock size={13} color="rgba(255,255,255,0.25)" />
+                      </div>
+                      <span className="text-[0.72em] font-bold text-white/35 uppercase tracking-wider">Сессии</span>
+                      {deviceSessions.length > 0 && (
+                        <span className="ml-auto px-1.5 py-0.5 rounded-md bg-white/[0.04] text-[0.6em] font-bold text-white/25 tabular-nums">{deviceSessions.length}</span>
+                      )}
                     </div>
 
                     {sessionsLoading ? (
                       <div className="flex items-center justify-center py-5 gap-2">
                         <div className="w-5 h-5 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
-                        <span style={{ fontSize: '0.8em', color: 'rgba(255,255,255,0.35)' }}>Загрузка...</span>
+                        <span className="text-[0.8em] text-white/35">Загрузка...</span>
                       </div>
                     ) : deviceSessions.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '0.8em', color: 'rgba(255,255,255,0.25)' }}>
-                        Нет активных сеансов
-                      </div>
+                      <div className="text-center py-4 text-[0.8em] text-white/20">Нет активных сеансов</div>
                     ) : (
                       <div className="flex flex-col gap-1.5">
                         {deviceSessions.map(session => (
-                          <div key={session.id} className={`flex items-center gap-2.5 py-2 px-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] transition-all ${session.is_current ? 'border-accent/20 bg-accent/[0.04]' : ''}`}>
-                            <div className={`w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center text-white/30 shrink-0 ${session.is_current ? 'bg-accent/10 text-accent' : ''}`}>
+                          <div key={session.id} className={`flex items-center gap-2.5 py-2.5 px-3 rounded-xl transition-all ${session.is_current ? 'bg-accent/[0.05] border border-accent/15' : 'bg-white/[0.02] border border-white/[0.04]'}`}>
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${session.is_current ? 'bg-accent/10 text-accent' : 'bg-white/[0.04] text-white/25'}`}>
                               {session.device_name?.includes('iPhone') || session.device_name?.includes('iPad') || session.device_name?.includes('Android') ? (
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
                               ) : (
@@ -1794,44 +1812,51 @@ export function MainMenu() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-[0.78em] font-bold text-white truncate">{session.device_name || 'Неизвестное устройство'}</div>
-                              <div className="text-[0.6em] text-white/25 font-medium">
-                                {session.is_current ? 'Текущее' : formatSessionDate(session.last_active)}
+                              <div className={`text-[0.6em] font-medium ${session.is_current ? 'text-accent/60' : 'text-white/20'}`}>
+                                {session.is_current ? 'Текущее устройство' : formatSessionDate(session.last_active)}
                               </div>
                             </div>
                             {!session.is_current && (
                               <button
-                                className="text-[0.6em] font-bold py-1 px-2 rounded-md bg-red-500/[0.06] text-red-400/50 border-none cursor-pointer active:text-red-400 transition-colors"
+                                className="text-[0.6em] font-bold py-1 px-2.5 rounded-lg bg-red-500/[0.06] text-red-400/40 border-none cursor-pointer active:text-red-400 hover:bg-red-500/[0.1] transition-all"
                                 onClick={() => handleTerminateSession(session.id)}
                                 disabled={terminatingId === session.id}
                                 style={{ opacity: terminatingId === session.id ? 0.5 : 1 }}
                               >
-                                {terminatingId === session.id ? '...' : 'Exit'}
+                                {terminatingId === session.id ? '...' : 'Завершить'}
                               </button>
                             )}
                           </div>
                         ))}
                       </div>
                     )}
+                  </div>
 
-                    {!window.Telegram?.WebApp?.initData && (
+                  {/* ── Danger zone ── */}
+                  {!window.Telegram?.WebApp?.initData && (
+                    <>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="h-px flex-1 bg-red-500/10" />
+                        <span className="text-[0.6rem] font-bold text-red-400/25 uppercase tracking-[0.15em]">Опасная зона</span>
+                        <div className="h-px flex-1 bg-red-500/10" />
+                      </div>
                       <button
-                        className="w-full mt-3 flex items-center justify-center gap-2 py-3 rounded-xl text-[0.78em] font-bold text-red-400/50 bg-red-500/[0.04] border border-red-500/10 cursor-pointer active:scale-[0.97] transition-transform"
-                        onClick={() => {
-                          authService.logout();
-                          triggerHaptic('medium');
-                          window.location.reload();
-                        }}
+                        className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-[18px] text-[0.8em] font-bold text-red-400/50 bg-red-500/[0.04] border border-red-500/10 cursor-pointer active:scale-[0.97] transition-all hover:bg-red-500/[0.08] hover:text-red-400/70"
+                        onClick={() => { authService.logout(); triggerHaptic('medium'); window.location.reload(); }}
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                         Выйти отовсюду
                       </button>
-                    )}
-                  </div>
+                    </>
+                  )}
 
                 </div>
 
                 {/* Save button */}
-                <button className="w-full mt-4 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-accent text-white text-[0.9em] font-bold active:scale-[0.97] transition-transform shadow-[0_0_24px_rgba(var(--accent-rgb),0.3)]" onClick={handleSaveName}>
+                <button
+                  className={`w-full mt-5 flex items-center justify-center gap-2 py-4 rounded-2xl text-[0.9em] font-bold active:scale-[0.97] transition-all ${nameDirty ? 'bg-accent text-white shadow-[0_0_30px_rgba(var(--accent-rgb),0.4)] animate-pulse-glow' : 'bg-accent/80 text-white/80 shadow-[0_0_16px_rgba(var(--accent-rgb),0.2)]'}`}
+                  onClick={handleSaveName}
+                >
                   <IconCheck size={16} /> Сохранить
                 </button>
               </div>
