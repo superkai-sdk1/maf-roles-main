@@ -380,4 +380,24 @@ export const profileApi = {
   },
 };
 
+export const playerApi = {
+  async getPlayerGames(token) {
+    try {
+      const response = await fetch(`${API_BASE}player-games.php?token=${encodeURIComponent(token)}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch { return null; }
+  },
+
+  async getPlayerSessionDetail(token, sessionId, judgeId) {
+    try {
+      const response = await fetch(
+        `${API_BASE}player-session-detail.php?token=${encodeURIComponent(token)}&session_id=${encodeURIComponent(sessionId)}&judge_id=${encodeURIComponent(judgeId)}`
+      );
+      if (!response.ok) return null;
+      return await response.json();
+    } catch { return null; }
+  },
+};
+
 export default goMafiaApi;

@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { sessionManager } from '../services/sessionManager';
-import { goMafiaApi, profileApi, sessionsApi } from '../services/api';
+import { goMafiaApi, profileApi, sessionsApi, playerApi } from '../services/api';
 import { authService } from '../services/auth';
 import { COLOR_SCHEMES, applyTheme, applyDarkMode } from '../constants/themes';
 import { triggerHaptic } from '../utils/haptics';
@@ -11,7 +11,7 @@ import {
   IconPlayCircle, IconHistory, IconPlus, IconPalette, IconUser,
   IconTrophy, IconDice, IconChevronDown, IconTrash, IconStats, IconMafBoard,
   IconCheck, IconArrowRight, IconLock, IconArchive, IconX, IconList,
-  IconGoMafia, IconSettings, IconCamera, IconLink, IconEdit, IconBell,
+  IconGoMafia, IconSettings, IconCamera, IconLink, IconEdit, IconBell, IconTarget,
 } from '../utils/icons';
 
 const formatTime = (ts) => {
@@ -462,6 +462,16 @@ export function MainMenu() {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [terminatingId, setTerminatingId] = useState(null);
 
+  const [playerGames, setPlayerGames] = useState(null);
+  const [playerNickname, setPlayerNickname] = useState('');
+  const [playerLoading, setPlayerLoading] = useState(false);
+  const [playerError, setPlayerError] = useState('');
+  const [playerDetailSession, setPlayerDetailSession] = useState(null);
+  const [playerDetailLoading, setPlayerDetailLoading] = useState(false);
+  const [playerLastViewed, setPlayerLastViewed] = useState(() => {
+    try { return parseInt(localStorage.getItem('maf_player_last_viewed') || '0', 10); } catch { return 0; }
+  });
+
   const [linkedAccounts, setLinkedAccounts] = useState(null);
   const [linkTelegramMode, setLinkTelegramMode] = useState(null);
   const linkPollRef = useRef(null);
@@ -513,6 +523,50 @@ export function MainMenu() {
       }
     });
   }, []);
+
+  const loadPlayerGames = useCallback(async () => {
+    const token = authService.getStoredToken();
+    if (!token) return;
+    setPlayerLoading(true);
+    setPlayerError('');
+    try {
+      const data = await playerApi.getPlayerGames(token);
+      if (!data) { setPlayerError('Ошибка загрузки'); return; }
+      if (data.error === 'no_gomafia') { setPlayerError('no_gomafia'); return; }
+      if (data.error) { setPlayerError(data.error); return; }
+      setPlayerNickname(data.nickname || '');
+      setPlayerGames(data.games || []);
+    } catch { setPlayerError('Ошибка сети'); }
+    finally { setPlayerLoading(false); }
+  }, []);
+
+  const loadPlayerSessionDetail = useCallback(async (sessionId, judgeId) => {
+    const token = authService.getStoredToken();
+    if (!token) return;
+    setPlayerDetailLoading(true);
+    try {
+      const data = await playerApi.getPlayerSessionDetail(token, sessionId, judgeId);
+      if (data && !data.error) {
+        setPlayerDetailSession(data);
+        setMenuScreen('playerDetail');
+      }
+    } catch {}
+    finally { setPlayerDetailLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (menuScreen === 'player') {
+      loadPlayerGames();
+      const now = Date.now();
+      setPlayerLastViewed(now);
+      try { localStorage.setItem('maf_player_last_viewed', String(now)); } catch {}
+    }
+  }, [menuScreen, loadPlayerGames]);
+
+  const playerHasUpdates = useMemo(() => {
+    if (!playerGames || playerGames.length === 0) return false;
+    return playerGames.some(g => new Date(g.updated_at).getTime() > playerLastViewed);
+  }, [playerGames, playerLastViewed]);
 
   const loadActiveSessions = useCallback(async () => {
     const token = authService.getStoredToken();
@@ -796,7 +850,8 @@ export function MainMenu() {
   const handleSwipeBack = useCallback(() => {
     if (tableGroup) { setTableGroup(null); return; }
     if (menuScreen === 'profileSettings') { setMenuScreen('profile'); return; }
-    if (menuScreen === 'profile' || menuScreen === 'themes' || menuScreen === 'notifications') { setMenuScreen('game'); return; }
+    if (menuScreen === 'playerDetail') { setMenuScreen('player'); return; }
+    if (menuScreen === 'profile' || menuScreen === 'themes' || menuScreen === 'notifications' || menuScreen === 'player') { setMenuScreen('game'); return; }
   }, [tableGroup, menuScreen]);
 
   const canSwipeBack = tableGroup || menuScreen !== 'game';
@@ -2110,6 +2165,228 @@ export function MainMenu() {
             </div>
           )}
 
+          {/* =================== PLAYER SCREEN =================== */}
+          {menuScreen === 'player' && (
+            <div className="animate-fade-in w-full max-w-[400px] pb-[100px] flex flex-col gap-3">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-[1.3em] font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>Мои игры</h2>
+                {playerNickname && (
+                  <span className="text-[0.7em] font-bold px-2.5 py-1 rounded-full" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)', color: 'var(--accent-color)' }}>
+                    {playerNickname}
+                  </span>
+                )}
+              </div>
+
+              {playerLoading && (
+                <div className="flex flex-col items-center gap-3 py-12">
+                  <div className="w-8 h-8 border-2 border-[var(--accent-color)] border-t-transparent rounded-full animate-spin" />
+                  <span className="text-[0.8em] font-medium" style={{ color: 'var(--text-muted)' }}>Загрузка...</span>
+                </div>
+              )}
+
+              {!playerLoading && playerError === 'no_gomafia' && (
+                <div className="flex flex-col items-center gap-4 py-12">
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
+                    <IconGoMafia size={32} />
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[0.95em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Привяжите GoMafia</div>
+                    <div className="text-[0.8em] font-medium max-w-[280px]" style={{ color: 'var(--text-muted)' }}>
+                      Чтобы видеть свои игры, привяжите аккаунт GoMafia в настройках профиля.
+                    </div>
+                  </div>
+                  <button
+                    className="px-5 py-2.5 rounded-xl font-bold text-[0.85em] text-white transition-all active:scale-95"
+                    style={{ background: 'var(--accent-color)' }}
+                    onClick={() => { setMenuScreen('profile'); triggerHaptic('light'); }}
+                  >
+                    Перейти в профиль
+                  </button>
+                </div>
+              )}
+
+              {!playerLoading && playerError && playerError !== 'no_gomafia' && (
+                <div className="flex flex-col items-center gap-3 py-12">
+                  <div className="text-[0.9em] font-medium" style={{ color: 'var(--text-muted)' }}>{playerError}</div>
+                  <button
+                    className="px-4 py-2 rounded-xl font-bold text-[0.8em] transition-all active:scale-95"
+                    style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)', color: 'var(--accent-color)' }}
+                    onClick={loadPlayerGames}
+                  >
+                    Повторить
+                  </button>
+                </div>
+              )}
+
+              {!playerLoading && !playerError && playerGames && playerGames.length === 0 && (
+                <div className="flex flex-col items-center gap-3 py-12">
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
+                    <IconTarget size={28} color="var(--accent-color)" />
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[0.95em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Пока нет игр</div>
+                    <div className="text-[0.8em] font-medium max-w-[280px]" style={{ color: 'var(--text-muted)' }}>
+                      Вы пока не участвовали в играх. Когда ведущий добавит вас в стол, игры появятся здесь.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!playerLoading && !playerError && playerGames && playerGames.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {playerGames.map((game, idx) => {
+                    const isNew = new Date(game.updated_at).getTime() > playerLastViewed;
+                    const isWin = game.winner_team === 'peace' ? (game.player_role === 'Мирный' || game.player_role === 'Шериф') :
+                                  game.winner_team === 'mafia' ? (game.player_role === 'Мафия' || game.player_role === 'Дон') : false;
+                    const winColor = game.winner_team === 'peace' ? '#30d158' : game.winner_team === 'mafia' ? '#ff453a' : 'var(--text-muted)';
+                    const winLabel = game.winner_team === 'peace' ? 'Мирные' : game.winner_team === 'mafia' ? 'Мафия' : game.game_finished ? 'Ничья' : 'В процессе';
+
+                    return (
+                      <button
+                        key={`${game.session_id}-${idx}`}
+                        className="relative w-full text-left p-3.5 rounded-2xl glass-card transition-all active:scale-[0.98] cursor-pointer"
+                        style={isNew ? { borderLeft: '3px solid var(--accent-color)' } : {}}
+                        onClick={() => { loadPlayerSessionDetail(game.session_id, game.judge_telegram_id); triggerHaptic('light'); }}
+                        disabled={playerDetailLoading}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[0.85em] font-bold truncate" style={{ color: 'var(--text-primary)' }}>
+                              {game.tournament_name || 'Игра'}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {game.game_mode && (
+                                <span className="text-[0.6em] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md" style={{ background: 'var(--accent-surface)', color: 'var(--accent-color)' }}>
+                                  {game.game_mode}
+                                </span>
+                              )}
+                              <span className="text-[0.65em] font-medium" style={{ color: 'var(--text-muted)' }}>
+                                {new Date(game.updated_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
+                          {game.player_score !== null && (
+                            <div className="text-[1.4em] font-black tabular-nums" style={{ color: isWin ? '#30d158' : 'var(--text-primary)' }}>
+                              {game.player_score}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          {game.player_num !== null && (
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[0.7em] font-black shrink-0" style={{ background: 'var(--accent-surface)', color: 'var(--accent-color)' }}>
+                              {game.player_num}
+                            </div>
+                          )}
+                          {game.player_role && (
+                            <span className="text-[0.75em] font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                              {game.player_role}
+                            </span>
+                          )}
+                          {game.player_action && (
+                            <span className="text-[0.65em] font-medium px-1.5 py-0.5 rounded-md" style={{ background: 'rgba(255,69,58,0.1)', color: '#ff453a' }}>
+                              {game.player_action}
+                            </span>
+                          )}
+                          <span className="ml-auto text-[0.65em] font-bold" style={{ color: winColor }}>
+                            {winLabel}
+                          </span>
+                        </div>
+
+                        {isNew && (
+                          <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-[var(--accent-color)] shadow-[0_0_6px_var(--accent-color)]" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* =================== PLAYER DETAIL SCREEN =================== */}
+          {menuScreen === 'playerDetail' && playerDetailSession && (
+            <div className="animate-fade-in w-full max-w-[400px] pb-[100px] flex flex-col gap-3">
+              <div className="flex items-center gap-3 mb-1">
+                <button
+                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all active:scale-90"
+                  style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}
+                  onClick={() => { setMenuScreen('player'); setPlayerDetailSession(null); triggerHaptic('light'); }}
+                >
+                  <IconArrowRight size={16} color="var(--accent-color)" style={{ transform: 'rotate(180deg)' }} />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-[1.1em] font-black tracking-tight truncate" style={{ color: 'var(--text-primary)' }}>
+                    {playerDetailSession.tournamentName || 'Результаты'}
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    {playerDetailSession.gameMode && (
+                      <span className="text-[0.6em] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md" style={{ background: 'var(--accent-surface)', color: 'var(--accent-color)' }}>
+                        {playerDetailSession.gameMode}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {playerDetailSession.winnerTeam && (
+                <div className="p-3 rounded-xl text-center font-bold text-[0.85em]" style={{
+                  background: playerDetailSession.winnerTeam === 'peace' ? 'rgba(48,209,88,0.12)' : 'rgba(255,69,58,0.12)',
+                  color: playerDetailSession.winnerTeam === 'peace' ? '#30d158' : '#ff453a',
+                  border: `1px solid ${playerDetailSession.winnerTeam === 'peace' ? 'rgba(48,209,88,0.2)' : 'rgba(255,69,58,0.2)'}`,
+                }}>
+                  {playerDetailSession.winnerTeam === 'peace' ? 'Победа мирных' : 'Победа мафии'}
+                </div>
+              )}
+
+              <div className="rounded-2xl overflow-hidden glass-card">
+                <div className="grid grid-cols-[40px_1fr_auto_auto] gap-x-2 p-2.5 text-[0.6em] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)' }}>
+                  <span className="text-center">#</span>
+                  <span>Игрок</span>
+                  <span className="text-center">Роль</span>
+                  <span className="text-center w-12">Балл</span>
+                </div>
+                {(playerDetailSession.players || []).map((p, i) => {
+                  const isSelf = p.login === playerNickname;
+                  const isMafia = p.role === 'Мафия' || p.role === 'Дон';
+                  return (
+                    <div
+                      key={i}
+                      className="grid grid-cols-[40px_1fr_auto_auto] gap-x-2 px-2.5 py-2 items-center"
+                      style={{
+                        borderBottom: i < (playerDetailSession.players || []).length - 1 ? '1px solid var(--border-color)' : 'none',
+                        background: isSelf ? 'var(--accent-surface)' : 'transparent',
+                      }}
+                    >
+                      <span className="text-center text-[0.8em] font-bold tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                        {p.num || i + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-[0.82em] font-semibold truncate" style={{ color: isSelf ? 'var(--accent-color)' : 'var(--text-primary)' }}>
+                          {p.login || '—'}
+                        </div>
+                        {p.action && (
+                          <span className="text-[0.65em] font-medium px-1 py-0.5 rounded" style={{ background: 'rgba(255,69,58,0.1)', color: '#ff453a' }}>
+                            {p.action}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[0.72em] font-semibold px-1.5 py-0.5 rounded-md text-center" style={{
+                        background: isMafia ? 'rgba(255,69,58,0.1)' : 'rgba(48,209,88,0.08)',
+                        color: isMafia ? '#ff453a' : '#30d158',
+                      }}>
+                        {p.role || '—'}
+                      </span>
+                      <span className="text-[0.9em] font-black tabular-nums text-center w-12" style={{ color: 'var(--text-primary)' }}>
+                        {p.score !== null && p.score !== undefined ? p.score : '—'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -2118,9 +2395,9 @@ export function MainMenu() {
           <NavItem active={!tableGroup && menuScreen === 'game' && activeTab === 'active'}
             onClick={() => { setTableGroup(null); setMenuScreen('game'); setActiveTab('active'); triggerHaptic('selection'); }}
             icon={<IconPlayCircle size={20} />} label="Активные" />
-          <NavItem active={!tableGroup && menuScreen === 'game' && activeTab === 'history'}
-            onClick={() => { setTableGroup(null); setMenuScreen('game'); setActiveTab('history'); triggerHaptic('selection'); }}
-            icon={<IconHistory size={20} />} label="История" />
+          <NavItem active={!tableGroup && menuScreen === 'player'}
+            onClick={() => { setTableGroup(null); setMenuScreen('player'); triggerHaptic('selection'); }}
+            icon={<IconTarget size={20} />} label="Игрок" badge={playerHasUpdates} />
           <NavItem primary
             onClick={() => { setTableGroup(null); startNewGame(); triggerHaptic('medium'); }}
             icon={<IconPlus size={22} />} label="Новая" />
@@ -2320,13 +2597,16 @@ function NewGameModal({ modal, onSelect, onClose, onLoadSession }) {
   );
 }
 
-function NavItem({ active, primary, onClick, icon, label }) {
+function NavItem({ active, primary, onClick, icon, label, badge }) {
   return (
     <button
-      className={`flex flex-col items-center gap-0.5 py-2 px-1 min-w-[60px] transition-all duration-300 ease-spring ${active ? 'text-white' : 'text-white/40'} ${primary ? 'bg-gradient-to-br from-accent via-indigo-500 to-blue-500 text-white rounded-[22px] py-2.5 px-1 shadow-[0_4px_20px_rgba(168,85,247,0.4),inset_0_1px_0_rgba(255,255,255,0.15)] active:scale-95' : ''}`}
+      className={`relative flex flex-col items-center gap-0.5 py-2 px-1 min-w-[60px] transition-all duration-300 ease-spring ${active ? 'text-white' : 'text-white/40'} ${primary ? 'bg-gradient-to-br from-accent via-indigo-500 to-blue-500 text-white rounded-[22px] py-2.5 px-1 shadow-[0_4px_20px_rgba(168,85,247,0.4),inset_0_1px_0_rgba(255,255,255,0.15)] active:scale-95' : ''}`}
       onClick={onClick}
     >
-      <span className="text-2xl flex items-center justify-center">{icon}</span>
+      <span className="text-2xl flex items-center justify-center relative">
+        {icon}
+        {badge && <span className="absolute -top-0.5 -right-1.5 w-2 h-2 rounded-full bg-[var(--accent-color)] shadow-[0_0_6px_var(--accent-color)]" />}
+      </span>
       <span className="text-[0.55em] font-bold tracking-wider uppercase">{label}</span>
     </button>
   );

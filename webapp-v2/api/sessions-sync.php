@@ -21,6 +21,8 @@ require_once __DIR__ . '/../login/auth-helpers.php';
 $TABLE_GAME_SESSIONS = 'game_sessions';
 $TOMBSTONE_TTL_DAYS = 30;
 
+$TABLE_PLAYER_SESSIONS = 'player_sessions';
+
 // Автомиграция
 try {
     $database->pdo->exec("
@@ -32,13 +34,95 @@ try {
             PRIMARY KEY (`telegram_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
-    // Add deleted_json column if missing (existing tables)
     $cols = $database->pdo->query("SHOW COLUMNS FROM `{$TABLE_GAME_SESSIONS}` LIKE 'deleted_json'")->fetchAll();
     if (empty($cols)) {
         $database->pdo->exec("ALTER TABLE `{$TABLE_GAME_SESSIONS}` ADD COLUMN `deleted_json` mediumtext DEFAULT NULL AFTER `sessions_json`");
     }
+    $database->pdo->exec("
+        CREATE TABLE IF NOT EXISTS `{$TABLE_PLAYER_SESSIONS}` (
+            `player_login` varchar(100) NOT NULL,
+            `session_id` varchar(100) NOT NULL,
+            `judge_telegram_id` bigint(20) NOT NULL,
+            `tournament_name` varchar(255) DEFAULT NULL,
+            `game_mode` varchar(50) DEFAULT NULL,
+            `winner_team` varchar(50) DEFAULT NULL,
+            `game_finished` tinyint(1) DEFAULT 0,
+            `player_role` varchar(50) DEFAULT NULL,
+            `player_score` decimal(5,1) DEFAULT NULL,
+            `player_action` varchar(50) DEFAULT NULL,
+            `player_num` int DEFAULT NULL,
+            `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`session_id`, `player_login`),
+            INDEX `idx_player` (`player_login`),
+            INDEX `idx_updated` (`player_login`, `updated_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
 } catch (\Throwable $e) {
     error_log('Game sessions migration error: ' . $e->getMessage());
+}
+
+function indexPlayerSessions($database, $tableName, $sessions, $telegramId) {
+    if (empty($sessions)) return;
+    $stmt = $database->pdo->prepare("
+        INSERT INTO `{$tableName}` (`player_login`, `session_id`, `judge_telegram_id`, `tournament_name`, `game_mode`, `winner_team`, `game_finished`, `player_role`, `player_score`, `player_action`, `player_num`, `updated_at`)
+        VALUES (:login, :sid, :jid, :tname, :gmode, :wteam, :gfin, :prole, :pscore, :paction, :pnum, :upd)
+        ON DUPLICATE KEY UPDATE
+            `judge_telegram_id` = VALUES(`judge_telegram_id`),
+            `tournament_name` = VALUES(`tournament_name`),
+            `game_mode` = VALUES(`game_mode`),
+            `winner_team` = VALUES(`winner_team`),
+            `game_finished` = VALUES(`game_finished`),
+            `player_role` = VALUES(`player_role`),
+            `player_score` = VALUES(`player_score`),
+            `player_action` = VALUES(`player_action`),
+            `player_num` = VALUES(`player_num`),
+            `updated_at` = VALUES(`updated_at`)
+    ");
+    $now = date('Y-m-d H:i:s');
+    foreach ($sessions as $s) {
+        if (empty($s['sessionId'])) continue;
+        $players = isset($s['players']) && is_array($s['players']) ? $s['players'] : [];
+        $tableOut = [];
+        if (!empty($s['roles']) && is_array($s['roles'])) {
+            foreach ($players as $p) {
+                $rk = isset($p['roleKey']) ? $p['roleKey'] : '';
+                $p['role'] = isset($s['roles'][$rk]) ? $s['roles'][$rk] : null;
+                $p['action'] = isset($s['playersActions'][$rk]) ? $s['playersActions'][$rk] : null;
+                $tableOut[] = $p;
+            }
+        } else {
+            $tableOut = $players;
+        }
+        foreach ($tableOut as $p) {
+            $login = isset($p['login']) ? trim($p['login']) : '';
+            if ($login === '') continue;
+            $score = null;
+            if (isset($s['playerScores']) && is_array($s['playerScores'])) {
+                $rk = isset($p['roleKey']) ? $p['roleKey'] : '';
+                if (isset($s['playerScores'][$rk])) {
+                    $score = (float)$s['playerScores'][$rk];
+                }
+            }
+            try {
+                $stmt->execute([
+                    ':login' => $login,
+                    ':sid' => $s['sessionId'],
+                    ':jid' => $telegramId,
+                    ':tname' => isset($s['tournamentName']) ? $s['tournamentName'] : null,
+                    ':gmode' => isset($s['gameMode']) ? $s['gameMode'] : null,
+                    ':wteam' => isset($s['winnerTeam']) ? $s['winnerTeam'] : null,
+                    ':gfin' => (!empty($s['gameFinished']) || !empty($s['winnerTeam'])) ? 1 : 0,
+                    ':prole' => isset($p['role']) ? $p['role'] : null,
+                    ':pscore' => $score,
+                    ':paction' => isset($p['action']) ? $p['action'] : null,
+                    ':pnum' => isset($p['num']) ? (int)$p['num'] : null,
+                    ':upd' => $now,
+                ]);
+            } catch (\Throwable $e) {
+                error_log('Player session index error: ' . $e->getMessage());
+            }
+        }
+    }
 }
 
 function filterExpiredTombstones($tombstones, $ttlDays) {
@@ -223,6 +307,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         $database->pdo->commit();
+
+        try {
+            indexPlayerSessions($database, $TABLE_PLAYER_SESSIONS, $merged, $telegramId);
+        } catch (\Throwable $e) {
+            error_log('Player sessions indexing error: ' . $e->getMessage());
+        }
 
         echo json_encode([
             'result' => 'ok',

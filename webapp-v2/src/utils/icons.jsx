@@ -165,6 +165,10 @@ export const IconBell = (p) => (
   <Icon {...p}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></Icon>
 );
 
+export const IconTarget = (p) => (
+  <Icon {...p}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></Icon>
+);
+
 export const IconMafBoard = ({ size = 24, color = 'currentColor' }) => (
   <svg width={size} height={size} viewBox="0 0 1500 1500" fill="none" preserveAspectRatio="xMidYMid meet" style={s}>
     <defs>
