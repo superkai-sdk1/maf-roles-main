@@ -187,6 +187,9 @@ export function ModeSelector() {
     setPlayers(newPlayers);
     setFunkyMode(true); setManualMode(true); setGameMode('funky');
 
+    const logins = newPlayers.map(p => p.login).filter(Boolean);
+    if (logins.length > 0) loadAvatars(logins);
+
     if (funkyEditSessionId) {
       setFunkyEditSessionId(null);
     } else {
@@ -494,6 +497,10 @@ export function ModeSelector() {
     }
     setRoles(newRoles);
     setCityMode(true); setManualMode(true); setGameMode('city');
+
+    const logins = finalPlayers.map(p => p.login).filter(Boolean);
+    if (logins.length > 0) loadAvatars(logins);
+
     setTournamentId('city_' + Date.now());
     setTournamentName('Городская мафия ' + new Date().toLocaleDateString('ru-RU'));
     setCurrentSessionId(sessionManager.generateSessionId());
