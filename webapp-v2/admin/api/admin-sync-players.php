@@ -327,11 +327,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         syncLog("=== Sync start request: range {$rangeStart}-{$rangeEnd} ===");
 
-        $method = launchWorker($rangeStart, $rangeEnd);
-
-        // Release lock (worker will acquire its own)
+        // Release flock BEFORE launching worker — worker needs to acquire its own
         flock($lockFp, LOCK_UN);
         fclose($lockFp);
+
+        $method = launchWorker($rangeStart, $rangeEnd);
 
         if ($method === 'fpm') {
             http_response_code(200);
