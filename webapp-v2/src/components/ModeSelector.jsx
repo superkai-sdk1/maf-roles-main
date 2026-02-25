@@ -676,42 +676,80 @@ export function ModeSelector() {
 
         {/* ===== Mode Selection ===== */}
         {step === 'modes' && (
-          <div className="grid grid-cols-2 gap-3 animate-stagger">
-            <GameModeCard
-              icon={<IconGoMafia size={30} />}
-              title="GoMafia"
-              desc="Если ваш турнир или миникап есть на gomafia.pro"
-              accentColor="var(--accent-color, #a855f7)"
+          <div className="flex flex-col gap-3 animate-stagger">
+            <button
+              className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-surface shadow-glass-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-accent/20"
               onClick={() => { openBrowser(); triggerHaptic('selection'); }}
-            />
-            <GameModeCard
-              icon={<IconCrown size={26} color="rgba(255,255,255,0.25)" />}
-              title="Миникап"
-              desc="Скоро"
-              disabled
-              accentColor="rgba(255,255,255,0.15)"
-            />
-            <GameModeCard
-              icon={<IconDice size={26} color="var(--accent-color, #a855f7)" />}
-              title="Фанки"
-              desc="Для регулярных фановых игр"
-              accentColor="var(--accent-color, #a855f7)"
+            >
+              <div className="absolute top-0 left-0 w-[3px] h-full bg-gradient-to-b from-accent to-indigo-500 rounded-l-full" />
+              <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full opacity-[0.04] group-hover:opacity-[0.08] transition-opacity" style={{ background: 'var(--accent-color)' }} />
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border border-accent/20 bg-accent/10 group-hover:shadow-[0_0_20px_rgba(var(--accent-rgb),0.15)] transition-shadow">
+                <IconGoMafia size={28} />
+              </div>
+              <div className="flex-1 min-w-0 relative z-[1]">
+                <div className="text-[1.1em] font-black text-white mb-0.5">GoMafia</div>
+                <div className="text-[0.78em] text-white/40 leading-relaxed">Турниры и миникапы с gomafia.pro</div>
+              </div>
+              <IconChevronRight size={18} color="rgba(255,255,255,0.2)" className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+
+            <button
+              className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-surface shadow-glass-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-accent/20"
               onClick={() => { initFunky(); triggerHaptic('selection'); }}
-            />
-            <GameModeCard
-              icon={<IconGlobe size={26} color="rgba(255,255,255,0.25)" />}
-              title="Клубный рейтинг"
-              desc="Скоро"
-              disabled
-              accentColor="rgba(255,255,255,0.15)"
-            />
-            <GameModeCard
-              icon={<IconCity size={26} color="#4fc3f7" />}
-              title="Городская мафия"
-              desc="С доктором, камикадзе и блэкджеком"
-              accentColor="#4fc3f7"
+            >
+              <div className="absolute top-0 left-0 w-[3px] h-full bg-gradient-to-b from-accent to-purple-400 rounded-l-full" />
+              <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full opacity-[0.04] group-hover:opacity-[0.08] transition-opacity" style={{ background: 'var(--accent-color)' }} />
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border border-accent/20 bg-accent/10 group-hover:shadow-[0_0_20px_rgba(var(--accent-rgb),0.15)] transition-shadow">
+                <IconDice size={26} color="var(--accent-color, #a855f7)" />
+              </div>
+              <div className="flex-1 min-w-0 relative z-[1]">
+                <div className="text-[1.1em] font-black text-white mb-0.5">Фанки</div>
+                <div className="text-[0.78em] text-white/40 leading-relaxed">Свободные фановые игры с друзьями</div>
+              </div>
+              <IconChevronRight size={18} color="rgba(255,255,255,0.2)" className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+
+            <button
+              className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-surface shadow-glass-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-[rgba(79,195,247,0.2)]"
               onClick={() => { initCity(); triggerHaptic('selection'); }}
-            />
+            >
+              <div className="absolute top-0 left-0 w-[3px] h-full bg-gradient-to-b from-[#4fc3f7] to-[#0288d1] rounded-l-full" />
+              <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full opacity-[0.04] group-hover:opacity-[0.08] transition-opacity" style={{ background: '#4fc3f7' }} />
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border border-[rgba(79,195,247,0.2)] bg-[rgba(79,195,247,0.08)] group-hover:shadow-[0_0_20px_rgba(79,195,247,0.12)] transition-shadow">
+                <IconCity size={26} color="#4fc3f7" />
+              </div>
+              <div className="flex-1 min-w-0 relative z-[1]">
+                <div className="text-[1.1em] font-black text-white mb-0.5">Городская мафия</div>
+                <div className="text-[0.78em] text-white/40 leading-relaxed">Доктор, камикадзе, маньяк и блэкджек</div>
+              </div>
+              <IconChevronRight size={18} color="rgba(255,255,255,0.2)" className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+
+            <div className="flex items-center gap-2 mt-1 mb-0.5">
+              <div className="h-px flex-1 bg-white/[0.06]" />
+              <span className="text-[0.55rem] font-bold text-white/15 uppercase tracking-[0.15em]">Скоро</span>
+              <div className="h-px flex-1 bg-white/[0.06]" />
+            </div>
+
+            <div className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-surface shadow-glass-sm overflow-hidden text-left opacity-40 cursor-default">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border border-white/[0.06] bg-white/[0.02]">
+                <IconCrown size={24} color="rgba(255,255,255,0.2)" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[1.05em] font-bold text-white/60 flex items-center gap-2">Миникап <span className="text-[0.6em] font-bold py-0.5 px-2 rounded-md bg-white/[0.06] text-white/30 uppercase tracking-wider"><IconLock size={9} className="inline -mt-px" /> скоро</span></div>
+                <div className="text-[0.75em] text-white/25 mt-0.5">Локальные миникапы без gomafia.pro</div>
+              </div>
+            </div>
+
+            <div className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-surface shadow-glass-sm overflow-hidden text-left opacity-40 cursor-default">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border border-white/[0.06] bg-white/[0.02]">
+                <IconGlobe size={24} color="rgba(255,255,255,0.2)" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[1.05em] font-bold text-white/60 flex items-center gap-2">Клубный рейтинг <span className="text-[0.6em] font-bold py-0.5 px-2 rounded-md bg-white/[0.06] text-white/30 uppercase tracking-wider"><IconLock size={9} className="inline -mt-px" /> скоро</span></div>
+                <div className="text-[0.75em] text-white/25 mt-0.5">Ведение клубного рейтинга игроков</div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1156,28 +1194,3 @@ function FilterChip({ active, onClick, icon, label }) {
   );
 }
 
-function GameModeCard({ icon, title, desc, accentColor, onClick, disabled }) {
-  return (
-    <button
-      onClick={() => { if (!disabled && onClick) onClick(); }}
-      className={`flex items-center gap-3.5 py-4 px-4 rounded-2xl border cursor-pointer transition-all duration-200 touch-manipulation text-left text-white w-full overflow-hidden relative ${disabled ? 'opacity-40 cursor-not-allowed pointer-events-auto' : 'bg-[rgba(15,12,35,0.85)] border-white/[0.08] hover:border-white/[0.15] hover:shadow-glass-sm active:scale-[0.98] active:bg-white/[0.06]'}`}
-      disabled={disabled}
-    >
-      <div className="w-[50px] h-[50px] rounded-xl flex items-center justify-center shrink-0 border relative z-[1]"
-        style={{
-          borderColor: disabled ? 'rgba(255,255,255,0.06)' : `${accentColor}33`,
-          background: disabled ? 'rgba(255,255,255,0.02)' : `linear-gradient(135deg, ${accentColor}14, ${accentColor}08)`,
-        }}>
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0 relative z-[1]">
-        <div className="font-bold text-[1.05em] flex items-center gap-2">
-          {title}
-          {disabled && <span className="inline-flex items-center gap-1 text-[0.65em] font-bold py-0.5 px-2 rounded-lg bg-white/[0.06] text-white/40 border border-white/[0.08] uppercase tracking-wider"><IconLock size={10} /> Скоро</span>}
-        </div>
-        <div className="text-[0.8em] text-[var(--text-secondary)] mt-0.5 leading-relaxed">{desc}</div>
-      </div>
-      {!disabled && <IconChevronRight size={18} color="rgba(255,255,255,0.2)" />}
-    </button>
-  );
-}
