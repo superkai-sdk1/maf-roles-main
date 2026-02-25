@@ -1235,95 +1235,99 @@ export function MainMenu() {
             const initials = (displayName[0] || '?').toUpperCase();
             return (
               <div className="animate-fadeIn" style={{ width: '100%', maxWidth: 400, paddingBottom: 100 }}>
-                {/* Hero card */}
-                <div className="glass-card profile-hero">
-                  <button
-                    className="profile-settings-btn"
-                    onClick={() => {
-                      const name = userDisplayName || (tgUser ? `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}` : '');
-                      setProfileSettingsName(name);
-                      setMenuScreen('profileSettings');
-                      triggerHaptic('light');
-                    }}
-                  >
-                    <IconSettings size={17} color="rgba(255,255,255,0.45)" />
-                  </button>
+                <div className="profile-bento">
 
-                  <div className="profile-avatar-wrap">
-                    <div className="profile-avatar-ring" />
-                    {avatarSrc ? (
-                      <div className="profile-avatar-img" style={{ backgroundImage: `url(${avatarSrc})` }} />
-                    ) : (
-                      <div className="profile-avatar-initials">{initials}</div>
-                    )}
-                  </div>
+                  {/* Profile card */}
+                  <div className="profile-card-hero">
+                    <button
+                      className="profile-settings-btn"
+                      onClick={() => {
+                        const name = userDisplayName || (tgUser ? `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}` : '');
+                        setProfileSettingsName(name);
+                        setMenuScreen('profileSettings');
+                        triggerHaptic('light');
+                      }}
+                    >
+                      <IconSettings size={16} color="rgba(255,255,255,0.4)" />
+                    </button>
 
-                  <div className="profile-name">{displayName}</div>
-                  {tgUser?.username && <div className="profile-username">@{tgUser.username}</div>}
-                  {tgUser?.id && <div className="profile-id">ID: {tgUser.id}</div>}
-
-                  {goMafiaProfile && (
-                    <div className="profile-gomafia-badge">
-                      <IconGoMafia size={14} />
-                      <span>{goMafiaProfile.nickname}</span>
+                    <div className="profile-avatar-wrap">
+                      <div className="profile-avatar-ring" />
+                      {avatarSrc ? (
+                        <div className="profile-avatar-img" style={{ backgroundImage: `url(${avatarSrc})` }} />
+                      ) : (
+                        <div className="profile-avatar-initials">{initials}</div>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                {/* Stats card */}
-                <div className="glass-card" style={{ padding: '20px 16px', marginTop: 12, position: 'relative', zIndex: 1 }}>
-                  <div className="profile-stats-header">
-                    <IconStats size={14} color="var(--accent-color, #a855f7)" />
-                    Статистика
-                  </div>
-
-                  <div className="profile-total-games">
-                    <div className="profile-total-games-value">{profileStats.totalGames}</div>
-                    <div className="profile-total-games-label">
-                      {pluralGames(profileStats.totalGames)} проведено
+                    <div className="profile-card-hero-info">
+                      <div className="profile-name">{displayName}</div>
+                      {tgUser?.username && <div className="profile-username">@{tgUser.username}</div>}
+                      {tgUser?.id && <div className="profile-id">UID {tgUser.id}</div>}
+                      {goMafiaProfile && (
+                        <div className="profile-gomafia-badge">
+                          <IconGoMafia size={14} />
+                          <span>{goMafiaProfile.nickname}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div className="profile-stat-tile">
-                      <div className="profile-stat-icon" style={{ background: 'linear-gradient(135deg, rgba(137,119,254,0.15), rgba(10,232,240,0.08))' }}>
-                        <IconGoMafia size={18} />
-                      </div>
-                      <div className="profile-stat-info">
-                        <div className="profile-stat-label">Турниры</div>
-                      </div>
-                      <div className="profile-stat-values">
-                        <div className="profile-stat-main">{profileStats.gomafiaTournamentsCount}</div>
-                        <div className="profile-stat-sub">{profileStats.gomafiaGamesCount} {pluralGames(profileStats.gomafiaGamesCount)}</div>
-                      </div>
+                  {/* Status placeholder */}
+                  <div className="profile-status-card">
+                    <div className="profile-status-icon">
+                      <IconHistory size={18} color="rgba(255,255,255,0.2)" />
                     </div>
-
-                    <div className="profile-stat-tile">
-                      <div className="profile-stat-icon" style={{ background: 'linear-gradient(135deg, rgba(255,213,0,0.12), rgba(255,170,0,0.06))' }}>
-                        <IconTrophy size={17} color="#ffd700" />
-                      </div>
-                      <div className="profile-stat-info">
-                        <div className="profile-stat-label">Миникапы</div>
-                      </div>
-                      <div className="profile-stat-values">
-                        <div className="profile-stat-main">{profileStats.minicapsCount}</div>
-                        <div className="profile-stat-sub">{profileStats.minicapGamesCount} {pluralGames(profileStats.minicapGamesCount)}</div>
-                      </div>
+                    <div>
+                      <div className="profile-status-label">Статус</div>
+                      <div className="profile-status-value">Скоро</div>
                     </div>
+                  </div>
 
-                    <div className="profile-stat-tile">
-                      <div className="profile-stat-icon" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.12), rgba(139,92,246,0.06))' }}>
+                  {/* Total games — tall left card */}
+                  <div className="profile-total-card">
+                    <div className="profile-total-card-icon">
+                      <IconStats size={18} color="rgba(255,255,255,0.4)" />
+                    </div>
+                    <div className="profile-total-card-bottom">
+                      <div className="profile-total-card-value">{profileStats.totalGames}</div>
+                      <div className="profile-total-card-label">{pluralGames(profileStats.totalGames)}<br/>проведено</div>
+                    </div>
+                  </div>
+
+                  {/* Tournaments */}
+                  <div className="profile-mini-card">
+                    <div className="profile-mini-card-icon" style={{ background: 'linear-gradient(135deg, rgba(137,119,254,0.15), rgba(10,232,240,0.08))', borderColor: 'rgba(137,119,254,0.2)' }}>
+                      <IconGoMafia size={18} />
+                    </div>
+                    <div className="profile-mini-card-bottom">
+                      <div className="profile-mini-card-value">{profileStats.gomafiaTournamentsCount}</div>
+                      <div className="profile-mini-card-label">Турниры</div>
+                    </div>
+                  </div>
+
+                  {/* Minicaps */}
+                  <div className="profile-mini-card">
+                    <div className="profile-mini-card-icon" style={{ background: 'linear-gradient(135deg, rgba(255,213,0,0.12), rgba(255,170,0,0.06))', borderColor: 'rgba(255,213,0,0.2)' }}>
+                      <IconTrophy size={17} color="#ffd700" />
+                    </div>
+                    <div className="profile-mini-card-bottom">
+                      <div className="profile-mini-card-value">{profileStats.minicapsCount}</div>
+                      <div className="profile-mini-card-label">Миникапы</div>
+                    </div>
+                  </div>
+
+                  {/* Funky — full width */}
+                  <div className="profile-wide-card">
+                    <div className="profile-wide-card-left">
+                      <div className="profile-mini-card-icon" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.12), rgba(139,92,246,0.06))', borderColor: 'rgba(168,85,247,0.2)' }}>
                         <IconDice size={17} color="var(--accent-color, #a855f7)" />
                       </div>
-                      <div className="profile-stat-info">
-                        <div className="profile-stat-label">Фанки</div>
-                      </div>
-                      <div className="profile-stat-values">
-                        <div className="profile-stat-main">{profileStats.funkyGamesCount}</div>
-                        <div className="profile-stat-sub">{pluralGames(profileStats.funkyGamesCount)}</div>
-                      </div>
+                      <div className="profile-mini-card-label">Фанки</div>
                     </div>
+                    <div className="profile-mini-card-value">{profileStats.funkyGamesCount}</div>
                   </div>
+
                 </div>
               </div>
             );
