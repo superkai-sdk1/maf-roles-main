@@ -65,6 +65,7 @@ function authenticateRequest($database, $method) {
 
     return [
         'telegram_id' => $session['telegram_id'],
+        'user_id' => $session['user_id'] ?? null,
         'input' => isset($input) ? $input : null
     ];
 }
@@ -102,6 +103,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'title' => $row['gomafia_title'],
                 'connectedAt' => $row['gomafia_connected_at']
             ];
+
+            // Auto-link GoMafia to users table if not already linked
+            $userId = $auth['user_id'];
+            if ($userId && $row['gomafia_id']) {
+                try {
+                    $user = $database->get('users', ['gomafia_id'], ['id' => $userId]);
+                    if ($user && empty($user['gomafia_id'])) {
+                        $conflict = $database->get('users', 'id', ['gomafia_id' => (string)$row['gomafia_id']]);
+                        if (!$conflict) {
+                            $database->update('users', [
+                                'gomafia_id' => (string)$row['gomafia_id'],
+                                'gomafia_nickname' => $row['gomafia_nickname'],
+                            ], ['id' => $userId]);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    error_log('GoMafia auto-link on GET: ' . $e->getMessage());
+                }
+            }
         }
     }
 
@@ -168,6 +188,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $updateFields['telegram_id'] = $telegramId;
             $database->insert($TABLE_USER_PROFILES, $updateFields);
+        }
+
+        // Auto-link GoMafia to users table for auth
+        $userId = $auth['user_id'];
+        if ($userId && !empty($updateFields['gomafia_nickname'])) {
+            $gomafiaId = !empty($updateFields['gomafia_id']) ? (string)$updateFields['gomafia_id'] : $updateFields['gomafia_nickname'];
+            try {
+                $existingUser = $database->get('users', 'id', ['gomafia_id' => $gomafiaId]);
+                if (!$existingUser || $existingUser == $userId) {
+                    $database->update('users', [
+                        'gomafia_id' => $gomafiaId,
+                        'gomafia_nickname' => $updateFields['gomafia_nickname'],
+                    ], ['id' => $userId]);
+                }
+            } catch (\Throwable $e) {
+                error_log('GoMafia auto-link error: ' . $e->getMessage());
+            }
         }
 
         echo json_encode(['result' => 'ok'], JSON_UNESCAPED_UNICODE);

@@ -408,6 +408,97 @@ html {
   box-shadow: 0 2px 10px rgba(168,85,247,0.15);
 }
 
+/* Auth Methods in Profile Settings */
+.auth-method-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.auth-method-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.auth-method-name {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: #fff;
+}
+
+.auth-method-detail {
+  font-size: 0.7em;
+  color: rgba(255,255,255,0.35);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.auth-method-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65em;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  color: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.04);
+}
+
+.auth-method-badge--active {
+  color: #22c55e;
+  background: rgba(34,197,94,0.1);
+}
+
+.auth-method-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-size: 0.72em;
+  font-weight: 700;
+  color: var(--accent-color, #a855f7);
+  background: transparent;
+  border: 1px solid rgba(168,85,247,0.2);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.auth-method-link-btn:active {
+  transform: scale(0.95);
+}
+
+.auth-method-link-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.auth-method-link-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(56,163,224,0.06), rgba(168,85,247,0.04));
+  border: 1px solid rgba(56,163,224,0.15);
+  text-align: center;
+}
+
 /* ============================================= */
 /*  Swipe Back Gesture                           */
 /* ============================================= */

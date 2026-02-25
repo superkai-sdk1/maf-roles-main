@@ -120,6 +120,12 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
 
+    // Auth codes: add user_id for Telegram linking flow
+    $codeColumns = $database->pdo->query("SHOW COLUMNS FROM `{$TABLE_AUTH_CODES}`")->fetchAll(\PDO::FETCH_COLUMN);
+    if (!in_array('user_id', $codeColumns)) {
+        $database->pdo->exec("ALTER TABLE `{$TABLE_AUTH_CODES}` ADD COLUMN `user_id` int(11) DEFAULT NULL AFTER `code`");
+    }
+
     // PassKey credentials (WebAuthn)
     $database->pdo->exec("
         CREATE TABLE IF NOT EXISTS `{$TABLE_USER_PASSKEYS}` (

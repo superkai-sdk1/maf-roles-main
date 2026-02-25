@@ -2,6 +2,9 @@
 // =====================================================
 // Confirm auth code (called by the Telegram bot)
 // POST: {code, telegram_id, username, first_name, last_name, bot_secret}
+// Handles both:
+//   - New auth: creates user + session
+//   - Telegram linking: links telegram_id to existing user + creates session
 // Returns: {success: true, token} or {error: ...}
 // =====================================================
 
@@ -13,10 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $input = json_decode(file_get_contents('php://input'), true);
-
-if (!$input) {
-    jsonError('Invalid JSON body');
-}
+if (!$input) jsonError('Invalid JSON body');
 
 $code = isset($input['code']) ? trim($input['code']) : '';
 $telegramId = isset($input['telegram_id']) ? intval($input['telegram_id']) : 0;
@@ -38,7 +38,7 @@ if ($telegramId <= 0) {
     jsonError('Valid telegram_id is required');
 }
 
-$codeRow = $database->get($TABLE_AUTH_CODES, ['id', 'code', 'expires_at'], [
+$codeRow = $database->get($TABLE_AUTH_CODES, ['id', 'code', 'user_id', 'expires_at'], [
     'code' => $code,
     'confirmed_at' => null,
     'expires_at[>]' => date('Y-m-d H:i:s'),
@@ -49,8 +49,39 @@ if (!$codeRow) {
     jsonError('Code not found or expired', 404);
 }
 
-$user = findOrCreateUserByTelegram($database, $telegramId, $username, $firstName, $lastName);
-$token = createSession($database, $user['id'], 'telegram');
+$linkUserId = $codeRow['user_id'] ?? null;
+
+if ($linkUserId) {
+    // Link mode: attach telegram_id to existing user
+    $existingTg = $database->get($TABLE_USERS, 'id', ['telegram_id' => $telegramId]);
+    if ($existingTg && $existingTg != $linkUserId) {
+        jsonError('Этот Telegram аккаунт уже привязан к другому пользователю', 409);
+    }
+
+    $database->update($TABLE_USERS, [
+        'telegram_id' => $telegramId,
+        'telegram_username' => $username,
+        'telegram_first_name' => $firstName,
+        'telegram_last_name' => $lastName,
+    ], ['id' => $linkUserId]);
+
+    // Update all active sessions for this user
+    $database->update($TABLE_AUTH_SESSIONS, [
+        'telegram_id' => $telegramId,
+        'telegram_username' => $username,
+        'telegram_first_name' => $firstName,
+        'telegram_last_name' => $lastName,
+    ], [
+        'user_id' => $linkUserId,
+        'expires_at[>]' => date('Y-m-d H:i:s'),
+    ]);
+
+    $token = createSession($database, $linkUserId, 'telegram');
+} else {
+    // Normal auth: create/find user and session
+    $user = findOrCreateUserByTelegram($database, $telegramId, $username, $firstName, $lastName);
+    $token = createSession($database, $user['id'], 'telegram');
+}
 
 $database->update($TABLE_AUTH_CODES, [
     'telegram_id' => $telegramId,
@@ -62,5 +93,6 @@ $database->update($TABLE_AUTH_CODES, [
 
 jsonResponse([
     'success' => true,
-    'token' => $token
+    'token' => $token,
+    'linked' => $linkUserId ? true : false,
 ]);

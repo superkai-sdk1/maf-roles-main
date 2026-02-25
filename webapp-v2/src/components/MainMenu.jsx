@@ -421,6 +421,12 @@ export function MainMenu() {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [terminatingId, setTerminatingId] = useState(null);
 
+  const [linkedAccounts, setLinkedAccounts] = useState(null);
+  const [linkTelegramMode, setLinkTelegramMode] = useState(null);
+  const linkPollRef = useRef(null);
+  const linkTimerRef = useRef(null);
+  const [passkeyRegistering, setPasskeyRegistering] = useState(false);
+
   useEffect(() => {
     const token = authService.getStoredToken();
     if (!token) return;
@@ -475,11 +481,29 @@ export function MainMenu() {
     setSessionsLoading(false);
   }, []);
 
+  const loadLinkedAccounts = useCallback(async () => {
+    const token = authService.getStoredToken();
+    if (!token) return;
+    const data = await authService.getLinkedAccounts(token);
+    if (data && !data.error) setLinkedAccounts(data);
+  }, []);
+
+  const stopLinkPolling = useCallback(() => {
+    if (linkPollRef.current) { clearInterval(linkPollRef.current); linkPollRef.current = null; }
+    if (linkTimerRef.current) { clearInterval(linkTimerRef.current); linkTimerRef.current = null; }
+  }, []);
+
+  useEffect(() => () => stopLinkPolling(), [stopLinkPolling]);
+
   useEffect(() => {
     if (menuScreen === 'profileSettings') {
       loadActiveSessions();
+      loadLinkedAccounts();
+    } else {
+      stopLinkPolling();
+      setLinkTelegramMode(null);
     }
-  }, [menuScreen, loadActiveSessions]);
+  }, [menuScreen, loadActiveSessions, loadLinkedAccounts, stopLinkPolling]);
 
   const handleTerminateSession = useCallback(async (sessionId) => {
     const token = authService.getStoredToken();
@@ -1483,6 +1507,211 @@ export function MainMenu() {
                   )}
                 </div>
 
+                {/* Auth Methods */}
+                <div className="glass-card" style={{ padding: '20px', marginTop: 10, position: 'relative', zIndex: 1 }}>
+                  <div className="profile-settings-section-label">Способы авторизации</div>
+
+                  {!linkedAccounts ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 0', gap: 8 }}>
+                      <div className="gomafia-modal-spinner" />
+                      <span style={{ fontSize: '0.8em', color: 'rgba(255,255,255,0.35)' }}>Загрузка...</span>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {/* Telegram */}
+                      <div className="auth-method-card">
+                        <div className="auth-method-icon" style={{ background: 'rgba(56,163,224,0.12)' }}>
+                          <span style={{ fontSize: '1.1em' }}>✈️</span>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="auth-method-name">Telegram</div>
+                          {linkedAccounts.telegram?.linked ? (
+                            <div className="auth-method-detail">
+                              {linkedAccounts.telegram.username ? `@${linkedAccounts.telegram.username}` : (linkedAccounts.telegram.first_name || 'Привязан')}
+                            </div>
+                          ) : (
+                            <div className="auth-method-detail" style={{ color: 'rgba(255,255,255,0.2)' }}>Не привязан</div>
+                          )}
+                        </div>
+                        {linkedAccounts.telegram?.linked ? (
+                          <span className="auth-method-badge auth-method-badge--active">
+                            <IconCheck size={10} /> Привязан
+                          </span>
+                        ) : linkTelegramMode ? (
+                          <span className="auth-method-badge" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                            {linkTelegramMode.code}
+                          </span>
+                        ) : (
+                          <button
+                            className="auth-method-link-btn"
+                            onClick={async () => {
+                              triggerHaptic('light');
+                              const token = authService.getStoredToken();
+                              if (!token) return;
+                              const res = await fetch('/login/code-generate.php', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ link_token: token }),
+                              }).then(r => r.json());
+                              if (!res.code) return;
+                              setLinkTelegramMode({ code: res.code, expiresIn: res.expires_in, botLink: res.bot_link, botUsername: res.bot_username });
+                              stopLinkPolling();
+                              let remaining = res.expires_in;
+                              linkTimerRef.current = setInterval(() => {
+                                remaining--;
+                                setLinkTelegramMode(prev => prev ? { ...prev, expiresIn: remaining } : null);
+                                if (remaining <= 0) { stopLinkPolling(); setLinkTelegramMode(null); }
+                              }, 1000);
+                              linkPollRef.current = setInterval(async () => {
+                                const check = await authService.checkCode(res.code);
+                                if (check.confirmed) {
+                                  stopLinkPolling();
+                                  setLinkTelegramMode(null);
+                                  authService.storeAuth(check.token, check.user);
+                                  loadLinkedAccounts();
+                                  triggerHaptic('success');
+                                } else if (check.expired) {
+                                  stopLinkPolling();
+                                  setLinkTelegramMode(null);
+                                }
+                              }, 2500);
+                            }}
+                          >
+                            Привязать
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Telegram link code display */}
+                      {linkTelegramMode && (
+                        <div className="auth-method-link-panel">
+                          <div style={{ fontSize: '1.8em', fontWeight: 900, letterSpacing: 8, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>
+                            {linkTelegramMode.code}
+                          </div>
+                          <div style={{ fontSize: '0.72em', color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+                            Отправьте код боту • {Math.floor(linkTelegramMode.expiresIn / 60)}:{String(linkTelegramMode.expiresIn % 60).padStart(2, '0')}
+                          </div>
+                          {linkTelegramMode.botLink && (
+                            <a
+                              href={linkTelegramMode.botLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="auth-method-link-btn"
+                              style={{ marginTop: 8, display: 'inline-flex', textDecoration: 'none', padding: '8px 16px' }}
+                            >
+                              Открыть @{linkTelegramMode.botUsername || 'бота'}
+                            </a>
+                          )}
+                          <button
+                            className="auth-method-link-btn"
+                            style={{ marginTop: 4, color: 'rgba(255,255,255,0.3)', borderColor: 'rgba(255,255,255,0.08)' }}
+                            onClick={() => { stopLinkPolling(); setLinkTelegramMode(null); }}
+                          >
+                            Отмена
+                          </button>
+                        </div>
+                      )}
+
+                      {/* GoMafia */}
+                      <div className="auth-method-card">
+                        <div className="auth-method-icon" style={{ background: 'rgba(168,85,247,0.12)' }}>
+                          <span style={{ fontSize: '1.1em' }}>🎭</span>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="auth-method-name">GoMafia</div>
+                          {linkedAccounts.gomafia?.linked ? (
+                            <div className="auth-method-detail">{linkedAccounts.gomafia.nickname}</div>
+                          ) : goMafiaProfile ? (
+                            <div className="auth-method-detail" style={{ color: 'rgba(255,200,50,0.6)' }}>Интеграция есть, авторизация не привязана</div>
+                          ) : (
+                            <div className="auth-method-detail" style={{ color: 'rgba(255,255,255,0.2)' }}>Не привязан</div>
+                          )}
+                        </div>
+                        {linkedAccounts.gomafia?.linked ? (
+                          <span className="auth-method-badge auth-method-badge--active">
+                            <IconCheck size={10} /> Привязан
+                          </span>
+                        ) : (
+                          <button
+                            className="auth-method-link-btn"
+                            onClick={() => {
+                              setGoMafiaModal(true);
+                              setGoMafiaLogin({ nickname: goMafiaProfile?.nickname || '', password: '', loading: false, error: '' });
+                              triggerHaptic('light');
+                            }}
+                          >
+                            Привязать
+                          </button>
+                        )}
+                      </div>
+
+                      {/* PassKey */}
+                      <div className="auth-method-card">
+                        <div className="auth-method-icon" style={{ background: 'rgba(34,197,94,0.12)' }}>
+                          <span style={{ fontSize: '1.1em' }}>🔐</span>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="auth-method-name">PassKey</div>
+                          <div className="auth-method-detail" style={{ color: linkedAccounts.passkeys?.length > 0 ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.2)' }}>
+                            {linkedAccounts.passkeys?.length > 0
+                              ? `${linkedAccounts.passkeys.length} ключ${linkedAccounts.passkeys.length > 1 ? (linkedAccounts.passkeys.length < 5 ? 'а' : 'ей') : ''}`
+                              : 'Не настроен'
+                            }
+                          </div>
+                        </div>
+                        <button
+                          className="auth-method-link-btn"
+                          disabled={passkeyRegistering}
+                          onClick={async () => {
+                            if (!authService.isPasskeySupported()) {
+                              triggerHaptic('error');
+                              return;
+                            }
+                            setPasskeyRegistering(true);
+                            triggerHaptic('light');
+                            const token = authService.getStoredToken();
+                            const result = await authService.passkeyRegister(token);
+                            setPasskeyRegistering(false);
+                            if (result.success) {
+                              loadLinkedAccounts();
+                              triggerHaptic('success');
+                            } else {
+                              triggerHaptic('error');
+                            }
+                          }}
+                        >
+                          {passkeyRegistering ? '...' : 'Добавить'}
+                        </button>
+                      </div>
+
+                      {/* PassKey list */}
+                      {linkedAccounts.passkeys?.length > 0 && linkedAccounts.passkeys.map(pk => (
+                        <div key={pk.id} className="auth-method-card" style={{ paddingLeft: 48 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="auth-method-name" style={{ fontSize: '0.8em' }}>{pk.device_name || 'PassKey'}</div>
+                            <div className="auth-method-detail">
+                              {pk.last_used_at ? `Использован ${formatSessionDate(pk.last_used_at)}` : `Создан ${formatSessionDate(pk.created_at)}`}
+                            </div>
+                          </div>
+                          <button
+                            className="auth-method-link-btn"
+                            style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)' }}
+                            onClick={async () => {
+                              triggerHaptic('warning');
+                              const token = authService.getStoredToken();
+                              await authService.unlinkMethod(token, 'passkey', pk.id);
+                              loadLinkedAccounts();
+                              triggerHaptic('success');
+                            }}
+                          >
+                            <IconX size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {/* Active Devices */}
                 <div className="glass-card" style={{ padding: '20px', marginTop: 10, position: 'relative', zIndex: 1 }}>
                   <div className="profile-settings-section-label">Активные устройства</div>
@@ -1804,9 +2033,11 @@ export function MainMenu() {
         const token = authService.getStoredToken();
         if (token) {
           profileApi.saveProfile(token, { gomafia: profile });
+          authService.linkGomafia(token, nickname, password).catch(() => {});
         }
 
         setGoMafiaModal(false);
+        loadLinkedAccounts();
         triggerHaptic('success');
         return;
       }
