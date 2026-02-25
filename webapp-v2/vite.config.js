@@ -10,7 +10,7 @@ export default defineConfig({
     proxy: {
       '/api': { target: 'http://localhost:8080', changeOrigin: true },
       '/login': { target: 'http://localhost:8080', changeOrigin: true },
-      '/admin': { target: 'http://localhost:8080', changeOrigin: true },
+      '/admin/api': { target: 'http://localhost:8080', changeOrigin: true },
     }
   },
   build: {
