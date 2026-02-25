@@ -90,7 +90,7 @@ export function GameScreen() {
     <div className="h-[100dvh] bg-maf-bg max-w-[480px] mx-auto native-scroll" style={{ paddingTop: 'var(--safe-top, 0px)' }}>
       {/* === VOTING FULLSCREEN === */}
       {showVotingScreen && (
-        <div className="fixed inset-0 z-40 bg-maf-bg overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 z-40 bg-maf-bg native-scroll animate-fade-in">
           <div className="min-h-full" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
             <VotingPanel />
           </div>
@@ -119,7 +119,7 @@ export function GameScreen() {
 
       {/* === SETTINGS FULLSCREEN === */}
       {showSettingsScreen && (
-        <div className="fixed inset-0 z-40 bg-maf-bg overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 z-40 bg-maf-bg native-scroll animate-fade-in">
           <div className="min-h-full" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
             <div className="flex items-center gap-3 mb-4">
               <button className="text-accent text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring"
@@ -135,7 +135,7 @@ export function GameScreen() {
 
       {/* === RESULTS FULLSCREEN === */}
       {showResultsScreen && (
-        <div className="fixed inset-0 z-40 bg-maf-bg overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 z-40 bg-maf-bg native-scroll animate-fade-in">
           <div className="min-h-full" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
             <div className="flex items-center gap-3 mb-4">
               <button className="text-accent text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring"

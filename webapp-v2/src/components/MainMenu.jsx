@@ -864,10 +864,10 @@ export function MainMenu() {
     <>
       {/* === TOURNAMENT TABLE FULLSCREEN === */}
       {tableGroup && (
-        <div className="fullscreen-page animate-fade-in" style={{ zIndex: 200 }}>
-          <div className="fullscreen-page-container">
-            <div className="fullscreen-page-header" style={{ justifyContent: 'center' }}>
-              <span className="fullscreen-page-title">Таблица</span>
+        <div className="fixed inset-0 z-[200] bg-maf-bg native-scroll animate-fade-in">
+          <div className="max-w-[480px] mx-auto min-h-full" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
+            <div className="flex items-center justify-center gap-3 py-3 pb-4">
+              <span className="text-[1.1em] font-extrabold text-white/80">Таблица</span>
             </div>
 
             <div className="text-center mb-1">
@@ -1232,8 +1232,8 @@ export function MainMenu() {
         </div>
       )}
 
-      <div className="min-h-screen min-h-[100dvh] flex flex-col items-center" style={{ background: 'var(--maf-gradient-bg)' }}>
-        <div className="native-scroll w-full flex-1 flex flex-col items-center" style={{ padding: 'var(--safe-top, 0px) 0 calc(120px + var(--safe-bottom, env(safe-area-inset-bottom, 0px))) 0' }}>
+      <div className="h-screen h-[100dvh] flex flex-col items-center overflow-hidden" style={{ background: 'var(--maf-gradient-bg)' }}>
+        <div className="native-scroll w-full flex-1 min-h-0 flex flex-col items-center" style={{ padding: 'var(--safe-top, 0px) 0 calc(120px + var(--safe-bottom, env(safe-area-inset-bottom, 0px))) 0' }}>
           <div className="w-full max-w-[480px] px-5 pt-10 pb-10 flex flex-col items-center min-h-full">
           {/* Header */}
           <div className="flex flex-col items-center mb-7 pt-8 animate-float-up">
