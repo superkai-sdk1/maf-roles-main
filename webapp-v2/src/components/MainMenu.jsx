@@ -1606,7 +1606,10 @@ export function MainMenu() {
                         </div>
 
                         {/* PassKey */}
-                        <div className="settings-auth-tile">
+                        <div
+                          className="settings-auth-tile"
+                          onClick={() => { setMenuScreen('passkeys'); triggerHaptic('light'); }}
+                        >
                           <div className="settings-auth-tile-icon" style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
                             <span style={{ fontSize: '1em' }}>🔐</span>
                           </div>
@@ -1620,44 +1623,8 @@ export function MainMenu() {
                           {linkedAccounts.passkeys?.length > 0 && (
                             <div className="settings-auth-dot settings-auth-dot--purple" />
                           )}
-                          <button
-                            className="settings-auth-tile-action"
-                            disabled={passkeyRegistering}
-                            onClick={async () => {
-                              setPasskeyError('');
-                              triggerHaptic('light');
-                              const token = authService.getStoredToken();
-
-                              if (authService.isTelegramWebView()) {
-                                const url = `${window.location.origin}/login/passkey-setup.php?token=${encodeURIComponent(token)}`;
-                                if (window.Telegram?.WebApp?.openLink) {
-                                  window.Telegram.WebApp.openLink(url);
-                                } else {
-                                  window.open(url, '_blank');
-                                }
-                                return;
-                              }
-
-                              setPasskeyRegistering(true);
-                              const result = await authService.passkeyRegister(token);
-                              setPasskeyRegistering(false);
-                              if (result.success) {
-                                loadLinkedAccounts();
-                                triggerHaptic('success');
-                              } else {
-                                setPasskeyError(result.error || 'Не удалось добавить PassKey');
-                                triggerHaptic('error');
-                              }
-                            }}
-                          >
-                            {passkeyRegistering ? '...' : 'Добавить'}
-                          </button>
                         </div>
                       </div>
-
-                      {passkeyError && (
-                        <div style={{ fontSize: '0.75em', color: '#ff453a', padding: '4px 4px 0' }}>{passkeyError}</div>
-                      )}
 
                       {/* Telegram link code display */}
                       {linkTelegramMode && (
@@ -1726,35 +1693,6 @@ export function MainMenu() {
                         </div>
                       )}
 
-                      {/* PassKey list */}
-                      {linkedAccounts.passkeys?.length > 0 && (
-                        <div className="settings-card" style={{ padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {linkedAccounts.passkeys.map(pk => (
-                              <div key={pk.id} className="settings-session-row">
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div className="settings-session-name">{pk.device_name || 'PassKey'}</div>
-                                  <div className="settings-session-meta">
-                                    {pk.last_used_at ? `Использован ${formatSessionDate(pk.last_used_at)}` : `Создан ${formatSessionDate(pk.created_at)}`}
-                                  </div>
-                                </div>
-                                <button
-                                  className="settings-session-exit"
-                                  onClick={async () => {
-                                    triggerHaptic('warning');
-                                    const token = authService.getStoredToken();
-                                    await authService.unlinkMethod(token, 'passkey', pk.id);
-                                    loadLinkedAccounts();
-                                    triggerHaptic('success');
-                                  }}
-                                >
-                                  <IconX size={12} />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </>
                   )}
 
@@ -1827,6 +1765,113 @@ export function MainMenu() {
                 <button className="profile-save-btn" onClick={handleSaveName}>
                   <IconCheck size={16} /> Сохранить
                 </button>
+              </div>
+            );
+          })()}
+
+          {/* =================== PASSKEYS SCREEN =================== */}
+          {menuScreen === 'passkeys' && (() => {
+            const handleAddPasskey = async () => {
+              setPasskeyError('');
+              triggerHaptic('light');
+              const token = authService.getStoredToken();
+
+              if (authService.isTelegramWebView()) {
+                const url = `${window.location.origin}/login/passkey-setup.php?token=${encodeURIComponent(token)}`;
+                if (window.Telegram?.WebApp?.openLink) {
+                  window.Telegram.WebApp.openLink(url);
+                } else {
+                  window.open(url, '_blank');
+                }
+                return;
+              }
+
+              setPasskeyRegistering(true);
+              const result = await authService.passkeyRegister(token);
+              setPasskeyRegistering(false);
+              if (result.success) {
+                loadLinkedAccounts();
+                triggerHaptic('success');
+              } else {
+                setPasskeyError(result.error || 'Не удалось добавить PassKey');
+                triggerHaptic('error');
+              }
+            };
+
+            const handleDeletePasskey = async (pkId) => {
+              triggerHaptic('warning');
+              const token = authService.getStoredToken();
+              await authService.unlinkMethod(token, 'passkey', pkId);
+              loadLinkedAccounts();
+              triggerHaptic('success');
+            };
+
+            const passkeys = linkedAccounts?.passkeys || [];
+
+            return (
+              <div className="animate-fadeIn" style={{ width: '100%', maxWidth: 400, paddingBottom: 100 }}>
+                <div className="settings-header">
+                  <div className="settings-header-left">
+                    <button
+                      className="profile-settings-back"
+                      onClick={() => { setMenuScreen('profileSettings'); setPasskeyError(''); triggerHaptic('light'); }}
+                    >
+                      <IconArrowRight size={16} color="rgba(255,255,255,0.7)" style={{ transform: 'rotate(180deg)' }} />
+                    </button>
+                    <h2 className="settings-title">PassKey</h2>
+                  </div>
+                  <div className="passkeys-count">{passkeys.length}</div>
+                </div>
+
+                <div className="settings-sections">
+                  {!linkedAccounts ? (
+                    <div className="settings-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 0', gap: 8 }}>
+                      <div className="gomafia-modal-spinner" />
+                      <span style={{ fontSize: '0.8em', color: 'rgba(255,255,255,0.35)' }}>Загрузка...</span>
+                    </div>
+                  ) : passkeys.length === 0 ? (
+                    <div className="settings-card passkeys-empty">
+                      <div className="passkeys-empty-icon">🔐</div>
+                      <div className="passkeys-empty-title">Нет ключей</div>
+                      <div className="passkeys-empty-sub">Добавьте PassKey для быстрого и безопасного входа без пароля</div>
+                    </div>
+                  ) : (
+                    <div className="settings-card" style={{ padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {passkeys.map(pk => (
+                          <div key={pk.id} className="passkey-row">
+                            <div className="passkey-row-icon">🔑</div>
+                            <div className="passkey-row-info">
+                              <div className="passkey-row-name">{pk.device_name || 'PassKey'}</div>
+                              <div className="passkey-row-meta">
+                                {pk.last_used_at ? `Использован ${formatSessionDate(pk.last_used_at)}` : `Создан ${formatSessionDate(pk.created_at)}`}
+                              </div>
+                            </div>
+                            <button
+                              className="passkey-row-delete"
+                              onClick={() => handleDeletePasskey(pk.id)}
+                            >
+                              <IconTrash size={13} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {passkeyError && (
+                    <div style={{ fontSize: '0.78em', color: '#ff453a', padding: '2px 4px', textAlign: 'center' }}>{passkeyError}</div>
+                  )}
+
+                  <button
+                    className="passkeys-add-btn"
+                    disabled={passkeyRegistering}
+                    onClick={handleAddPasskey}
+                  >
+                    <IconPlus size={16} />
+                    {passkeyRegistering ? 'Создание...' : 'Добавить PassKey'}
+                  </button>
+                </div>
               </div>
             );
           })()}

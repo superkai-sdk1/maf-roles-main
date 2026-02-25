@@ -6410,6 +6410,142 @@ body::after {
   display: none;
 }
 
+/* PassKeys screen */
+
+.passkeys-count {
+  min-width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7em;
+  font-weight: 800;
+  color: rgba(255,255,255,0.35);
+  font-variant-numeric: tabular-nums;
+  padding: 0 6px;
+}
+
+.passkeys-empty {
+  text-align: center;
+  padding: 40px 24px !important;
+}
+
+.passkeys-empty-icon {
+  font-size: 2.4em;
+  margin-bottom: 12px;
+  opacity: 0.4;
+}
+
+.passkeys-empty-title {
+  font-size: 0.95em;
+  font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 6px;
+}
+
+.passkeys-empty-sub {
+  font-size: 0.72em;
+  color: rgba(255,255,255,0.25);
+  line-height: 1.5;
+  max-width: 260px;
+  margin: 0 auto;
+}
+
+.passkey-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 16px;
+  transition: transform 0.12s var(--ease-spring);
+}
+
+.passkey-row:active {
+  transform: scale(0.98);
+}
+
+.passkey-row-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(34,197,94,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1em;
+  flex-shrink: 0;
+}
+
+.passkey-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.passkey-row-name {
+  font-size: 0.8em;
+  font-weight: 700;
+  color: #fff;
+}
+
+.passkey-row-meta {
+  font-size: 0.62em;
+  font-weight: 500;
+  color: rgba(255,255,255,0.25);
+  margin-top: 2px;
+}
+
+.passkey-row-delete {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(239,68,68,0.06);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(239,68,68,0.4);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.passkey-row-delete:active {
+  transform: scale(0.88);
+  color: #ef4444;
+  background: rgba(239,68,68,0.12);
+}
+
+.passkeys-add-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-radius: var(--radius-xl);
+  background: rgba(34,197,94,0.08);
+  border: 1px solid rgba(34,197,94,0.15);
+  color: #22c55e;
+  font-size: 0.82em;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-spring);
+}
+
+.passkeys-add-btn:active {
+  transform: scale(0.97);
+  background: rgba(34,197,94,0.14);
+}
+
+.passkeys-add-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
 /* Sessions */
 
 .settings-section-header {
