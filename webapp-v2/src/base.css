@@ -382,7 +382,7 @@ body {
   pointer-events: none;
   z-index: 0;
   background: rgba(var(--accent-rgb), 0.10);
-  clip-path: inset(0 calc(100% - var(--wave-progress, 100%)) 0 0 round inherit);
+  clip-path: inset(0 0 0 calc(100% - var(--wave-progress, 100%)) round inherit);
   transition: clip-path 0.5s linear;
 }
 
