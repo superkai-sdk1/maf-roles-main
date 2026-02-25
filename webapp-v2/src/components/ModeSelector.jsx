@@ -658,25 +658,25 @@ export function ModeSelector() {
   const funkyFilledCount = funkyPlayers.filter(Boolean).length;
 
   return (
-    <div className="mode-selector-overlay">
-      <div className="mode-selector-container">
+    <div className="fixed inset-0 z-[2000] flex items-start justify-center bg-[var(--maf-bg-main,#040410)] overflow-y-auto overflow-x-hidden native-scroll">
+      <div className="w-full max-w-[440px] pt-[calc(16px+var(--safe-top,0px))] px-5 pb-[calc(40px+var(--safe-bottom,env(safe-area-inset-bottom,0)))] min-h-screen min-h-dvh">
         {/* Header */}
-        <div className="mode-selector-header">
-          <button onClick={goBack} className="mode-selector-back">
+        <div className="flex items-center gap-3 py-4 animate-float-up">
+          <button onClick={goBack} className="w-[42px] h-[42px] rounded-full bg-white/[0.04] border border-white/[0.10] text-white flex items-center justify-center shrink-0 transition-all duration-150 ease-spring active:scale-90 active:bg-white/[0.08] backdrop-blur-[8px]">
             <IconArrowLeft size={18} />
           </button>
-          <div className="mode-selector-header-info">
+          <div className="flex items-center gap-2.5 flex-1">
             {getIcon()}
             <div>
-              <h2 className="mode-selector-title">{getTitle()}</h2>
-              {getSubtitle() && <div className="mode-selector-subtitle">{getSubtitle()}</div>}
+              <h2 className="text-xl font-extrabold tracking-tight text-white mb-1 m-0">{getTitle()}</h2>
+              {getSubtitle() && <div className="text-sm text-white/40 font-medium mb-4 mt-0.5">{getSubtitle()}</div>}
             </div>
           </div>
         </div>
 
         {/* ===== Mode Selection ===== */}
         {step === 'modes' && (
-          <div className="mode-grid animate-stagger">
+          <div className="grid grid-cols-2 gap-3 animate-stagger">
             <GameModeCard
               icon={<IconGoMafia size={30} />}
               title="GoMafia"
@@ -717,33 +717,34 @@ export function ModeSelector() {
 
         {/* ===== GoMafia Loading (after selecting from browser) ===== */}
         {step === 'browser_loading' && (
-          <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '40px 0' }}>
-            <div className="newgame-modal-spinner" />
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>Загрузка турнира...</span>
+          <div className="flex flex-col items-center gap-3 py-10 animate-fade-in">
+            <div className="w-8 h-8 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
+            <span className="text-[0.9em] text-[var(--text-secondary)]">Загрузка турнира...</span>
           </div>
         )}
 
         {/* ===== GoMafia manual ID (fallback from browser) ===== */}
         {step === 'gomafia' && (
-          <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div className="gomafia-input-card">
-              <div className="gomafia-input-row">
-                <div className="gomafia-input-icon">
+          <div className="flex flex-col gap-3 animate-fade-in">
+            <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md flex flex-col gap-3">
+              <div className="flex items-center gap-3 relative z-[1]">
+                <div className="w-[42px] h-[42px] rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
                   <IconTrophy size={20} color="#ffd700" />
                 </div>
                 <input type="text" inputMode="numeric" placeholder="Номер турнира" value={tournamentInput}
                   onChange={e => setTournamentInput(e.target.value.replace(/[^0-9]/g, ''))}
                   onKeyDown={e => e.key === 'Enter' && loadTournament()}
-                  className="gomafia-input" />
+                  className="input-field flex-1" />
               </div>
               <button onClick={loadTournament} disabled={loading || !tournamentInput}
-                className="glass-btn btn-primary" style={{ width: '100%', opacity: !tournamentInput ? 0.4 : 1 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                className="w-full px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring disabled:opacity-40"
+                style={{ opacity: !tournamentInput ? 0.4 : 1 }}>
+                <span className="inline-flex items-center gap-1.5">
                   <IconDownload size={16} /> {loading ? 'Загрузка...' : 'Загрузить турнир'}
                 </span>
               </button>
             </div>
-            {error && <div className="mode-error">{error}</div>}
+            {error && <div className="text-status-error text-[0.85em] py-2.5 px-3.5 rounded-xl bg-red-500/10 border border-red-500/20">{error}</div>}
           </div>
         )}
 
@@ -753,30 +754,30 @@ export function ModeSelector() {
           const availableGames = gmSelectedTable !== null ? getGamesForTable(tournamentData, gmSelectedTable) : [];
           const canConfirm = gmSelectedTable !== null && gmSelectedGame !== null;
           return (
-            <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div className="gm-tournament-name">
+            <div className="flex flex-col gap-4 animate-fade-in">
+              <div className="flex items-center gap-2.5 py-3 px-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 font-bold text-[0.9em] text-white">
                 <IconTrophy size={16} color="#ffd700" />
                 <span>{tournamentData._pageTitle || `Турнир ${tournamentInput}`}</span>
               </div>
 
               {/* Table dropdown */}
-              <div className="gm-select-group">
-                <label className="gm-select-label">Стол</label>
-                <div className="gm-dropdown-wrapper">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[0.75em] font-bold uppercase tracking-wider text-white/40 pl-0.5">Стол</label>
+                <div className="relative">
                   <button
-                    className={`gm-dropdown-trigger ${gmTableOpen ? 'gm-dropdown-trigger--open' : ''} ${gmSelectedTable !== null ? 'gm-dropdown-trigger--selected' : ''}`}
+                    className={`w-full flex items-center justify-between py-3.5 px-4 rounded-xl text-[0.92em] font-semibold cursor-pointer transition-all duration-200 border ${gmTableOpen ? 'border-accent shadow-[0_0_0_2px_rgba(var(--accent-rgb,168,85,247),0.12)]' : ''} ${gmSelectedTable !== null ? 'text-white border-accent-soft bg-accent-soft' : 'text-white/40 bg-white/[0.04] border-white/[0.10]'}`}
                     onClick={() => { setGmTableOpen(!gmTableOpen); setGmGameOpen(false); }}
                   >
                     <span>{gmSelectedTable !== null ? `Стол ${gmSelectedTable}` : 'Выберите стол'}</span>
-                    <IconChevronRight size={16} color="rgba(255,255,255,0.4)" className="gm-dropdown-chevron" />
+                    <IconChevronRight size={16} color="rgba(255,255,255,0.4)" className={`transition-transform duration-200 ease-spring ${gmTableOpen ? 'rotate-90' : ''}`} />
                   </button>
                   {gmTableOpen && (
-                    <div className="gm-dropdown-list animate-fadeIn">
+                    <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 flex flex-col gap-0.5 p-1.5 rounded-2xl bg-[rgba(18,18,32,0.96)] border border-white/[0.10] backdrop-blur-xl shadow-glass-md max-h-[220px] overflow-y-auto animate-fade-in">
                       {tables.map(tNum => (
                         <button key={tNum}
-                          className={`gm-dropdown-item ${gmSelectedTable === tNum ? 'gm-dropdown-item--active' : ''}`}
+                          className={`flex items-center justify-between py-3 px-3.5 rounded-xl text-left text-[0.88em] font-semibold transition-colors ${gmSelectedTable === tNum ? 'bg-accent-soft text-white hover:bg-accent-soft/80' : 'bg-transparent text-white/80 hover:bg-white/[0.06] active:bg-accent-soft/20'}`}
                           onClick={() => onSelectTable(tNum)}>
-                          <span className="gm-dropdown-item-label">Стол {tNum}</span>
+                          <span className="flex-1">Стол {tNum}</span>
                           {gmSelectedTable === tNum && <IconCheck size={14} color="var(--accent-color, #a855f7)" />}
                         </button>
                       ))}
@@ -787,23 +788,23 @@ export function ModeSelector() {
 
               {/* Game dropdown (shown after table selected) */}
               {gmSelectedTable !== null && availableGames.length > 0 && (
-                <div className="gm-select-group animate-fadeIn">
-                  <label className="gm-select-label">Игра</label>
-                  <div className="gm-dropdown-wrapper">
+                <div className="flex flex-col gap-1.5 animate-fade-in">
+                  <label className="text-[0.75em] font-bold uppercase tracking-wider text-white/40 pl-0.5">Игра</label>
+                  <div className="relative">
                     <button
-                      className={`gm-dropdown-trigger ${gmGameOpen ? 'gm-dropdown-trigger--open' : ''} ${gmSelectedGame !== null ? 'gm-dropdown-trigger--selected' : ''}`}
+                      className={`w-full flex items-center justify-between py-3.5 px-4 rounded-xl text-[0.92em] font-semibold cursor-pointer transition-all duration-200 border ${gmGameOpen ? 'border-accent shadow-[0_0_0_2px_rgba(var(--accent-rgb,168,85,247),0.12)]' : ''} ${gmSelectedGame !== null ? 'text-white border-accent-soft bg-accent-soft' : 'text-white/40 bg-white/[0.04] border-white/[0.10]'}`}
                       onClick={() => { setGmGameOpen(!gmGameOpen); setGmTableOpen(false); }}
                     >
                       <span>{gmSelectedGame !== null ? `Игра ${gmSelectedGame}` : 'Выберите игру'}</span>
-                      <IconChevronRight size={16} color="rgba(255,255,255,0.4)" className="gm-dropdown-chevron" />
+                      <IconChevronRight size={16} color="rgba(255,255,255,0.4)" className={`transition-transform duration-200 ease-spring ${gmGameOpen ? 'rotate-90' : ''}`} />
                     </button>
                     {gmGameOpen && (
-                      <div className="gm-dropdown-list animate-fadeIn">
+                      <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 flex flex-col gap-0.5 p-1.5 rounded-2xl bg-[rgba(18,18,32,0.96)] border border-white/[0.10] backdrop-blur-xl shadow-glass-md max-h-[220px] overflow-y-auto animate-fade-in">
                         {availableGames.map(gNum => (
                           <button key={gNum}
-                            className={`gm-dropdown-item ${gmSelectedGame === gNum ? 'gm-dropdown-item--active' : ''}`}
+                            className={`flex items-center justify-between py-3 px-3.5 rounded-xl text-left text-[0.88em] font-semibold transition-colors ${gmSelectedGame === gNum ? 'bg-accent-soft text-white hover:bg-accent-soft/80' : 'bg-transparent text-white/80 hover:bg-white/[0.06] active:bg-accent-soft/20'}`}
                             onClick={() => onSelectGame(gNum)}>
-                            <span className="gm-dropdown-item-label">Игра {gNum}</span>
+                            <span className="flex-1">Игра {gNum}</span>
                             {gmSelectedGame === gNum && <IconCheck size={14} color="var(--accent-color, #a855f7)" />}
                           </button>
                         ))}
@@ -816,8 +817,8 @@ export function ModeSelector() {
               {/* Confirm button */}
               <button onClick={confirmGameTableSelection}
                 disabled={!canConfirm}
-                className="mode-action-btn-primary" style={{ width: '100%', marginTop: 8 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                className="flex-1 py-3.5 px-5 bg-accent text-white rounded-2xl font-bold text-[0.95em] cursor-pointer shadow-[0_4px_20px_rgba(168,85,247,0.3)] transition-transform duration-150 ease-spring active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed w-full mt-2">
+                <span className="inline-flex items-center gap-1.5">
                   <IconCheck size={16} /> Начать
                 </span>
               </button>
@@ -827,26 +828,26 @@ export function ModeSelector() {
 
         {/* ===== Funky Mode ===== */}
         {step === 'funky' && (
-          <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div className="funky-meta-row">
-              <span className="funky-game-label">Игра #{funkyGameNumber}</span>
-              <div className="funky-game-controls">
-                <button onClick={() => setFunkyGameNumber(n => Math.max(1, n - 1))} className="funky-counter-btn">-</button>
-                <button onClick={() => setFunkyGameNumber(n => n + 1)} className="funky-counter-btn">+</button>
+          <div className="flex flex-col gap-2 animate-fade-in">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[0.8em] font-bold text-white/40 uppercase tracking-wider">Игра #{funkyGameNumber}</span>
+              <div className="flex gap-1">
+                <button onClick={() => setFunkyGameNumber(n => Math.max(1, n - 1))} className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.10] text-white text-[0.85em] font-bold flex items-center justify-center transition-colors active:bg-white/[0.1]">-</button>
+                <button onClick={() => setFunkyGameNumber(n => n + 1)} className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.10] text-white text-[0.85em] font-bold flex items-center justify-center transition-colors active:bg-white/[0.1]">+</button>
               </div>
             </div>
-            <div ref={playerListRef} className="player-slots-list">
+            <div ref={playerListRef} className="flex flex-col gap-1.5">
               {funkyPlayers.map((player, i) => (
                 <div key={i}
-                  className={`player-slot ${dragIndex === i ? 'player-slot--dragging' : ''} ${dragOverIndex === i ? 'player-slot--drag-over' : ''}`}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl border transition-all duration-200 bg-white/[0.03] border-white/[0.08] relative ${dragIndex === i ? 'opacity-35 scale-[0.97]' : ''} ${dragOverIndex === i ? 'border-t-2 border-t-accent pt-0' : ''}`}
                   onDragOver={(e) => { e.preventDefault(); handleFunkyDragOver(i); }}
                   onDrop={() => handleFunkyDrop(i)}
                 >
-                  <span className="player-slot-num">{i + 1}</span>
+                  <span className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] rounded-md bg-white/10 border border-white/[0.15] flex items-center justify-center text-[0.6rem] font-bold text-white/70 px-0.5">{i + 1}</span>
                   {player ? (
-                    <div className="player-slot-filled">
+                    <div className="flex-1 flex items-center gap-2 py-2 px-2.5 rounded-xl bg-accent-soft border border-accent-soft">
                       <div
-                        className="player-slot-drag-handle"
+                        className="flex items-center justify-center w-7 h-7 rounded-lg cursor-grab touch-none shrink-0 active:cursor-grabbing active:bg-white/[0.08] transition-colors"
                         draggable
                         onDragStart={(e) => handleFunkyDragStart(i, e)}
                         onDragEnd={handleFunkyDragEnd}
@@ -854,23 +855,23 @@ export function ModeSelector() {
                       >
                         <IconGripVertical size={16} color="rgba(255,255,255,0.25)" />
                       </div>
-                      {player.avatar_link && <img src={player.avatar_link} className="player-slot-avatar" alt="" />}
-                      <span className="player-slot-name">{player.login}</span>
-                      <button onClick={() => clearSlot(i)} className="player-slot-clear"><IconX size={14} /></button>
+                      {player.avatar_link && <img src={player.avatar_link} className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] object-cover shrink-0" alt="" />}
+                      <span className="flex-1 text-sm font-bold text-white truncate">{player.login}</span>
+                      <button onClick={() => clearSlot(i)} className="p-1 rounded-md flex items-center shrink-0 text-white/35 transition-colors active:text-status-error active:bg-red-500/10"><IconX size={14} /></button>
                     </div>
                   ) : (
-                    <div className="player-slot-empty">
+                    <div className="flex-1 relative">
                       <input type="text" placeholder="Поиск игрока..." value={funkyPlayerInputs[i]}
                         onChange={e => searchPlayer(i, e.target.value)}
                         onFocus={() => setActiveSlot(i)}
                         onKeyDown={e => e.key === 'Enter' && setFunkyManualPlayer(i)}
-                        className="player-slot-input" />
+                        className="input-field w-full" />
                       {activeSlot === i && searchResults.length > 0 && (
-                        <div className="player-search-dropdown">
+                        <div className="absolute z-30 top-[calc(100%+4px)] left-0 right-0 rounded-xl bg-[rgba(15,12,35,0.95)] backdrop-blur-xl border border-white/[0.12] shadow-glass-md max-h-[200px] overflow-y-auto">
                           {searchResults.slice(0, 8).map(r => (
-                            <button key={r.login} onClick={() => selectPlayer(i, r)} className="player-search-item">
-                              {r.avatar_link && <img src={r.avatar_link} className="player-search-avatar" alt="" />}
-                              <span className="player-search-name">{r.login}</span>
+                            <button key={r.login} onClick={() => selectPlayer(i, r)} className="w-full flex items-center gap-2 py-2.5 px-3 text-[0.88em] text-white bg-transparent border-none cursor-pointer text-left transition-colors hover:bg-accent-soft active:bg-accent-soft">
+                              {r.avatar_link && <img src={r.avatar_link} className="w-[22px] h-[22px] rounded-full object-cover shrink-0" alt="" />}
+                              <span className="truncate">{r.login}</span>
                             </button>
                           ))}
                         </div>
@@ -880,17 +881,17 @@ export function ModeSelector() {
                 </div>
               ))}
             </div>
-            <div className="mode-action-row">
+            <div className="flex gap-2 mt-2">
               <button onClick={funkyShufflePlayers}
                 disabled={funkyFilledCount < 10}
-                className="glass-btn mode-action-btn-secondary">
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                className="flex-1 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring disabled:opacity-30">
+                <span className="inline-flex items-center gap-1.5">
                   <IconShuffle size={14} /> Рассадить
                 </span>
               </button>
               <button onClick={confirmFunkyPlayers} disabled={funkyFilledCount < 10}
-                className="mode-action-btn-primary">
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                className="flex-1 py-3.5 px-5 bg-accent text-white rounded-2xl font-bold text-[0.95em] cursor-pointer shadow-[0_4px_20px_rgba(168,85,247,0.3)] transition-transform duration-150 ease-spring active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed">
+                <span className="inline-flex items-center gap-1.5">
                   <IconCheck size={16} /> Начать ({funkyFilledCount}/10)
                 </span>
               </button>
@@ -900,38 +901,38 @@ export function ModeSelector() {
 
         {/* ===== City Mode — Step: roles_config (17+) ===== */}
         {step === 'city' && cityStep === 'roles_config' && (
-          <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p style={{ fontSize: '0.8em', color: 'var(--text-secondary)', margin: 0 }}>
+          <div className="flex flex-col gap-3 animate-fade-in">
+            <p className="text-[0.8em] text-[var(--text-secondary)] m-0">
               Базовые: Дон, 3 Мафии, Маньяк, Шериф, Доктор, Камикадзе, Бессмертный, Красотка.<br/>
               Включите дополнительные. Остальные — мирные.
             </p>
-            <div className="city-roles-list" style={{ maxHeight: '50vh', overflowY: 'auto' }}>
+            <div className="flex flex-col gap-1 max-h-[50vh] overflow-y-auto native-scroll">
               {CITY_OPTIONAL_ROLES.map(rk => {
                 const info = CITY_ROLES_ALL[rk];
                 return (
-                  <div key={rk} className="city-role-toggle-row">
-                    <div className="city-role-toggle-info">
-                      <span className={`city-role-label ${info.team === 'black' ? 'city-role-label--black' : 'city-role-label--red'}`}>
+                  <div key={rk} className="flex items-center justify-between py-2.5 px-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[0.88em] font-bold ${info.team === 'black' ? 'text-white/70' : 'text-red-400'}`}>
                         {info.label}
                       </span>
-                      <span className="city-role-team-dot">{info.team === 'black' ? '⚫' : '🔴'}</span>
+                      <span className="text-[0.65em]">{info.team === 'black' ? '⚫' : '🔴'}</span>
                     </div>
-                    <label className="toggle-switch">
+                    <label className="relative inline-block w-[42px] h-[22px] cursor-pointer">
                       <input type="checkbox" checked={!!cityRoleToggles[rk]}
-                        onChange={() => cityToggleRole(rk)} />
-                      <span className="toggle-switch-track" />
-                      <span className="toggle-switch-thumb" />
+                        onChange={() => cityToggleRole(rk)} className="peer absolute opacity-0 w-0 h-0" />
+                      <span className="absolute inset-0 rounded-[12px] bg-white/[0.08] transition-colors peer-checked:bg-accent" />
+                      <span className="absolute left-0.5 top-0.5 w-[18px] h-[18px] rounded-full bg-white transition-transform duration-200 ease-spring peer-checked:translate-x-5 pointer-events-none" />
                     </label>
                   </div>
                 );
               })}
             </div>
-            <div style={{ textAlign: 'center', fontSize: '0.8em', color: 'var(--text-secondary)' }}>
+            <div className="text-center text-[0.8em] text-[var(--text-secondary)]">
               Ролей: {activeRolesPreview.filter(r => r !== 'peace').length} · Мирных: {activeRolesPreview.filter(r => r === 'peace').length} · Всего: {cityPlayers.length}
             </div>
             <button onClick={() => { setCityStep('players'); triggerHaptic('medium'); }}
-              className="mode-action-btn-primary" style={{ width: '100%' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              className="w-full py-3.5 px-5 bg-accent text-white rounded-2xl font-bold text-[0.95em] cursor-pointer shadow-[0_4px_20px_rgba(168,85,247,0.3)] transition-transform duration-150 ease-spring active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed">
+              <span className="inline-flex items-center gap-1.5">
                 <IconArrowRight size={16} /> Дальше
               </span>
             </button>
@@ -940,58 +941,58 @@ export function ModeSelector() {
 
         {/* ===== City Mode — Step: players (with inline add/remove) ===== */}
         {step === 'city' && cityStep === 'players' && (
-          <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div className="city-players-count-badge">
+          <div className="flex flex-col gap-2 animate-fade-in">
+            <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[0.82em] font-bold text-[var(--text-secondary)]">
               <span>{cityPlayers.length} игроков</span>
-              <span className="city-players-count-hint">от 8 до 30 · свайп влево для удаления</span>
+              <span className="text-white/40 font-medium">от 8 до 30 · свайп влево для удаления</span>
             </div>
-            <div className="player-slots-list">
+            <div className="flex flex-col gap-1.5">
               {cityPlayers.map((player, i) => {
                 const swipeOffset = citySwipeOffsets[i] || 0;
                 const isDeleting = citySwipeDeleting === i;
                 return (
                   <div key={`city-slot-${i}`}
-                    className={`city-swipe-row ${cityDragIndex === i ? 'player-slot--dragging' : ''} ${cityDragOverIndex === i ? 'player-slot--drag-over' : ''} ${isDeleting ? 'city-swipe-row--deleting' : ''}`}
+                    className={`relative overflow-hidden rounded-xl transition-all duration-300 ease-spring max-h-[70px] ${cityDragIndex === i ? 'opacity-35 scale-[0.97]' : ''} ${cityDragOverIndex === i ? 'border-t-2 border-t-accent' : ''} ${isDeleting ? 'max-h-0 opacity-0 -mt-1.5 overflow-hidden' : ''}`}
                     onDragOver={(e) => { e.preventDefault(); handleCityDragOver(i); }}
                     onDrop={() => handleCityDrop(i)}
                   >
-                    <div className="city-swipe-delete-bg">
+                    <div className="absolute right-0 top-0 bottom-0 w-[100px] flex items-center justify-center rounded-r-xl bg-gradient-to-l from-red-500/60 to-red-500/90">
                       <IconTrash size={16} color="#fff" />
                     </div>
-                    <div className="city-swipe-content"
+                    <div className="flex items-center gap-2 relative z-[1] bg-[var(--maf-bg-main,#040410)] will-change-transform"
                       style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.3s var(--ease-spring)' : 'none' }}
                       onTouchStart={(e) => handleCitySwipeStart(i, e)}
                       onTouchMove={(e) => handleCitySwipeMove(i, e)}
                       onTouchEnd={() => handleCitySwipeEnd(i)}
                     >
-                      <span className="player-slot-num">{i + 1}</span>
+                      <span className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] rounded-md bg-white/10 border border-white/[0.15] flex items-center justify-center text-[0.6rem] font-bold text-white/70 px-0.5">{i + 1}</span>
                       {player ? (
-                        <div className="player-slot-filled">
+                        <div className="flex-1 flex items-center gap-2 py-2 px-2.5 rounded-xl bg-accent-soft border border-accent-soft">
                           <div
-                            className="player-slot-drag-handle"
+                            className="flex items-center justify-center w-7 h-7 rounded-lg cursor-grab touch-none shrink-0 active:cursor-grabbing active:bg-white/[0.08] transition-colors"
                             draggable
                             onDragStart={() => handleCityDragStart(i)}
                             onDragEnd={handleCityDragEnd}
                           >
                             <IconGripVertical size={16} color="rgba(255,255,255,0.25)" />
                           </div>
-                          {player.avatar_link && <img src={player.avatar_link} className="player-slot-avatar" alt="" />}
-                          <span className="player-slot-name">{player.login}</span>
-                          <button onClick={() => cityClearPlayer(i)} className="player-slot-clear"><IconX size={14} /></button>
+                          {player.avatar_link && <img src={player.avatar_link} className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] object-cover shrink-0" alt="" />}
+                          <span className="flex-1 text-sm font-bold text-white truncate">{player.login}</span>
+                          <button onClick={() => cityClearPlayer(i)} className="p-1 rounded-md flex items-center shrink-0 text-white/35 transition-colors active:text-status-error active:bg-red-500/10"><IconX size={14} /></button>
                         </div>
                       ) : (
-                        <div className="player-slot-empty">
+                        <div className="flex-1 relative">
                           <input type="text" placeholder={`Игрок ${i + 1}`} value={cityPlayerInputs[i] || ''}
                             onChange={e => citySearchPlayer(i, e.target.value)}
                             onFocus={() => setCityActiveInput(i)}
                             onKeyDown={e => e.key === 'Enter' && citySetManualPlayer(i)}
-                            className="player-slot-input" />
+                            className="input-field w-full" />
                           {cityActiveInput === i && citySearchResults.length > 0 && (
-                            <div className="player-search-dropdown">
+                            <div className="absolute z-30 top-[calc(100%+4px)] left-0 right-0 rounded-xl bg-[rgba(15,12,35,0.95)] backdrop-blur-xl border border-white/[0.12] shadow-glass-md max-h-[200px] overflow-y-auto">
                               {citySearchResults.slice(0, 8).map(r => (
-                                <button key={r.login} onClick={() => citySelectPlayer(i, r)} className="player-search-item">
-                                  {r.avatar_link && <img src={r.avatar_link} className="player-search-avatar" alt="" />}
-                                  <span className="player-search-name">{r.login}</span>
+                                <button key={r.login} onClick={() => citySelectPlayer(i, r)} className="w-full flex items-center gap-2 py-2.5 px-3 text-[0.88em] text-white bg-transparent border-none cursor-pointer text-left transition-colors hover:bg-accent-soft active:bg-accent-soft">
+                                  {r.avatar_link && <img src={r.avatar_link} className="w-[22px] h-[22px] rounded-full object-cover shrink-0" alt="" />}
+                                  <span className="truncate">{r.login}</span>
                                 </button>
                               ))}
                             </div>
@@ -1004,21 +1005,21 @@ export function ModeSelector() {
               })}
             </div>
             {cityPlayers.length < 30 && (
-              <button onClick={cityAddPlayer} className="city-add-player-btn">
+              <button onClick={cityAddPlayer} className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-transparent border-2 border-dashed border-accent/20 text-accent font-semibold text-[0.85em] cursor-pointer transition-all duration-200 hover:bg-accent/5 hover:border-accent/35 active:scale-[0.98] active:bg-accent/10">
                 <IconPlus size={16} color="var(--accent-color, #a855f7)" />
                 <span>Добавить игрока</span>
               </button>
             )}
-            <div className="mode-action-row">
+            <div className="flex gap-2 mt-2">
               <button onClick={cityShufflePlayers} disabled={!cityAllFilled}
-                className="glass-btn mode-action-btn-secondary">
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                className="flex-1 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring disabled:opacity-30">
+                <span className="inline-flex items-center gap-1.5">
                   <IconShuffle size={14} /> Рассадить
                 </span>
               </button>
               <button onClick={cityGoToRolesAssign} disabled={!cityAllFilled}
-                className="mode-action-btn-primary">
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                className="flex-1 py-3.5 px-5 bg-accent text-white rounded-2xl font-bold text-[0.95em] cursor-pointer shadow-[0_4px_20px_rgba(168,85,247,0.3)] transition-transform duration-150 ease-spring active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed">
+                <span className="inline-flex items-center gap-1.5">
                   <IconArrowRight size={14} /> Продолжить ({cityPlayers.length})
                 </span>
               </button>
@@ -1028,24 +1029,24 @@ export function ModeSelector() {
 
         {/* ===== City Mode — Step: roles_assign ===== */}
         {step === 'city' && cityStep === 'roles_assign' && (
-          <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '0.9em', fontWeight: 700, color: 'var(--text-secondary)' }}>Раздача ролей</span>
-              <button onClick={cityAutoAssignRoles} className="glass-btn" style={{ padding: '8px 14px', fontSize: '0.8em' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <div className="flex flex-col gap-2.5 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <span className="text-[0.9em] font-bold text-[var(--text-secondary)]">Раздача ролей</span>
+              <button onClick={cityAutoAssignRoles} className="px-3.5 py-2 text-[0.8em] rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 font-bold active:scale-[0.97] transition-transform duration-150 ease-spring">
+                <span className="inline-flex items-center gap-1">
                   <IconShuffle size={12} /> Раздать роли
                 </span>
               </button>
             </div>
-            <div className="city-roles-assign-list" style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+            <div className="flex flex-col gap-1 max-h-[55vh] overflow-y-auto native-scroll">
               {cityPlayers.map((player, i) => (
-                <div key={i} className="city-role-assign-row">
-                  <span className="city-role-assign-num">{i + 1}</span>
-                  {player?.avatar_link && <img src={player.avatar_link} className="player-slot-avatar" alt="" />}
-                  <span className="city-role-assign-name">{player?.login || ''}</span>
+                <div key={i} className="flex items-center gap-2 py-2 px-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                  <span className="w-6 min-w-6 text-center text-[0.8em] font-extrabold text-white/40">{i + 1}</span>
+                  {player?.avatar_link && <img src={player.avatar_link} className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] object-cover shrink-0" alt="" />}
+                  <span className="flex-1 text-[0.88em] font-semibold truncate">{player?.login || ''}</span>
                   <select value={cityAssignedRoles[i] || ''}
                     onChange={e => setCityAssignedRoles(prev => ({ ...prev, [i]: e.target.value }))}
-                    className="city-role-select">
+                    className="input-field min-w-[100px] text-[0.8em] py-2 px-2.5">
                     <option value="">— Роль —</option>
                     {cityGetAvailableRoles(i).map(r => (
                       <option key={r.id} value={r.id}>{r.label} {r.team === 'black' ? '⚫' : '🔴'}</option>
@@ -1058,8 +1059,8 @@ export function ModeSelector() {
               ))}
             </div>
             <button onClick={confirmCityPlayers} disabled={!cityValidateRoles()}
-              className="mode-action-btn-primary" style={{ width: '100%' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              className="w-full py-3.5 px-5 bg-accent text-white rounded-2xl font-bold text-[0.95em] cursor-pointer shadow-[0_4px_20px_rgba(168,85,247,0.3)] transition-transform duration-150 ease-spring active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed">
+              <span className="inline-flex items-center gap-1.5">
                 <IconCheck size={16} /> Начать игру
               </span>
             </button>
@@ -1068,66 +1069,66 @@ export function ModeSelector() {
 
         {/* ===== Tournament Browser ===== */}
         {step === 'browser' && (
-          <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="flex flex-col gap-2.5 animate-fade-in">
             {/* Quick ID input */}
-            <div className="gomafia-quick-id">
-              <div className="gomafia-input-icon-sm">
+            <div className="flex items-center gap-2 py-1.5 px-2 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+              <div className="w-[30px] h-[30px] rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
                 <IconTrophy size={14} color="#ffd700" />
               </div>
               <input type="text" inputMode="numeric" placeholder="ID турнира" value={tournamentInput}
                 onChange={e => setTournamentInput(e.target.value.replace(/[^0-9]/g, ''))}
                 onKeyDown={e => { if (e.key === 'Enter' && tournamentInput) selectTournamentFromBrowser(tournamentInput); }}
-                className="gomafia-quick-input" />
+                className="flex-1 bg-transparent border-none text-white text-[0.88em] font-semibold outline-none py-1.5 px-1 min-w-0" />
               <button onClick={() => { if (tournamentInput) selectTournamentFromBrowser(tournamentInput); }}
                 disabled={!tournamentInput || loading}
-                className="gomafia-quick-go">
+                className="w-8 h-8 rounded-xl bg-accent border-none text-white cursor-pointer flex items-center justify-center shrink-0 transition-all duration-150 ease-spring disabled:opacity-30 disabled:cursor-not-allowed active:scale-90">
                 <IconArrowRight size={14} />
               </button>
             </div>
-            {error && <div className="mode-error">{error}</div>}
-            <div style={{ display: 'flex', gap: 6 }}>
+            {error && <div className="text-status-error text-[0.85em] py-2.5 px-3.5 rounded-xl bg-red-500/10 border border-red-500/20">{error}</div>}
+            <div className="flex gap-1.5">
               <FilterChip active={!tournamentsFilters.period} onClick={() => applyFilter('period', '')} icon={<IconClock size={12} />} label="Ближайшие" />
               <FilterChip active={tournamentsFilters.period === 'past'} onClick={() => applyFilter('period', 'past')} icon={<IconScroll size={12} />} label="Прошедшие" />
             </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div className="flex gap-1.5 flex-wrap">
               <FilterChip active={!tournamentsFilters.type} onClick={() => applyFilter('type', '')} label="Все" />
               <FilterChip active={tournamentsFilters.type === 'offline'} onClick={() => applyFilter('type', 'offline')} icon={<IconMapPin size={12} />} label="Офлайн" />
               <FilterChip active={tournamentsFilters.type === 'online'} onClick={() => applyFilter('type', 'online')} icon={<IconWifi size={12} />} label="Онлайн" />
               <FilterChip active={tournamentsFilters.fsm === 'fsm'} onClick={() => applyFilter('fsm', tournamentsFilters.fsm === 'fsm' ? '' : 'fsm')} icon={<IconStar size={12} />} label="ФСМ" />
             </div>
-            <div style={{ position: 'relative' }}>
-              <IconSearch size={14} color="rgba(255,255,255,0.3)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+            <div className="relative mb-3">
+              <IconSearch size={14} color="rgba(255,255,255,0.3)" className="absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input type="text" placeholder="Поиск турнира..."
                 value={tournamentsFilters.search || ''}
                 onChange={e => onSearchInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && loadTournamentsList(1)}
-                className="player-slot-input"
-                style={{ paddingLeft: 36, width: '100%', boxSizing: 'border-box' }} />
+                className="input-field w-full pl-9"
+              />
             </div>
-            {tournamentsLoading && <div style={{ textAlign: 'center', fontSize: '0.9em', color: 'var(--text-secondary)', padding: '16px 0' }}>Загрузка...</div>}
-            <div className="animate-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {tournamentsLoading && <div className="text-center text-[0.9em] text-[var(--text-secondary)] py-4">Загрузка...</div>}
+            <div className="flex flex-col gap-1.5 animate-stagger">
               {(Array.isArray(tournamentsList) ? tournamentsList : []).map((t, i) => {
                 const hasSeating = isTournamentSeatingReady(t);
                 return (
                   <button key={t.id || i}
                     onClick={() => hasSeating ? selectTournamentFromBrowser(t.id || t.tournamentId) : null}
-                    className={`tournament-browser-card ${hasSeating ? '' : 'tournament-browser-card--disabled'}`}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.9em', flex: 1, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{t.name || t.title || `Турнир ${t.id}`}</div>
+                    className={`w-full p-3.5 rounded-2xl border text-left text-white transition-all duration-200 text-sm ${hasSeating ? 'bg-white/[0.03] border-white/[0.08] cursor-pointer hover:border-white/[0.15] active:scale-[0.98]' : 'opacity-40 cursor-default bg-white/[0.03] border-white/[0.08]'}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-bold text-[0.9em] flex-1 truncate">{t.name || t.title || `Турнир ${t.id}`}</div>
                       {hasSeating ? (
-                        <span className="tournament-status-badge tournament-status-badge--ready">
+                        <span className="shrink-0 text-[0.65em] font-bold py-0.5 px-2 rounded-full inline-flex items-center gap-1 bg-status-success/20 text-status-success border border-status-success/30">
                           <IconCheck size={10} color="#30d158" /> Рассадка
                         </span>
                       ) : (
-                        <span className="tournament-status-badge tournament-status-badge--none">
+                        <span className="shrink-0 text-[0.65em] font-bold py-0.5 px-2 rounded-full inline-flex items-center bg-white/[0.04] text-white/35 border border-white/[0.06]">
                           Нет рассадки
                         </span>
                       )}
                     </div>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                      {t.date && <span style={{ fontSize: '0.7em', color: 'var(--text-muted)' }}>{t.date}</span>}
-                      {t.city && <span style={{ fontSize: '0.7em', color: 'var(--text-muted)' }}>{t.city}</span>}
-                      {t.playersCount && <span style={{ fontSize: '0.7em', color: 'var(--text-muted)' }}>{t.playersCount} игроков</span>}
+                    <div className="flex gap-2 mt-1">
+                      {t.date && <span className="text-[0.7em] text-[var(--text-muted)]">{t.date}</span>}
+                      {t.city && <span className="text-[0.7em] text-[var(--text-muted)]">{t.city}</span>}
+                      {t.playersCount && <span className="text-[0.7em] text-[var(--text-muted)]">{t.playersCount} игроков</span>}
                     </div>
                   </button>
                 );
@@ -1135,7 +1136,7 @@ export function ModeSelector() {
             </div>
             {tournamentsHasMore && !tournamentsLoading && (
               <button onClick={() => loadTournamentsList(tournamentsPage + 1, true)}
-                className="glass-btn" style={{ width: '100%', opacity: 0.6, fontSize: '0.9em' }}>
+                className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring opacity-60 text-[0.9em]">
                 Загрузить ещё
               </button>
             )}
@@ -1148,8 +1149,8 @@ export function ModeSelector() {
 
 function FilterChip({ active, onClick, icon, label }) {
   return (
-    <button onClick={onClick} className={`filter-chip ${active ? 'filter-chip--active' : ''}`}>
-      {icon && <span style={{ display: 'inline-flex' }}>{icon}</span>}
+    <button onClick={onClick} className={`inline-flex items-center gap-1 py-1.5 px-3 rounded-full text-[0.78em] font-semibold cursor-pointer transition-all duration-200 active:scale-95 ${active ? 'bg-accent text-white border border-accent' : 'bg-white/[0.04] text-white/45 border border-white/[0.08]'}`}>
+      {icon && <span className="inline-flex">{icon}</span>}
       {label}
     </button>
   );
@@ -1159,22 +1160,22 @@ function GameModeCard({ icon, title, desc, accentColor, onClick, disabled }) {
   return (
     <button
       onClick={() => { if (!disabled && onClick) onClick(); }}
-      className={`game-mode-card ${disabled ? 'game-mode-card--disabled' : ''}`}
+      className={`flex items-center gap-3.5 py-4 px-4 rounded-2xl border cursor-pointer transition-all duration-200 touch-manipulation text-left text-white w-full overflow-hidden relative ${disabled ? 'opacity-40 cursor-not-allowed pointer-events-auto' : 'bg-[rgba(15,12,35,0.85)] border-white/[0.08] hover:border-white/[0.15] hover:shadow-glass-sm active:scale-[0.98] active:bg-white/[0.06]'}`}
       disabled={disabled}
     >
-      <div className="game-mode-card-icon" style={{
-        borderColor: disabled ? 'rgba(255,255,255,0.06)' : `${accentColor}33`,
-        background: disabled ? 'rgba(255,255,255,0.02)' : undefined,
-        ...(disabled ? {} : { background: `linear-gradient(135deg, ${accentColor}14, ${accentColor}08)` }),
-      }}>
+      <div className="w-[50px] h-[50px] rounded-xl flex items-center justify-center shrink-0 border relative z-[1]"
+        style={{
+          borderColor: disabled ? 'rgba(255,255,255,0.06)' : `${accentColor}33`,
+          background: disabled ? 'rgba(255,255,255,0.02)' : `linear-gradient(135deg, ${accentColor}14, ${accentColor}08)`,
+        }}>
         {icon}
       </div>
-      <div className="game-mode-card-text">
-        <div className="game-mode-card-title">
+      <div className="flex-1 min-w-0 relative z-[1]">
+        <div className="font-bold text-[1.05em] flex items-center gap-2">
           {title}
-          {disabled && <span className="game-mode-card-badge"><IconLock size={10} /> Скоро</span>}
+          {disabled && <span className="inline-flex items-center gap-1 text-[0.65em] font-bold py-0.5 px-2 rounded-lg bg-white/[0.06] text-white/40 border border-white/[0.08] uppercase tracking-wider"><IconLock size={10} /> Скоро</span>}
         </div>
-        <div className="game-mode-card-desc">{desc}</div>
+        <div className="text-[0.8em] text-[var(--text-secondary)] mt-0.5 leading-relaxed">{desc}</div>
       </div>
       {!disabled && <IconChevronRight size={18} color="rgba(255,255,255,0.2)" />}
     </button>

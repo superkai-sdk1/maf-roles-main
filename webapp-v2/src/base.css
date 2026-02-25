@@ -1,0 +1,208 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==============================
+   CSS Variables (runtime theming)
+   ============================== */
+
+:root {
+  /* Safe areas */
+  --tg-safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --tg-safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --tg-safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --tg-safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --tg-content-safe-area-inset-top: 0px;
+  --tg-content-safe-area-inset-bottom: 0px;
+  --tg-content-safe-area-inset-left: 0px;
+  --tg-content-safe-area-inset-right: 0px;
+  --safe-top: calc(var(--tg-safe-area-inset-top) + var(--tg-content-safe-area-inset-top));
+  --safe-bottom: calc(var(--tg-safe-area-inset-bottom) + var(--tg-content-safe-area-inset-bottom));
+
+  /* Glass layers */
+  --glass-layer-1: rgba(255, 255, 255, 0.03);
+  --glass-layer-2: rgba(255, 255, 255, 0.05);
+  --glass-layer-3: rgba(255, 255, 255, 0.08);
+  --glass-surface: rgba(10, 8, 20, 0.75);
+  --glass-surface-light: rgba(20, 18, 40, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-border-strong: rgba(255, 255, 255, 0.18);
+  --glass-specular: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.04) 40%, rgba(255,255,255,0) 60%);
+  --shimmer-gradient: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.05) 50%, transparent 70%);
+
+  /* Shadows */
+  --glass-shadow-sm: 0 2px 12px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+  --glass-shadow-md: 0 8px 32px 0 rgba(0,0,0,0.8), 0 2px 8px rgba(0,0,0,0.4);
+  --glass-shadow-lg: 0 16px 48px rgba(0,0,0,0.9), 0 4px 16px rgba(0,0,0,0.5);
+  --glass-shadow-glow: 0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 0 rgba(255,255,255,0.08), inset 0 0 20px 0 rgba(168,85,247,0.03);
+
+  /* Accent (set dynamically by applyTheme) */
+  --maf-accent: #a855f7;
+  --accent-color: #a855f7;
+  --accent-rgb: 168, 85, 247;
+  --accent-glow: 0 0 24px rgba(168, 85, 247, 0.5);
+  --nexus-glow: 0 0 10px rgba(168, 85, 247, 0.5);
+  --nexus-glow-strong: 0 0 20px rgba(168,85,247,0.6), 0 0 40px rgba(168,85,247,0.2);
+
+  /* Role glows */
+  --glow-sheriff: 0 0 10px rgba(255, 213, 79, 0.5);
+  --glow-mafia: 0 0 10px rgba(168, 85, 247, 0.5);
+  --glow-don: 0 0 10px rgba(206, 147, 216, 0.5);
+  --glow-peace: 0 0 10px rgba(144, 202, 249, 0.4);
+
+  /* Easing */
+  --ease-spring: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-smooth: cubic-bezier(0.2, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* Background */
+  --maf-bg-main: #040410;
+  --maf-bg-secondary: #0d0a2a;
+  --maf-gradient-bg: linear-gradient(135deg, #040410 0%, #0d0a2a 25%, #1a0f4a 50%, #0d0a2a 75%, #040410 100%);
+
+  /* Component sizes */
+  --role-btn-size: 42px;
+  --timer-btn-size: 46px;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Rounded",
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--maf-bg-main);
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Keyframes used by tailwind.config animation classes */
+@keyframes authSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes nightDonPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(206, 147, 216, 0.4); }
+  50% { box-shadow: 0 0 12px 3px rgba(206, 147, 216, 0.6); }
+}
+
+@keyframes nightSheriffPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 213, 79, 0.4); }
+  50% { box-shadow: 0 0 12px 3px rgba(255, 213, 79, 0.6); }
+}
+
+@keyframes nightDoctorPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(129, 199, 132, 0.4); }
+  50% { box-shadow: 0 0 12px 3px rgba(129, 199, 132, 0.6); }
+}
+
+@keyframes foulWarnPulse {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: 0 0 8px 2px rgba(255, 69, 58, 0.5); }
+}
+
+@keyframes killedBlinkAnim {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes timerPulseRed {
+  0%, 100% { text-shadow: none; }
+  50% { text-shadow: 0 0 12px rgba(255, 69, 58, 0.8); }
+}
+
+@keyframes timerFinishedBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes slideShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes ntWaveShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes ntExpiredBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes roleDotPulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.3); opacity: 1; }
+}
+
+@keyframes profileAvatarGlow {
+  0%, 100% { box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.3); }
+  50% { box-shadow: 0 0 25px rgba(var(--accent-rgb), 0.5), 0 0 50px rgba(var(--accent-rgb), 0.2); }
+}
+
+@keyframes profileRingRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Utility animation classes referencing local keyframes */
+.animate-auth-spin { animation: authSpin 0.8s linear infinite; }
+.animate-don-pulse { animation: nightDonPulse 1.2s ease-in-out infinite; }
+.animate-sheriff-pulse { animation: nightSheriffPulse 1.2s ease-in-out infinite; }
+.animate-doctor-pulse { animation: nightDoctorPulse 1.2s ease-in-out infinite; }
+.animate-foul-warn { animation: foulWarnPulse 1s ease-in-out infinite; }
+.animate-killed-blink { animation: killedBlinkAnim 0.8s ease-in-out infinite; }
+.animate-timer-pulse { animation: timerPulseRed 1s ease-in-out infinite; }
+.animate-timer-blink { animation: timerFinishedBlink 0.6s ease-in-out infinite; }
+.animate-slide-shimmer { animation: slideShimmer 2s linear infinite; }
+.animate-nt-wave { animation: ntWaveShimmer 3s ease-in-out infinite; }
+.animate-nt-blink { animation: ntExpiredBlink 0.8s ease-in-out infinite; }
+.animate-role-dot { animation: roleDotPulse 1.5s ease-in-out infinite; }
+.animate-profile-glow { animation: profileAvatarGlow 3s ease-in-out infinite; }
+.animate-profile-ring { animation: profileRingRotate 8s linear infinite; }
+.animate-spin { animation: spin 1s linear infinite; }
+
+/* Scroll fade pseudo-elements — hard to do with pure utilities */
+.scroll-fade {
+  position: relative;
+}
+.scroll-fade::before,
+.scroll-fade::after {
+  content: "";
+  position: sticky;
+  left: 0; right: 0;
+  height: 32px;
+  z-index: 10;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.scroll-fade::before {
+  top: 0;
+  background: linear-gradient(to bottom, var(--maf-bg-main) 0%, transparent 100%);
+  display: block;
+  margin-bottom: -32px;
+}
+.scroll-fade::after {
+  bottom: 0;
+  background: linear-gradient(to top, var(--maf-bg-main) 0%, transparent 100%);
+  display: block;
+  margin-top: -32px;
+}
+
+/* Stagger animation children */
+.animate-stagger > * { animation: glass-reveal 0.4s var(--ease-out) both; }
+.animate-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.animate-stagger > *:nth-child(2) { animation-delay: 30ms; }
+.animate-stagger > *:nth-child(3) { animation-delay: 40ms; }
+.animate-stagger > *:nth-child(4) { animation-delay: 50ms; }
+.animate-stagger > *:nth-child(5) { animation-delay: 60ms; }
+.animate-stagger > *:nth-child(6) { animation-delay: 70ms; }
+.animate-stagger > *:nth-child(7) { animation-delay: 80ms; }
+.animate-stagger > *:nth-child(8) { animation-delay: 90ms; }
+.animate-stagger > *:nth-child(9) { animation-delay: 100ms; }
+.animate-stagger > *:nth-child(10) { animation-delay: 110ms; }
+.animate-stagger > *:nth-child(n+11) { animation-delay: 120ms; }

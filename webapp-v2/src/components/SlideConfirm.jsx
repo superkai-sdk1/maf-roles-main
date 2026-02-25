@@ -2,6 +2,13 @@ import React, { useRef, useState, useCallback } from 'react';
 import { triggerHaptic } from '../utils/haptics';
 import { IconChevronRight } from '../utils/icons';
 
+const colorMap = {
+  violet: { bg: 'bg-purple-500/10', fill: 'bg-gradient-to-r from-purple-600 to-indigo-500', border: 'border-purple-500/20', thumb: 'bg-purple-500' },
+  red: { bg: 'bg-red-500/10', fill: 'bg-gradient-to-r from-red-600 to-rose-500', border: 'border-red-500/20', thumb: 'bg-red-500' },
+  green: { bg: 'bg-emerald-500/10', fill: 'bg-gradient-to-r from-emerald-600 to-green-500', border: 'border-emerald-500/20', thumb: 'bg-emerald-500' },
+  orange: { bg: 'bg-amber-500/10', fill: 'bg-gradient-to-r from-amber-500 to-orange-500', border: 'border-amber-500/20', thumb: 'bg-amber-500' },
+};
+
 export function SlideConfirm({ label, onConfirm, color = 'violet', compact = false, disabled = false }) {
   const trackRef = useRef(null);
   const [offset, setOffset] = useState(0);
@@ -41,11 +48,17 @@ export function SlideConfirm({ label, onConfirm, color = 'violet', compact = fal
   }, [dragging, offset, getMaxOffset, onConfirm, disabled]);
 
   const progress = getMaxOffset() > 0 ? offset / getMaxOffset() : 0;
+  const c = colorMap[color] || colorMap.violet;
 
   return (
     <div
       ref={trackRef}
-      className={`sc-track sc-track--${color} ${compact ? 'sc-track--compact' : ''} ${disabled ? 'sc-track--disabled' : ''} ${dragging ? 'sc-track--dragging' : ''}`}
+      className={`relative overflow-hidden select-none touch-pan-y
+        ${compact ? 'h-10 rounded-xl' : 'h-12 rounded-2xl'}
+        ${c.bg} border ${c.border}
+        ${disabled ? 'opacity-40 pointer-events-none' : ''}
+        ${dragging ? 'scale-[0.98]' : ''}
+        transition-transform duration-150 ease-spring`}
       onTouchStart={e => { e.stopPropagation(); handleStart(e.touches[0].clientX); }}
       onTouchMove={e => { e.stopPropagation(); handleMove(e.touches[0].clientX); }}
       onTouchEnd={e => { e.stopPropagation(); handleEnd(); }}
@@ -54,12 +67,17 @@ export function SlideConfirm({ label, onConfirm, color = 'violet', compact = fal
       onMouseUp={handleEnd}
       onMouseLeave={() => { if (dragging) handleEnd(); }}
     >
-      <div className="sc-fill" style={{ opacity: progress }} />
-      <div className="sc-label" style={{ opacity: 1 - progress * 0.8 }}>
+      <div className={`absolute inset-0 ${c.fill} transition-opacity duration-200`} style={{ opacity: progress }} />
+      <div
+        className="absolute inset-0 flex items-center justify-center text-white/50 text-xs font-bold tracking-widest uppercase pointer-events-none transition-opacity duration-200"
+        style={{ opacity: 1 - progress * 0.8 }}
+      >
         {label}
       </div>
       <div
-        className={`sc-thumb ${compact ? 'sc-thumb--compact' : ''}`}
+        className={`absolute top-1 left-1 flex items-center justify-center rounded-xl
+          ${compact ? 'w-8 h-8' : 'w-10 h-10'}
+          ${c.thumb} shadow-lg`}
         style={{
           transform: `translateX(${offset}px)`,
           transition: dragging ? 'none' : 'transform 0.3s var(--ease-spring)',

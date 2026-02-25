@@ -87,29 +87,29 @@ export function GameScreen() {
   const timerProgress = timerMax > 0 ? Math.max(0, Math.min(1, timerTimeLeft / timerMax)) : 0;
 
   return (
-    <div className="game-screen-root">
+    <div className="min-h-screen bg-maf-bg" style={{ paddingTop: 'var(--safe-top, 0px)' }}>
       {/* === VOTING FULLSCREEN === */}
       {showVotingScreen && (
-        <div className="fullscreen-page animate-fadeIn">
-          <div className="fullscreen-page-container">
+        <div className="fixed inset-0 z-40 bg-maf-bg overflow-y-auto animate-fade-in">
+          <div className="min-h-full" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
             <VotingPanel />
           </div>
           {createPortal(
-            <nav className="main-nav-bar">
-              <button className={`nav-item ${votingScreenTab === 'voting' ? 'active' : ''}`}
+            <nav className="fixed z-50 left-4 right-4 flex items-center justify-around rounded-3xl glass-surface shadow-nav-bar py-2 animate-nav-slide-in" style={{ bottom: 'calc(16px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))' }}>
+              <button className={`flex flex-col items-center gap-0.5 py-2 px-1 min-w-[60px] text-white/40 transition-all duration-300 ease-spring ${votingScreenTab === 'voting' ? 'text-white' : ''}`}
                 onClick={() => { setVotingScreenTab('voting'); triggerHaptic('selection'); }}>
-                <span className="nav-item-icon">⚖</span>
-                <span className="nav-item-label">Голосование</span>
+                <span className="text-2xl transition-all duration-300 ease-spring flex items-center justify-center">⚖</span>
+                <span className="text-[0.55em] font-bold tracking-wider uppercase">Голосование</span>
               </button>
-              <button className={`nav-item ${votingScreenTab === 'history' ? 'active' : ''}`}
+              <button className={`flex flex-col items-center gap-0.5 py-2 px-1 min-w-[60px] text-white/40 transition-all duration-300 ease-spring ${votingScreenTab === 'history' ? 'text-white' : ''}`}
                 onClick={() => { setVotingScreenTab('history'); triggerHaptic('selection'); }}>
-                <span className="nav-item-icon">📋</span>
-                <span className="nav-item-label">История</span>
+                <span className="text-2xl transition-all duration-300 ease-spring flex items-center justify-center">📋</span>
+                <span className="text-[0.55em] font-bold tracking-wider uppercase">История</span>
               </button>
-              <button className="nav-item"
+              <button className="flex flex-col items-center gap-0.5 py-2 px-1 min-w-[60px] text-white/40 transition-all duration-300 ease-spring"
                 onClick={() => { setShowVotingScreen(false); setVotingScreenTab('voting'); triggerHaptic('light'); }}>
-                <span className="nav-item-icon">✕</span>
-                <span className="nav-item-label">Закрыть</span>
+                <span className="text-2xl transition-all duration-300 ease-spring flex items-center justify-center">✕</span>
+                <span className="text-[0.55em] font-bold tracking-wider uppercase">Закрыть</span>
               </button>
             </nav>,
             document.body
@@ -119,14 +119,14 @@ export function GameScreen() {
 
       {/* === SETTINGS FULLSCREEN === */}
       {showSettingsScreen && (
-        <div className="fullscreen-page animate-fadeIn">
-          <div className="fullscreen-page-container">
-            <div className="fullscreen-page-header">
-              <button className="fullscreen-back-btn"
+        <div className="fixed inset-0 z-40 bg-maf-bg overflow-y-auto animate-fade-in">
+          <div className="min-h-full" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <button className="text-accent text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring"
                 onClick={() => { setShowSettingsScreen(false); triggerHaptic('light'); }}>
                 ← Назад
               </button>
-              <span className="fullscreen-page-title">Настройки трансляции</span>
+              <span className="text-accent text-xs font-bold tracking-[0.15em] uppercase">Настройки трансляции</span>
             </div>
             <SettingsPanel />
           </div>
@@ -135,10 +135,10 @@ export function GameScreen() {
 
       {/* === RESULTS FULLSCREEN === */}
       {showResultsScreen && (
-        <div className="fullscreen-page animate-fadeIn">
-          <div className="fullscreen-page-container">
-            <div className="fullscreen-page-header">
-              <button className="fullscreen-back-btn"
+        <div className="fixed inset-0 z-40 bg-maf-bg overflow-y-auto animate-fade-in">
+          <div className="min-h-full" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <button className="text-accent text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring"
                 onClick={() => {
                   if (viewOnly) { returnToMainMenu(); }
                   else { setShowResultsScreen(false); }
@@ -146,9 +146,9 @@ export function GameScreen() {
                 }}>
                 ← {viewOnly ? 'В меню' : 'Назад'}
               </button>
-              <span className="fullscreen-page-title">Итоги</span>
+              <span className="text-accent text-xs font-bold tracking-[0.15em] uppercase">Итоги</span>
               {viewOnly && (
-                <button className="fullscreen-back-btn" style={{ marginLeft: 'auto' }}
+                <button className="text-accent text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring" style={{ marginLeft: 'auto' }}
                   onClick={() => { setViewOnly(false); setShowResultsScreen(false); triggerHaptic('medium'); }}>
                   Редактировать
                 </button>
@@ -164,12 +164,12 @@ export function GameScreen() {
         <>
           {/* Roles validation alert */}
           {showRolesAlert && (
-            <div className="no-voting-alert-overlay animate-fadeIn" onClick={(e) => { if (e.target === e.currentTarget) setShowRolesAlert(false); }}>
-              <div className="no-voting-alert-card">
-                <div className="no-voting-alert-icon">🎭</div>
-                <div className="no-voting-alert-text">Невозможно начать договорку — проверьте роли</div>
-                <div className="no-voting-alert-buttons">
-                  <button className="no-voting-alert-btn no-voting-alert-btn--yes" onClick={() => { setShowRolesAlert(false); triggerHaptic('light'); }}>Понятно</button>
+            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowRolesAlert(false); }}>
+              <div className="w-full max-w-[320px] glass-surface rounded-3xl p-6 shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
+                <div className="text-4xl">🎭</div>
+                <div className="text-sm text-white/60 font-medium leading-relaxed">Невозможно начать договорку — проверьте роли</div>
+                <div className="flex gap-3 w-full mt-2">
+                  <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setShowRolesAlert(false); triggerHaptic('light'); }}>Понятно</button>
                 </div>
               </div>
             </div>
@@ -177,13 +177,13 @@ export function GameScreen() {
 
           {/* Exit confirmation overlay */}
           {showExitConfirm && (
-            <div className="no-voting-alert-overlay animate-fadeIn" onClick={(e) => { if (e.target === e.currentTarget) setShowExitConfirm(false); }}>
-              <div className="no-voting-alert-card">
-                <div className="no-voting-alert-icon">⚠️</div>
-                <div className="no-voting-alert-text">Выйти из игры? Прогресс будет сохранён.</div>
-                <div className="no-voting-alert-buttons">
-                  <button className="no-voting-alert-btn no-voting-alert-btn--no" onClick={() => setShowExitConfirm(false)}>Остаться</button>
-                  <button className="no-voting-alert-btn no-voting-alert-btn--yes" onClick={() => { returnToMainMenu(); triggerHaptic('heavy'); }}>Выйти</button>
+            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowExitConfirm(false); }}>
+              <div className="w-full max-w-[320px] glass-surface rounded-3xl p-6 shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
+                <div className="text-4xl">⚠️</div>
+                <div className="text-sm text-white/60 font-medium leading-relaxed">Выйти из игры? Прогресс будет сохранён.</div>
+                <div className="flex gap-3 w-full mt-2">
+                  <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => setShowExitConfirm(false)}>Остаться</button>
+                  <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { returnToMainMenu(); triggerHaptic('heavy'); }}>Выйти</button>
                 </div>
               </div>
             </div>
@@ -191,13 +191,13 @@ export function GameScreen() {
 
           {/* No-voting alert overlay */}
           {showNoVotingAlert && (
-            <div className="no-voting-alert-overlay animate-fadeIn" onClick={(e) => { if (e.target === e.currentTarget) setShowNoVotingAlert(false); }}>
-              <div className="no-voting-alert-card">
-                <div className="no-voting-alert-icon">⚠️</div>
-                <div className="no-voting-alert-text">В этом дне не было голосования. Вы уверены что хотите начать ночь?</div>
-                <div className="no-voting-alert-buttons">
-                  <button className="no-voting-alert-btn no-voting-alert-btn--no" onClick={() => { setShowNoVotingAlert(false); triggerHaptic('light'); }}>Нет</button>
-                  <button className="no-voting-alert-btn no-voting-alert-btn--yes" onClick={() => { setShowNoVotingAlert(false); setMode('night'); triggerHaptic('medium'); }}>Да</button>
+            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowNoVotingAlert(false); }}>
+              <div className="w-full max-w-[320px] glass-surface rounded-3xl p-6 shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
+                <div className="text-4xl">⚠️</div>
+                <div className="text-sm text-white/60 font-medium leading-relaxed">В этом дне не было голосования. Вы уверены что хотите начать ночь?</div>
+                <div className="flex gap-3 w-full mt-2">
+                  <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => { setShowNoVotingAlert(false); triggerHaptic('light'); }}>Нет</button>
+                  <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setShowNoVotingAlert(false); setMode('night'); triggerHaptic('medium'); }}>Да</button>
                 </div>
               </div>
             </div>
@@ -205,13 +205,13 @@ export function GameScreen() {
 
           {/* Go to night after all speeches */}
           {showGoToNightPrompt && (
-            <div className="no-voting-alert-overlay animate-fadeIn" onClick={(e) => { if (e.target === e.currentTarget) setShowGoToNightPrompt(false); }}>
-              <div className="no-voting-alert-card">
-                <div className="no-voting-alert-icon">🌙</div>
-                <div className="no-voting-alert-text">Все игроки высказались. Перейти в ночь?</div>
-                <div className="no-voting-alert-buttons">
-                  <button className="no-voting-alert-btn no-voting-alert-btn--no" onClick={() => { setShowGoToNightPrompt(false); triggerHaptic('light'); }}>Нет</button>
-                  <button className="no-voting-alert-btn no-voting-alert-btn--yes" onClick={() => { setShowGoToNightPrompt(false); handleGoToNight(); triggerHaptic('medium'); }}>Да</button>
+            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowGoToNightPrompt(false); }}>
+              <div className="w-full max-w-[320px] glass-surface rounded-3xl p-6 shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
+                <div className="text-4xl">🌙</div>
+                <div className="text-sm text-white/60 font-medium leading-relaxed">Все игроки высказались. Перейти в ночь?</div>
+                <div className="flex gap-3 w-full mt-2">
+                  <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => { setShowGoToNightPrompt(false); triggerHaptic('light'); }}>Нет</button>
+                  <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setShowGoToNightPrompt(false); handleGoToNight(); triggerHaptic('medium'); }}>Да</button>
                 </div>
               </div>
             </div>
@@ -219,24 +219,24 @@ export function GameScreen() {
 
           {/* Game number indicator */}
           {currentGameNumber > 1 && (
-            <div className="game-number-indicator animate-fadeIn">
-              Игра {currentGameNumber}
+            <div className="text-center mb-2 animate-fade-in">
+              <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-lg bg-accent-soft border border-accent-soft text-accent">Игра {currentGameNumber}</span>
             </div>
           )}
 
           {/* Phase label above table */}
           {phaseTitle && (
-            <div className="phase-label-above-table animate-fadeIn">{phaseTitle}</div>
+            <div className="text-center text-xs font-bold tracking-[0.15em] uppercase text-accent mb-3 animate-fade-in">{phaseTitle}</div>
           )}
 
           {/* Players list */}
-          <div className="players-list">
+          <div className="flex flex-col gap-3" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, env(safe-area-inset-bottom, 0px))) 16px' }}>
             {/* Roles phase */}
             {gamePhase === 'roles' && <RolesPhase />}
 
             {/* Roles slider — inline under table */}
             {gamePhase === 'roles' && !rolesDistributed && (
-              <div className="inline-slider-wrap animate-fadeIn">
+              <div className="mt-3 animate-fade-in">
                 <SlideConfirm label="Начать договорку" onConfirm={() => {
                   const r = confirmRolesDistribution();
                   if (!r.valid) { setShowRolesAlert(true); triggerHaptic('warning'); }
@@ -247,21 +247,21 @@ export function GameScreen() {
 
             {/* Inline timer card (discussion / free seating) */}
             {rolesDistributed && isTimerPhase && !winnerTeam && (
-              <div className={`inline-timer-card ${timerTimeLeft <= 10 && timerRunning ? 'inline-timer-card--warning' : ''}`}>
-                <div className="inline-timer-fill" style={{ width: `${timerProgress * 100}%` }} />
-                <div className="inline-timer-content">
-                  <div className={`inline-timer-digits ${timerTimeLeft <= 10 && timerRunning ? 'warning' : ''}`}>
+              <div className={`relative rounded-2xl overflow-hidden glass-surface shadow-glass-md mb-3 ${timerTimeLeft <= 10 && timerRunning ? 'border border-red-500/20' : ''}`}>
+                <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-[var(--accent-color)] to-indigo-500/80 transition-[width] duration-500 ease-linear opacity-30" style={{ width: `${timerProgress * 100}%` }} />
+                <div className="relative z-[1] flex items-center justify-between px-4 py-3">
+                  <div className={`text-2xl font-extrabold tabular-nums text-white/70 ${timerTimeLeft <= 10 && timerRunning ? 'text-red-400 animate-timer-pulse' : ''}`}>
                     {formatTimer(timerTimeLeft)}
                   </div>
-                  <div className="inline-timer-controls">
+                  <div>
                     {!timerRunning ? (
-                      <button className="inline-timer-btn inline-timer-btn--start" onClick={() => {
+                      <button className="px-4 py-2 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-emerald-500/15 text-emerald-400 border border-emerald-500/25" onClick={() => {
                         if (gamePhase === 'discussion') startDiscussionTimer();
                         else startFreeSeatingTimer();
                         triggerHaptic('light');
                       }}>Старт</button>
                     ) : (
-                      <button className="inline-timer-btn inline-timer-btn--pause" onClick={() => {
+                      <button className="px-4 py-2 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-amber-500/15 text-amber-400 border border-amber-500/25" onClick={() => {
                         if (gamePhase === 'discussion') stopDiscussionTimer();
                         else stopFreeSeatingTimer();
                         triggerHaptic('light');
@@ -274,18 +274,18 @@ export function GameScreen() {
 
             {/* Day speaker indicator */}
             {gamePhase === 'day' && currentSpeaker && (
-              <div className="speaker-indicator animate-fadeIn">
-                <div className="speaker-info">
-                  <span className="speaker-name">#{currentSpeaker.num} {currentSpeaker.login || `Игрок ${currentSpeaker.num}`}</span>
-                  <span className="speaker-counter">{currentDaySpeakerIndex + 1}/{activePlayers?.length}</span>
+              <div className="flex items-center justify-between px-4 py-3 rounded-2xl glass-surface shadow-glass-sm mb-3 animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-white">#{currentSpeaker.num} {currentSpeaker.login || `Игрок ${currentSpeaker.num}`}</span>
+                  <span className="text-xs text-white/40 font-medium">{currentDaySpeakerIndex + 1}/{activePlayers?.length}</span>
                 </div>
-                <button className="glass-btn btn-primary speaker-next-btn" onClick={nextDaySpeaker}>Далее</button>
+                <button className="px-4 py-2.5 rounded-xl bg-accent text-white border border-white/[0.08] text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring" onClick={nextDaySpeaker}>Далее</button>
               </div>
             )}
 
             {/* Night phase indicator */}
             {gamePhase === 'night' && (
-              <div className="night-phase-indicator">
+              <div className="text-center text-sm font-bold text-indigo-400 tracking-wider py-3 mb-1">
                 {nightPhase === 'kill' || nightPhase === null ? 'Мафия стреляет' :
                  nightPhase === 'don' ? 'Дон проверяет' :
                  nightPhase === 'sheriff' ? 'Шериф проверяет' :
@@ -298,7 +298,7 @@ export function GameScreen() {
 
             {/* Player cards (day, discussion, freeSeating — not night) */}
             {(gamePhase === 'day' || gamePhase === 'discussion' || gamePhase === 'freeSeating') && (
-              <div className="animate-stagger scroll-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="animate-stagger scroll-stagger flex flex-col gap-2.5">
                 {tableOut.map(p => (
                   <PlayerCard key={p.roleKey} player={p} mode={effectiveMode}
                     isSpeaking={currentSpeaker?.roleKey === p.roleKey}
@@ -310,8 +310,8 @@ export function GameScreen() {
 
             {/* Discussion/FreeSeating — inline skip slider + back button */}
             {rolesDistributed && isTimerPhase && !winnerTeam && (
-              <div className="inline-phase-actions animate-fadeIn">
-                <div className="inline-slider-wrap">
+              <div className="flex flex-col gap-3 mt-3 animate-fade-in">
+                <div className="mt-3">
                   <SlideConfirm
                     label={
                       gamePhase === 'discussion'
@@ -329,7 +329,7 @@ export function GameScreen() {
                     compact
                   />
                 </div>
-                <button className="inline-back-btn" onClick={() => {
+                <button className="text-center text-white/40 text-xs font-bold py-2 active:scale-95 transition-transform duration-150 ease-spring" onClick={() => {
                   if (gamePhase === 'freeSeating') {
                     stopFreeSeatingTimer();
                     setGamePhase('discussion');
@@ -349,8 +349,8 @@ export function GameScreen() {
 
             {/* Voting button (day only) */}
             {gamePhase === 'day' && rolesDistributed && !winnerTeam && (
-              <div className="voting-btn-container">
-                <button className="glass-btn game-voting-btn" onClick={() => {
+              <div className="mt-3">
+                <button className="px-4 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-base font-bold active:scale-[0.97] transition-transform duration-150 ease-spring w-full" onClick={() => {
                   const cands = getNominatedCandidates();
                   if (cands.length > 0) { startVoting(); setVotingScreenTab('voting'); }
                   else { setVotingScreenTab('history'); }
@@ -363,7 +363,7 @@ export function GameScreen() {
 
             {/* Inline slider: Day → Night */}
             {gamePhase === 'day' && rolesDistributed && !winnerTeam && (
-              <div className="inline-slider-wrap animate-fadeIn">
+              <div className="mt-3 animate-fade-in">
                 <SlideConfirm
                   label={`Перейти в ночь ${(nightNumber || 0) + 1}`}
                   onConfirm={() => { handleGoToNight(); triggerHaptic('medium'); }}
@@ -375,7 +375,7 @@ export function GameScreen() {
 
             {/* Game action buttons */}
             {rolesDistributed && (gamePhase === 'day' || gamePhase === 'night') && !viewOnly && (
-              <div className="game-actions-container">
+              <div className="flex flex-col gap-3 mt-6 pt-4 border-t border-white/[0.06]">
                 {!gameFinished && (
                   <SlideConfirm
                     label="Закончить игру"
@@ -384,15 +384,15 @@ export function GameScreen() {
                     compact
                   />
                 )}
-                <button className="glass-btn game-action-btn" onClick={() => { setShowSettingsScreen(true); triggerHaptic('light'); }}>
+                <button className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring w-full" onClick={() => { setShowSettingsScreen(true); triggerHaptic('light'); }}>
                   ⚙ Настройки трансляции
                 </button>
                 {(winnerTeam || gameFinished) && (
-                  <button className="glass-btn game-action-btn game-action-btn--results" onClick={() => { setShowResultsScreen(true); triggerHaptic('light'); }}>
+                  <button className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring w-full" onClick={() => { setShowResultsScreen(true); triggerHaptic('light'); }}>
                     🏆 Итоги
                   </button>
                 )}
-                <button className="glass-btn game-action-btn game-action-btn--exit" onClick={() => {
+                <button className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring w-full text-red-400/60" onClick={() => {
                   if (gameFinished) returnToMainMenu();
                   else { setShowExitConfirm(true); triggerHaptic('warning'); }
                 }}>
@@ -407,4 +407,3 @@ export function GameScreen() {
     </div>
   );
 }
-

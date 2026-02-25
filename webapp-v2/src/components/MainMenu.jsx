@@ -7,7 +7,6 @@ import { authService } from '../services/auth';
 import { COLOR_SCHEMES, applyTheme } from '../constants/themes';
 import { triggerHaptic } from '../utils/haptics';
 import { useSwipeBack } from '../hooks/useSwipeBack';
-import { TwGameList } from './MainMenuTw';
 import {
   IconPlayCircle, IconHistory, IconPlus, IconPalette, IconUser,
   IconTrophy, IconDice, IconChevronDown, IconTrash, IconStats, IconMafBoard,
@@ -44,12 +43,12 @@ const getResultText = (s) => {
   return 'В процессе';
 };
 
-const getResultDotClass = (s) => {
-  if (s.gameFinished && s.winnerTeam === 'civilians') return 'dot-red';
-  if (s.gameFinished && s.winnerTeam === 'mafia') return 'dot-dark';
-  if (s.gameFinished && s.winnerTeam === 'draw') return 'dot-white';
-  if (s.winnerTeam && !s.gameFinished) return 'dot-orange';
-  return 'dot-green';
+const getResultDotStyle = (s) => {
+  if (s.gameFinished && s.winnerTeam === 'civilians') return { background: '#ff5252', boxShadow: '0 0 6px rgba(255,82,82,0.4)' };
+  if (s.gameFinished && s.winnerTeam === 'mafia') return { background: '#4fc3f7', boxShadow: '0 0 6px rgba(79,195,247,0.4)' };
+  if (s.gameFinished && s.winnerTeam === 'draw') return { background: '#ffffff', boxShadow: '0 0 6px rgba(255,255,255,0.3)' };
+  if (s.winnerTeam && !s.gameFinished) return { background: '#ffb347', boxShadow: '0 0 6px rgba(255,179,71,0.4)' };
+  return { background: '#30d158', boxShadow: '0 0 6px rgba(48,209,88,0.4)' };
 };
 
 const getModeLabel = (mode) => {
@@ -142,9 +141,9 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
   }, [onLoadSession]);
 
   return (
-    <div className={`series-card ${expanded ? 'series-card--expanded' : ''} ${group.archived ? 'series-card--archived' : ''}`}>
-      <div className="series-card-header" onClick={handleToggle}>
-        <div className="series-card-icon">
+    <div className={`relative w-full rounded-3xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] hover:border-white/[0.12] transition-all duration-200 overflow-hidden ${expanded ? 'border-white/[0.18] shadow-[0_8px_32px_rgba(0,0,0,0.3)]' : ''} ${group.archived ? 'opacity-75' : ''}`}>
+      <div className="flex items-center p-4 cursor-pointer relative z-[1] gap-3" onClick={handleToggle}>
+        <div className={`w-11 h-11 rounded-[14px] flex items-center justify-center shrink-0 ${group.archived ? 'bg-white/[0.04] border border-white/[0.08]' : 'bg-accent/10 border border-accent/15'}`}>
           {group.archived
             ? <IconLock size={20} color="rgba(255,255,255,0.4)" />
             : group.gameMode === 'gomafia'
@@ -154,33 +153,33 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                 : <IconTrophy size={20} color="var(--accent-color, #a855f7)" />
           }
         </div>
-        <div className="series-card-info">
-          <div className="series-card-name">{group.tournamentName}</div>
-          <div className="series-card-meta">
-            {modeLabel && <span className="series-mode-badge">{modeLabel}</span>}
-            {!group.isFunky && group.tableSelected && <span className="series-meta-item">Стол {group.tableSelected}</span>}
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-base truncate text-white mb-1">{group.tournamentName}</div>
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            {modeLabel && <span className="text-[0.65em] font-extrabold px-2 py-0.5 rounded-lg bg-accent/10 text-accent uppercase tracking-wider border border-accent/15">{modeLabel}</span>}
+            {!group.isFunky && group.tableSelected && <span className="text-[0.72em] text-white/40 font-semibold">Стол {group.tableSelected}</span>}
             {!group.isFunky && (
-              <span className="series-meta-item">
+              <span className="text-[0.72em] text-white/40 font-semibold">
                 Игра {group.lastStartedGameNumber || group.sessions.length}
               </span>
             )}
           </div>
           {group.isFunky ? (
-            <div className="series-progress-text">
+            <div className="text-[0.65em] text-white/30 font-semibold">
               {completedGames} {completedGames === 1 ? 'игра' : completedGames < 5 ? 'игры' : 'игр'} сыграно
             </div>
           ) : (
             <>
-              <div className="series-progress-bar">
-                <div className="series-progress-fill" style={{ width: `${progress}%` }} />
+              <div className="h-0.5 bg-white/[0.06] rounded-sm overflow-hidden mb-1">
+                <div className="h-full bg-gradient-to-r from-accent to-indigo-500 rounded-sm transition-all duration-500 ease-spring" style={{ width: `${progress}%` }} />
               </div>
-              <div className="series-progress-text">
+              <div className="text-[0.65em] text-white/30 font-semibold">
                 {completedGames} из {totalGames} завершено
               </div>
             </>
           )}
         </div>
-        <span className="series-card-chevron" style={{
+        <span className="shrink-0 flex transition-transform duration-300 ease-spring" style={{
           transform: expanded ? 'rotate(180deg)' : 'rotate(0)',
         }}>
           <IconChevronDown size={18} color="rgba(255,255,255,0.3)" />
@@ -188,29 +187,29 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
       </div>
 
       {expanded && (
-        <div className="series-card-body">
-              <div className="series-games-list">
+        <div className="px-4 pb-4 border-t border-white/[0.06] bg-black/20 relative z-[1] animate-expand">
+              <div className="py-1.5 px-2 pt-0">
                 {group.sessions.map((s, idx) => (
                   <div
                     key={s.sessionId}
-                    className={`series-game-row ${s.seriesArchived ? 'series-game-row--archived' : ''}`}
+                    className={`flex items-center py-2.5 px-3 cursor-pointer rounded-xl gap-2 transition-colors duration-150 active:bg-white/[0.05] ${s.seriesArchived ? 'opacity-60 cursor-default' : ''}`}
                     onClick={() => handleGameRowClick(s)}
                   >
-                    <div className="series-game-left">
-                      <span className="series-game-number">
+                    <div className="flex flex-col gap-0.5 min-w-[80px]">
+                      <span className="text-[0.85em] font-bold text-white/75 whitespace-nowrap">
                         Игра {s.gameSelected || idx + 1}
                       </span>
                       {s.tableSelected && (
-                        <span className="series-game-table">Стол {s.tableSelected}</span>
+                        <span className="text-[0.7em] text-white/30 whitespace-nowrap font-semibold">Стол {s.tableSelected}</span>
                       )}
                     </div>
-                    <div className="series-game-right">
-                      <span className={`result-dot ${getResultDotClass(s)}`} />
-                      <span className="series-game-result">{getResultText(s)}</span>
-                      <span className="series-game-date">{formatTime(s.timestamp || s.updatedAt)}</span>
+                    <div className="flex items-center gap-1.5 flex-1 justify-end">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={getResultDotStyle(s)} />
+                      <span className="text-[0.78em] text-white/50 font-medium">{getResultText(s)}</span>
+                      <span className="text-[0.7em] text-white/20 whitespace-nowrap font-semibold">{formatTime(s.timestamp || s.updatedAt)}</span>
                       {!s.seriesArchived && !isGameComplete(s) && (
                         <button
-                          className="series-game-delete"
+                          className="bg-transparent border-none cursor-pointer p-1.5 opacity-40 transition-opacity duration-150 rounded-lg flex items-center justify-center active:opacity-100 active:bg-status-error/15"
                           onClick={(e) => { e.stopPropagation(); onDeleteSession(s.sessionId); triggerHaptic('warning'); }}
                         >
                           <IconTrash size={13} color="rgba(255,255,255,0.4)" />
@@ -222,10 +221,10 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                 ))}
               </div>
 
-              <div className="series-actions series-actions--wrap">
+              <div className="flex gap-2 py-2.5 px-3 pb-3.5 flex-wrap">
                 {!group.archived && onNewGame && (
                   <button
-                    className="series-action-btn series-action-newgame"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all duration-150 border border-accent/22 bg-accent/10 text-accent active:scale-[0.97]"
                     onClick={(e) => { e.stopPropagation(); onNewGame(group); triggerHaptic('medium'); }}
                   >
                     <IconPlus size={15} />
@@ -234,7 +233,7 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                 )}
                 {hasFinishedGames && (
                   <button
-                    className="series-action-btn series-action-table"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all duration-150 border border-yellow-500/18 bg-yellow-500/5 text-yellow-400 active:scale-[0.97]"
                     onClick={(e) => { e.stopPropagation(); onShowTable?.(group); triggerHaptic('light'); }}
                   >
                     <IconList size={15} />
@@ -243,14 +242,14 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                 )}
                 {!group.archived && !group.allGamesFinished && (
                   confirmAction === 'delete' ? (
-                    <div className="series-archive-confirm">
-                      <span className="series-archive-confirm-text">Удалить все игры серии?</span>
-                      <button className="series-archive-confirm-yes" onClick={handleDeleteSeriesClick}>Да</button>
-                      <button className="series-archive-confirm-no" onClick={handleCancelConfirm}>Нет</button>
+                    <div className="flex-1 flex items-center gap-2 animate-fade-in">
+                      <span className="text-[0.8em] font-bold text-white/60 whitespace-nowrap">Удалить все игры серии?</span>
+                      <button className="flex-1 py-2.5 px-3.5 rounded-[10px] font-bold text-[0.8em] cursor-pointer border border-status-error/30 bg-status-error/15 text-status-error active:scale-95 active:bg-status-error/25" onClick={handleDeleteSeriesClick}>Да</button>
+                      <button className="flex-1 py-2.5 px-3.5 rounded-[10px] font-bold text-[0.8em] cursor-pointer border border-white/10 bg-white/5 text-white/50 active:scale-95" onClick={handleCancelConfirm}>Нет</button>
                     </div>
                   ) : (
                     <button
-                      className="series-action-btn series-action-archive"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all duration-150 border border-status-error/18 bg-status-error/5 text-status-error active:scale-[0.97] active:bg-status-error/12"
                       onClick={handleDeleteSeriesClick}
                     >
                       <IconTrash size={15} />
@@ -260,14 +259,14 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                 )}
                 {!group.archived && group.allGamesFinished && (
                   confirmAction === 'save' ? (
-                    <div className="series-archive-confirm">
-                      <span className="series-archive-confirm-text">Сохранить серию в историю?</span>
-                      <button className="series-archive-confirm-yes" onClick={handleSaveSeriesClick}>Да</button>
-                      <button className="series-archive-confirm-no" onClick={handleCancelConfirm}>Нет</button>
+                    <div className="flex-1 flex items-center gap-2 animate-fade-in">
+                      <span className="text-[0.8em] font-bold text-white/60 whitespace-nowrap">Сохранить серию в историю?</span>
+                      <button className="flex-1 py-2.5 px-3.5 rounded-[10px] font-bold text-[0.8em] cursor-pointer border border-accent/30 bg-accent/15 text-accent active:scale-95 active:bg-accent/25" onClick={handleSaveSeriesClick}>Да</button>
+                      <button className="flex-1 py-2.5 px-3.5 rounded-[10px] font-bold text-[0.8em] cursor-pointer border border-white/10 bg-white/5 text-white/50 active:scale-95" onClick={handleCancelConfirm}>Нет</button>
                     </div>
                   ) : (
                     <button
-                      className="series-action-btn series-action-newgame"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all duration-150 border border-accent/22 bg-accent/10 text-accent active:scale-[0.97]"
                       onClick={handleSaveSeriesClick}
                     >
                       <IconCheck size={15} />
@@ -276,7 +275,7 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                   )
                 )}
                 {group.archived && (
-                  <div className="series-archived-badge">
+                  <div className="flex items-center gap-1.5 text-[0.7em] font-bold text-white/40">
                     <IconLock size={13} />
                     <span>Серия завершена</span>
                   </div>
@@ -325,14 +324,16 @@ function StandaloneCard({ session, onLoad, onDelete }) {
     const mafWins = allGamesForDisplay.filter(g => g.winnerTeam === 'mafia').length;
 
     return (
-      <div className={`session-card session-card--multi ${expanded ? 'session-card--expanded' : ''}`}>
-        <div className="session-card-top" onClick={() => { setExpanded(!expanded); triggerHaptic('selection'); }}>
-          <div className="session-card-name">
-            {getSessionName(session)}
-            <span className="session-card-games-badge">{totalGames} {totalGames === 1 ? 'игра' : totalGames < 5 ? 'игры' : 'игр'}</span>
+      <div className={`relative rounded-3xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] hover:border-white/[0.12] transition-all duration-200 overflow-hidden ${expanded ? 'border-white/[0.18]' : ''}`}>
+        <div className="flex items-center justify-between gap-3 p-4 cursor-pointer" onClick={() => { setExpanded(!expanded); triggerHaptic('selection'); }}>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold text-white truncate">
+              {getSessionName(session)}
+              <span className="ml-1.5 text-[0.7em] font-extrabold px-1.5 py-0.5 rounded-md bg-white/10 text-white/70">{totalGames} {totalGames === 1 ? 'игра' : totalGames < 5 ? 'игры' : 'игр'}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="session-card-date">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-white/40 font-semibold">
               {formatTime(session.timestamp || session.updatedAt)}
             </span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -341,17 +342,17 @@ function StandaloneCard({ session, onLoad, onDelete }) {
             </svg>
           </div>
         </div>
-        <div className="session-card-bottom" onClick={() => { setExpanded(!expanded); triggerHaptic('selection'); }}>
-          <span className="session-card-status">
-            <span className={`result-dot ${getResultDotClass(session)}`} />
+        <div className="flex items-center justify-between px-4 pb-4 pt-0 cursor-pointer" onClick={() => { setExpanded(!expanded); triggerHaptic('selection'); }}>
+          <span className="flex items-center gap-1.5 text-xs text-white/60">
+            <span className="w-2 h-2 rounded-full shrink-0" style={getResultDotStyle(session)} />
             {getResultText(session)}
           </span>
           <div className="flex items-center gap-2">
-            {modeLabel && <span className="session-card-mode">{modeLabel}</span>}
+            {modeLabel && <span className="text-[0.7em] font-bold px-1.5 py-0.5 rounded-md bg-accent/10 text-accent">{modeLabel}</span>}
             {(civWins > 0 || mafWins > 0) && (
-              <span className="session-card-score-mini">
+              <span className="text-xs font-bold">
                 <span style={{ color: '#ff5252' }}>{civWins}</span>
-                <span style={{ color: 'rgba(255,255,255,0.2)' }}>:</span>
+                <span className="text-white/20">:</span>
                 <span style={{ color: '#4fc3f7' }}>{mafWins}</span>
               </span>
             )}
@@ -359,14 +360,14 @@ function StandaloneCard({ session, onLoad, onDelete }) {
         </div>
 
         {expanded && (
-          <div className="session-card-games-list animate-fadeIn">
+          <div className="px-4 pb-4 border-t border-white/[0.06] animate-fade-in">
             {allGamesForDisplay.map((g, idx) => {
               const winLabel = g.winnerTeam === 'civilians' ? 'Мирные' : g.winnerTeam === 'mafia' ? 'Мафия' : g.winnerTeam === 'draw' ? 'Ничья' : 'В процессе';
               const winColor = g.winnerTeam === 'civilians' ? '#ff5252' : g.winnerTeam === 'mafia' ? '#4fc3f7' : g.winnerTeam === 'draw' ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.3)';
               const rounds = Math.max(g.nightNumber || 0, g.dayNumber || 0);
               return (
-                <div key={idx} className="session-card-game-row">
-                  <div className="session-card-game-num">{g.gameNumber}</div>
+                <div key={idx} className="flex items-center gap-2 py-2 px-2 rounded-xl hover:bg-white/[0.04] transition-colors">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-extrabold bg-white/[0.06] shrink-0">{g.gameNumber}</div>
                   <div className="flex-1 min-w-0">
                     <span className="text-xs font-semibold">Игра {g.gameNumber}</span>
                     {rounds > 0 && <span className="text-[0.6rem] text-white/20 ml-1.5">{rounds}р</span>}
@@ -376,7 +377,7 @@ function StandaloneCard({ session, onLoad, onDelete }) {
               );
             })}
             <button
-              className="session-card-open-btn"
+              className="w-full py-2.5 px-4 rounded-xl font-bold text-sm bg-accent/15 border border-accent/25 text-accent mt-2 active:scale-[0.98] transition-transform duration-150"
               onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}
             >
               Открыть сессию
@@ -385,7 +386,7 @@ function StandaloneCard({ session, onLoad, onDelete }) {
         )}
 
         <button
-          className="session-card-delete"
+          className="absolute top-3 right-3 w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.04] border border-white/[0.08] active:scale-95 transition-transform"
           onClick={(e) => { e.stopPropagation(); onDelete(session.sessionId); triggerHaptic('warning'); }}
         >
           <IconTrash size={14} color="rgba(255,255,255,0.5)" />
@@ -395,27 +396,29 @@ function StandaloneCard({ session, onLoad, onDelete }) {
   }
 
   return (
-    <div className="session-card" onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}>
-      <div className="session-card-top">
-        <div className="session-card-name">
-          {getSessionName(session)}
-          {session.gameSelected && (
-            <span className="session-card-nums">И{session.gameSelected}/С{session.tableSelected}</span>
-          )}
+    <div className="relative rounded-3xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] hover:border-white/[0.12] transition-all duration-200 overflow-hidden cursor-pointer" onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}>
+      <div className="flex items-center justify-between gap-3 p-4">
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-bold text-white truncate">
+            {getSessionName(session)}
+            {session.gameSelected && (
+              <span className="ml-1.5 text-[0.7em] text-white/50 font-semibold">И{session.gameSelected}/С{session.tableSelected}</span>
+            )}
+          </div>
         </div>
-        <span className="session-card-date">
+        <span className="text-xs text-white/40 font-semibold shrink-0">
           {formatTime(session.timestamp || session.updatedAt)}
         </span>
       </div>
-      <div className="session-card-bottom">
-        <span className="session-card-status">
-          <span className={`result-dot ${getResultDotClass(session)}`} />
+      <div className="flex items-center justify-between px-4 pb-4 pt-0">
+        <span className="flex items-center gap-1.5 text-xs text-white/60">
+          <span className="w-2 h-2 rounded-full shrink-0" style={getResultDotStyle(session)} />
           {getResultText(session)}
         </span>
-        {modeLabel && <span className="session-card-mode">{modeLabel}</span>}
+        {modeLabel && <span className="text-[0.7em] font-bold px-1.5 py-0.5 rounded-md bg-accent/10 text-accent">{modeLabel}</span>}
       </div>
       <button
-        className="session-card-delete"
+        className="absolute top-3 right-3 w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.04] border border-white/[0.08] active:scale-95 transition-transform"
         onClick={(e) => { e.stopPropagation(); onDelete(session.sessionId); triggerHaptic('warning'); }}
       >
         <IconTrash size={14} color="rgba(255,255,255,0.5)" />
@@ -434,15 +437,6 @@ export function MainMenu() {
   const [activeTab, setActiveTab] = useState('active');
   const [expandedSeries, setExpandedSeries] = useState({});
   const [menuScreen, setMenuScreen] = useState('game');
-
-  const [useTailwindUI, setUseTailwindUI] = useState(() => {
-    try { return localStorage.getItem('maf_ui_tailwind') === '1'; } catch { return false; }
-  });
-  const toggleTailwindUI = useCallback((val) => {
-    setUseTailwindUI(val);
-    try { localStorage.setItem('maf_ui_tailwind', val ? '1' : '0'); } catch {}
-    triggerHaptic('success');
-  }, []);
 
   const [newGameModal, setNewGameModal] = useState({
     visible: false, loading: false, error: '',
@@ -807,11 +801,70 @@ export function MainMenu() {
   const canSwipeBack = tableGroup || menuScreen !== 'game';
   useSwipeBack(handleSwipeBack, canSwipeBack);
 
+  const handleGoMafiaLogin = useCallback(async () => {
+    const nickname = goMafiaLogin.nickname.trim();
+    const password = goMafiaLogin.password;
+    if (!nickname || !password) return;
+
+    setGoMafiaLogin(prev => ({ ...prev, loading: true, error: '' }));
+    triggerHaptic('light');
+
+    try {
+      const result = await goMafiaApi.loginGoMafia(nickname, password);
+
+      if (result.success) {
+        const profile = {
+          nickname: result.profile?.nickname || nickname,
+          avatar: result.profile?.avatar || null,
+          id: result.profile?.id || null,
+          title: result.profile?.title || null,
+          connectedAt: Date.now(),
+        };
+        goMafiaApi.saveGoMafiaProfile(profile);
+        setGoMafiaProfile(profile);
+
+        if (profile.nickname) {
+          setUserDisplayName(profile.nickname);
+          try { localStorage.setItem('maf_user_display_name', profile.nickname); } catch {}
+        }
+        if (profile.avatar) {
+          setUserAvatarUrl(profile.avatar);
+          try { localStorage.setItem('maf_user_avatar', profile.avatar); } catch {}
+        }
+
+        const token = authService.getStoredToken();
+        if (token) {
+          profileApi.saveProfile(token, { gomafia: profile });
+          authService.linkGomafia(token, nickname, password).catch(() => {});
+        }
+
+        setGoMafiaModal(false);
+        loadLinkedAccounts();
+        triggerHaptic('success');
+        return;
+      }
+
+      setGoMafiaLogin(prev => ({
+        ...prev,
+        loading: false,
+        error: result.error || 'Неверный никнейм или пароль',
+      }));
+      triggerHaptic('error');
+    } catch (err) {
+      setGoMafiaLogin(prev => ({
+        ...prev,
+        loading: false,
+        error: 'Ошибка соединения. Попробуйте позже.',
+      }));
+      triggerHaptic('error');
+    }
+  }, [goMafiaLogin, loadLinkedAccounts]);
+
   return (
     <>
       {/* === TOURNAMENT TABLE FULLSCREEN === */}
       {tableGroup && (
-        <div className="fullscreen-page animate-fadeIn" style={{ zIndex: 200 }}>
+        <div className="fullscreen-page animate-fade-in" style={{ zIndex: 200 }}>
           <div className="fullscreen-page-container">
             <div className="fullscreen-page-header" style={{ justifyContent: 'center' }}>
               <span className="fullscreen-page-title">Таблица</span>
@@ -823,7 +876,7 @@ export function MainMenu() {
 
             {/* Tab switcher */}
             <div className="relative flex w-full rounded-2xl p-1 bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl mb-3">
-              <div className="absolute top-1 bottom-1 rounded-[14px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+              <div className="absolute top-1 bottom-1 rounded-[14px] transition-all duration-300 ease-smooth"
                 style={{
                   width: 'calc(50% - 4px)',
                   left: tableTab === 'overall' ? 4 : 'calc(50%)',
@@ -841,7 +894,7 @@ export function MainMenu() {
             </div>
 
             {!tableData ? (
-              <div className="glass-card" style={{ padding: 32, textAlign: 'center', position: 'relative', zIndex: 1 }}>
+              <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md p-8 text-center">
                 <div className="text-4xl mb-2 opacity-30">📊</div>
                 <p className="text-sm text-white/35">Нет завершённых игр для формирования таблицы</p>
               </div>
@@ -1179,87 +1232,96 @@ export function MainMenu() {
         </div>
       )}
 
-      <div className="main-menu-screen">
-        <div className="main-menu-container">
+      <div className="min-h-screen min-h-[100dvh] flex flex-col items-center" style={{ background: 'var(--maf-gradient-bg)' }}>
+        <div className="native-scroll w-full flex-1 flex flex-col items-center" style={{ padding: 'var(--safe-top, 0px) 0 calc(120px + var(--safe-bottom, env(safe-area-inset-bottom, 0px))) 0' }}>
+          <div className="w-full max-w-[480px] px-5 pt-10 pb-10 flex flex-col items-center min-h-full">
           {/* Header */}
-          <div className="main-menu-header" style={{ animation: 'floatUp 0.5s var(--ease-out) both' }}>
-            <div className="main-menu-logo">
+          <div className="flex flex-col items-center mb-7 pt-8 animate-float-up">
+            <div className="w-16 h-16 rounded-[20px] bg-gradient-to-br from-accent/15 to-indigo-500/10 border border-accent/25 flex items-center justify-center text-3xl text-accent mb-4 shadow-[0_8px_32px_rgba(168,85,247,0.2),0_0_60px_rgba(168,85,247,0.06)] backdrop-blur-xl">
               <IconMafBoard size={32} color="var(--accent-color, #a855f7)" />
             </div>
-            <h1 className="main-menu-title">MafBoard</h1>
-            <p className="main-menu-subtitle">Панель управления мафией</p>
+            <h1 className="text-[1.8em] font-extrabold text-white m-0 tracking-tight">MafBoard</h1>
+            <p className="text-[0.9em] text-white/40 mt-1 font-medium">Панель управления мафией</p>
           </div>
 
           {/* =================== GAME SCREEN =================== */}
           {menuScreen === 'game' && (
-            useTailwindUI ? (
-              <TwGameList
-                displayGroups={displayGroups}
-                displayStandalone={displayStandalone}
-                activeTab={activeTab}
-                totalCount={totalCount}
-                expandedSeries={expandedSeries}
-                toggleExpanded={toggleExpanded}
-                loadSession={loadSession}
-                deleteSession={deleteSession}
-                archiveSeries={archiveSeries}
-                deleteSeries={deleteSeries}
-                handleNewGameInTournament={handleNewGameInTournament}
-                startNewFunkyFromMenu={startNewFunkyFromMenu}
-                setTableGroup={setTableGroup}
-              />
-            ) : (
-              <>
-                <div className="main-menu-section-label">
+            <>
+              <div className="relative flex w-full rounded-2xl p-1 bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl mx-4 mb-3">
+                <div
+                  className="absolute top-1 bottom-1 rounded-[14px] transition-all duration-300 ease-smooth"
+                  style={{
+                    left: activeTab === 'active' ? 4 : 'calc(50%)',
+                    width: 'calc(50% - 4px)',
+                    background: 'linear-gradient(135deg, rgba(168,85,247,0.18), rgba(99,102,241,0.12))',
+                    border: '1px solid rgba(168,85,247,0.2)',
+                    boxShadow: '0 4px 16px rgba(168,85,247,0.1), inset 0 1px 0 rgba(255,255,255,0.06)',
+                  }}
+                />
+                <button
+                  className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-[14px] text-sm font-bold tracking-wide transition-colors duration-200 ${activeTab === 'active' ? 'text-white' : 'text-white/35'}`}
+                  onClick={() => { setActiveTab('active'); triggerHaptic('light'); }}
+                >
+                  Активные
+                </button>
+                <button
+                  className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-[14px] text-sm font-bold tracking-wide transition-colors duration-200 ${activeTab === 'history' ? 'text-white' : 'text-white/35'}`}
+                  onClick={() => { setActiveTab('history'); triggerHaptic('light'); }}
+                >
+                  История
+                </button>
+              </div>
+              <div className="flex items-center justify-between w-full px-4 mb-3">
+                <span className="text-sm font-bold text-white/70">
                   {activeTab === 'active' ? 'Активные игры' : 'История игр'}
-                  <span className="main-menu-count-badge">{totalCount}</span>
-                </div>
+                </span>
+                <span className="px-2 py-0.5 rounded-lg text-[0.65em] font-extrabold bg-white/10 text-white/70">{totalCount}</span>
+              </div>
 
-                <div className="main-menu-list">
-                  {displayGroups.length === 0 && displayStandalone.length === 0 ? (
-                    <div className="main-menu-empty">
-                      <div className="main-menu-empty-icon">
-                        <IconDice size={48} color="rgba(255,255,255,0.15)" />
-                      </div>
-                      <div className="main-menu-empty-text">
-                        Нет {activeTab === 'active' ? 'активных' : 'завершенных'} игр
-                      </div>
-                      {activeTab === 'active' && (
-                        <div className="main-menu-empty-hint">
-                          Создайте новую игру — она сохранится автоматически
-                        </div>
-                      )}
+              <div className="flex flex-col gap-2.5 w-full px-4">
+                {displayGroups.length === 0 && displayStandalone.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center text-center py-12 px-6">
+                    <div className="text-5xl opacity-30 mb-3">
+                      <IconDice size={48} color="rgba(255,255,255,0.15)" />
                     </div>
-                  ) : (
-                    <>
-                      {displayGroups.map(g => (
-                        <SeriesCard
-                          key={g.tournamentId}
-                          group={g}
-                          expanded={!!expandedSeries[g.tournamentId]}
-                          onToggle={() => toggleExpanded(g.tournamentId)}
-                          onLoadSession={loadSession}
-                          onDeleteSession={deleteSession}
-                          onArchive={archiveSeries}
-                          onDeleteSeries={g.isFunky ? () => { deleteSession(g._originalSessionId); triggerHaptic('medium'); } : deleteSeries}
-                          onNewGame={g.gameMode === 'gomafia' ? handleNewGameInTournament : g.isFunky ? () => startNewFunkyFromMenu(g._originalSessionId) : null}
-                          onShowTable={(grp) => { setTableGroup(grp); triggerHaptic('light'); }}
-                        />
-                      ))}
+                    <div className="text-sm text-white/40 font-medium">
+                      Нет {activeTab === 'active' ? 'активных' : 'завершенных'} игр
+                    </div>
+                    {activeTab === 'active' && (
+                      <div className="text-xs text-white/25 mt-1">
+                        Создайте новую игру — она сохранится автоматически
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {displayGroups.map(g => (
+                      <SeriesCard
+                        key={g.tournamentId}
+                        group={g}
+                        expanded={!!expandedSeries[g.tournamentId]}
+                        onToggle={() => toggleExpanded(g.tournamentId)}
+                        onLoadSession={loadSession}
+                        onDeleteSession={deleteSession}
+                        onArchive={archiveSeries}
+                        onDeleteSeries={g.isFunky ? () => { deleteSession(g._originalSessionId); triggerHaptic('medium'); } : deleteSeries}
+                        onNewGame={g.gameMode === 'gomafia' ? handleNewGameInTournament : g.isFunky ? () => startNewFunkyFromMenu(g._originalSessionId) : null}
+                        onShowTable={(grp) => { setTableGroup(grp); triggerHaptic('light'); }}
+                      />
+                    ))}
 
-                      {displayStandalone.map(s => (
-                        <StandaloneCard
-                          key={s.sessionId}
-                          session={s}
-                          onLoad={loadSession}
-                          onDelete={deleteSession}
-                        />
-                      ))}
-                    </>
-                  )}
-                </div>
-              </>
-            )
+                    {displayStandalone.map(s => (
+                      <StandaloneCard
+                        key={s.sessionId}
+                        session={s}
+                        onLoad={loadSession}
+                        onDelete={deleteSession}
+                      />
+                    ))}
+                  </>
+                )}
+              </div>
+            </>
           )}
 
           {/* =================== PROFILE SCREEN =================== */}
@@ -1268,13 +1330,13 @@ export function MainMenu() {
             const displayName = userDisplayName || (tgUser ? `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}` : 'Ведущий');
             const initials = (displayName[0] || '?').toUpperCase();
             return (
-              <div className="animate-fadeIn" style={{ width: '100%', maxWidth: 400, paddingBottom: 100 }}>
-                <div className="profile-bento">
+              <div className="animate-fade-in w-full max-w-[400px] pb-[100px]">
+                <div className="flex flex-col items-center gap-4 py-6 px-6">
 
                   {/* Profile card */}
-                  <div className="profile-card-hero">
+                  <div className="relative w-full flex flex-col items-center gap-4">
                     <button
-                      className="profile-settings-btn"
+                      className="absolute top-0 right-0 w-9 h-9 rounded-xl flex items-center justify-center bg-white/[0.04] border border-white/[0.08] active:scale-95 transition-transform"
                       onClick={() => {
                         const name = userDisplayName || (tgUser ? `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}` : '');
                         setProfileSettingsName(name);
@@ -1285,21 +1347,21 @@ export function MainMenu() {
                       <IconSettings size={16} color="rgba(255,255,255,0.4)" />
                     </button>
 
-                    <div className="profile-avatar-wrap">
-                      <div className="profile-avatar-ring" />
+                    <div className="relative">
+                      <div className="absolute inset-0 rounded-3xl border-2 border-accent/30 animate-pulse" />
                       {avatarSrc ? (
-                        <div className="profile-avatar-img" style={{ backgroundImage: `url(${avatarSrc})` }} />
+                        <div className="w-20 h-20 rounded-3xl bg-white/[0.06] border-2 border-accent flex items-center justify-center text-2xl font-bold text-white overflow-hidden bg-cover bg-center" style={{ backgroundImage: `url(${avatarSrc})` }} />
                       ) : (
-                        <div className="profile-avatar-initials">{initials}</div>
+                        <div className="w-20 h-20 rounded-3xl bg-white/[0.06] border-2 border-accent flex items-center justify-center text-2xl font-bold text-white overflow-hidden">{initials}</div>
                       )}
                     </div>
 
-                    <div className="profile-card-hero-info">
-                      <div className="profile-name">{displayName}</div>
-                      {tgUser?.username && <div className="profile-username">@{tgUser.username}</div>}
-                      {tgUser?.id && <div className="profile-id">UID {tgUser.id}</div>}
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="text-xl font-extrabold tracking-tight text-white">{displayName}</div>
+                      {tgUser?.username && <div className="text-sm text-white/40">@{tgUser.username}</div>}
+                      {tgUser?.id && <div className="text-xs text-white/30">UID {tgUser.id}</div>}
                       {goMafiaProfile && (
-                        <div className="profile-gomafia-badge">
+                        <div className="flex items-center gap-1.5 mt-1 px-2 py-1 rounded-lg bg-accent/10 border border-accent/20 text-accent text-sm font-bold">
                           <IconGoMafia size={14} />
                           <span>{goMafiaProfile.nickname}</span>
                         </div>
@@ -1308,58 +1370,48 @@ export function MainMenu() {
                   </div>
 
                   {/* Status placeholder */}
-                  <div className="profile-status-card">
-                    <div className="profile-status-icon">
+                  <div className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/[0.04]">
                       <IconHistory size={18} color="rgba(255,255,255,0.2)" />
                     </div>
                     <div>
-                      <div className="profile-status-label">Статус</div>
-                      <div className="profile-status-value">Скоро</div>
+                      <div className="text-xs font-bold text-white/40 uppercase tracking-wider">Статус</div>
+                      <div className="text-sm font-bold text-white/60">Скоро</div>
                     </div>
                   </div>
 
-                  {/* Total games — tall left card */}
-                  <div className="profile-total-card">
-                    <div className="profile-total-card-icon">
-                      <IconStats size={18} color="rgba(255,255,255,0.4)" />
+                  {/* Stats grid */}
+                  <div className="grid grid-cols-3 gap-3 w-full">
+                    <div className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
+                      <IconStats size={18} color="rgba(255,255,255,0.4)" className="mb-1" />
+                      <div className="text-lg font-extrabold text-accent tabular-nums">{profileStats.totalGames}</div>
+                      <div className="text-[0.65rem] font-bold text-white/40 uppercase tracking-wider text-center">{pluralGames(profileStats.totalGames)}<br/>проведено</div>
                     </div>
-                    <div className="profile-total-card-bottom">
-                      <div className="profile-total-card-value">{profileStats.totalGames}</div>
-                      <div className="profile-total-card-label">{pluralGames(profileStats.totalGames)}<br/>проведено</div>
+                    <div className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-1" style={{ background: 'linear-gradient(135deg, rgba(137,119,254,0.15), rgba(10,232,240,0.08))', border: '1px solid rgba(137,119,254,0.2)' }}>
+                        <IconGoMafia size={18} />
+                      </div>
+                      <div className="text-lg font-extrabold text-accent tabular-nums">{profileStats.gomafiaTournamentsCount}</div>
+                      <div className="text-[0.65rem] font-bold text-white/40 uppercase tracking-wider">Турниры</div>
                     </div>
-                  </div>
-
-                  {/* Tournaments */}
-                  <div className="profile-mini-card">
-                    <div className="profile-mini-card-icon" style={{ background: 'linear-gradient(135deg, rgba(137,119,254,0.15), rgba(10,232,240,0.08))', borderColor: 'rgba(137,119,254,0.2)' }}>
-                      <IconGoMafia size={18} />
-                    </div>
-                    <div className="profile-mini-card-bottom">
-                      <div className="profile-mini-card-value">{profileStats.gomafiaTournamentsCount}</div>
-                      <div className="profile-mini-card-label">Турниры</div>
-                    </div>
-                  </div>
-
-                  {/* Minicaps */}
-                  <div className="profile-mini-card">
-                    <div className="profile-mini-card-icon" style={{ background: 'linear-gradient(135deg, rgba(255,213,0,0.12), rgba(255,170,0,0.06))', borderColor: 'rgba(255,213,0,0.2)' }}>
-                      <IconTrophy size={17} color="#ffd700" />
-                    </div>
-                    <div className="profile-mini-card-bottom">
-                      <div className="profile-mini-card-value">{profileStats.minicapsCount}</div>
-                      <div className="profile-mini-card-label">Миникапы</div>
+                    <div className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-1" style={{ background: 'linear-gradient(135deg, rgba(255,213,0,0.12), rgba(255,170,0,0.06))', border: '1px solid rgba(255,213,0,0.2)' }}>
+                        <IconTrophy size={17} color="#ffd700" />
+                      </div>
+                      <div className="text-lg font-extrabold text-accent tabular-nums">{profileStats.minicapsCount}</div>
+                      <div className="text-[0.65rem] font-bold text-white/40 uppercase tracking-wider">Миникапы</div>
                     </div>
                   </div>
 
                   {/* Funky — full width */}
-                  <div className="profile-wide-card">
-                    <div className="profile-wide-card-left">
-                      <div className="profile-mini-card-icon" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.12), rgba(139,92,246,0.06))', borderColor: 'rgba(168,85,247,0.2)' }}>
+                  <div className="w-full flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.12), rgba(139,92,246,0.06))', border: '1px solid rgba(168,85,247,0.2)' }}>
                         <IconDice size={17} color="var(--accent-color, #a855f7)" />
                       </div>
-                      <div className="profile-mini-card-label">Фанки</div>
+                      <div className="text-[0.65rem] font-bold text-white/40 uppercase tracking-wider">Фанки</div>
                     </div>
-                    <div className="profile-mini-card-value">{profileStats.funkyGamesCount}</div>
+                    <div className="text-lg font-extrabold text-accent tabular-nums">{profileStats.funkyGamesCount}</div>
                   </div>
 
                 </div>
@@ -1419,7 +1471,7 @@ export function MainMenu() {
             };
 
             return (
-              <div className="animate-fadeIn" style={{ width: '100%', maxWidth: 400, paddingBottom: 100 }}>
+              <div className="animate-fade-in w-full max-w-[400px] pb-[100px]">
 
                 {/* Header */}
                 <div className="settings-header">
@@ -1481,39 +1533,6 @@ export function MainMenu() {
                           <IconTrash size={11} /> Удалить фото
                         </button>
                       )}
-                    </div>
-                  </div>
-
-                  {/* UI Style Toggle */}
-                  <div className="settings-card" style={{ padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.82em', fontWeight: 700, color: '#fff', marginBottom: 2 }}>Tailwind UI</div>
-                        <div style={{ fontSize: '0.68em', color: 'rgba(255,255,255,0.3)', lineHeight: 1.3 }}>
-                          Новый дизайн главного экрана (Активные и История)
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => toggleTailwindUI(!useTailwindUI)}
-                        style={{
-                          width: 48, height: 28, borderRadius: 14, border: 'none', cursor: 'pointer',
-                          background: useTailwindUI
-                            ? 'linear-gradient(135deg, var(--accent-color, #a855f7), #6366f1)'
-                            : 'rgba(255,255,255,0.08)',
-                          position: 'relative', transition: 'background 0.3s',
-                          flexShrink: 0,
-                          boxShadow: useTailwindUI ? '0 0 12px rgba(168,85,247,0.3)' : 'none',
-                        }}
-                      >
-                        <div style={{
-                          width: 22, height: 22, borderRadius: 11,
-                          background: useTailwindUI ? '#fff' : 'rgba(255,255,255,0.3)',
-                          position: 'absolute', top: 3,
-                          left: useTailwindUI ? 23 : 3,
-                          transition: 'left 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.25s',
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-                        }} />
-                      </button>
                     </div>
                   </div>
 
@@ -1860,7 +1879,7 @@ export function MainMenu() {
             const passkeys = linkedAccounts?.passkeys || [];
 
             return (
-              <div className="animate-fadeIn" style={{ width: '100%', maxWidth: 400, paddingBottom: 100 }}>
+              <div className="animate-fade-in w-full max-w-[400px] pb-[100px]">
                 <div className="settings-header">
                   <div className="settings-header-left">
                     <button
@@ -1929,8 +1948,8 @@ export function MainMenu() {
 
           {/* =================== THEMES SCREEN =================== */}
           {menuScreen === 'themes' && (
-            <div className="animate-fadeIn" style={{ width: '100%', maxWidth: 400, paddingBottom: 100 }}>
-              <div className="glass-card" style={{ padding: 16, position: 'relative', zIndex: 1 }}>
+            <div className="animate-fade-in w-full max-w-[400px] pb-[100px]">
+              <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
                 <h3 style={{ fontSize: '0.9em', fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <IconPalette size={16} color="var(--accent-color, #a855f7)" /> Тема оформления
                 </h3>
@@ -1958,27 +1977,27 @@ export function MainMenu() {
                   );
                 })()}
 
-                <div className="theme-selector-grid">
+                <div className="grid grid-cols-5 gap-2">
                   {COLOR_SCHEMES.map(c => {
                     const isActive = selectedColorScheme === c.key;
                     return (
                       <button
                         key={c.key}
                         onClick={() => selectColor(c.key)}
-                        className={`theme-selector-item ${isActive ? 'theme-selector-item--active' : ''}`}
-                        style={{
-                          '--ts-color': c.accent,
-                          '--ts-g1': c.gradient[0],
-                          '--ts-g2': c.gradient[1],
-                        }}
+                        className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all active:scale-95 ${
+                          isActive
+                            ? 'bg-accent/10 border-accent/30'
+                            : 'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.12]'
+                        }`}
                       >
-                        <div className="theme-selector-swatch" />
-                        <span className="theme-selector-name">{c.name}</span>
-                        {isActive && (
-                          <span className="theme-selector-check">
-                            <IconCheck size={10} color="#fff" />
-                          </span>
-                        )}
+                        <div className="relative w-6 h-6 rounded-lg shrink-0" style={{ background: `linear-gradient(135deg, ${c.gradient[0]}, ${c.gradient[1]})` }}>
+                          {isActive && (
+                            <span className="absolute inset-0 flex items-center justify-center">
+                              <IconCheck size={10} color="#fff" className="drop-shadow-md" />
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[0.65em] font-bold text-center leading-tight">{c.name}</span>
                       </button>
                     );
                   })}
@@ -1989,9 +2008,10 @@ export function MainMenu() {
 
         </div>
       </div>
+      </div>
 
       {createPortal(
-        <nav className="main-nav-bar">
+        <nav className="fixed z-50 left-4 right-4 flex items-center justify-around rounded-3xl glass-surface shadow-nav-bar py-2 animate-nav-slide-in" style={{ bottom: 'calc(16px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))' }}>
           <NavItem active={!tableGroup && menuScreen === 'game' && activeTab === 'active'}
             onClick={() => { setTableGroup(null); setMenuScreen('game'); setActiveTab('active'); triggerHaptic('selection'); }}
             icon={<IconPlayCircle size={20} />} label="Активные" />
@@ -2023,7 +2043,7 @@ export function MainMenu() {
 
       {goMafiaModal && createPortal(
         <div className="gomafia-modal-overlay" onClick={() => !goMafiaLogin.loading && setGoMafiaModal(false)}>
-          <div className="gomafia-modal animate-fadeIn" onClick={e => e.stopPropagation()}>
+          <div className="gomafia-modal animate-fade-in" onClick={e => e.stopPropagation()}>
             <button
               className="gomafia-modal-close"
               onClick={() => !goMafiaLogin.loading && setGoMafiaModal(false)}
@@ -2101,65 +2121,6 @@ export function MainMenu() {
       )}
     </>
   );
-
-  async function handleGoMafiaLogin() {
-    const nickname = goMafiaLogin.nickname.trim();
-    const password = goMafiaLogin.password;
-    if (!nickname || !password) return;
-
-    setGoMafiaLogin(prev => ({ ...prev, loading: true, error: '' }));
-    triggerHaptic('light');
-
-    try {
-      const result = await goMafiaApi.loginGoMafia(nickname, password);
-
-      if (result.success) {
-        const profile = {
-          nickname: result.profile?.nickname || nickname,
-          avatar: result.profile?.avatar || null,
-          id: result.profile?.id || null,
-          title: result.profile?.title || null,
-          connectedAt: Date.now(),
-        };
-        goMafiaApi.saveGoMafiaProfile(profile);
-        setGoMafiaProfile(profile);
-
-        if (profile.nickname) {
-          setUserDisplayName(profile.nickname);
-          try { localStorage.setItem('maf_user_display_name', profile.nickname); } catch {}
-        }
-        if (profile.avatar) {
-          setUserAvatarUrl(profile.avatar);
-          try { localStorage.setItem('maf_user_avatar', profile.avatar); } catch {}
-        }
-
-        const token = authService.getStoredToken();
-        if (token) {
-          profileApi.saveProfile(token, { gomafia: profile });
-          authService.linkGomafia(token, nickname, password).catch(() => {});
-        }
-
-        setGoMafiaModal(false);
-        loadLinkedAccounts();
-        triggerHaptic('success');
-        return;
-      }
-
-      setGoMafiaLogin(prev => ({
-        ...prev,
-        loading: false,
-        error: result.error || 'Неверный никнейм или пароль',
-      }));
-      triggerHaptic('error');
-    } catch (err) {
-      setGoMafiaLogin(prev => ({
-        ...prev,
-        loading: false,
-        error: 'Ошибка соединения. Попробуйте позже.',
-      }));
-      triggerHaptic('error');
-    }
-  }
 }
 
 function NewGameModal({ modal, onSelect, onClose, onLoadSession }) {
@@ -2259,11 +2220,11 @@ function NewGameModal({ modal, onSelect, onClose, onLoadSession }) {
 function NavItem({ active, primary, onClick, icon, label }) {
   return (
     <button
-      className={`nav-item ${active ? 'active' : ''} ${primary ? 'nav-item--primary' : ''}`}
+      className={`flex flex-col items-center gap-0.5 py-2 px-1 min-w-[60px] transition-all duration-300 ease-spring ${active ? 'text-white' : 'text-white/40'} ${primary ? 'bg-gradient-to-br from-accent via-indigo-500 to-blue-500 text-white rounded-[22px] py-2.5 px-1 shadow-[0_4px_20px_rgba(168,85,247,0.4),inset_0_1px_0_rgba(255,255,255,0.15)] active:scale-95' : ''}`}
       onClick={onClick}
     >
-      <span className="nav-item-icon">{icon}</span>
-      <span className="nav-item-label">{label}</span>
+      <span className="text-2xl flex items-center justify-center">{icon}</span>
+      <span className="text-[0.55em] font-bold tracking-wider uppercase">{label}</span>
     </button>
   );
 }

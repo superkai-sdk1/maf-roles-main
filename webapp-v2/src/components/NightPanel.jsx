@@ -56,32 +56,21 @@ export const NightPanel = () => {
   };
 
   return (
-    <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="flex flex-col gap-3.5 animate-fade-in">
       {/* Step 1: Mafia Kill */}
       {(!nightPhase || nightPhase === 'kill') && (
-        <div className="glass-card animate-glassReveal" style={{ padding: 16, position: 'relative', zIndex: 1 }}>
+        <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md border border-red-500/20 bg-red-500/[0.03] animate-glass-reveal">
           {showTimer && <NightTimerBar duration={15} />}
-          <h3 style={{ fontSize: '1em', fontWeight: 800, color: '#ff453a', marginBottom: 4, textAlign: 'center' }}>
+          <h3 className="text-base font-extrabold text-red-400 text-center mb-1">
             Мафия убивает
           </h3>
-          <p style={{ fontSize: '0.75em', color: 'rgba(255,255,255,0.35)', marginBottom: 14, textAlign: 'center' }}>
+          <p className="text-xs text-white/35 text-center mb-3.5">
             Выберите жертву
           </p>
-          <div className="dialer-grid" style={{ marginBottom: 12 }}>
-            {allPlayers.map(p => {
-              const alive = isPlayerActive(p.roleKey);
-              return (
-                <button key={p.num}
-                  onClick={() => alive && handleKill(p.num)}
-                  className={`dialer-btn ${!alive ? 'voted-elsewhere' : ''}`}
-                  disabled={!alive}>
-                  {p.num}
-                </button>
-              );
-            })}
-          </div>
-          <button onClick={handleMiss} className="glass-btn"
-            style={{ width: '100%', color: 'rgba(255,255,255,0.4)', fontSize: '0.85em' }}>
+          <DialerGrid allPlayers={allPlayers} isPlayerActive={isPlayerActive} onSelect={handleKill} borderColor="rgba(255,69,58,0.15)" />
+          <button onClick={handleMiss}
+            className="w-full mt-3 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08]
+              text-white/40 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring">
             ✕ Промах
           </button>
         </div>
@@ -90,14 +79,9 @@ export const NightPanel = () => {
       {/* Step 2: Don Check */}
       {nightPhase === 'don' && (
         <NightCheckStep
-          title="Проверка Дона"
-          subtitle="Ищет Шерифа"
-          icon="🔍"
-          accentColor="rgba(155,89,182,0.8)"
-          borderColor="rgba(155,89,182,0.3)"
-          bgColor="rgba(155,89,182,0.05)"
-          result={checkerResult}
-          allPlayers={allPlayers}
+          title="Проверка Дона" subtitle="Ищет Шерифа" icon="🔍"
+          accentColor="rgba(155,89,182,0.8)" borderColor="rgba(155,89,182,0.3)" bgColor="rgba(155,89,182,0.05)"
+          result={checkerResult} allPlayers={allPlayers}
           onCheck={(num) => { performNightCheck(donKey, num); triggerHaptic('medium'); }}
           onSkip={() => { advanceNightPhase(); triggerHaptic('light'); }}
           timerDuration={showTimer ? 10 : 0}
@@ -107,14 +91,9 @@ export const NightPanel = () => {
       {/* Step 3: Sheriff Check */}
       {nightPhase === 'sheriff' && (
         <NightCheckStep
-          title="Проверка Шерифа"
-          subtitle="Ищет Мафию"
-          icon="⭐"
-          accentColor="rgba(255,213,79,0.8)"
-          borderColor="rgba(255,213,79,0.3)"
-          bgColor="rgba(255,213,79,0.05)"
-          result={checkerResult}
-          allPlayers={allPlayers}
+          title="Проверка Шерифа" subtitle="Ищет Мафию" icon="⭐"
+          accentColor="rgba(255,213,79,0.8)" borderColor="rgba(255,213,79,0.3)" bgColor="rgba(255,213,79,0.05)"
+          result={checkerResult} allPlayers={allPlayers}
           onCheck={(num) => { performNightCheck(sheriffKey, num); triggerHaptic('medium'); }}
           onSkip={() => { advanceNightPhase(); triggerHaptic('light'); }}
           timerDuration={showTimer ? 10 : 0}
@@ -123,109 +102,92 @@ export const NightPanel = () => {
 
       {/* Doctor heal (City mode) */}
       {nightPhase === 'doctor' && cityMode && doctorKey && (
-        <div className="glass-card animate-glassReveal" style={{
-          padding: 16, position: 'relative', zIndex: 1,
-          borderColor: 'rgba(76,175,80,0.3)', background: 'rgba(76,175,80,0.05)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <h3 style={{ fontSize: '0.9em', fontWeight: 700, color: '#81c784', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md animate-glass-reveal"
+          style={{ borderColor: 'rgba(76,175,80,0.3)', background: 'rgba(76,175,80,0.05)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[0.9em] font-bold text-green-400 flex items-center gap-2">
               💊 Доктор лечит
             </h3>
             <button onClick={() => { advanceNightPhase(); triggerHaptic('light'); }}
-              className="glass-btn" style={{ padding: '6px 14px', fontSize: '0.75em', opacity: 0.7 }}>
+              className="px-3.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]
+                text-white/50 text-xs font-bold active:scale-95 transition-transform duration-150 ease-spring">
               Пропустить
             </button>
           </div>
           {doctorHeal ? (
-            <div style={{ textAlign: 'center', padding: 20 }}>
-              <div style={{ fontSize: '1.2em', fontWeight: 700, color: '#81c784' }}>Лечит #{doctorHeal.target}</div>
+            <div className="text-center py-5">
+              <div className="text-lg font-bold text-green-400">Лечит #{doctorHeal.target}</div>
             </div>
           ) : (
             <>
               {doctorLastHealTarget && (
-                <p style={{ fontSize: '0.7em', color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>Нельзя лечить #{doctorLastHealTarget} (лечил прошлой ночью)</p>
+                <p className="text-[0.7em] text-white/40 mb-2">Нельзя лечить #{doctorLastHealTarget} (лечил прошлой ночью)</p>
               )}
-              <div className="dialer-grid">
-                {allPlayers.filter(p => isPlayerActive(p.roleKey) && canDoctorHealTarget(p.num)).map(p => (
-                  <button key={p.num} onClick={() => handleDoctorHeal(p.num)}
-                    className="dialer-btn"
-                    style={{ borderColor: 'rgba(76,175,80,0.2)' }}>
-                    {p.num}
-                  </button>
-                ))}
-              </div>
+              <DialerGrid allPlayers={allPlayers.filter(p => isPlayerActive(p.roleKey) && canDoctorHealTarget(p.num))}
+                isPlayerActive={() => true} onSelect={handleDoctorHeal} borderColor="rgba(76,175,80,0.2)" />
             </>
           )}
         </div>
       )}
 
-      {/* Step 4: Night Done — Kill Result + Best Move + Morning Slider */}
+      {/* Step 4: Night Done */}
       {nightPhase === 'done' && (
-        <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Kill result */}
-          <div className="glass-card" style={{
-            padding: 20, textAlign: 'center', position: 'relative', zIndex: 1,
-            borderColor: killedThisNight.length > 0 ? 'rgba(255,69,58,0.3)' : 'rgba(255,255,255,0.1)',
-            background: killedThisNight.length > 0 ? 'rgba(255,69,58,0.05)' : 'rgba(255,255,255,0.02)',
-          }}>
+        <div className="flex flex-col gap-3.5 animate-fade-in">
+          <div className="relative z-[1] p-5 rounded-2xl glass-surface shadow-glass-md text-center"
+            style={{
+              borderColor: killedThisNight.length > 0 ? 'rgba(255,69,58,0.3)' : 'rgba(255,255,255,0.1)',
+              background: killedThisNight.length > 0 ? 'rgba(255,69,58,0.05)' : 'rgba(255,255,255,0.02)',
+            }}>
             {killedThisNight.length > 0 ? (
               <>
-                <div style={{ fontSize: '0.7em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-                  Убили
-                </div>
-                <div style={{ fontSize: '2em', fontWeight: 800, color: '#ff453a' }}>
+                <div className="text-[0.7em] text-white/35 uppercase tracking-wider mb-1.5">Убили</div>
+                <div className="text-[2em] font-extrabold text-red-400">
                   {killedThisNight.map(num => `#${num}`).join(', ')}
                 </div>
                 {killedThisNight.map(num => {
                   const p = tableOut[num - 1];
                   return p?.login ? (
-                    <div key={num} style={{ fontSize: '0.85em', color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>{p.login}</div>
+                    <div key={num} className="text-sm text-white/40 mt-1">{p.login}</div>
                   ) : null;
                 })}
               </>
             ) : (
               <>
-                <div style={{ fontSize: '0.7em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-                  Промах
-                </div>
-                <div style={{ fontSize: '1.4em', fontWeight: 700, color: 'rgba(255,255,255,0.3)' }}>
-                  Никто не убит
-                </div>
+                <div className="text-[0.7em] text-white/35 uppercase tracking-wider mb-1.5">Промах</div>
+                <div className="text-xl font-bold text-white/30">Никто не убит</div>
               </>
             )}
           </div>
 
-          {/* Best Move (only for first killed player, not yet accepted) */}
+          {/* Best Move */}
           {firstKilledPlayer && !bestMoveAccepted && killedThisNight.length > 0 && (
-            <div className="glass-card animate-fadeIn" style={{
-              padding: 16, position: 'relative', zIndex: 1,
-              borderColor: 'rgba(255,214,10,0.3)', background: 'rgba(255,214,10,0.05)',
-            }}>
+            <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md animate-fade-in"
+              style={{ borderColor: 'rgba(255,214,10,0.3)', background: 'rgba(255,214,10,0.05)' }}>
               {showTimer && <NightTimerBar duration={15} />}
-              <h3 style={{ fontSize: '1em', fontWeight: 800, color: '#ffd60a', marginBottom: 4, textAlign: 'center' }}>
-                Лучший ход
-              </h3>
-              <p style={{ fontSize: '0.75em', color: 'rgba(255,255,255,0.35)', marginBottom: 14, textAlign: 'center' }}>
-                Убитый называет 3 подозреваемых
-              </p>
-              <div className="dialer-grid" style={{ marginBottom: 12 }}>
+              <h3 className="text-base font-extrabold text-yellow-400 text-center mb-1">Лучший ход</h3>
+              <p className="text-xs text-white/35 text-center mb-3.5">Убитый называет 3 подозреваемых</p>
+              <div className="grid grid-cols-5 gap-2 mb-3">
                 {allPlayers.map(p => {
                   const selected = bestMove.includes(p.num);
                   return (
                     <button key={p.num}
                       onClick={() => { toggleBestMove(p.num); triggerHaptic('selection'); }}
-                      className={`dialer-btn ${selected ? 'selected' : ''}`}>
+                      className={`h-11 rounded-xl border text-sm font-bold
+                        active:scale-90 transition-all duration-150 ease-spring
+                        ${selected
+                          ? 'bg-accent text-white border-transparent shadow-glow-accent'
+                          : 'bg-white/[0.04] border-white/[0.08] text-white/60 hover:bg-white/[0.06]'}`}>
                       {p.num}
                     </button>
                   );
                 })}
               </div>
               {bestMove.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '0.85em', fontWeight: 700, color: '#ffd60a' }}>ЛХ: {bestMove.join(', ')}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-yellow-400">ЛХ: {bestMove.join(', ')}</span>
                   <button onClick={() => { acceptBestMove(firstKilledPlayer); triggerHaptic('success'); }}
-                    className="glass-btn btn-primary"
-                    style={{ padding: '8px 18px', fontSize: '0.85em' }}>
+                    className="px-4 py-2 rounded-xl bg-accent text-white text-sm font-bold
+                      active:scale-95 transition-transform duration-150 ease-spring">
                     ✓ Принять
                   </button>
                 </div>
@@ -235,7 +197,7 @@ export const NightPanel = () => {
 
           {/* Morning slider */}
           {(bestMoveAccepted || !firstKilledPlayer || killedThisNight.length === 0) && (
-            <div style={{ marginTop: 4 }}>
+            <div className="mt-1">
               <SlideConfirm
                 label="В городе утро"
                 onConfirm={() => { setMode('day'); triggerHaptic('success'); }}
@@ -249,17 +211,15 @@ export const NightPanel = () => {
 
       {/* Check history */}
       {nightCheckHistory.length > 0 && nightPhase === 'done' && (
-        <div className="glass-card" style={{ padding: 16, position: 'relative', zIndex: 1 }}>
-          <h4 style={{ fontSize: '0.7em', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-            История проверок
-          </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+          <h4 className="text-[0.7em] font-bold text-white/40 uppercase tracking-wider mb-2.5">История проверок</h4>
+          <div className="flex flex-col gap-1.5">
             {nightCheckHistory.map((h, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8em' }}>
+              <div key={i} className="flex justify-between text-[0.8em]">
                 <span style={{ color: h.checkerRole === 'sheriff' ? '#ffd54f' : '#ce93d8' }}>
                   Н{h.night} {h.checkerRole === 'sheriff' ? '★' : '◆'} → #{h.target} {h.targetLogin}
                 </span>
-                <span style={{ fontWeight: 700, color: h.found ? '#30d158' : 'rgba(255,255,255,0.35)' }}>{h.result}</span>
+                <span className="font-bold" style={{ color: h.found ? '#30d158' : 'rgba(255,255,255,0.35)' }}>{h.result}</span>
               </div>
             ))}
           </div>
@@ -268,15 +228,11 @@ export const NightPanel = () => {
 
       {/* Doctor heal history */}
       {cityMode && doctorHealHistory.length > 0 && nightPhase === 'done' && (
-        <div className="glass-card" style={{ padding: 16, position: 'relative', zIndex: 1 }}>
-          <h4 style={{ fontSize: '0.7em', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-            История лечения
-          </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+          <h4 className="text-[0.7em] font-bold text-white/40 uppercase tracking-wider mb-2.5">История лечения</h4>
+          <div className="flex flex-col gap-1">
             {doctorHealHistory.map((h, i) => (
-              <div key={i} style={{ fontSize: '0.8em', color: '#81c784' }}>
-                Н{h.night} → #{h.target}
-              </div>
+              <div key={i} className="text-[0.8em] text-green-400">Н{h.night} → #{h.target}</div>
             ))}
           </div>
         </div>
@@ -285,35 +241,59 @@ export const NightPanel = () => {
   );
 };
 
+function DialerGrid({ allPlayers, isPlayerActive, onSelect, borderColor }) {
+  return (
+    <div className="grid grid-cols-5 gap-2">
+      {allPlayers.map(p => {
+        const alive = isPlayerActive(p.roleKey);
+        return (
+          <button key={p.num}
+            onClick={() => alive && onSelect(p.num)}
+            disabled={!alive}
+            className={`h-11 rounded-xl border text-sm font-bold
+              active:scale-90 transition-all duration-150 ease-spring
+              ${!alive
+                ? 'bg-white/[0.02] border-white/[0.04] text-white/15 cursor-default'
+                : 'bg-white/[0.04] text-white/70 hover:bg-white/[0.08] cursor-pointer'}`}
+            style={{ borderColor: alive ? borderColor : undefined }}>
+            {p.num}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function NightCheckStep({ title, subtitle, icon, accentColor, borderColor, bgColor, result, allPlayers, onCheck, onSkip, timerDuration }) {
   return (
-    <div className="glass-card animate-glassReveal" style={{
-      padding: 16, position: 'relative', zIndex: 1,
-      borderColor, background: bgColor,
-    }}>
+    <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md animate-glass-reveal"
+      style={{ borderColor, background: bgColor }}>
       {timerDuration > 0 && <NightTimerBar duration={timerDuration} />}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+      <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 style={{ fontSize: '1em', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8, color: accentColor }}>
+          <h3 className="text-base font-extrabold flex items-center gap-2" style={{ color: accentColor }}>
             {icon} {title}
           </h3>
-          {subtitle && <p style={{ fontSize: '0.7em', color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{subtitle}</p>}
+          {subtitle && <p className="text-[0.7em] text-white/40 mt-0.5">{subtitle}</p>}
         </div>
-        <button onClick={onSkip} className="glass-btn" style={{ padding: '6px 14px', fontSize: '0.75em', opacity: 0.7 }}>
+        <button onClick={onSkip}
+          className="px-3.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]
+            text-white/50 text-xs font-bold active:scale-95 transition-transform duration-150 ease-spring">
           Пропустить
         </button>
       </div>
       {result ? (
-        <div className="animate-scaleIn" style={{ textAlign: 'center', padding: 20 }}>
-          <div style={{ fontSize: '1.4em', fontWeight: 800 }}>{result.result}</div>
-          <div style={{ fontSize: '0.85em', color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>Игрок #{result.target}</div>
+        <div className="text-center py-5 animate-scale-in">
+          <div className="text-xl font-extrabold">{result.result}</div>
+          <div className="text-sm text-white/40 mt-1">Игрок #{result.target}</div>
         </div>
       ) : (
-        <div className="dialer-grid">
+        <div className="grid grid-cols-5 gap-2">
           {allPlayers.map(p => (
             <button key={p.num} onClick={() => onCheck(p.num)}
-              className="dialer-btn"
-              style={{ borderColor }}>
+              className="h-11 rounded-xl bg-white/[0.04] text-white/70 text-sm font-bold
+                active:scale-90 transition-all duration-150 ease-spring hover:bg-white/[0.08]"
+              style={{ border: `1px solid ${borderColor}` }}>
               {p.num}
             </button>
           ))}

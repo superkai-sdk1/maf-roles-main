@@ -78,9 +78,9 @@ function TelegramSection({ onSuccess }) {
 
   if (state === 'requesting' || state === 'idle') {
     return (
-      <div className="auth-tg-section">
-        <div className="auth-spinner" />
-        <div className="auth-hint">Получение кода...</div>
+      <div className="flex flex-col items-center gap-1.5 py-2">
+        <div className="w-8 h-8 border-[3px] border-white/[0.08] border-t-[var(--accent-color)] rounded-full animate-auth-spin my-3" />
+        <div className="text-[0.8em] text-white/30 font-medium">Получение кода...</div>
       </div>
     );
   }
@@ -92,29 +92,43 @@ function TelegramSection({ onSuccess }) {
     const progress = Math.max(0, expiresIn / 300);
 
     return (
-      <div className="auth-tg-section">
-        <div className="auth-tg-label">Отправьте код боту в Telegram</div>
-        <div className="auth-code-display">{code}</div>
-        <div className="auth-timer-bar">
-          <div className="auth-timer-fill" style={{ width: `${progress * 100}%` }} />
+      <div className="flex flex-col items-center gap-1.5 pt-2 pb-1 w-full">
+        <div className="text-[0.85em] font-semibold text-white/50 mb-0.5">Отправьте код боту в Telegram</div>
+        <div className="text-3xl font-black tracking-[0.3em] text-white font-mono py-3">{code}</div>
+        <div className="w-full h-1 rounded-full bg-white/[0.06] overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[var(--accent-color)] to-indigo-500/80 transition-[width] duration-1000 ease-linear"
+            style={{ width: `${progress * 100}%` }}
+          />
         </div>
-        <div className="auth-timer-text">{timeStr}</div>
+        <div className="text-xs text-white/30 tabular-nums font-medium">{timeStr}</div>
         {botLink && (
-          <a href={botLink} target="_blank" rel="noopener noreferrer" className="auth-action-btn auth-action-btn--primary">
+          <a
+            href={botLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full mt-2 px-4 py-3 rounded-2xl
+              bg-accent text-white text-sm font-bold no-underline
+              active:scale-[0.97] transition-transform duration-150 ease-spring"
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.2 4.6 2.4 11.2c-.7.3-.7.8 0 1l4.3 1.6 1.7 5.2c.2.5.7.5 1 .2l2.4-2 5 3.6c.5.3 1 .1 1.1-.5L21.9 5.5c.2-.7-.3-1.2-.7-.9z"/></svg>
             Открыть @{botUsername || 'бота'}
           </a>
         )}
-        <div className="auth-hint" style={{ marginTop: 4 }}>Ожидание подтверждения...</div>
+        <div className="text-[0.8em] text-white/30 font-medium mt-1">Ожидание подтверждения...</div>
       </div>
     );
   }
 
   if (state === 'expired') {
     return (
-      <div className="auth-tg-section">
-        <div className="auth-hint">Код истёк</div>
-        <button className="auth-action-btn" onClick={requestNewCode}>
+      <div className="flex flex-col items-center gap-1.5 py-2 w-full">
+        <div className="text-[0.8em] text-white/30 font-medium">Код истёк</div>
+        <button
+          className="w-full mt-2 px-4 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.08]
+            text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring"
+          onClick={requestNewCode}
+        >
           Получить новый код
         </button>
       </div>
@@ -122,9 +136,13 @@ function TelegramSection({ onSuccess }) {
   }
 
   return (
-    <div className="auth-tg-section">
-      {error && <div className="auth-error">{error}</div>}
-      <button className="auth-action-btn" onClick={requestNewCode}>
+    <div className="flex flex-col items-center gap-1.5 py-2 w-full">
+      {error && <div className="text-red-400 text-sm font-medium text-center">{error}</div>}
+      <button
+        className="w-full mt-2 px-4 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.08]
+          text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring"
+        onClick={requestNewCode}
+      >
         Попробовать снова
       </button>
     </div>
@@ -140,12 +158,9 @@ function GomafiaSection({ onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!nickname.trim() || !password) return;
-
     setError('');
     setLoading(true);
-
     const result = await authService.gomafiaLogin(nickname.trim(), password);
-
     if (result.success) {
       onSuccess(result.user);
     } else {
@@ -155,40 +170,24 @@ function GomafiaSection({ onSuccess }) {
   };
 
   return (
-    <form className="auth-alt-body" onSubmit={handleSubmit}>
-      <div className="auth-hint" style={{ margin: 0 }}>
+    <form className="flex flex-col gap-2 px-3.5 pb-3.5 animate-slide-down" onSubmit={handleSubmit}>
+      <div className="text-[0.8em] text-white/30 font-medium">
         Для ранее привязанных аккаунтов GoMafia
       </div>
-      <input
-        type="text"
-        className="auth-input"
-        placeholder="Никнейм GoMafia"
-        value={nickname}
-        onChange={e => setNickname(e.target.value)}
-        disabled={loading}
-        autoComplete="username"
-        autoCapitalize="off"
-      />
-      <input
-        type="password"
-        className="auth-input"
-        placeholder="Пароль"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-        disabled={loading}
-        autoComplete="current-password"
-      />
-      {error && <div className="auth-error">{error}</div>}
-      <button
-        type="submit"
-        className="auth-action-btn auth-action-btn--primary"
-        disabled={loading || !nickname.trim() || !password}
-      >
+      <input type="text" className="input-field" placeholder="Никнейм GoMafia" value={nickname}
+        onChange={e => setNickname(e.target.value)} disabled={loading} autoComplete="username" autoCapitalize="off" />
+      <input type="password" className="input-field" placeholder="Пароль" value={password}
+        onChange={e => setPassword(e.target.value)} disabled={loading} autoComplete="current-password" />
+      {error && <div className="text-red-400 text-sm font-medium text-center">{error}</div>}
+      <button type="submit"
+        className="w-full px-4 py-3 rounded-2xl bg-accent text-white text-sm font-bold
+          disabled:opacity-40 active:scale-[0.97] transition-transform duration-150 ease-spring"
+        disabled={loading || !nickname.trim() || !password}>
         {loading ? (
-          <><span className="auth-btn-spinner" /> Вход...</>
-        ) : (
-          'Войти'
-        )}
+          <span className="flex items-center justify-center gap-2">
+            <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-auth-spin" /> Вход...
+          </span>
+        ) : 'Войти'}
       </button>
     </form>
   );
@@ -201,33 +200,26 @@ function PasskeySection({ onSuccess }) {
   const handleAuth = async () => {
     setError('');
     setLoading(true);
-
     const result = await authService.passkeyAuth();
-
-    if (result.success) {
-      onSuccess(result.user);
-    } else {
-      setError(result.error || 'Ошибка PassKey');
-      setLoading(false);
-    }
+    if (result.success) { onSuccess(result.user); }
+    else { setError(result.error || 'Ошибка PassKey'); setLoading(false); }
   };
 
   return (
-    <div className="auth-alt-body">
-      <div className="auth-hint" style={{ margin: 0 }}>
+    <div className="flex flex-col gap-2 px-3.5 pb-3.5 animate-slide-down">
+      <div className="text-[0.8em] text-white/30 font-medium">
         Для ранее настроенных PassKey (Face ID, Touch ID, PIN)
       </div>
-      {error && <div className="auth-error">{error}</div>}
+      {error && <div className="text-red-400 text-sm font-medium text-center">{error}</div>}
       <button
-        className="auth-action-btn auth-action-btn--primary"
-        onClick={handleAuth}
-        disabled={loading}
-      >
+        className="w-full px-4 py-3 rounded-2xl bg-accent text-white text-sm font-bold
+          disabled:opacity-40 active:scale-[0.97] transition-transform duration-150 ease-spring"
+        onClick={handleAuth} disabled={loading}>
         {loading ? (
-          <><span className="auth-btn-spinner" /> Проверка...</>
-        ) : (
-          'Войти с PassKey'
-        )}
+          <span className="flex items-center justify-center gap-2">
+            <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-auth-spin" /> Проверка...
+          </span>
+        ) : 'Войти с PassKey'}
       </button>
     </div>
   );
@@ -238,64 +230,59 @@ function AltMethods({ onSuccess }) {
   const [expanded, setExpanded] = useState(null);
 
   const toggle = (method) => {
-    if (expanded === method) {
-      setExpanded(null);
-    } else {
-      setExpanded(method);
-      setOpen(true);
-    }
+    if (expanded === method) setExpanded(null);
+    else { setExpanded(method); setOpen(true); }
   };
 
   return (
-    <div className="auth-alt">
-      <button className="auth-alt-toggle" onClick={() => { setOpen(!open); if (open) setExpanded(null); }}>
+    <div className="w-full mt-4 border-t border-white/[0.06] pt-3">
+      <button
+        className="flex items-center justify-center gap-1.5 w-full py-2 bg-transparent border-none
+          text-white/30 text-[0.78em] font-semibold cursor-pointer hover:text-white/50 transition-colors duration-200"
+        onClick={() => { setOpen(!open); if (open) setExpanded(null); }}>
         <span>Другие способы входа</span>
-        <svg
-          width="14" height="14" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.25s' }}
-        >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.25s' }}>
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
 
       {open && (
-        <div className="auth-alt-list">
-          <div className={`auth-alt-item ${expanded === 'gomafia' ? 'auth-alt-item--open' : ''}`}>
-            <button className="auth-alt-item-header" onClick={() => toggle('gomafia')}>
-              <span className="auth-alt-item-icon auth-alt-item-icon--gomafia">
+        <div className="flex flex-col gap-1.5 mt-2 animate-slide-down">
+          <div className={`rounded-xl border overflow-hidden transition-colors duration-200
+            ${expanded === 'gomafia' ? 'border-white/10 bg-white/[0.03]' : 'border-white/[0.06] bg-white/[0.02]'}`}>
+            <button className={`flex items-center gap-2.5 w-full px-3.5 py-3 bg-transparent border-none text-[0.88em] font-semibold cursor-pointer transition-colors duration-150
+              ${expanded === 'gomafia' ? 'text-white' : 'text-white/60 hover:text-white/85'}`}
+              onClick={() => toggle('gomafia')}>
+              <span className="w-8 h-8 rounded-[9px] bg-purple-500/[0.12] text-purple-400 flex items-center justify-center shrink-0">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3.5 12.5c0-2.5 2-4.5 4.5-4.5a4.5 4.5 0 0 1 3 1.1A4.5 4.5 0 0 1 14 8c2.5 0 4.5 2 4.5 4.5v0"/>
                   <circle cx="8" cy="5" r="2"/><circle cx="16" cy="5" r="2"/>
                   <path d="M5 16c0 2.2 3.1 4 7 4s7-1.8 7-4"/>
                 </svg>
               </span>
-              <span className="auth-alt-item-label">GoMafia ID</span>
-              <svg
-                className="auth-alt-item-chevron"
-                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-              >
+              <span className="flex-1 text-left">GoMafia ID</span>
+              <svg className={`shrink-0 transition-transform duration-200 ${expanded === 'gomafia' ? 'rotate-180 opacity-70' : 'opacity-40'}`}
+                width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
             {expanded === 'gomafia' && <GomafiaSection onSuccess={onSuccess} />}
           </div>
 
-          <div className={`auth-alt-item ${expanded === 'passkey' ? 'auth-alt-item--open' : ''}`}>
-            <button className="auth-alt-item-header" onClick={() => toggle('passkey')}>
-              <span className="auth-alt-item-icon auth-alt-item-icon--passkey">
+          <div className={`rounded-xl border overflow-hidden transition-colors duration-200
+            ${expanded === 'passkey' ? 'border-white/10 bg-white/[0.03]' : 'border-white/[0.06] bg-white/[0.02]'}`}>
+            <button className={`flex items-center gap-2.5 w-full px-3.5 py-3 bg-transparent border-none text-[0.88em] font-semibold cursor-pointer transition-colors duration-150
+              ${expanded === 'passkey' ? 'text-white' : 'text-white/60 hover:text-white/85'}`}
+              onClick={() => toggle('passkey')}>
+              <span className="w-8 h-8 rounded-[9px] bg-emerald-500/[0.12] text-emerald-400 flex items-center justify-center shrink-0">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15 7a4 4 0 1 0-4 4h4V7z"/>
-                  <path d="M15 11h-1v8l2 2 2-2-2-2 2-2-3-1V11z"/>
+                  <path d="M15 7a4 4 0 1 0-4 4h4V7z"/><path d="M15 11h-1v8l2 2 2-2-2-2 2-2-3-1V11z"/>
                 </svg>
               </span>
-              <span className="auth-alt-item-label">PassKey</span>
-              <svg
-                className="auth-alt-item-chevron"
-                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-              >
+              <span className="flex-1 text-left">PassKey</span>
+              <svg className={`shrink-0 transition-transform duration-200 ${expanded === 'passkey' ? 'rotate-180 opacity-70' : 'opacity-40'}`}
+                width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
@@ -316,57 +303,48 @@ function PasskeySuggestModal({ onDone }) {
     setError('');
     const token = authService.getStoredToken();
     const result = await authService.passkeyRegister(token);
-    if (result.success) {
-      setState('done');
-    } else {
-      setError(result.error || 'Не удалось создать PassKey');
-      setState('prompt');
-    }
+    if (result.success) setState('done');
+    else { setError(result.error || 'Не удалось создать PassKey'); setState('prompt'); }
   };
 
   return (
-    <div className="auth-modal-backdrop" onClick={state !== 'creating' ? onDone : undefined}>
-      <div className="auth-modal-dialog" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
+      onClick={state !== 'creating' ? onDone : undefined}>
+      <div className="w-full max-w-[360px] glass-surface rounded-3xl p-6 shadow-glass-lg flex flex-col items-center text-center gap-2 animate-scale-in"
+        onClick={e => e.stopPropagation()}>
         {state === 'done' ? (
           <>
-            <div className="auth-passkey-icon" style={{ fontSize: '2.5em' }}>&#x2705;</div>
-            <div className="auth-title" style={{ fontSize: '1.15em', marginTop: 8 }}>PassKey создан!</div>
-            <div className="auth-hint" style={{ marginBottom: 16 }}>
+            <div className="text-[2.5em]">&#x2705;</div>
+            <div className="text-[1.15em] font-black tracking-tight text-white mt-2">PassKey создан!</div>
+            <div className="text-[0.8em] text-white/30 font-medium mb-4">
               Теперь вы можете входить с помощью биометрии (Face ID, Touch ID, PIN).
             </div>
-            <button className="auth-action-btn auth-action-btn--primary" onClick={onDone}>
+            <button className="w-full px-4 py-3 rounded-2xl bg-accent text-white text-sm font-bold
+              active:scale-[0.97] transition-transform duration-150 ease-spring" onClick={onDone}>
               Продолжить
             </button>
           </>
         ) : (
           <>
-            <div className="auth-passkey-icon" style={{ fontSize: '2.5em' }}>&#x1F510;</div>
-            <div className="auth-title" style={{ fontSize: '1.15em', marginTop: 8 }}>Быстрый вход</div>
-            <div className="auth-hint" style={{ marginBottom: 4, lineHeight: 1.6 }}>
+            <div className="text-[2.5em]">&#x1F510;</div>
+            <div className="text-[1.15em] font-black tracking-tight text-white mt-2">Быстрый вход</div>
+            <div className="text-[0.8em] text-white/30 font-medium leading-relaxed mb-1">
               Настройте вход по биометрии, чтобы в следующий раз
               входить через Face ID, Touch ID или PIN-код.
             </div>
-            {error && <div className="auth-error" style={{ margin: '8px 0' }}>{error}</div>}
-            <button
-              className="auth-action-btn auth-action-btn--primary"
-              onClick={handleCreate}
-              disabled={state === 'creating'}
-              style={{ marginTop: 12 }}
-            >
+            {error && <div className="text-red-400 text-sm font-medium my-2">{error}</div>}
+            <button className="w-full px-4 py-3 rounded-2xl bg-accent text-white text-sm font-bold
+              disabled:opacity-40 active:scale-[0.97] transition-transform duration-150 ease-spring mt-3"
+              onClick={handleCreate} disabled={state === 'creating'}>
               {state === 'creating' ? (
-                <><span className="auth-btn-spinner" /> Настройка...</>
-              ) : (
-                'Настроить PassKey'
-              )}
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-auth-spin" /> Настройка...
+                </span>
+              ) : 'Настроить PassKey'}
             </button>
-            <button
-              className="auth-action-btn"
-              onClick={() => {
-                try { localStorage.setItem(PASSKEY_DISMISSED_KEY, String(Date.now())); } catch {}
-                onDone();
-              }}
-              style={{ marginTop: 6, opacity: 0.5 }}
-            >
+            <button className="w-full px-4 py-3 rounded-2xl bg-transparent text-white/30 text-sm font-bold mt-1.5
+              active:scale-[0.97] transition-transform duration-150 ease-spring"
+              onClick={() => { try { localStorage.setItem(PASSKEY_DISMISSED_KEY, String(Date.now())); } catch {} onDone(); }}>
               Пропустить
             </button>
           </>
@@ -386,18 +364,26 @@ export function AuthModal() {
   if (!authModalOpen) return null;
 
   return (
-    <div className="auth-modal-backdrop" onClick={hideAuthModal}>
-      <div className="auth-modal-dialog" onClick={e => e.stopPropagation()}>
-        <button className="auth-modal-close" onClick={hideAuthModal} aria-label="Закрыть">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
+      onClick={hideAuthModal}>
+      <div className="relative w-full max-w-[360px] glass-surface rounded-3xl p-6 shadow-glass-lg
+        flex flex-col items-center text-center gap-2 animate-scale-in"
+        onClick={e => e.stopPropagation()}>
+        <button
+          className="absolute top-4 right-4 w-8 h-8 rounded-lg flex items-center justify-center
+            bg-white/[0.04] text-white/40 hover:text-white/70 transition-colors duration-150"
+          onClick={hideAuthModal} aria-label="Закрыть">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </button>
 
-        <div className="auth-logo">
+        <div className="w-[72px] h-[72px] rounded-[22px] bg-gradient-to-br from-purple-500/15 to-indigo-500/[0.08]
+          border border-purple-500/25 flex items-center justify-center
+          shadow-[0_8px_32px_rgba(168,85,247,0.2),0_0_60px_rgba(168,85,247,0.06)] mb-2">
           <IconMafBoard size={40} color="var(--accent-color, #a855f7)" />
         </div>
-        <div className="auth-title">Вход в MafBoard</div>
+        <div className="text-[1.6em] font-black tracking-tight text-white">Вход в MafBoard</div>
 
         <TelegramSection onSuccess={handleAuthSuccess} />
         <AltMethods onSuccess={handleAuthSuccess} />

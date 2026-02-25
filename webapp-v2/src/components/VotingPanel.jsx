@@ -134,6 +134,7 @@ export function VotingPanel() {
     ? (lastSpeechTimer.isPaused ? '' : 'status-running')
     : (lastSpeechTimer.timeLeft === 0 ? 'status-finished' : '');
   const lastSpeechDisplayClass = (lastSpeechTimer.timeLeft <= 10 && lastSpeechTimer.isRunning && !lastSpeechTimer.isPaused) ? 'warning'
+    : lastSpeechTimer.isRunning && lastSpeechTimer.isPaused ? 'paused'
     : lastSpeechTimer.isRunning ? 'running'
     : lastSpeechTimer.timeLeft === 0 ? 'finished' : '';
 
@@ -154,16 +155,40 @@ export function VotingPanel() {
 
   const formatTime = (t) => String(t).padStart(2, '0');
 
+  const getTimerStatusPillClasses = (statusClass) => {
+    const base = 'px-3 py-1 rounded-full text-[0.65rem] font-bold tracking-wider uppercase w-fit mx-auto mb-1';
+    if (statusClass === 'status-running') return `${base} bg-emerald-500/15 text-emerald-400`;
+    if (statusClass === 'status-finished') return `${base} bg-red-500/15 text-red-400`;
+    return `${base} bg-white/[0.06] text-white/40`;
+  };
+
+  const getTimerDisplayClasses = (displayClass) => {
+    const base = 'text-center text-5xl font-extrabold tracking-tight tabular-nums cursor-pointer select-none my-2';
+    if (displayClass === 'warning') return `${base} text-red-400 animate-timer-pulse`;
+    if (displayClass === 'running') return `${base} text-white`;
+    if (displayClass === 'paused') return `${base} text-amber-400/70`;
+    if (displayClass === 'finished') return `${base} text-red-400/60 animate-timer-blink`;
+    return `${base} text-white/70`;
+  };
+
+  const getDialerBtnClasses = ({ voted, votedElsewhere, prefilled }) => {
+    const base = 'h-11 rounded-xl border text-sm font-bold active:scale-90 transition-all duration-150 ease-spring';
+    if (voted) return `${base} bg-accent text-white border-transparent shadow-glow-accent`;
+    if (votedElsewhere) return `${base} bg-white/[0.02] border-white/[0.04] text-white/15 cursor-default`;
+    if (prefilled) return `${base} bg-white/[0.06] border-white/10 text-white/50`;
+    return `${base} bg-white/[0.04] border-white/[0.08] text-white/70`;
+  };
+
   return (
-    <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="animate-fade-in flex flex-col gap-[14px]">
       {/* Header */}
-      <div style={{ textAlign: 'center', paddingTop: 8 }}>
-        <h2 className="voting-title">Голосование</h2>
+      <div className="text-center pt-2">
+        <h2 className="text-accent text-xs font-bold tracking-[0.15em] uppercase">Голосование</h2>
         {candidates.length > 0 && votingScreenTab === 'voting' && (
-          <div className="voting-nominated-row">
-            <span className="voting-nominated-label">Выставлены:</span>
+          <div className="flex items-center gap-2 flex-wrap mt-2">
+            <span className="text-xs text-white/40 font-medium">Выставлены:</span>
             {candidates.map(num => (
-              <span key={num} className="voting-nominated-num">{num}</span>
+              <span key={num} className="w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-sm font-bold">{num}</span>
             ))}
           </div>
         )}
@@ -173,10 +198,10 @@ export function VotingPanel() {
         <>
           {/* No candidates nominated */}
           {!showVotingModal && candidates.length === 0 && (
-            <div className="glass-card animate-fadeIn" style={{ padding: 32, textAlign: 'center', position: 'relative', zIndex: 1 }}>
-              <div style={{ fontSize: '2.5em', marginBottom: 12, opacity: 0.3 }}>⚖️</div>
-              <h3 style={{ fontSize: '1em', fontWeight: 700, marginBottom: 6 }}>Нет выставленных игроков</h3>
-              <p style={{ fontSize: '0.85em', color: 'rgba(255,255,255,0.35)' }}>
+            <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-fade-in p-8 text-center">
+              <div className="text-[2.5em] mb-3 opacity-30">⚖️</div>
+              <h3 className="text-base font-bold mb-1.5">Нет выставленных игроков</h3>
+              <p className="text-[0.85em] text-white/35">
                 Выставите кандидатов в карточках игроков, чтобы начать голосование
               </p>
             </div>
@@ -184,19 +209,19 @@ export function VotingPanel() {
 
           {/* Active voting modal */}
           {showVotingModal && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="flex flex-col gap-[14px]">
               {/* Day 0: single candidate — no voting */}
               {votingDay0SingleCandidate && (
-                <div className="glass-card animate-fadeIn" style={{ padding: 24, textAlign: 'center', position: 'relative', zIndex: 1 }}>
-                  <div style={{ fontSize: '2.5em', marginBottom: 12, opacity: 0.4 }}>☝️</div>
-                  <h3 style={{ fontSize: '1em', fontWeight: 700, marginBottom: 8 }}>
+                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-fade-in p-6 text-center">
+                  <div className="text-[2.5em] mb-3 opacity-40">☝️</div>
+                  <h3 className="text-base font-bold mb-2">
                     Выставлен 1 кандидат — #{votingDay0SingleCandidate}
                   </h3>
-                  <p style={{ fontSize: '0.85em', color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
+                  <p className="text-[0.85em] text-white/40 mb-4">
                     На нулевом голосовании выставлен только один игрок. Голосование не проводится.
                   </p>
                   <button onClick={() => { dismissDay0VotingAndGoToNight(); triggerHaptic('medium'); }}
-                    className="glass-btn btn-primary" style={{ padding: '12px 24px', fontSize: '0.9em' }}>
+                    className="rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-3 px-6 text-[0.9em]">
                     Перейти в ночь
                   </button>
                 </div>
@@ -204,24 +229,23 @@ export function VotingPanel() {
 
               {/* Day 0: triple tie — no re-vote possible */}
               {votingDay0TripleTie && (
-                <div className="glass-card animate-fadeIn" style={{ padding: 24, textAlign: 'center', position: 'relative', zIndex: 1 }}>
-                  <div style={{ fontSize: '2.5em', marginBottom: 12, opacity: 0.4 }}>⚖️</div>
-                  <h3 style={{ fontSize: '1em', fontWeight: 700, marginBottom: 8 }}>
+                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-fade-in p-6 text-center">
+                  <div className="text-[2.5em] mb-3 opacity-40">⚖️</div>
+                  <h3 className="text-base font-bold mb-2">
                     Ничья {votingDay0TripleTiePlayers.length} игроков
                   </h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
+                  <div className="flex flex-wrap gap-2 justify-center mb-3">
                     {votingDay0TripleTiePlayers.map(num => (
-                      <span key={num} style={{
-                        padding: '6px 14px', background: 'rgba(255,214,10,0.15)', borderRadius: 10,
-                        fontSize: '0.9em', fontWeight: 700, color: '#ffd60a',
-                      }}>#{num}</span>
+                      <span key={num} className="py-1.5 px-3.5 rounded-[10px] bg-[rgba(255,214,10,0.15)] text-[0.9em] font-bold text-[#ffd60a]">
+                        #{num}
+                      </span>
                     ))}
                   </div>
-                  <p style={{ fontSize: '0.85em', color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
+                  <p className="text-[0.85em] text-white/40 mb-4">
                     На нулевом голосовании невозможно деление {votingDay0TripleTiePlayers.length} игроков.
                   </p>
                   <button onClick={() => { dismissDay0VotingAndGoToNight(); triggerHaptic('medium'); }}
-                    className="glass-btn btn-primary" style={{ padding: '12px 24px', fontSize: '0.9em' }}>
+                    className="rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-3 px-6 text-[0.9em]">
                     Перейти в ночь
                   </button>
                 </div>
@@ -229,33 +253,30 @@ export function VotingPanel() {
 
               {/* Tie — split players with controllable timer */}
               {votingTieTimerActive && (
-                <div className="glass-card animate-fadeIn" style={{
-                  padding: 16, textAlign: 'center', position: 'relative', zIndex: 1,
-                  borderColor: 'rgba(255,214,10,0.3)', background: 'rgba(255,214,10,0.05)',
-                }}>
-                  <h3 style={{ fontSize: '1em', fontWeight: 800, color: '#ffd60a', marginBottom: 10 }}>Деление игроков</h3>
-                  <div className="voting-nominated-row" style={{ marginBottom: 14, justifyContent: 'center' }}>
+                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-fade-in p-4 text-center border-[rgba(255,214,10,0.3)] bg-[rgba(255,214,10,0.05)]">
+                  <h3 className="text-base font-extrabold text-[#ffd60a] mb-2.5">Деление игроков</h3>
+                  <div className="flex items-center gap-2 flex-wrap mb-3.5 justify-center">
                     {votingTiePlayers.map((num, i) => {
                       const isCurrent = !votingTieAllDone && i === votingTieSpeakerIdx;
                       const isDone = i < votingTieSpeakerIdx || votingTieAllDone;
                       return (
-                        <span key={num} className="voting-nominated-num" style={{
-                          ...(isCurrent ? { boxShadow: '0 0 12px rgba(255,214,10,0.5)', border: '2px solid #ffd60a', transform: 'scale(1.15)' } : {}),
-                          ...(isDone ? { opacity: 0.4 } : {}),
-                          transition: 'all 0.3s ease',
-                        }}>{num}</span>
+                        <span key={num} className="w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-sm font-bold transition-all duration-300 ease-out"
+                          style={{
+                            ...(isCurrent ? { boxShadow: '0 0 12px rgba(255,214,10,0.5)', border: '2px solid #ffd60a', transform: 'scale(1.15)' } : {}),
+                            ...(isDone ? { opacity: 0.4 } : {}),
+                          }}>{num}</span>
                       );
                     })}
                   </div>
 
                   {!votingTieAllDone && (
-                    <div className="timer-section" style={{ margin: '0 auto 14px', maxWidth: 260 }}>
-                      <div style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>
+                    <div className="mx-auto mb-3.5 max-w-[260px]">
+                      <div className="text-[0.7rem] font-semibold tracking-wider uppercase text-white/40 mb-1.5">
                         Речь игрока #{votingTiePlayers[votingTieSpeakerIdx]}
-                        <span style={{ marginLeft: 6, opacity: 0.5 }}>({votingTieSpeakerIdx + 1}/{votingTiePlayers.length})</span>
+                        <span className="ml-1.5 opacity-50">({votingTieSpeakerIdx + 1}/{votingTiePlayers.length})</span>
                       </div>
-                      <div className={`timer-status-pill ${tieTimerStatusClass}`}>{tieTimerStatusText}</div>
-                      <div className={`timer-display ${tieTimerDisplayClass}`}
+                      <div className={getTimerStatusPillClasses(tieTimerStatusClass)}>{tieTimerStatusText}</div>
+                      <div className={getTimerDisplayClasses(tieTimerDisplayClass)}
                         onMouseDown={handleTieHoldStart}
                         onMouseUp={handleTieHoldEnd}
                         onMouseLeave={handleTieHoldCancel}
@@ -265,34 +286,35 @@ export function VotingPanel() {
                         onTouchCancel={handleTieHoldCancel}>
                         {formatTime(tieTimer.timeLeft)}
                       </div>
-                      <div className="timer-controls">
+                      <div className="flex items-center justify-center gap-2">
                         {tieTimer.timeLeft === 0 && !tieTimer.isRunning ? (
-                          <button className="timer-btn" onClick={() => { advanceTieSpeaker(); triggerHaptic('light'); }}
-                            style={{ background: 'linear-gradient(135deg, rgba(255,214,10,0.2), rgba(255,160,10,0.2))', border: '1px solid rgba(255,214,10,0.3)', color: '#ffd60a' }}>
+                          <button className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm font-bold active:scale-90 transition-transform duration-150 ease-spring"
+                            style={{ background: 'linear-gradient(135deg, rgba(255,214,10,0.2), rgba(255,160,10,0.2))', border: '1px solid rgba(255,214,10,0.3)', color: '#ffd60a' }}
+                            onClick={() => { advanceTieSpeaker(); triggerHaptic('light'); }}>
                             {votingTieSpeakerIdx >= votingTiePlayers.length - 1 ? '✓ Завершить' : '▶ Дальше'}
                           </button>
                         ) : (
-                          <button className="timer-btn" onClick={() => { tieTimer.stop(); advanceTieSpeaker(); triggerHaptic('light'); }}
-                            style={{ color: 'rgba(255,255,255,0.5)' }}>
+                          <button className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm font-bold active:scale-90 transition-transform duration-150 ease-spring text-white/50"
+                            onClick={() => { tieTimer.stop(); advanceTieSpeaker(); triggerHaptic('light'); }}>
                             {votingTieSpeakerIdx >= votingTiePlayers.length - 1 ? '⏭ Завершить' : '⏭ Пропустить'}
                           </button>
                         )}
                       </div>
-                      <div className="timer-hint">Клик: Старт/Пауза | Удержание: Сброс</div>
+                      <div className="text-[0.65rem] text-white/25 text-center mt-2">Клик: Старт/Пауза | Удержание: Сброс</div>
                     </div>
                   )}
 
                   {votingTieAllDone && (
-                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,214,10,0.15)' }}>
-                      <p style={{ fontSize: '0.85em', color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>Все кандидаты высказались</p>
+                    <div className="mt-3.5 pt-3.5 border-t border-[rgba(255,214,10,0.15)]">
+                      <p className="text-[0.85em] text-white/40 mb-3">Все кандидаты высказались</p>
                       {votingStage === 'tie' ? (
                         <button onClick={() => { startLiftVoting(); triggerHaptic('medium'); }}
-                          className="glass-btn btn-primary" style={{ width: '100%', padding: '14px 24px', fontSize: '0.9em' }}>
+                          className="w-full rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-3.5 px-6 text-[0.9em]">
                           Голосование за подъём
                         </button>
                       ) : (
                         <button onClick={() => { startTieVoting(); triggerHaptic('medium'); }}
-                          className="glass-btn btn-primary" style={{ width: '100%', padding: '14px 24px', fontSize: '0.9em' }}>
+                          className="w-full rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-3.5 px-6 text-[0.9em]">
                           Повторное голосование
                         </button>
                       )}
@@ -303,19 +325,16 @@ export function VotingPanel() {
 
               {/* Last speech with controllable timer + slide to night */}
               {votingLastSpeechActive && votingWinners.length > 0 && (
-                <div className="glass-card animate-fadeIn" style={{
-                  padding: 16, textAlign: 'center', position: 'relative', zIndex: 1,
-                  borderColor: 'rgba(255,69,58,0.3)', background: 'rgba(255,69,58,0.05)',
-                }}>
-                  <h3 style={{ fontSize: '1em', fontWeight: 800, color: '#ff453a', marginBottom: 10 }}>Крайняя речь</h3>
+                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-fade-in p-4 text-center border-[rgba(255,69,58,0.3)] bg-[rgba(255,69,58,0.05)]">
+                  <h3 className="text-base font-extrabold text-[#ff453a] mb-2.5">Крайняя речь</h3>
                   {votingWinners.map(num => {
                     const p = tableOut[num - 1];
-                    return <div key={num} style={{ fontSize: '1.4em', fontWeight: 800 }}>#{num} {p?.login}</div>;
+                    return <div key={num} className="text-[1.4em] font-extrabold">#{num} {p?.login}</div>;
                   })}
 
-                  <div className="timer-section" style={{ margin: '14px auto 0', maxWidth: 260 }}>
-                    <div className={`timer-status-pill ${lastSpeechStatusClass}`}>{lastSpeechStatusText}</div>
-                    <div className={`timer-display ${lastSpeechDisplayClass}`}
+                  <div className="mt-3.5 mx-auto max-w-[260px]">
+                    <div className={getTimerStatusPillClasses(lastSpeechStatusClass)}>{lastSpeechStatusText}</div>
+                    <div className={getTimerDisplayClasses(lastSpeechDisplayClass)}
                       onMouseDown={handleLastSpeechHoldStart}
                       onMouseUp={handleLastSpeechHoldEnd}
                       onMouseLeave={handleLastSpeechHoldCancel}
@@ -325,18 +344,18 @@ export function VotingPanel() {
                       onTouchCancel={handleLastSpeechHoldCancel}>
                       {formatTime(lastSpeechTimer.timeLeft)}
                     </div>
-                    <div className="timer-controls">
+                    <div className="flex items-center justify-center gap-2">
                       {lastSpeechTimer.timeLeft > 0 && lastSpeechFoulCount < 2 && (
-                        <button className="timer-btn" onClick={() => { lastSpeechTimer.addTime(30); setLastSpeechFoulCount(c => c + 1); triggerHaptic('warning'); }}
-                          style={{ color: '#ff9f0a' }}>
+                        <button className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm font-bold active:scale-90 transition-transform duration-150 ease-spring text-[#ff9f0a]"
+                          onClick={() => { lastSpeechTimer.addTime(30); setLastSpeechFoulCount(c => c + 1); triggerHaptic('warning'); }}>
                           +30с (+Ф)
                         </button>
                       )}
                     </div>
-                    <div className="timer-hint">Клик: Старт/Пауза | Удержание: Сброс</div>
+                    <div className="text-[0.65rem] text-white/25 text-center mt-2">Клик: Старт/Пауза | Удержание: Сброс</div>
                   </div>
 
-                  <div style={{ marginTop: 16 }}>
+                  <div className="mt-4">
                     <SlideConfirm
                       label="Перейти в ночь"
                       onConfirm={() => { lastSpeechTimer.stop(); closeVotingAndApply(); handleGoToNight(true); triggerHaptic('medium'); }}
@@ -349,35 +368,35 @@ export function VotingPanel() {
 
               {/* Lift voting */}
               {votingStage === 'lift' && !votingFinished && (
-                <div className="glass-card animate-glassReveal" style={{ padding: 16, position: 'relative', zIndex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <h3 style={{ fontSize: '0.9em', fontWeight: 700 }}>Голосование за подъём</h3>
-                    <span style={{ fontSize: '0.75em', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>
+                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-glass-reveal p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-[0.9em] font-bold">Голосование за подъём</h3>
+                    <span className="text-[0.75em] text-white/40 font-bold">
                       {votingLiftResults.length} / {Math.ceil(alivePlayers.length / 2 + 0.1)} нужно
                     </span>
                   </div>
 
-                  <div style={{ textAlign: 'center', marginBottom: 12 }}>
-                    <span style={{ fontSize: '0.7em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1 }}>Поднять:</span>
-                    <div className="voting-nominated-row" style={{ marginTop: 6, justifyContent: 'center' }}>
+                  <div className="text-center mb-3">
+                    <span className="text-[0.7em] text-white/40 uppercase tracking-wider">Поднять:</span>
+                    <div className="flex items-center gap-2 flex-wrap mt-1.5 justify-center">
                       {votingTiePlayers.map(num => (
-                        <span key={num} className="voting-nominated-num">{num}</span>
+                        <span key={num} className="w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-sm font-bold">{num}</span>
                       ))}
                     </div>
                   </div>
 
-                  <div style={{ fontSize: '0.7em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, textAlign: 'center' }}>
+                  <div className="text-[0.7em] text-white/30 uppercase tracking-wider mb-2 text-center">
                     Кто за подъём?
                   </div>
 
-                  <div className="dialer-grid" style={{ marginBottom: 12 }}>
+                  <div className="grid grid-cols-5 gap-2 mb-3">
                     {tableOut.map(p => {
                       const alive = isPlayerActive(p.roleKey);
                       const voted = votingLiftResults.includes(p.num);
                       return (
                         <button key={p.num}
                           onClick={() => { if (alive) { toggleLiftVote(p.num); triggerHaptic('selection'); } }}
-                          className={`dialer-btn ${voted ? 'selected' : ''} ${!alive ? 'voted-elsewhere' : ''}`}
+                          className={getDialerBtnClasses({ voted, votedElsewhere: !alive, prefilled: false })}
                           disabled={!alive}>
                           {p.num}
                         </button>
@@ -385,12 +404,12 @@ export function VotingPanel() {
                     })}
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.85em', color: 'rgba(255,255,255,0.4)' }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[0.85em] text-white/40">
                       Голосов: {votingLiftResults.length}
                     </span>
                     <button onClick={() => { finishLiftVoting(); triggerHaptic('medium'); }}
-                      className="glass-btn btn-primary" style={{ padding: '8px 18px', fontSize: '0.85em' }}>
+                      className="rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-2 px-4 text-[0.85em]">
                       Завершить ›
                     </button>
                   </div>
@@ -399,36 +418,36 @@ export function VotingPanel() {
 
               {/* Main/Tie voting */}
               {(votingStage === 'main' || votingStage === 'tie') && !votingFinished && !votingTieTimerActive && (
-                <div className="glass-card animate-glassReveal" style={{ padding: 16, position: 'relative', zIndex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <h3 style={{ fontSize: '0.9em', fontWeight: 700 }}>
+                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-glass-reveal p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-[0.9em] font-bold">
                       {votingStage === 'tie' ? 'Повторное голосование' : 'Голосование'}
                     </h3>
-                    <span style={{ fontSize: '0.75em', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>
+                    <span className="text-[0.75em] text-white/40 font-bold">
                       {votingCurrentIndex + 1} / {votingOrder.length}
                     </span>
                   </div>
 
-                  <div style={{ textAlign: 'center', marginBottom: 12 }}>
-                    <span style={{ fontSize: '0.7em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1 }}>Голосуем за:</span>
-                    <div style={{ fontSize: '1.5em', fontWeight: 800, color: '#ffd60a', marginTop: 4 }}>
+                  <div className="text-center mb-3">
+                    <span className="text-[0.7em] text-white/40 uppercase tracking-wider">Голосуем за:</span>
+                    <div className="text-[1.5em] font-extrabold text-[#ffd60a] mt-1">
                       #{currentCandidate} {tableOut[currentCandidate - 1]?.login || ''}
                     </div>
                   </div>
 
                   {/* City mode: counter instead of per-voter */}
                   {cityMode ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, marginBottom: 12 }}>
+                    <div className="flex items-center justify-center gap-6 mb-3">
                       <button onClick={() => setCityVoteCounts(prev => ({ ...prev, [currentCandidate]: Math.max(0, (prev[currentCandidate] || 0) - 1) }))}
-                        className="glass-btn" style={{ width: 52, height: 52, fontSize: '1.5em', padding: 0 }}>−</button>
+                        className="w-[52px] h-[52px] rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring text-[1.5em] p-0 flex items-center justify-center">−</button>
                       <span style={{ fontSize: '2.5em', fontWeight: 800, color: 'var(--accent-color)', minWidth: 64, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
                         {cityVoteCounts[currentCandidate] || 0}
                       </span>
                       <button onClick={() => setCityVoteCounts(prev => ({ ...prev, [currentCandidate]: (prev[currentCandidate] || 0) + 1 }))}
-                        className="glass-btn" style={{ width: 52, height: 52, fontSize: '1.5em', padding: 0 }}>+</button>
+                        className="w-[52px] h-[52px] rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring text-[1.5em] p-0 flex items-center justify-center">+</button>
                     </div>
                   ) : (
-                    <div className="dialer-grid" style={{ marginBottom: 12 }}>
+                    <div className="grid grid-cols-5 gap-2 mb-3">
                       {tableOut.map(p => {
                         const alive = isPlayerActive(p.roleKey);
                         const voted = currentVotes.includes(p.num);
@@ -438,7 +457,7 @@ export function VotingPanel() {
                         return (
                           <button key={p.num}
                             onClick={() => { if (!isDisabled) { toggleVotingSelection(p.num); triggerHaptic('selection'); } }}
-                            className={`dialer-btn ${voted ? 'selected' : ''} ${prefilled ? 'prefilled' : ''} ${isDisabled ? 'voted-elsewhere' : ''}`}
+                            className={getDialerBtnClasses({ voted, votedElsewhere: isDisabled, prefilled })}
                             disabled={isDisabled}>
                             {p.num}
                           </button>
@@ -447,32 +466,32 @@ export function VotingPanel() {
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
                       {votingCurrentIndex > 0 && (
                         <button onClick={() => { setVotingCurrentIndex(i => i - 1); triggerHaptic('light'); }}
-                          className="glass-btn" style={{ padding: '8px 14px', fontSize: '0.85em' }}>
+                          className="rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-2 px-3.5 text-[0.85em]">
                           ‹ Назад
                         </button>
                       )}
-                      <span style={{ fontSize: '0.85em', color: 'rgba(255,255,255,0.4)' }}>
+                      <span className="text-[0.85em] text-white/40">
                         Голосов: {cityMode ? (cityVoteCounts[currentCandidate] || 0) : (currentVotes.length + (isLastCandidate ? remainingVoters.length : 0))}
                       </span>
                     </div>
                     <button onClick={() => { acceptCurrentCandidateVotes(); triggerHaptic('light'); }}
-                      className="glass-btn btn-primary" style={{ padding: '8px 18px', fontSize: '0.85em' }}>
+                      className="rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-2 px-4 text-[0.85em]">
                       {votingCurrentIndex >= votingOrder.length - 1 ? 'Завершить' : 'Принять'} ›
                     </button>
                   </div>
 
                   {/* Results so far */}
                   {Object.keys(votingResults).length > 0 && (
-                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div className="mt-3 pt-3 border-t border-white/[0.06]">
+                      <div className="flex flex-col gap-1">
                         {votingOrder.slice(0, votingCurrentIndex + 1).map(c => (
-                          <div key={c} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8em' }}>
-                            <span style={{ color: 'rgba(255,255,255,0.4)' }}>#{c} {tableOut[c - 1]?.login || ''}</span>
-                            <span style={{ fontWeight: 700, color: 'var(--accent-color)' }}>{(votingResults[String(c)] || []).length} голосов</span>
+                          <div key={c} className="flex justify-between text-[0.8em]">
+                            <span className="text-white/40">#{c} {tableOut[c - 1]?.login || ''}</span>
+                            <span className="font-bold" style={{ color: 'var(--accent-color)' }}>{(votingResults[String(c)] || []).length} голосов</span>
                           </div>
                         ))}
                       </div>
@@ -483,12 +502,12 @@ export function VotingPanel() {
 
               {/* No winners */}
               {votingFinished && votingWinners.length === 0 && !votingTieTimerActive && (
-                <div className="glass-card animate-fadeIn" style={{ padding: 16, textAlign: 'center', position: 'relative', zIndex: 1 }}>
+                <div className="relative z-[1] rounded-2xl glass-surface shadow-glass-md animate-fade-in p-4 text-center">
                   {votingStage === 'lift' ? (
                     <>
-                      <h3 style={{ fontSize: '0.9em', fontWeight: 700, marginBottom: 8 }}>Голосов за подъём недостаточно</h3>
-                      <p style={{ fontSize: '0.85em', color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>Никто не выбывает</p>
-                      <div style={{ marginBottom: 10 }}>
+                      <h3 className="text-[0.9em] font-bold mb-2">Голосов за подъём недостаточно</h3>
+                      <p className="text-[0.85em] text-white/40 mb-4">Никто не выбывает</p>
+                      <div className="mb-2.5">
                         <SlideConfirm
                           label={`Перейти в ночь`}
                           onConfirm={() => { closeVotingAndApply(); handleGoToNight(true); triggerHaptic('medium'); }}
@@ -499,10 +518,10 @@ export function VotingPanel() {
                     </>
                   ) : (
                     <>
-                      <h3 style={{ fontSize: '0.9em', fontWeight: 700, marginBottom: 8 }}>Голосование завершено</h3>
-                      <p style={{ fontSize: '0.85em', color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>Никто не выбыл</p>
+                      <h3 className="text-[0.9em] font-bold mb-2">Голосование завершено</h3>
+                      <p className="text-[0.85em] text-white/40 mb-3">Никто не выбыл</p>
                       <button onClick={() => { closeVotingAndApply(); triggerHaptic('light'); }}
-                        className="glass-btn" style={{ padding: '10px 24px', fontSize: '0.85em' }}>
+                        className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-2.5 px-6 text-[0.85em]">
                         Закрыть
                       </button>
                     </>
@@ -516,79 +535,73 @@ export function VotingPanel() {
 
       {/* History tab */}
       {votingScreenTab === 'history' && (
-        <div className="animate-stagger" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="animate-fade-in flex flex-col gap-2.5">
           {votingHistory.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.25)' }}>
-              <div style={{ fontSize: '2em', marginBottom: 8, opacity: 0.3 }}>📋</div>
-              <p style={{ fontSize: '0.9em' }}>История голосований пуста</p>
+            <div className="py-10 text-center text-white/25">
+              <div className="text-[2em] mb-2 opacity-30">📋</div>
+              <p className="text-[0.9em]">История голосований пуста</p>
             </div>
           ) : (
             [...votingHistory].reverse().map((v, i) => (
-              <div key={i} className="glass-card" style={{ padding: 16, position: 'relative', zIndex: 1 }}>
+              <div key={i} className="relative z-[1] rounded-2xl glass-surface shadow-glass-md p-4">
                 {/* Header */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: '0.7em', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[0.7em] font-bold text-white/40 uppercase tracking-wider">
                     Голосование #{v.votingNumber} (День {v.dayNumber})
                   </span>
                 </div>
 
                 {/* Result */}
                 {v.finalWinners?.length > 0 ? (
-                  <div style={{ fontSize: '0.85em', fontWeight: 600, marginBottom: 10, padding: '6px 10px', background: 'rgba(255,69,58,0.1)', borderRadius: 10, border: '1px solid rgba(255,69,58,0.2)' }}>
+                  <div className="text-[0.85em] font-semibold mb-2.5 py-1.5 px-2.5 rounded-[10px] bg-red-500/10 border border-red-500/20">
                     Заголосован: {v.finalWinners.map(num => `#${num} ${tableOut[num - 1]?.login || ''}`).join(', ')}
                   </div>
                 ) : (
-                  <div style={{ fontSize: '0.85em', color: 'rgba(255,255,255,0.4)', marginBottom: 10 }}>Никто не выбыл</div>
+                  <div className="text-[0.85em] text-white/40 mb-2.5">Никто не выбыл</div>
                 )}
 
                 {/* Stages */}
                 {v.stages?.map((s, si) => (
-                  <div key={si} style={{
-                    marginTop: si > 0 ? 10 : 0, paddingTop: si > 0 ? 10 : 0,
-                    borderTop: si > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
-                  }}>
-                    <div style={{ fontSize: '0.7em', fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                  <div key={si} className={si > 0 ? 'mt-2.5 pt-2.5 border-t border-white/[0.06]' : ''}>
+                    <div className="text-[0.7em] font-bold text-white/30 uppercase tracking-wider mb-1.5">
                       {s.type === 'main' ? 'Основное' : s.type === 'tie' ? 'Повторное' : 'За подъём'}
                     </div>
 
                     {s.type === 'lift' ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '0.75em', color: 'rgba(255,255,255,0.35)' }}>За подъём:</span>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[0.75em] text-white/35">За подъём:</span>
                           {(s.liftVoters || []).length > 0 ? (
                             (s.liftVoters || []).map(num => (
-                              <span key={num} style={{ fontSize: '0.75em', fontWeight: 700, color: '#00ff88', background: 'rgba(0,255,136,0.1)', padding: '2px 8px', borderRadius: 8 }}>
+                              <span key={num} className="text-[0.75em] font-bold text-[#00ff88] bg-[rgba(0,255,136,0.1)] py-0.5 px-2 rounded-lg">
                                 #{num}
                               </span>
                             ))
                           ) : (
-                            <span style={{ fontSize: '0.75em', color: 'rgba(255,255,255,0.25)' }}>никто</span>
+                            <span className="text-[0.75em] text-white/25">никто</span>
                           )}
                         </div>
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div className="flex flex-col gap-1.5">
                         {(s.candidates || Object.keys(s.results || {})).map(c => {
                           const cNum = String(c);
                           const voters = Array.isArray(s.results?.[cNum]) ? s.results[cNum] : [];
                           const voteCount = voters.length;
                           return (
-                            <div key={cNum} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '8px 10px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: voters.length > 0 ? 4 : 0 }}>
-                                <span style={{ fontSize: '0.85em', fontWeight: 700, color: '#ffd60a' }}>
+                            <div key={cNum} className="bg-white/[0.03] rounded-[10px] py-2 px-2.5">
+                              <div className={`flex items-center justify-between ${voters.length > 0 ? 'mb-1' : ''}`}>
+                                <span className="text-[0.85em] font-bold text-[#ffd60a]">
                                   #{cNum} {tableOut[Number(cNum) - 1]?.login || ''}
                                 </span>
-                                <span style={{ fontSize: '0.8em', fontWeight: 700, color: 'var(--accent-color)' }}>
+                                <span className="text-[0.8em] font-bold" style={{ color: 'var(--accent-color)' }}>
                                   {voteCount} {voteCount === 1 ? 'голос' : voteCount >= 2 && voteCount <= 4 ? 'голоса' : 'голосов'}
                                 </span>
                               </div>
                               {voters.length > 0 && (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                <div className="flex flex-wrap gap-1">
                                   {voters.map(voterNum => (
-                                    <span key={voterNum} style={{
-                                      fontSize: '0.7em', fontWeight: 600, color: 'rgba(255,255,255,0.5)',
-                                      background: 'rgba(255,255,255,0.06)', padding: '2px 7px', borderRadius: 6,
-                                    }}>
+                                    <span key={voterNum} className="text-[0.7em] font-semibold text-white/50 bg-white/[0.06] py-0.5 px-1.5 rounded-md">
                                       #{voterNum}
                                     </span>
                                   ))}

@@ -30,8 +30,20 @@ export function NightTimerBar({ duration }) {
   }, [duration]);
 
   return (
-    <div className={`night-timer-bar ${expired ? 'night-timer-bar--expired' : ''}`}>
-      <div ref={fillRef} className="night-timer-bar__fill" />
+    <div className={`relative w-full h-1.5 rounded-full overflow-hidden
+      ${expired
+        ? 'bg-red-500/20 animate-nt-blink'
+        : 'bg-white/[0.06]'}`}
+    >
+      <div
+        ref={fillRef}
+        className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[var(--accent-color)] to-indigo-500/80
+          transition-none"
+        style={{ width: '100%' }}
+      />
+      {!expired && (
+        <div className="absolute inset-0 rounded-full bg-[length:200%_100%] bg-gradient-to-r from-transparent via-white/10 to-transparent animate-nt-wave" />
+      )}
     </div>
   );
 }

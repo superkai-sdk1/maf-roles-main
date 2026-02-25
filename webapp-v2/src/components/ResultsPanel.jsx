@@ -4,6 +4,19 @@ import { getRoleLabel, isBlackRole } from '../constants/roles';
 import { SlideConfirm } from './SlideConfirm';
 import { triggerHaptic } from '../utils/haptics';
 
+const getRoleTagClasses = (role) => {
+  const base = 'px-1.5 py-0.5 rounded-md text-[0.65em] font-bold';
+  const variants = {
+    peace: 'bg-sky-400/15 text-sky-300 border border-sky-400/25',
+    sheriff: 'bg-amber-400/15 text-amber-300 border border-amber-400/25',
+    mafia: 'bg-purple-400/15 text-purple-300 border border-purple-400/25',
+    black: 'bg-purple-400/15 text-purple-300 border border-purple-400/25',
+    don: 'bg-purple-300/15 text-purple-300 border border-purple-300/25',
+    doctor: 'bg-green-400/15 text-green-400 border border-green-400/25',
+  };
+  return `${base} ${variants[role] || 'bg-white/10 text-white/60 border border-white/20'}`;
+};
+
 export const ResultsPanel = () => {
   const {
     tableOut, winnerTeam, setWinnerTeam,
@@ -113,30 +126,39 @@ export const ResultsPanel = () => {
   };
 
   return (
-    <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="animate-fade-in flex flex-col gap-3.5">
       {/* Winner selection */}
       {!winnerTeam ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <h2 style={{ textAlign: 'center', fontSize: '1.1em', fontWeight: 800, marginBottom: 4 }}>Выберите победителя</h2>
-          <div className="winner-card civilians" onClick={() => selectWinner('civilians')}>
-            <div style={{ fontSize: 24 }}>👥</div>
+        <div className="flex flex-col gap-2.5">
+          <h2 className="text-center text-[1.1em] font-extrabold mb-1">Выберите победителя</h2>
+          <div
+            className="flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all active:scale-[0.98] bg-red-500/[0.06] border-red-500/20 hover:border-red-500/30"
+            onClick={() => selectWinner('civilians')}
+          >
+            <div className="text-2xl">👥</div>
             <div>
-              <div style={{ fontWeight: 700 }}>Победа мирных</div>
-              <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Красная команда</div>
+              <div className="font-bold">Победа мирных</div>
+              <div className="text-[0.8em]" style={{ color: 'var(--text-secondary)' }}>Красная команда</div>
             </div>
           </div>
-          <div className="winner-card mafia" onClick={() => selectWinner('mafia')}>
-            <div style={{ fontSize: 24 }}>💀</div>
+          <div
+            className="flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all active:scale-[0.98] bg-blue-400/[0.06] border-blue-400/20 hover:border-blue-400/30"
+            onClick={() => selectWinner('mafia')}
+          >
+            <div className="text-2xl">💀</div>
             <div>
-              <div style={{ fontWeight: 700 }}>Победа мафии</div>
-              <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Черная команда</div>
+              <div className="font-bold">Победа мафии</div>
+              <div className="text-[0.8em]" style={{ color: 'var(--text-secondary)' }}>Черная команда</div>
             </div>
           </div>
-          <div className="winner-card draw" onClick={() => selectWinner('draw')}>
-            <div style={{ fontSize: 24 }}>🤝</div>
+          <div
+            className="flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all active:scale-[0.98] bg-white/[0.03] border-white/[0.08] hover:border-white/[0.15]"
+            onClick={() => selectWinner('draw')}
+          >
+            <div className="text-2xl">🤝</div>
             <div>
-              <div style={{ fontWeight: 700 }}>Ничья</div>
-              <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Равный результат</div>
+              <div className="font-bold">Ничья</div>
+              <div className="text-[0.8em]" style={{ color: 'var(--text-secondary)' }}>Равный результат</div>
             </div>
           </div>
         </div>
@@ -151,10 +173,8 @@ export const ResultsPanel = () => {
               </span>
             </div>
           )}
-          <div style={{
-            textAlign: 'center', fontWeight: 800, fontSize: '1.1em',
-            textShadow: '0 0 15px rgba(255,255,255,0.3)',
-          }}>
+          <div className="text-center font-extrabold text-[1.1em]"
+            style={{ textShadow: '0 0 15px rgba(255,255,255,0.3)' }}>
             Победили: <span style={{
               color: winnerTeam === 'civilians' ? '#ff5252' : winnerTeam === 'mafia' ? '#4fc3f7' : '#fff'
             }}>
@@ -164,7 +184,7 @@ export const ResultsPanel = () => {
 
           {/* Summary tabs */}
           <div className="relative flex w-full rounded-2xl p-1 bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl">
-            <div className="absolute top-1 bottom-1 rounded-[14px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+            <div className="absolute top-1 bottom-1 rounded-[14px] transition-all duration-300 ease-smooth"
               style={{
                 width: 'calc(50% - 4px)',
                 left: summaryTab === 'scores' ? 4 : 'calc(50% + 0px)',
@@ -205,22 +225,24 @@ export const ResultsPanel = () => {
 
                 return (
                   <div key={rk}
-                    className={`score-card transition-all duration-200 ${expanded ? 'ring-1 ring-white/10' : ''}`}
+                    className={`rounded-2xl border border-white/[0.08] bg-white/[0.03] shadow-glass-sm cursor-pointer transition-all duration-200 overflow-hidden active:scale-[0.985] ${expanded ? 'ring-1 ring-white/10' : ''}`}
                     onClick={() => { setHighlightedPlayer(expanded ? null : rk); triggerHaptic('selection'); }}>
 
                     {/* Header row */}
-                    <div className="player-row-content">
-                      <div className="player-avatar-wrap">
-                        <div className="player-avatar"
-                          style={p.avatar_link ? { backgroundImage: `url(${p.avatar_link})`, color: 'transparent' } : {}}>
+                    <div className="flex items-center gap-3 px-3 py-2.5">
+                      <div className="relative shrink-0">
+                        <div
+                          className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white/60 text-sm font-bold overflow-hidden"
+                          style={p.avatar_link ? { backgroundImage: `url(${p.avatar_link})`, color: 'transparent' } : {}}
+                        >
                           {!p.avatar_link && (p.login?.[0]?.toUpperCase() || p.num)}
                         </div>
-                        <span className="player-num-badge">{p.num}</span>
+                        <span className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] rounded-md bg-white/10 border border-white/[0.15] flex items-center justify-center text-[0.6rem] font-bold text-white/70 px-0.5">{p.num}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="player-name">{p.login || `Игрок ${p.num}`}</div>
+                        <div className="text-sm font-bold text-white truncate">{p.login || `Игрок ${p.num}`}</div>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          {role && <span className={`role-tag ${role}`}>{getRoleLabel(role)}</span>}
+                          {role && <span className={getRoleTagClasses(role)}>{getRoleLabel(role)}</span>}
                           {p.action && <span className="text-[0.6em] text-white/30">
                             {p.action === 'killed' ? '💀' : p.action === 'voted' ? '🗳' : p.action === 'removed' ? '❌' : p.action === 'fall_removed' ? '4Ф' : p.action === 'tech_fall_removed' ? '2ТФ' : ''}
                           </span>}
@@ -300,12 +322,12 @@ export const ResultsPanel = () => {
                         {(() => {
                           const breakdown = getScoreBreakdown(rk);
                           return breakdown.length > 0 ? (
-                            <div className="score-breakdown mb-3">
-                              <div className="score-breakdown-title">Расчёт баллов</div>
+                            <div className="rounded-xl p-3 bg-white/[0.02] border border-white/[0.06] mb-3">
+                              <div className="text-[0.65rem] font-bold text-white/35 uppercase tracking-wider mb-2">Расчёт баллов</div>
                               {breakdown.map((item, i) => (
-                                <div key={i} className="score-breakdown-row">
-                                  <span className="score-breakdown-label">{item.label}</span>
-                                  <span className={`score-breakdown-value ${item.type === 'bonus' ? 'score-breakdown-value--bonus' : item.type === 'penalty' ? 'score-breakdown-value--penalty' : 'score-breakdown-value--neutral'}`}>
+                                <div key={i} className={`flex items-center justify-between py-1 ${i > 0 ? 'border-t border-white/[0.04]' : ''}`}>
+                                  <span className="text-xs text-white/50">{item.label}</span>
+                                  <span className={`text-xs font-bold tabular-nums ${item.type === 'bonus' ? 'text-green-400' : item.type === 'penalty' ? 'text-red-400' : 'text-white/30'}`}>
                                     {item.type === 'bonus' ? `+${item.value.toFixed(1)}` : item.type === 'penalty' ? `-${item.value.toFixed(1)}` : '—'}
                                   </span>
                                 </div>
@@ -348,7 +370,7 @@ export const ResultsPanel = () => {
 
                         {/* Protocol */}
                         {hasProto && (
-                          <div className="rounded-xl p-3 mb-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                          <div className="rounded-xl p-3 mb-3 bg-white/[0.02] border border-white/[0.06]">
                             <div className="text-[0.65rem] font-bold text-white/35 uppercase tracking-wider mb-2">Протокол</div>
                             <ProtocolOpinionGrid data={protocolData} rk={rk} tableOut={tableOut} results={checkProtocol(rk)} />
                           </div>
@@ -356,7 +378,7 @@ export const ResultsPanel = () => {
 
                         {/* Opinion */}
                         {hasOpinion && (
-                          <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                          <div className="rounded-xl p-3 bg-white/[0.02] border border-white/[0.06]">
                             <div className="text-[0.65rem] font-bold text-white/35 uppercase tracking-wider mb-2">Мнение</div>
                             <ProtocolOpinionGrid data={opinionData} rk={rk} tableOut={tableOut} results={checkOpinion(rk)} />
                           </div>
@@ -371,7 +393,7 @@ export const ResultsPanel = () => {
 
           {/* Summary tab */}
           {summaryTab === 'summary' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="flex flex-col gap-3.5">
 
               {/* Timeline */}
               {Array.from({ length: Math.max(nightNumber, dayNumber) }, (_, i) => i + 1).map(round => {
@@ -384,62 +406,59 @@ export const ResultsPanel = () => {
                 const STAGE_LABELS = { main: 'Основное', tie: 'Повторное', lift: 'За подъём' };
 
                 return (
-                  <div key={round} className="glass-card" style={{ padding: 0, position: 'relative', zIndex: 1, overflow: 'hidden' }}>
+                  <div key={round} className="relative z-[1] rounded-2xl glass-surface shadow-glass-md overflow-hidden">
                     {/* Night block */}
-                    <div style={{ padding: '14px 14px 10px', background: 'rgba(99,102,241,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                        <div style={{
-                          width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', fontSize: '0.9em', fontWeight: 800, color: '#818cf8',
-                        }}>{round}</div>
-                        <span style={{ fontSize: '0.9em', fontWeight: 800, color: '#818cf8' }}>Ночь</span>
+                    <div className="px-3.5 py-3.5 pb-2.5 bg-indigo-500/[0.04] border-b border-white/[0.04]">
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[0.9em] font-extrabold bg-indigo-400/15 border border-indigo-400/30 text-indigo-300">
+                          {round}
+                        </div>
+                        <span className="text-[0.9em] font-extrabold text-indigo-300">Ночь</span>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 4 }}>
+                      <div className="flex flex-col gap-2 pl-1">
                         {/* Kill */}
                         {nightKillPlayer ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: '1.1em' }}>💀</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[1.1em]">💀</span>
                             <div>
-                              <div style={{ fontSize: '0.9em', fontWeight: 700 }}>#{nightKillPlayer.num} {nightKillPlayer.login || ''}</div>
-                              {nightKillPlayer.role && <span className={`role-tag ${nightKillPlayer.role}`} style={{ fontSize: '0.65em' }}>{getRoleLabel(nightKillPlayer.role)}</span>}
+                              <div className="text-[0.9em] font-bold">#{nightKillPlayer.num} {nightKillPlayer.login || ''}</div>
+                              {nightKillPlayer.role && <span className={`${getRoleTagClasses(nightKillPlayer.role)} text-[0.65em]`}>{getRoleLabel(nightKillPlayer.role)}</span>}
                             </div>
                           </div>
                         ) : isMiss ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'rgba(255,255,255,0.35)' }}>
-                            <span style={{ fontSize: '1.1em' }}>💨</span>
-                            <span style={{ fontSize: '0.9em', fontWeight: 600 }}>Промах</span>
+                          <div className="flex items-center gap-2 text-white/35">
+                            <span className="text-[1.1em]">💨</span>
+                            <span className="text-[0.9em] font-semibold">Промах</span>
                           </div>
                         ) : (
-                          <div style={{ fontSize: '0.85em', color: 'rgba(255,255,255,0.25)' }}>Нет данных</div>
+                          <div className="text-[0.85em] text-white/25">Нет данных</div>
                         )}
 
                         {/* Doctor */}
                         {cityMode && doctorHealForRound && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#81c784' }}>
-                            <span style={{ fontSize: '1.1em' }}>💊</span>
-                            <span style={{ fontSize: '0.85em', fontWeight: 600 }}>Лечение → #{doctorHealForRound.target} {tableOut[doctorHealForRound.target - 1]?.login || ''}</span>
+                          <div className="flex items-center gap-2 text-green-400">
+                            <span className="text-[1.1em]">💊</span>
+                            <span className="text-[0.85em] font-semibold">Лечение → #{doctorHealForRound.target} {tableOut[doctorHealForRound.target - 1]?.login || ''}</span>
                           </div>
                         )}
 
                         {/* Checks */}
                         {nightChecksForRound.map((h, ci) => (
-                          <div key={ci} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{
-                              width: 22, height: 22, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: '0.75em', fontWeight: 800,
-                              background: h.checkerRole === 'sheriff' ? 'rgba(255,213,79,0.12)' : 'rgba(206,147,216,0.12)',
-                              border: `1px solid ${h.checkerRole === 'sheriff' ? 'rgba(255,213,79,0.3)' : 'rgba(206,147,216,0.3)'}`,
-                              color: h.checkerRole === 'sheriff' ? '#ffd54f' : '#ce93d8',
-                            }}>{h.checkerRole === 'sheriff' ? '★' : '◆'}</span>
-                            <span style={{ flex: 1, fontSize: '0.85em', fontWeight: 600, color: h.checkerRole === 'sheriff' ? '#ffd54f' : '#ce93d8' }}>
+                          <div key={ci} className="flex items-center gap-2">
+                            <span className={`w-[22px] h-[22px] rounded-md flex items-center justify-center text-[0.75em] font-extrabold ${
+                              h.checkerRole === 'sheriff' ? 'bg-amber-400/12 border border-amber-400/30 text-amber-300' : 'bg-purple-300/12 border border-purple-300/30 text-purple-300'
+                            }`}>
+                              {h.checkerRole === 'sheriff' ? '★' : '◆'}
+                            </span>
+                            <span className={`flex-1 text-[0.85em] font-semibold ${h.checkerRole === 'sheriff' ? 'text-amber-300' : 'text-purple-300'}`}>
                               → #{h.target} {h.targetLogin}
                             </span>
-                            <span style={{
-                              fontSize: '0.75em', fontWeight: 800, padding: '2px 8px', borderRadius: 6,
-                              background: h.found ? 'rgba(48,209,88,0.12)' : 'rgba(255,255,255,0.04)',
-                              color: h.found ? '#30d158' : 'rgba(255,255,255,0.3)',
-                            }}>{h.found ? '✓ Чёрный' : '✗ Красный'}</span>
+                            <span className={`text-[0.75em] font-extrabold py-0.5 px-2 rounded-md ${
+                              h.found ? 'bg-green-500/12 text-green-400' : 'bg-white/[0.04] text-white/30'
+                            }`}>
+                              {h.found ? '✓ Чёрный' : '✗ Красный'}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -447,71 +466,65 @@ export const ResultsPanel = () => {
 
                     {/* Day block */}
                     {round <= dayNumber && (
-                      <div style={{ padding: '10px 14px 14px', background: 'rgba(245,158,11,0.03)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                          <div style={{
-                            width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', fontSize: '0.9em', fontWeight: 800, color: '#f59e0b',
-                          }}>{round}</div>
-                          <span style={{ fontSize: '0.9em', fontWeight: 800, color: '#f59e0b' }}>День</span>
+                      <div className="px-3.5 py-2.5 pb-3.5 bg-amber-500/[0.03]">
+                        <div className="flex items-center gap-2 mb-2.5">
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[0.9em] font-extrabold bg-amber-500/15 border border-amber-500/30 text-amber-500">
+                            {round}
+                          </div>
+                          <span className="text-[0.9em] font-extrabold text-amber-500">День</span>
                         </div>
 
                         {votingForDay ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 4 }}>
+                          <div className="flex flex-col gap-2.5 pl-1">
                             {/* Result */}
                             {votingForDay.finalWinners?.length > 0 ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              <div className="flex flex-col gap-1">
                                 {votingForDay.finalWinners.map(num => {
                                   const vp = tableOut[num - 1];
                                   return (
-                                    <div key={num} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                      <span style={{ fontSize: '1.1em' }}>🗳</span>
+                                    <div key={num} className="flex items-center gap-2">
+                                      <span className="text-[1.1em]">🗳</span>
                                       <div>
-                                        <div style={{ fontSize: '0.9em', fontWeight: 700 }}>#{num} {vp?.login || ''}</div>
-                                        {vp?.role && <span className={`role-tag ${vp.role}`} style={{ fontSize: '0.65em' }}>{getRoleLabel(vp.role)}</span>}
+                                        <div className="text-[0.9em] font-bold">#{num} {vp?.login || ''}</div>
+                                        {vp?.role && <span className={`${getRoleTagClasses(vp.role)} text-[0.65em]`}>{getRoleLabel(vp.role)}</span>}
                                       </div>
                                     </div>
                                   );
                                 })}
                               </div>
                             ) : (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'rgba(255,255,255,0.3)' }}>
-                                <span style={{ fontSize: '1.1em' }}>🗳</span>
-                                <span style={{ fontSize: '0.9em', fontWeight: 600 }}>Никто не выбыл</span>
+                              <div className="flex items-center gap-2 text-white/30">
+                                <span className="text-[1.1em]">🗳</span>
+                                <span className="text-[0.9em] font-semibold">Никто не выбыл</span>
                               </div>
                             )}
 
                             {/* Detailed voting stages */}
                             {votingForDay.stages?.map((s, si) => (
-                              <div key={si} style={{
-                                padding: '8px 10px', borderRadius: 10,
-                                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
-                              }}>
-                                <div style={{ fontSize: '0.7em', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                              <div key={si} className="p-2.5 pt-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                                <div className="text-[0.7em] font-bold text-white/35 uppercase tracking-wider mb-1.5">
                                   {STAGE_LABELS[s.type] || s.type || `Раунд ${si + 1}`}
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div className="flex flex-col gap-1">
                                   {(s.candidates || Object.keys(s.results || {})).map(c => {
                                     const cNum = Number(c);
                                     const voters = s.results?.[String(c)] || [];
                                     const voterList = Array.isArray(voters) ? voters : [];
                                     const cp = tableOut[cNum - 1];
                                     return (
-                                      <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <span style={{
-                                          minWidth: 24, height: 24, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                          fontSize: '0.75em', fontWeight: 800, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#f59e0b',
-                                        }}>{cNum}</span>
-                                        <span style={{ fontSize: '0.8em', fontWeight: 600, minWidth: 50 }}>{cp?.login || ''}</span>
-                                        <span style={{
-                                          fontSize: '0.8em', fontWeight: 800, color: '#f59e0b', minWidth: 14, textAlign: 'center',
-                                        }}>{voterList.length}</span>
-                                        <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                      <div key={c} className="flex items-center gap-1.5">
+                                        <span className="min-w-6 h-6 rounded-md inline-flex items-center justify-center text-[0.75em] font-extrabold bg-amber-500/10 border border-amber-500/20 text-amber-500">
+                                          {cNum}
+                                        </span>
+                                        <span className="text-[0.8em] font-semibold min-w-[50px]">{cp?.login || ''}</span>
+                                        <span className="text-[0.8em] font-extrabold text-amber-500 min-w-[14px] text-center">
+                                          {voterList.length}
+                                        </span>
+                                        <div className="flex-1 flex flex-wrap gap-0.5">
                                           {voterList.map(v => (
-                                            <span key={v} style={{
-                                              fontSize: '0.65em', fontWeight: 700, padding: '1px 5px', borderRadius: 4,
-                                              background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)',
-                                            }}>{v}</span>
+                                            <span key={v} className="text-[0.65em] font-bold py-0.5 px-1 rounded bg-white/[0.06] text-white/45">
+                                              {v}
+                                            </span>
                                           ))}
                                         </div>
                                       </div>
@@ -522,7 +535,7 @@ export const ResultsPanel = () => {
                             ))}
                           </div>
                         ) : (
-                          <div style={{ paddingLeft: 4, fontSize: '0.85em', color: 'rgba(255,255,255,0.25)' }}>Без голосования</div>
+                          <div className="pl-1 text-[0.85em] text-white/25">Без голосования</div>
                         )}
                       </div>
                     )}
@@ -537,33 +550,30 @@ export const ResultsPanel = () => {
           {gamesHistory.length > 0 && (
             <div className="mt-1">
               <button
-                className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+                className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98] bg-white/[0.03] border border-white/[0.08]"
                 onClick={() => { setShowGamesHistory(!showGamesHistory); triggerHaptic('light'); }}
               >
                 <span className="text-white/50">Предыдущие игры</span>
                 <span className="flex items-center gap-2">
-                  <span className="text-xs font-extrabold px-2 py-0.5 rounded-md" style={{ background: 'rgba(168,85,247,0.15)', color: 'var(--accent-color, #a855f7)' }}>
+                  <span className="text-xs font-extrabold px-2 py-0.5 rounded-md bg-purple-500/15" style={{ color: 'var(--accent-color, #a855f7)' }}>
                     {gamesHistory.length}
                   </span>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    className="transition-transform duration-200" style={{ transform: showGamesHistory ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                    className={`transition-transform duration-200 ${showGamesHistory ? 'rotate-180' : ''}`}>
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
                 </span>
               </button>
 
               {showGamesHistory && (
-                <div className="flex flex-col gap-1.5 mt-2 animate-fadeIn">
+                <div className="flex flex-col gap-1.5 mt-2 animate-fade-in">
                   {gamesHistory.map((g, idx) => {
                     const winLabel = g.winnerTeam === 'civilians' ? 'Мирные' : g.winnerTeam === 'mafia' ? 'Мафия' : 'Ничья';
                     const winColor = g.winnerTeam === 'civilians' ? '#ff5252' : g.winnerTeam === 'mafia' ? '#4fc3f7' : 'rgba(255,255,255,0.5)';
                     const totalRounds = Math.max(g.nightNumber || 0, g.dayNumber || 0);
                     return (
-                      <div key={idx} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-                        style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-extrabold shrink-0"
-                          style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)', color: 'var(--accent-color, #a855f7)' }}>
+                      <div key={idx} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-extrabold shrink-0 bg-purple-500/10 border border-purple-500/20" style={{ color: 'var(--accent-color, #a855f7)' }}>
                           {g.gameNumber}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -589,7 +599,10 @@ export const ResultsPanel = () => {
           {/* Actions */}
           {!viewOnly && (
             <div className="flex flex-col gap-2.5 mt-3">
-              <button className="glass-btn w-full opacity-50" onClick={() => { setWinnerTeam(null); triggerHaptic('light'); }}>
+              <button
+                className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring opacity-50"
+                onClick={() => { setWinnerTeam(null); triggerHaptic('light'); }}
+              >
                 ← Изменить победителя
               </button>
 
@@ -625,23 +638,23 @@ const ROLE_LABELS = { '': '-', 'peace': 'М', 'sheriff': 'Ш', 'mafia': 'Ч', 'd
 
 function ProtocolOpinionGrid({ data, rk, tableOut, results }) {
   const renderRow = (players) => (
-    <div style={{ display: 'flex', gap: 4 }}>
+    <div className="flex gap-1">
       {players.map(t => {
         const pred = data?.[rk]?.[t.num] || '';
         const rc = ROLE_COLORS[pred] || ROLE_COLORS[''];
         const res = results?.[t.num];
         return (
-          <div key={t.num} style={{
-            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-            padding: '4px 2px', borderRadius: 8,
-            background: rc.bg, border: `1px solid ${rc.border}`,
-          }}>
-            <span style={{ fontSize: '0.75em', fontWeight: 700, color: pred ? rc.color : 'rgba(255,255,255,0.35)' }}>{t.num}</span>
-            <span style={{ fontSize: '0.55em', fontWeight: 800, color: rc.color, lineHeight: 1 }}>
+          <div
+            key={t.num}
+            className="flex-1 flex flex-col items-center gap-0.5 py-1 px-0.5 rounded-lg"
+            style={{ background: rc.bg, border: `1px solid ${rc.border}` }}
+          >
+            <span className="text-[0.75em] font-bold" style={{ color: pred ? rc.color : 'rgba(255,255,255,0.35)' }}>{t.num}</span>
+            <span className="text-[0.55em] font-extrabold leading-none" style={{ color: rc.color }}>
               {pred ? ROLE_LABELS[pred] : '—'}
             </span>
             {res && (
-              <span style={{ fontSize: '0.5em', color: res.correct ? '#30d158' : '#ff453a' }}>
+              <span className="text-[0.5em]" style={{ color: res.correct ? '#30d158' : '#ff453a' }}>
                 {res.correct ? '✓' : '✗'}
               </span>
             )}
@@ -652,7 +665,7 @@ function ProtocolOpinionGrid({ data, rk, tableOut, results }) {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div className="flex flex-col gap-1">
       {renderRow(tableOut.filter(t => t.num <= 5))}
       {renderRow(tableOut.filter(t => t.num > 5))}
     </div>

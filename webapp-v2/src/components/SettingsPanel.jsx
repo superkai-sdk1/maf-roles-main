@@ -42,29 +42,30 @@ export function SettingsPanel() {
   }).length;
 
   return (
-    <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="flex flex-col gap-[14px] animate-fade-in">
       {/* Room */}
-      <div className="glass-card" style={{ padding: 16, position: 'relative', zIndex: 1 }}>
-        <h3 style={{ fontSize: '0.9em', fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+        <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-3">
           {roomId ? '📡' : '📴'} Комната трансляции
         </h3>
         {roomId ? (
-          <div style={{
-            fontSize: '0.85em', fontWeight: 700, color: '#30d158', padding: '6px 14px',
-            background: 'rgba(48,209,88,0.1)', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 6,
-            border: '1px solid rgba(48,209,88,0.2)',
-          }}>
+          <div className="text-[0.85em] font-bold text-status-success py-1.5 px-3.5 rounded-[10px] inline-flex items-center gap-1.5 bg-status-success/10 border border-status-success/20">
             Подключена: {roomId}
           </div>
         ) : (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input type="text" placeholder="ID комнаты" value={roomInput || ''} onChange={e => setRoomInput(e.target.value)}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="ID комнаты"
+              value={roomInput || ''}
+              onChange={e => setRoomInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleJoinRoom()}
-              style={{
-                flex: 1, background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 14, padding: '10px 14px', color: '#fff', fontSize: '0.9em', outline: 'none',
-              }} />
-            <button onClick={handleJoinRoom} className="glass-btn btn-primary" style={{ padding: '10px 18px', fontSize: '0.85em' }}>
+              className="flex-1 input-field"
+            />
+            <button
+              onClick={handleJoinRoom}
+              className="px-[18px] py-2.5 rounded-xl bg-accent text-white text-[0.85em] font-bold active:scale-[0.97] transition-transform duration-150 ease-spring"
+            >
               Войти
             </button>
           </div>
@@ -72,60 +73,70 @@ export function SettingsPanel() {
       </div>
 
       {/* Judge */}
-      <div className="glass-card" style={{ padding: 16, position: 'relative', zIndex: 1 }}>
-        <h3 style={{ fontSize: '0.9em', fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+        <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-3">
           👨‍⚖️ Ведущий
         </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="flex flex-col gap-2.5">
           <div>
-            <label style={{ fontSize: '0.7em', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1 }}>Ник ведущего</label>
-            <input type="text" placeholder="Ваш ник" value={judgeNickname || ''} onChange={e => { setJudgeNickname(e.target.value); syncState?.({ judgeNickname: e.target.value }); }}
-              style={{
-                width: '100%', background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 14, padding: '10px 14px', color: '#fff', fontSize: '0.9em', outline: 'none', marginTop: 6,
-              }} />
+            <label className="block text-[0.7em] font-bold text-white/40 uppercase tracking-wider">Ник ведущего</label>
+            <input
+              type="text"
+              placeholder="Ваш ник"
+              value={judgeNickname || ''}
+              onChange={e => { setJudgeNickname(e.target.value); syncState?.({ judgeNickname: e.target.value }); }}
+              className="w-full input-field mt-1.5"
+            />
           </div>
           <div>
-            <label style={{ fontSize: '0.7em', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1 }}>Аватар (URL)</label>
-            <input type="text" placeholder="https://..." value={judgeAvatar || ''} onChange={e => { setJudgeAvatar(e.target.value); syncState?.({ judgeAvatar: e.target.value }); }}
-              style={{
-                width: '100%', background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 14, padding: '10px 14px', color: '#fff', fontSize: '0.9em', outline: 'none', marginTop: 6,
-              }} />
+            <label className="block text-[0.7em] font-bold text-white/40 uppercase tracking-wider">Аватар (URL)</label>
+            <input
+              type="text"
+              placeholder="https://..."
+              value={judgeAvatar || ''}
+              onChange={e => { setJudgeAvatar(e.target.value); syncState?.({ judgeAvatar: e.target.value }); }}
+              className="w-full input-field mt-1.5"
+            />
           </div>
           {judgeAvatar && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-              <img src={judgeAvatar} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-color)' }}
-                onError={(e) => { e.target.style.display = 'none'; }} />
-              <span style={{ fontSize: '0.8em', color: 'rgba(255,255,255,0.5)' }}>{judgeNickname || 'Ведущий'}</span>
+            <div className="flex items-center gap-2.5 mt-1">
+              <img
+                src={judgeAvatar}
+                alt=""
+                className="w-10 h-10 rounded-full object-cover border-2 border-accent"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+              <span className="text-[0.8em] text-white/50">{judgeNickname || 'Ведущий'}</span>
             </div>
           )}
         </div>
       </div>
 
       {/* Broadcast */}
-      <div className="glass-card" style={{ padding: 16, position: 'relative', zIndex: 1 }}>
-        <h3 style={{ fontSize: '0.9em', fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+        <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-3">
           🖥 Трансляция
         </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="flex flex-col gap-2.5">
           <div>
-            <label style={{ fontSize: '0.7em', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1 }}>Основной текст</label>
-            <input type="text" value={mainInfoText || ''} onChange={e => { setMainInfoText(e.target.value); syncState?.({ mainInfoText: e.target.value }); }}
-              style={{
-                width: '100%', background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 14, padding: '10px 14px', color: '#fff', fontSize: '0.9em', outline: 'none', marginTop: 6,
-              }} />
+            <label className="block text-[0.7em] font-bold text-white/40 uppercase tracking-wider">Основной текст</label>
+            <input
+              type="text"
+              value={mainInfoText || ''}
+              onChange={e => { setMainInfoText(e.target.value); syncState?.({ mainInfoText: e.target.value }); }}
+              className="w-full input-field mt-1.5"
+            />
           </div>
           <div>
-            <label style={{ fontSize: '0.7em', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1 }}>Дополнительный текст</label>
-            <input type="text" value={additionalInfoText || ''} onChange={e => { setAdditionalInfoText(e.target.value); syncState?.({ additionalInfoText: e.target.value }); }}
-              style={{
-                width: '100%', background: 'var(--input-bg)', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 14, padding: '10px 14px', color: '#fff', fontSize: '0.9em', outline: 'none', marginTop: 6,
-              }} />
+            <label className="block text-[0.7em] font-bold text-white/40 uppercase tracking-wider">Дополнительный текст</label>
+            <input
+              type="text"
+              value={additionalInfoText || ''}
+              onChange={e => { setAdditionalInfoText(e.target.value); syncState?.({ additionalInfoText: e.target.value }); }}
+              className="w-full input-field mt-1.5"
+            />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div className="grid grid-cols-2 gap-2">
             <ToggleBtn label="Рассадка" value={!hideSeating} onChange={() => setHideSeating(!hideSeating)} />
             <ToggleBtn label="Порядок вых." value={!hideLeaveOrder} onChange={() => setHideLeaveOrder(!hideLeaveOrder)} />
             <ToggleBtn label="Статус ролей" value={!hideRolesStatus} onChange={() => setHideRolesStatus(!hideRolesStatus)} />
@@ -135,53 +146,56 @@ export function SettingsPanel() {
       </div>
 
       {/* Themes */}
-      <div className="glass-card" style={{ padding: 16, position: 'relative', zIndex: 1 }}>
-        <h3 style={{ fontSize: '0.9em', fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+        <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-3.5">
           🎨 Тема оформления
         </h3>
 
         {/* Current theme indicator */}
-        <div className="theme-current-indicator" style={{
-          display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16,
-          padding: '10px 14px', borderRadius: 14,
-          background: `linear-gradient(135deg, ${currentScheme.gradient[0]}12, ${currentScheme.gradient[1]}08)`,
-          border: `1px solid ${currentScheme.accent}25`,
-        }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-            background: `linear-gradient(135deg, ${currentScheme.gradient[0]}, ${currentScheme.gradient[1]})`,
-            boxShadow: `0 4px 14px ${currentScheme.accent}40`,
-          }} />
+        <div
+          className="flex items-center gap-2.5 mb-4 py-2.5 px-3.5 rounded-[14px]"
+          style={{
+            background: `linear-gradient(135deg, ${currentScheme.gradient[0]}12, ${currentScheme.gradient[1]}08)`,
+            border: `1px solid ${currentScheme.accent}25`,
+          }}
+        >
+          <div
+            className="w-8 h-8 rounded-[10px] flex-shrink-0"
+            style={{
+              background: `linear-gradient(135deg, ${currentScheme.gradient[0]}, ${currentScheme.gradient[1]})`,
+              boxShadow: `0 4px 14px ${currentScheme.accent}40`,
+            }}
+          />
           <div>
-            <div style={{ fontSize: '0.85em', fontWeight: 700, color: currentScheme.accent }}>{currentScheme.name}</div>
-            <div style={{ fontSize: '0.7em', color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>Текущая тема</div>
+            <div className="text-[0.85em] font-bold" style={{ color: currentScheme.accent }}>{currentScheme.name}</div>
+            <div className="text-[0.7em] text-white/35 font-medium">Текущая тема</div>
           </div>
         </div>
 
         {/* Theme grid */}
-        <div className="theme-selector-grid">
+        <div className="grid grid-cols-5 gap-2">
           {COLOR_SCHEMES.map(c => {
             const isActive = selectedColorScheme === c.key;
             return (
               <button
                 key={c.key}
                 onClick={() => selectColor(c.key)}
-                className={`theme-selector-item ${isActive ? 'theme-selector-item--active' : ''}`}
-                style={{
-                  '--ts-color': c.accent,
-                  '--ts-g1': c.gradient[0],
-                  '--ts-g2': c.gradient[1],
-                }}
+                className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all active:scale-95 ${
+                  isActive
+                    ? 'bg-accent/10 border-accent/30'
+                    : 'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.12]'
+                }`}
               >
-                <div className="theme-selector-swatch" />
-                <span className="theme-selector-name">{c.name}</span>
-                {isActive && (
-                  <span className="theme-selector-check">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <path d="M2 6.5L4.5 9L10 3" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </span>
-                )}
+                <div className="relative w-6 h-6 rounded-lg flex-shrink-0" style={{ background: `linear-gradient(135deg, ${c.gradient[0]}, ${c.gradient[1]})` }}>
+                  {isActive && (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="drop-shadow-md">
+                        <path d="M2 6.5L4.5 9L10 3" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </span>
+                  )}
+                </div>
+                <span className="text-[0.65em] font-bold text-center leading-tight">{c.name}</span>
               </button>
             );
           })}
@@ -189,11 +203,11 @@ export function SettingsPanel() {
       </div>
 
       {/* Game info */}
-      <div className="glass-card" style={{ padding: 16, position: 'relative', zIndex: 1 }}>
-        <h3 style={{ fontSize: '0.9em', fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="relative z-[1] p-4 rounded-2xl glass-surface shadow-glass-md">
+        <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-2.5">
           ℹ Информация
         </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8em', color: 'rgba(255,255,255,0.4)' }}>
+        <div className="flex flex-col gap-1 text-[0.8em] text-white/40">
           {judgeNickname && <div>Ведущий: {judgeNickname}</div>}
           {tournamentName && <div>Турнир: {tournamentName}</div>}
           {tournamentId && <div>ID: {tournamentId}</div>}
@@ -210,15 +224,14 @@ export function SettingsPanel() {
 
 function ToggleBtn({ label, value, onChange }) {
   return (
-    <button onClick={() => { onChange(); triggerHaptic('selection'); }}
-      style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 12px', borderRadius: 10, fontSize: '0.8em', fontWeight: 700,
-        background: value ? 'rgba(168,85,247,0.1)' : 'rgba(255,255,255,0.03)',
-        border: value ? '1px solid rgba(168,85,247,0.2)' : '1px solid rgba(255,255,255,0.06)',
-        color: value ? 'var(--accent-color)' : 'rgba(255,255,255,0.35)',
-        cursor: 'pointer', transition: 'all 0.15s',
-      }}>
+    <button
+      onClick={() => { onChange(); triggerHaptic('selection'); }}
+      className={`flex items-center justify-between py-2 px-3 rounded-[10px] text-[0.8em] font-bold cursor-pointer transition-all duration-150 ${
+        value
+          ? 'bg-accent/10 border border-accent/20 text-accent'
+          : 'bg-white/[0.03] border border-white/[0.06] text-white/35'
+      }`}
+    >
       <span>{label}</span>
       <span>{value ? '✓' : '✕'}</span>
     </button>

@@ -76,24 +76,31 @@ export function LandingPage({ onNavigate }) {
   };
 
   return (
-    <div className="landing">
+    <div className="min-h-screen bg-maf-bg text-white" style={{ background: 'var(--maf-gradient-bg)' }}>
       {/* Hero */}
-      <section className="landing-hero">
-        <div className="landing-hero-glow" />
-        <div className="landing-hero-content">
-          <div className="landing-hero-icon">
+      <section className="relative flex flex-col items-center justify-center text-center px-6 pt-24 pb-16 overflow-hidden">
+        <div className="absolute w-64 h-64 rounded-full bg-[var(--accent-color)] opacity-[0.06] blur-[100px] top-0" />
+        <div className="relative flex flex-col items-center gap-4 animate-float-up">
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-[rgba(168,85,247,0.15)] to-[rgba(99,102,241,0.08)]
+            border border-purple-500/25 flex items-center justify-center
+            shadow-[0_8px_32px_rgba(168,85,247,0.2),0_0_60px_rgba(168,85,247,0.06)]">
             <IconMafBoard size={56} color="var(--accent-color, #a855f7)" />
           </div>
-          <h1 className="landing-hero-title">
+          <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
             MafBoard
           </h1>
-          <p className="landing-hero-subtitle">
+          <p className="max-w-sm text-white/50 text-sm leading-relaxed font-medium">
             Панель ведущего для игры в мафию.
             Управляйте ролями, таймерами, голосованиями
             и турнирами — всё в одном месте.
           </p>
-          <div className="landing-hero-actions">
-            <button className="landing-btn landing-btn--primary" onClick={handleCTA}>
+          <div className="flex gap-3 mt-2">
+            <button
+              className="flex items-center gap-2 px-6 py-3 rounded-2xl
+                bg-accent text-white text-sm font-bold
+                shadow-glow-accent active:scale-95 transition-transform duration-150 ease-spring"
+              onClick={handleCTA}
+            >
               {isAuthenticated ? 'Открыть панель' : 'Начать'}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
@@ -104,34 +111,46 @@ export function LandingPage({ onNavigate }) {
       </section>
 
       {/* Features */}
-      <section className="landing-features">
-        <h2 className="landing-section-title">Возможности</h2>
-        <div className="landing-features-grid">
+      <section className="px-5 pb-16 max-w-2xl mx-auto">
+        <h2 className="text-accent text-xs font-bold tracking-[0.15em] uppercase text-center mb-8">
+          Возможности
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-stagger">
           {FEATURES.map((f, i) => (
-            <div className="landing-feature-card" key={i}>
-              <div className="landing-feature-icon">{f.icon}</div>
-              <h3 className="landing-feature-title">{f.title}</h3>
-              <p className="landing-feature-desc">{f.desc}</p>
+            <div
+              key={i}
+              className="flex flex-col gap-2 p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06]
+                hover:border-white/[0.12] transition-colors duration-200"
+            >
+              <div className="w-11 h-11 rounded-xl bg-accent-soft flex items-center justify-center text-accent">
+                {f.icon}
+              </div>
+              <h3 className="text-white text-sm font-bold mt-1">{f.title}</h3>
+              <p className="text-white/40 text-xs leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* CTA bottom */}
-      <section className="landing-cta">
-        <h2 className="landing-cta-title">Готовы вести?</h2>
-        <p className="landing-cta-desc">
+      {/* CTA */}
+      <section className="flex flex-col items-center text-center px-6 pb-16">
+        <h2 className="text-xl font-extrabold tracking-tight text-white mb-2">Готовы вести?</h2>
+        <p className="text-white/40 text-sm mb-5">
           Авторизуйтесь через Telegram и начните первую игру за минуту.
         </p>
-        <button className="landing-btn landing-btn--primary" onClick={handleCTA}>
+        <button
+          className="px-6 py-3 rounded-2xl bg-accent text-white text-sm font-bold
+            shadow-glow-accent active:scale-95 transition-transform duration-150 ease-spring"
+          onClick={handleCTA}
+        >
           {isAuthenticated ? 'Перейти в панель' : 'Войти и начать'}
         </button>
       </section>
 
       {/* Footer */}
-      <footer className="landing-footer">
+      <footer className="flex items-center justify-center gap-2 py-8 text-white/20 text-xs font-medium">
         <span>MafBoard</span>
-        <span className="landing-footer-dot">·</span>
+        <span>·</span>
         <span>Панель ведущего мафии</span>
       </footer>
     </div>
