@@ -396,8 +396,8 @@ function PasskeySuggest({ onDone }) {
 
   if (state === 'done') {
     return (
-      <div className="fixed inset-0 z-[100000] bg-maf-bg flex items-center justify-center p-6 overflow-y-auto"
-        style={{ paddingTop: 'var(--safe-top, 0px)', paddingBottom: 'var(--safe-bottom, 0px)' }}>
+      <div className="fixed inset-0 z-[100000] flex items-center justify-center p-6 overflow-y-auto"
+        style={{ background: 'var(--maf-gradient-bg)', paddingTop: 'var(--safe-top, 0px)', paddingBottom: 'var(--safe-bottom, 0px)' }}>
         <div className="w-full max-w-[360px] flex flex-col items-center text-center gap-2 animate-scale-in">
           <div className="text-[2.5em]">&#x2705;</div>
           <div className="text-[1.15em] font-black tracking-tight text-white mt-2">PassKey создан!</div>
@@ -417,8 +417,8 @@ function PasskeySuggest({ onDone }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[100000] bg-maf-bg flex items-center justify-center p-6 overflow-y-auto"
-      style={{ paddingTop: 'var(--safe-top, 0px)', paddingBottom: 'var(--safe-bottom, 0px)' }}>
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-6 overflow-y-auto"
+      style={{ background: 'var(--maf-gradient-bg)', paddingTop: 'var(--safe-top, 0px)', paddingBottom: 'var(--safe-bottom, 0px)' }}>
       <div className="w-full max-w-[360px] flex flex-col items-center text-center gap-2 animate-scale-in">
         <div className="text-[2.5em]">🔐</div>
         <div className="text-[1.15em] font-black tracking-tight text-white mt-2">Быстрый вход</div>
@@ -505,8 +505,8 @@ export function AuthGate({ children }) {
 
   if (state === 'loading') {
     return (
-      <div className="fixed inset-0 z-[100000] bg-maf-bg flex items-center justify-center p-6 overflow-y-auto"
-        style={{ paddingTop: 'var(--safe-top, 0px)', paddingBottom: 'var(--safe-bottom, 0px)' }}>
+      <div className="fixed inset-0 z-[100000] flex items-center justify-center p-6 overflow-y-auto"
+        style={{ background: 'var(--maf-gradient-bg)', paddingTop: 'var(--safe-top, 0px)', paddingBottom: 'var(--safe-bottom, 0px)' }}>
         <div className="w-full max-w-[360px] flex flex-col items-center text-center gap-2 animate-fade-in">
           <AuthHeader />
           <div className="w-8 h-8 border-[3px] border-white/[0.08] border-t-[var(--accent-color)] rounded-full animate-auth-spin my-3" />
@@ -517,8 +517,8 @@ export function AuthGate({ children }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[100000] bg-maf-bg flex items-center justify-center p-6 overflow-y-auto"
-      style={{ paddingTop: 'var(--safe-top, 0px)', paddingBottom: 'var(--safe-bottom, 0px)' }}>
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-6 overflow-y-auto"
+      style={{ background: 'var(--maf-gradient-bg)', paddingTop: 'var(--safe-top, 0px)', paddingBottom: 'var(--safe-bottom, 0px)' }}>
       <div className="w-full max-w-[360px] flex flex-col items-center text-center gap-2 animate-fade-in">
         <AuthHeader />
         <TelegramSection onSuccess={handleSuccess} />

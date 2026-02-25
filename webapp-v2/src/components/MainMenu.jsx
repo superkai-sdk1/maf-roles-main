@@ -865,7 +865,7 @@ export function MainMenu() {
     <>
       {/* === TOURNAMENT TABLE FULLSCREEN === */}
       {tableGroup && (
-        <div className="fixed inset-0 z-[200] bg-maf-bg native-scroll animate-fade-in">
+        <div className="fixed inset-0 z-[200] native-scroll animate-fade-in" style={{ background: 'var(--maf-gradient-bg)' }}>
           <div className="max-w-[480px] mx-auto min-h-full" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
             <div className="flex items-center justify-center gap-3 py-3 pb-4">
               <span className="text-[1.1em] font-extrabold text-white/80">Таблица</span>

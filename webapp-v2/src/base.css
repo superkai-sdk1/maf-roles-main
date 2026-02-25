@@ -168,15 +168,24 @@ body {
 .light-mode .text-white {
   color: var(--text-primary) !important;
 }
-.light-mode .text-white\/40,
-.light-mode .text-white\/\[0\.4\] {
-  color: var(--text-muted) !important;
+.light-mode .text-white\/90 {
+  color: var(--text-primary) !important;
+}
+.light-mode .text-white\/80 {
+  color: rgba(0,0,0,0.75) !important;
+}
+.light-mode .text-white\/70 {
+  color: rgba(0,0,0,0.65) !important;
+}
+.light-mode .text-white\/60 {
+  color: var(--text-secondary) !important;
 }
 .light-mode .text-white\/50 {
   color: var(--text-secondary) !important;
 }
-.light-mode .text-white\/60 {
-  color: var(--text-secondary) !important;
+.light-mode .text-white\/40,
+.light-mode .text-white\/\[0\.4\] {
+  color: var(--text-muted) !important;
 }
 .light-mode .text-white\/35,
 .light-mode .text-white\/30,
@@ -186,8 +195,12 @@ body {
 .light-mode .text-white\/20 {
   color: rgba(0,0,0,0.15) !important;
 }
+.light-mode .text-white\/10 {
+  color: rgba(0,0,0,0.08) !important;
+}
 
 /* Background overrides */
+.light-mode .bg-white\/\[0\.02\],
 .light-mode .bg-white\/\[0\.03\],
 .light-mode .bg-white\/\[0\.04\],
 .light-mode .bg-white\/\[0\.05\] {
@@ -197,24 +210,41 @@ body {
 .light-mode .bg-white\/\[0\.08\] {
   background-color: var(--surface-secondary) !important;
 }
+.light-mode .bg-white\/\[0\.09\],
+.light-mode .bg-white\/\[0\.10\],
+.light-mode .bg-white\/\[0\.12\] {
+  background-color: var(--surface-active) !important;
+}
 
 /* Border overrides */
+.light-mode .border-white\/\[0\.04\],
 .light-mode .border-white\/\[0\.06\],
 .light-mode .border-white\/\[0\.08\] {
   border-color: var(--surface-border) !important;
 }
 .light-mode .border-white\/\[0\.10\],
-.light-mode .border-white\/\[0\.12\] {
+.light-mode .border-white\/\[0\.12\],
+.light-mode .border-white\/\[0\.14\] {
   border-color: var(--surface-border-hover) !important;
 }
 
 /* Hover overrides */
-.light-mode .hover\:border-white\/\[0\.12\]:hover {
+.light-mode .hover\:border-white\/\[0\.12\]:hover,
+.light-mode .hover\:border-white\/\[0\.16\]:hover {
   border-color: var(--surface-border-hover) !important;
 }
 .light-mode .hover\:bg-white\/\[0\.04\]:hover,
-.light-mode .hover\:bg-white\/\[0\.05\]:hover {
+.light-mode .hover\:bg-white\/\[0\.05\]:hover,
+.light-mode .hover\:bg-white\/\[0\.06\]:hover {
   background-color: var(--surface-hover) !important;
+}
+.light-mode .hover\:bg-white\/\[0\.08\]:hover,
+.light-mode .hover\:bg-white\/\[0\.09\]:hover {
+  background-color: var(--surface-active) !important;
+}
+.light-mode .hover\:\!border-white\/\[0\.18\]:hover,
+.light-mode .hover\:border-white\/\[0\.18\]:hover {
+  border-color: rgba(0,0,0,0.14) !important;
 }
 
 /* Divider lines */
@@ -222,39 +252,22 @@ body {
   background-color: var(--surface-divider) !important;
 }
 
-/* Light mode: fix !important white border overrides from glass-card hover states */
-.light-mode .hover\:\!border-white\/\[0\.18\]:hover,
+/* Light mode: !important border overrides for glass-card hover states */
 .light-mode .\!border-white\/\[0\.16\],
-.light-mode .\!border-white\/\[0\.18\] {
-  border-color: rgba(0,0,0,0.12) !important;
-}
-
-/* Light mode: fix border-white on cards */
 .light-mode .border-white\/\[0\.16\] {
   border-color: rgba(0,0,0,0.10) !important;
 }
+.light-mode .\!border-white\/\[0\.18\],
 .light-mode .border-white\/\[0\.18\] {
   border-color: rgba(0,0,0,0.12) !important;
 }
 
-/* Light mode: avatar and badge borders */
-.light-mode .border-white\/\[0\.08\] {
-  border-color: rgba(0,0,0,0.06) !important;
-}
-
-/* Light mode: inner card dividers */
-.light-mode .border-t.border-white\/\[0\.06\] {
-  border-color: rgba(0,0,0,0.06) !important;
-}
-
-/* Light mode: bg-white low-opacity backgrounds */
-.light-mode .bg-white\/\[0\.02\] {
-  background-color: rgba(0,0,0,0.015) !important;
-}
-
-/* Header & nav in light mode */
+/* Header & nav in light mode — use theme bg with transparency */
 .light-mode .bg-maf-bg\/80 {
-  background-color: rgba(242, 242, 247, 0.85) !important;
+  background-color: color-mix(in srgb, var(--maf-bg-main) 85%, transparent) !important;
+}
+.light-mode .bg-maf-bg {
+  background: var(--maf-gradient-bg) !important;
 }
 
 /* Fix buttons that must stay white text on accent bg */
