@@ -384,7 +384,8 @@ CREATE TABLE IF NOT EXISTS \`players\` (
   \`id\` int(11) NOT NULL AUTO_INCREMENT,
   \`login\` varchar(100) NOT NULL,
   \`data\` varchar(2000) NOT NULL,
-  PRIMARY KEY (\`id\`)
+  PRIMARY KEY (\`id\`),
+  UNIQUE KEY \`idx_login\` (\`login\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS \`auth_sessions\` (
