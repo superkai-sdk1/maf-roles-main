@@ -238,9 +238,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
         ${expanded ? 'shadow-glass-md !border-white/[0.16]' : ''}`}
       style={{
         '--i': player.num - 1,
-        ...(showTimerWave ? {
-          '--wave-anim': isRunning && !isPaused ? 'running' : 'paused',
-        } : {}),
+        ...(showTimerWave ? { '--wave-progress': `${timerProgress * 100}%` } : {}),
       }}
     >
       {showTimerWave && (
