@@ -419,6 +419,11 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
                   timeLeft === 0 ? 'bg-red-500/15 text-red-400' : 'bg-white/[0.06] text-white/40'}`}>
                 {timerStatusText}
               </div>
+              <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden mb-1">
+                <div className={`h-full rounded-full transition-[width] duration-500 linear
+                  ${isLow ? 'bg-red-500' : isRunning && !isPaused ? 'bg-accent' : isPaused ? 'bg-amber-400/60' : 'bg-white/20'}`}
+                  style={{ width: `${timerProgress * 100}%` }} />
+              </div>
               <div className={`text-center text-5xl font-extrabold tracking-tight tabular-nums cursor-pointer select-none my-2
                 ${isLow ? 'text-red-400 animate-timer-pulse' :
                   isRunning && !isPaused ? 'text-white' :
@@ -494,6 +499,11 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
                   isPaused ? 'bg-amber-500/15 text-amber-400' :
                   timeLeft === 0 ? 'bg-red-500/15 text-red-400' : 'bg-white/[0.06] text-white/40'}`}>
                 {timerStatusText}
+              </div>
+              <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden mb-1">
+                <div className={`h-full rounded-full transition-[width] duration-500 linear
+                  ${isLow ? 'bg-red-500' : isRunning && !isPaused ? 'bg-accent' : isPaused ? 'bg-amber-400/60' : 'bg-white/20'}`}
+                  style={{ width: `${timerProgress * 100}%` }} />
               </div>
               <div className={`text-center text-5xl font-extrabold tracking-tight tabular-nums cursor-pointer select-none my-2
                 ${isLow ? 'text-red-400 animate-timer-pulse' :
