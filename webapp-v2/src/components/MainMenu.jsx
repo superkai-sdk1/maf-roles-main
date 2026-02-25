@@ -1474,35 +1474,35 @@ export function MainMenu() {
               <div className="animate-fade-in w-full max-w-[400px] pb-[100px]">
 
                 {/* Header */}
-                <div className="settings-header">
-                  <div className="settings-header-left">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
                     <button
-                      className="profile-settings-back"
+                      className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.04] border border-white/[0.08] cursor-pointer active:scale-90 transition-transform"
                       onClick={() => { setMenuScreen('profile'); triggerHaptic('light'); }}
                     >
                       <IconArrowRight size={16} color="rgba(255,255,255,0.7)" style={{ transform: 'rotate(180deg)' }} />
                     </button>
-                    <h2 className="settings-title">Настройки</h2>
+                    <h2 className="text-[1.1em] font-extrabold text-white">Настройки</h2>
                   </div>
-                  <div className="settings-version">v2.1</div>
+                  <div className="text-[0.65em] font-semibold text-white/[0.15] tracking-[0.05em]">v2.1</div>
                 </div>
 
-                <div className="settings-sections">
+                <div className="flex flex-col gap-3.5">
 
                   {/* Profile block (avatar + name) */}
-                  <div className="settings-card settings-profile-card">
-                    <div className="settings-profile-avatar-wrap">
-                      <div className="settings-profile-avatar-ring">
-                        <div className="settings-profile-avatar-inner">
+                  <div className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden flex items-center gap-[18px]">
+                    <div className="relative shrink-0">
+                      <div className="w-[72px] h-[72px] rounded-full p-[2px] bg-gradient-to-br from-[var(--accent-color)] to-[#6366f1]">
+                        <div className="w-full h-full rounded-full bg-[rgba(10,10,12,1)] p-[3px] overflow-hidden">
                           {avatarSrc ? (
-                            <div className="settings-profile-avatar-img" style={{ backgroundImage: `url(${avatarSrc})` }} />
+                            <div className="w-full h-full rounded-full bg-cover bg-center opacity-90" style={{ backgroundImage: `url(${avatarSrc})` }} />
                           ) : (
-                            <div className="settings-profile-avatar-initials">{initials}</div>
+                            <div className="w-full h-full rounded-full bg-gradient-to-br from-[var(--accent-color)] to-[#6366f1] flex items-center justify-center text-[1.6em] font-bold text-white">{initials}</div>
                           )}
                         </div>
                       </div>
                       <button
-                        className="settings-profile-camera"
+                        className="absolute -bottom-0.5 -right-0.5 w-[26px] h-[26px] rounded-full bg-accent border-[3px] border-[rgba(18,18,26,1)] flex items-center justify-center cursor-pointer active:scale-[0.88] transition-transform duration-150"
                         onClick={() => avatarInputRef.current?.click()}
                       >
                         <IconCamera size={13} color="#fff" />
@@ -1516,11 +1516,11 @@ export function MainMenu() {
                       />
                     </div>
 
-                    <div className="settings-profile-fields">
+                    <div className="flex-1 min-w-0 flex flex-col gap-2">
                       <div>
-                        <div className="settings-field-label">Никнейм</div>
+                        <div className="text-[0.55em] font-bold uppercase tracking-[0.12em] text-white/20 mb-1 ml-0.5">Никнейм</div>
                         <input
-                          className="settings-inline-input"
+                          className="input-field"
                           type="text"
                           value={profileSettingsName}
                           onChange={e => setProfileSettingsName(e.target.value)}
@@ -1529,7 +1529,7 @@ export function MainMenu() {
                         />
                       </div>
                       {userAvatarUrl && (
-                        <button className="settings-remove-photo" onClick={handleRemoveAvatar}>
+                        <button className="flex items-center gap-1.5 text-[0.68em] font-semibold text-red-400/50 bg-transparent border-none cursor-pointer mt-1 hover:text-red-400" onClick={handleRemoveAvatar}>
                           <IconTrash size={11} /> Удалить фото
                         </button>
                       )}
@@ -1538,18 +1538,18 @@ export function MainMenu() {
 
                   {/* GoMafia (integration + auth) */}
                   {goMafiaProfile ? (
-                    <div className="settings-card">
-                      <div className="settings-integration-header">
-                        <div className="settings-integration-icon settings-integration-icon--green">
+                    <div className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden">
+                      <div className="flex items-center gap-2.5 mb-3">
+                        <div className="w-9 h-9 rounded-xl bg-[rgba(34,197,94,0.1)] border border-[rgba(34,197,94,0.2)] flex items-center justify-center text-white/60">
                           <IconGoMafia size={16} />
                         </div>
-                        <div className="settings-integration-info">
-                          <div className="settings-integration-name">GoMafia</div>
-                          <div className="settings-integration-status">Подключено</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[0.78em] font-bold text-white">GoMafia</div>
+                          <div className="text-[0.58em] font-semibold text-[rgba(34,197,94,0.6)] uppercase tracking-[0.03em]">Подключено</div>
                         </div>
-                        <div className="settings-integration-actions">
+                        <div className="flex gap-1.5">
                           <button
-                            className="settings-icon-btn"
+                            className="w-8 h-8 rounded-lg bg-white/[0.04] border-none flex items-center justify-center text-white/30 cursor-pointer active:scale-90 transition-transform"
                             onClick={async () => {
                               triggerHaptic('light');
                               try {
@@ -1582,7 +1582,7 @@ export function MainMenu() {
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
                           </button>
                           <button
-                            className="settings-icon-btn settings-icon-btn--danger"
+                            className="w-8 h-8 rounded-lg bg-white/[0.04] border-none flex items-center justify-center text-white/30 cursor-pointer active:scale-90 transition-transform bg-[rgba(239,68,68,0.06)] text-[rgba(239,68,68,0.4)]"
                             onClick={() => {
                               goMafiaApi.removeGoMafiaProfile();
                               setGoMafiaProfile(null);
@@ -1595,26 +1595,26 @@ export function MainMenu() {
                           </button>
                         </div>
                       </div>
-                      <div className="settings-integration-profile">
+                      <div className="flex items-center gap-2.5 py-2.5 px-3 bg-white/[0.02] border border-white/[0.05] rounded-2xl">
                         {goMafiaProfile.avatar ? (
-                          <img src={goMafiaProfile.avatar} alt="" className="settings-integration-profile-avatar" />
+                          <img src={goMafiaProfile.avatar} alt="" className="w-7 h-7 rounded-full border border-white/10 object-cover" />
                         ) : (
-                          <div className="settings-integration-profile-avatar settings-integration-profile-avatar--initials">
+                          <div className="w-7 h-7 rounded-full border border-white/10 object-cover flex items-center justify-center bg-[rgba(137,119,254,0.15)] text-[0.7em] font-bold text-white">
                             {(goMafiaProfile.nickname || '?')[0].toUpperCase()}
                           </div>
                         )}
-                        <span className="settings-integration-profile-name">{goMafiaProfile.nickname}</span>
+                        <span className="text-[0.78em] font-bold text-white/60">{goMafiaProfile.nickname}</span>
                       </div>
                       {linkedAccounts && (
-                        <div className="settings-gomafia-auth-row">
-                          <div className="settings-gomafia-auth-label">Авторизация</div>
+                        <div className="flex items-center justify-between mt-2.5 py-2.5 px-3 bg-white/[0.02] border border-white/[0.05] rounded-[14px]">
+                          <div className="text-[0.7em] font-semibold text-white/30">Авторизация</div>
                           {linkedAccounts.gomafia?.linked ? (
-                            <span className="settings-gomafia-auth-badge settings-gomafia-auth-badge--active">
+                            <span className="inline-flex items-center gap-1 text-[0.62em] font-bold py-0.5 px-2 rounded-lg bg-[rgba(34,197,94,0.1)] text-[#22c55e]">
                               <IconCheck size={10} /> Привязан
                             </span>
                           ) : (
                             <button
-                              className="settings-gomafia-auth-link"
+                              className="text-[0.65em] font-bold py-1 px-2.5 rounded-lg bg-accent/10 border border-accent/20 text-accent cursor-pointer active:scale-[0.92] transition-transform"
                               onClick={() => {
                                 setGoMafiaModal(true);
                                 setGoMafiaLogin({ nickname: goMafiaProfile?.nickname || '', password: '', loading: false, error: '' });
@@ -1629,14 +1629,14 @@ export function MainMenu() {
                     </div>
                   ) : (
                     <button
-                      className="settings-card settings-gomafia-connect"
+                      className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden flex items-center gap-3.5 cursor-pointer text-left active:scale-[0.98] transition-transform"
                       onClick={() => {
                         setGoMafiaModal(true);
                         setGoMafiaLogin({ nickname: '', password: '', loading: false, error: '' });
                         triggerHaptic('light');
                       }}
                     >
-                      <div className="settings-integration-icon">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[rgba(137,119,254,0.15)] to-[rgba(10,232,240,0.08)] border border-[rgba(137,119,254,0.2)] flex items-center justify-center text-white/60">
                         <IconGoMafia size={16} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -1649,31 +1649,31 @@ export function MainMenu() {
 
                   {/* Auth grid */}
                   {!linkedAccounts ? (
-                    <div className="settings-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0', gap: 8 }}>
-                      <div className="gomafia-modal-spinner" />
+                    <div className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden flex items-center justify-center py-6 gap-2">
+                      <div className="w-5 h-5 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
                       <span style={{ fontSize: '0.8em', color: 'rgba(255,255,255,0.35)' }}>Загрузка...</span>
                     </div>
                   ) : (
                     <>
-                      <div className="settings-auth-grid">
+                      <div className="grid grid-cols-2 gap-2.5">
                         {/* Telegram */}
-                        <div className="settings-auth-tile">
-                          <div className="settings-auth-tile-icon" style={{ background: 'rgba(56,163,224,0.1)', color: '#38a3e0' }}>
+                        <div className="relative p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center gap-2 text-center cursor-pointer transition-all active:scale-[0.97]">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(56,163,224,0.1)', color: '#38a3e0' }}>
                             <span style={{ fontSize: '1em' }}>✈️</span>
                           </div>
-                          <div className="settings-auth-tile-label">Telegram</div>
-                          <div className="settings-auth-tile-sub">
+                          <div className="text-[0.8em] font-bold text-white">Telegram</div>
+                          <div className="text-[0.62em] text-white/30 font-medium">
                             {linkedAccounts.telegram?.linked
                               ? (linkedAccounts.telegram.username ? `@${linkedAccounts.telegram.username}` : 'Привязан')
                               : 'Не привязан'
                             }
                           </div>
                           {linkedAccounts.telegram?.linked && (
-                            <div className="settings-auth-dot settings-auth-dot--green" />
+                            <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-[#22c55e] shadow-[0_0_6px_rgba(34,197,94,0.5)]" />
                           )}
                           {!linkedAccounts.telegram?.linked && !linkTelegramMode && (
                             <button
-                              className="settings-auth-tile-action"
+                              className="text-[0.6em] font-bold py-1 px-2 rounded-lg bg-accent/10 border border-accent/20 text-accent cursor-pointer active:scale-[0.92] transition-transform mt-0.5"
                               onClick={async () => {
                                 triggerHaptic('light');
                                 const token = authService.getStoredToken();
@@ -1714,28 +1714,28 @@ export function MainMenu() {
 
                         {/* PassKey */}
                         <div
-                          className="settings-auth-tile"
+                          className="relative p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center gap-2 text-center cursor-pointer transition-all active:scale-[0.97]"
                           onClick={() => { setMenuScreen('passkeys'); triggerHaptic('light'); }}
                         >
-                          <div className="settings-auth-tile-icon" style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
                             <span style={{ fontSize: '1em' }}>🔐</span>
                           </div>
-                          <div className="settings-auth-tile-label">PassKey</div>
-                          <div className="settings-auth-tile-sub">
+                          <div className="text-[0.8em] font-bold text-white">PassKey</div>
+                          <div className="text-[0.62em] text-white/30 font-medium">
                             {linkedAccounts.passkeys?.length > 0
                               ? `${linkedAccounts.passkeys.length} ключ${linkedAccounts.passkeys.length > 1 ? (linkedAccounts.passkeys.length < 5 ? 'а' : 'ей') : ''}`
                               : 'Не настроен'
                             }
                           </div>
                           {linkedAccounts.passkeys?.length > 0 && (
-                            <div className="settings-auth-dot settings-auth-dot--purple" />
+                            <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-accent shadow-[0_0_6px_rgba(168,85,247,0.5)]" />
                           )}
                         </div>
                       </div>
 
                       {/* Telegram link code display */}
                       {linkTelegramMode && (
-                        <div className="settings-card" style={{ textAlign: 'center', padding: '20px' }}>
+                        <div className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden text-center py-5">
                           <div style={{ fontSize: '1.8em', fontWeight: 900, letterSpacing: 8, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>
                             {linkTelegramMode.code}
                           </div>
@@ -1747,14 +1747,14 @@ export function MainMenu() {
                               href={linkTelegramMode.botLink}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="auth-method-link-btn"
+                              className="inline-flex items-center justify-center py-2 px-4 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-bold cursor-pointer active:scale-95 transition-transform"
                               style={{ marginTop: 8, display: 'inline-flex', textDecoration: 'none', padding: '8px 16px' }}
                             >
                               Открыть @{linkTelegramMode.botUsername || 'бота'}
                             </a>
                           )}
                           <button
-                            className="auth-method-link-btn"
+                            className="inline-flex items-center justify-center py-2 px-4 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs font-bold cursor-pointer active:scale-95 transition-transform"
                             style={{ marginTop: 4, color: 'rgba(255,255,255,0.3)', borderColor: 'rgba(255,255,255,0.08)' }}
                             onClick={() => { stopLinkPolling(); setLinkTelegramMode(null); }}
                           >
@@ -1767,15 +1767,15 @@ export function MainMenu() {
                   )}
 
                   {/* Sessions */}
-                  <div className="settings-card">
-                    <div className="settings-section-header">
+                  <div className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden">
+                    <div className="flex items-center gap-2 text-[0.7em] font-bold text-white/30 uppercase tracking-wider mb-2.5">
                       <IconLock size={13} color="rgba(255,255,255,0.2)" />
                       <span>Сессии</span>
                     </div>
 
                     {sessionsLoading ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 0', gap: 8 }}>
-                        <div className="gomafia-modal-spinner" />
+                      <div className="flex items-center justify-center py-5 gap-2">
+                        <div className="w-5 h-5 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
                         <span style={{ fontSize: '0.8em', color: 'rgba(255,255,255,0.35)' }}>Загрузка...</span>
                       </div>
                     ) : deviceSessions.length === 0 ? (
@@ -1783,25 +1783,25 @@ export function MainMenu() {
                         Нет активных сеансов
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div className="flex flex-col gap-1.5">
                         {deviceSessions.map(session => (
-                          <div key={session.id} className={`settings-session-row ${session.is_current ? 'settings-session-row--current' : ''}`}>
-                            <div className={`settings-session-icon ${session.is_current ? 'settings-session-icon--current' : ''}`}>
+                          <div key={session.id} className={`flex items-center gap-2.5 py-2 px-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] transition-all ${session.is_current ? 'border-accent/20 bg-accent/[0.04]' : ''}`}>
+                            <div className={`w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center text-white/30 shrink-0 ${session.is_current ? 'bg-accent/10 text-accent' : ''}`}>
                               {session.device_name?.includes('iPhone') || session.device_name?.includes('iPad') || session.device_name?.includes('Android') ? (
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
                               ) : (
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                               )}
                             </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div className="settings-session-name">{session.device_name || 'Неизвестное устройство'}</div>
-                              <div className="settings-session-meta">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[0.78em] font-bold text-white truncate">{session.device_name || 'Неизвестное устройство'}</div>
+                              <div className="text-[0.6em] text-white/25 font-medium">
                                 {session.is_current ? 'Текущее' : formatSessionDate(session.last_active)}
                               </div>
                             </div>
                             {!session.is_current && (
                               <button
-                                className="settings-session-exit"
+                                className="text-[0.6em] font-bold py-1 px-2 rounded-md bg-red-500/[0.06] text-red-400/50 border-none cursor-pointer active:text-red-400 transition-colors"
                                 onClick={() => handleTerminateSession(session.id)}
                                 disabled={terminatingId === session.id}
                                 style={{ opacity: terminatingId === session.id ? 0.5 : 1 }}
@@ -1816,7 +1816,7 @@ export function MainMenu() {
 
                     {!window.Telegram?.WebApp?.initData && (
                       <button
-                        className="settings-logout-all"
+                        className="w-full mt-3 flex items-center justify-center gap-2 py-3 rounded-xl text-[0.78em] font-bold text-red-400/50 bg-red-500/[0.04] border border-red-500/10 cursor-pointer active:scale-[0.97] transition-transform"
                         onClick={() => {
                           authService.logout();
                           triggerHaptic('medium');
@@ -1832,7 +1832,7 @@ export function MainMenu() {
                 </div>
 
                 {/* Save button */}
-                <button className="profile-save-btn" onClick={handleSaveName}>
+                <button className="w-full mt-4 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-accent text-white text-[0.9em] font-bold active:scale-[0.97] transition-transform shadow-[0_0_24px_rgba(var(--accent-rgb),0.3)]" onClick={handleSaveName}>
                   <IconCheck size={16} /> Сохранить
                 </button>
               </div>
@@ -1880,45 +1880,45 @@ export function MainMenu() {
 
             return (
               <div className="animate-fade-in w-full max-w-[400px] pb-[100px]">
-                <div className="settings-header">
-                  <div className="settings-header-left">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
                     <button
-                      className="profile-settings-back"
+                      className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.04] border border-white/[0.08] cursor-pointer active:scale-90 transition-transform"
                       onClick={() => { setMenuScreen('profileSettings'); setPasskeyError(''); triggerHaptic('light'); }}
                     >
                       <IconArrowRight size={16} color="rgba(255,255,255,0.7)" style={{ transform: 'rotate(180deg)' }} />
                     </button>
-                    <h2 className="settings-title">PassKey</h2>
+                    <h2 className="text-[1.1em] font-extrabold text-white">PassKey</h2>
                   </div>
-                  <div className="passkeys-count">{passkeys.length}</div>
+                  <div className="min-w-6 h-6 rounded-lg bg-white/[0.06] flex items-center justify-center text-[0.7em] font-bold text-white/40">{passkeys.length}</div>
                 </div>
 
-                <div className="settings-sections">
+                <div className="flex flex-col gap-3.5">
                   {!linkedAccounts ? (
-                    <div className="settings-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 0', gap: 8 }}>
-                      <div className="gomafia-modal-spinner" />
+                    <div className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 0', gap: 8 }}>
+                      <div className="w-5 h-5 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
                       <span style={{ fontSize: '0.8em', color: 'rgba(255,255,255,0.35)' }}>Загрузка...</span>
                     </div>
                   ) : passkeys.length === 0 ? (
-                    <div className="settings-card passkeys-empty">
-                      <div className="passkeys-empty-icon">🔐</div>
-                      <div className="passkeys-empty-title">Нет ключей</div>
-                      <div className="passkeys-empty-sub">Добавьте PassKey для быстрого и безопасного входа без пароля</div>
+                    <div className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden text-center py-10 px-6">
+                      <div className="text-[2.4em] mb-3 opacity-40">🔐</div>
+                      <div className="text-[0.95em] font-bold text-white/50 mb-1.5">Нет ключей</div>
+                      <div className="text-[0.72em] text-white/25 leading-relaxed max-w-[260px] mx-auto">Добавьте PassKey для быстрого и безопасного входа без пароля</div>
                     </div>
                   ) : (
-                    <div className="settings-card" style={{ padding: '12px 14px' }}>
+                    <div className="bg-[rgba(18,18,26,0.8)] backdrop-blur-[24px] border border-white/[0.05] rounded-[20px] p-5 relative overflow-hidden" style={{ padding: '12px 14px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {passkeys.map(pk => (
-                          <div key={pk.id} className="passkey-row">
-                            <div className="passkey-row-icon">🔑</div>
-                            <div className="passkey-row-info">
-                              <div className="passkey-row-name">{pk.device_name || 'PassKey'}</div>
-                              <div className="passkey-row-meta">
+                          <div key={pk.id} className="flex items-center gap-2.5 py-2 px-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                            <div className="text-lg shrink-0">🔑</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[0.78em] font-bold text-white truncate">{pk.device_name || 'PassKey'}</div>
+                              <div className="text-[0.6em] text-white/25 font-medium">
                                 {pk.last_used_at ? `Использован ${formatSessionDate(pk.last_used_at)}` : `Создан ${formatSessionDate(pk.created_at)}`}
                               </div>
                             </div>
                             <button
-                              className="passkey-row-delete"
+                              className="w-7 h-7 rounded-lg bg-red-500/[0.06] flex items-center justify-center text-red-400/40 cursor-pointer active:scale-90 active:text-red-400 transition-all shrink-0"
                               onClick={() => handleDeletePasskey(pk.id)}
                             >
                               <IconTrash size={13} />
@@ -1934,7 +1934,7 @@ export function MainMenu() {
                   )}
 
                   <button
-                    className="passkeys-add-btn"
+                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-[20px] bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.2)] text-[#22c55e] text-[0.82em] font-bold cursor-pointer active:scale-[0.97] transition-transform disabled:opacity-50 disabled:cursor-wait"
                     disabled={passkeyRegistering}
                     onClick={handleAddPasskey}
                   >
@@ -2042,28 +2042,28 @@ export function MainMenu() {
       )}
 
       {goMafiaModal && createPortal(
-        <div className="gomafia-modal-overlay" onClick={() => !goMafiaLogin.loading && setGoMafiaModal(false)}>
-          <div className="gomafia-modal animate-fade-in" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100000] bg-black/60 flex items-center justify-center p-6" onClick={() => !goMafiaLogin.loading && setGoMafiaModal(false)}>
+          <div className="w-full max-w-[360px] bg-[rgba(18,18,26,0.95)] backdrop-blur-[24px] border border-white/[0.08] rounded-3xl p-6 relative animate-fade-in" onClick={e => e.stopPropagation()}>
             <button
-              className="gomafia-modal-close"
+              className="absolute top-3.5 right-3.5 w-8 h-8 rounded-xl bg-white/[0.04] flex items-center justify-center cursor-pointer active:scale-90 transition-transform border-none"
               onClick={() => !goMafiaLogin.loading && setGoMafiaModal(false)}
             >
               <IconX size={18} color="rgba(255,255,255,0.5)" />
             </button>
 
-            <div className="gomafia-modal-header">
-              <div className="gomafia-modal-logo">
+            <div className="flex flex-col items-center gap-2 mb-5">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[rgba(137,119,254,0.2)] to-[rgba(10,232,240,0.1)] border border-[rgba(137,119,254,0.3)] flex items-center justify-center">
                 <IconGoMafia size={32} />
               </div>
-              <h3 className="gomafia-modal-title">Войти в GoMafia</h3>
-              <p className="gomafia-modal-subtitle">Введите данные аккаунта gomafia.pro</p>
+              <h3 className="text-[1.1em] font-extrabold text-white">Войти в GoMafia</h3>
+              <p className="text-[0.75em] text-white/35 font-medium">Введите данные аккаунта gomafia.pro</p>
             </div>
 
-            <div className="gomafia-modal-form">
-              <div className="gomafia-modal-field">
-                <label className="gomafia-modal-label">Никнейм</label>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-[0.6em] font-bold uppercase tracking-[0.12em] text-white/25 ml-0.5">Никнейм</label>
                 <input
-                  className="gomafia-modal-input"
+                  className="input-field w-full"
                   type="text"
                   value={goMafiaLogin.nickname}
                   onChange={e => setGoMafiaLogin(prev => ({ ...prev, nickname: e.target.value, error: '' }))}
@@ -2072,10 +2072,10 @@ export function MainMenu() {
                   disabled={goMafiaLogin.loading}
                 />
               </div>
-              <div className="gomafia-modal-field">
-                <label className="gomafia-modal-label">Пароль</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-[0.6em] font-bold uppercase tracking-[0.12em] text-white/25 ml-0.5">Пароль</label>
                 <input
-                  className="gomafia-modal-input"
+                  className="input-field w-full"
                   type="password"
                   value={goMafiaLogin.password}
                   onChange={e => setGoMafiaLogin(prev => ({ ...prev, password: e.target.value, error: '' }))}
@@ -2091,16 +2091,16 @@ export function MainMenu() {
               </div>
 
               {goMafiaLogin.error && (
-                <div className="gomafia-modal-error">{goMafiaLogin.error}</div>
+                <div className="text-[0.78em] text-[#ff453a] text-center py-0.5 px-1">{goMafiaLogin.error}</div>
               )}
 
               <button
-                className="gomafia-modal-submit"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-white text-[0.85em] font-bold active:scale-[0.97] transition-transform disabled:opacity-40"
                 disabled={!goMafiaLogin.nickname.trim() || !goMafiaLogin.password || goMafiaLogin.loading}
                 onClick={handleGoMafiaLogin}
               >
                 {goMafiaLogin.loading ? (
-                  <><div className="gomafia-modal-spinner" /> Авторизация...</>
+                  <><div className="w-5 h-5 border-2 border-white/10 border-t-accent rounded-full animate-spin" /> Авторизация...</>
                 ) : (
                   'Авторизоваться'
                 )}
@@ -2108,7 +2108,7 @@ export function MainMenu() {
             </div>
 
             <a
-              className="gomafia-modal-forgot"
+              className="block text-center mt-3 text-[0.7em] text-white/25 font-semibold no-underline hover:text-white/40"
               href="https://gomafia.pro/forgot"
               target="_blank"
               rel="noopener noreferrer"
@@ -2136,39 +2136,39 @@ function NewGameModal({ modal, onSelect, onClose, onLoadSession }) {
   const defaultTable = group?.tableSelected;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content newgame-modal" onClick={e => e.stopPropagation()}>
-        <div className="newgame-modal-header">
-          <div className="newgame-modal-header-left">
+    <div className="fixed inset-0 z-[100000] bg-black/60 flex items-center justify-center p-6" onClick={onClose}>
+      <div className="w-full max-w-[420px] bg-[rgba(18,18,26,0.95)] backdrop-blur-[24px] border border-white/[0.08] rounded-3xl p-5 relative max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
             <IconTrophy size={22} color="var(--accent-color, #a855f7)" />
             <div>
-              <h2 className="newgame-modal-title">Новая игра</h2>
-              <div className="newgame-modal-subtitle">
+              <h2 className="text-[1.05em] font-extrabold text-white">Новая игра</h2>
+              <div className="text-[0.7em] text-white/35 font-medium">
                 {group?.tournamentName}
                 {defaultTable ? ` · Стол ${defaultTable}` : ''}
               </div>
             </div>
           </div>
-          <button className="newgame-modal-close" onClick={onClose}>
+          <button className="w-8 h-8 rounded-xl bg-white/[0.04] flex items-center justify-center cursor-pointer active:scale-90 transition-transform border-none" onClick={onClose}>
             <IconX size={18} color="rgba(255,255,255,0.5)" />
           </button>
         </div>
 
         {loading && (
-          <div className="newgame-modal-loading">
-            <div className="newgame-modal-spinner" />
+          <div className="flex items-center justify-center gap-2 py-8">
+            <div className="w-5 h-5 border-2 border-white/10 border-t-accent rounded-full animate-spin" />
             <span>Загрузка турнира...</span>
           </div>
         )}
 
         {error && (
-          <div className="newgame-modal-error">{error}</div>
+          <div className="text-[0.8em] text-[#ff453a] text-center py-2">{error}</div>
         )}
 
         {!loading && !error && games.length > 0 && (
-          <div className="newgame-modal-games">
-            <div className="newgame-modal-hint">Выберите игру:</div>
-            <div className="newgame-modal-games-list">
+          <div className="flex flex-col gap-3">
+            <div className="text-[0.7em] font-bold text-white/30 uppercase tracking-wider mb-1">Выберите игру:</div>
+            <div className="flex flex-col gap-2">
               {games.map(g => {
                 const isCompleted = completedNums.has(g.gameNum);
                 const inProgressSid = inProgressMap[g.gameNum];
@@ -2181,7 +2181,7 @@ function NewGameModal({ modal, onSelect, onClose, onLoadSession }) {
                 return (
                   <button
                     key={g.gameNum}
-                    className={`newgame-modal-game-btn ${isCompleted ? 'newgame-modal-game-btn--played' : ''} ${inProgressSid ? 'newgame-modal-game-btn--active' : ''}`}
+                    className={`flex flex-col gap-1 p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] cursor-pointer text-left active:scale-[0.97] transition-transform disabled:opacity-40 disabled:cursor-default ${isCompleted ? 'opacity-40' : ''} ${inProgressSid ? 'border-accent/25 bg-accent/[0.06]' : ''}`}
                     disabled={isCompleted}
                     onClick={() => {
                       if (inProgressSid) {
@@ -2193,12 +2193,12 @@ function NewGameModal({ modal, onSelect, onClose, onLoadSession }) {
                       triggerHaptic('success');
                     }}
                   >
-                    <div className="newgame-modal-game-main">
-                      <span className="newgame-modal-game-num">Игра {g.gameNum}</span>
-                      {isCompleted && <span className="newgame-modal-game-badge">Уже сыграна</span>}
-                      {inProgressSid && <span className="newgame-modal-game-badge newgame-modal-game-badge--active">В процессе</span>}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[0.85em] font-bold text-white">Игра {g.gameNum}</span>
+                      {isCompleted && <span className="text-[0.6em] font-bold py-0.5 px-2 rounded-md bg-white/[0.06] text-white/40">Уже сыграна</span>}
+                      {inProgressSid && <span className="text-[0.6em] font-bold py-0.5 px-2 rounded-md bg-accent/15 text-accent">В процессе</span>}
                     </div>
-                    <div className="newgame-modal-game-meta">
+                    <div className="text-[0.68em] text-white/30 font-medium flex items-center gap-2">
                       <span>Стол {tableNum}</span>
                       <span>{playerCount} игроков</span>
                     </div>
@@ -2210,7 +2210,7 @@ function NewGameModal({ modal, onSelect, onClose, onLoadSession }) {
         )}
 
         {!loading && !error && games.length === 0 && (
-          <div className="newgame-modal-empty">Игры не найдены в данных турнира</div>
+          <div className="text-center py-6 text-[0.8em] text-white/30">Игры не найдены в данных турнира</div>
         )}
       </div>
     </div>

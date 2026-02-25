@@ -87,7 +87,7 @@ export function GameScreen() {
   const timerProgress = timerMax > 0 ? Math.max(0, Math.min(1, timerTimeLeft / timerMax)) : 0;
 
   return (
-    <div className="min-h-screen bg-maf-bg max-w-[480px] mx-auto" style={{ paddingTop: 'var(--safe-top, 0px)' }}>
+    <div className="h-[100dvh] bg-maf-bg max-w-[480px] mx-auto native-scroll" style={{ paddingTop: 'var(--safe-top, 0px)' }}>
       {/* === VOTING FULLSCREEN === */}
       {showVotingScreen && (
         <div className="fixed inset-0 z-40 bg-maf-bg overflow-y-auto animate-fade-in">
