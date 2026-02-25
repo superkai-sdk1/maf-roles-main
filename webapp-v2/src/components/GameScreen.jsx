@@ -95,7 +95,7 @@ export function GameScreen() {
             <VotingPanel />
           </div>
           {createPortal(
-            <nav className="fixed z-50 left-4 right-4 flex items-center justify-around rounded-3xl glass-card-md py-2 animate-nav-slide-in" style={{ bottom: 'calc(16px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))' }}>
+            <nav className="fixed z-50 left-4 right-4 flex items-center justify-around rounded-3xl glass-surface shadow-nav-bar py-2 animate-nav-slide-in" style={{ bottom: 'calc(16px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))' }}>
               <button className={`flex flex-col items-center gap-0.5 py-2 px-1 min-w-[60px] text-white/40 transition-all duration-300 ease-spring ${votingScreenTab === 'voting' ? 'text-white' : ''}`}
                 onClick={() => { setVotingScreenTab('voting'); triggerHaptic('selection'); }}>
                 <span className="text-2xl transition-all duration-300 ease-spring flex items-center justify-center">⚖</span>
