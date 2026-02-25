@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { IconCards } from '../utils/icons';
+import { IconMafBoard } from '../utils/icons';
 
 const FEATURES = [
   {
@@ -82,7 +82,7 @@ export function LandingPage({ onNavigate }) {
         <div className="landing-hero-glow" />
         <div className="landing-hero-content">
           <div className="landing-hero-icon">
-            <IconCards size={56} color="var(--accent-color, #a855f7)" />
+            <IconMafBoard size={56} color="var(--accent-color, #a855f7)" />
           </div>
           <h1 className="landing-hero-title">
             MafBoard

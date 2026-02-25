@@ -9,7 +9,7 @@ import { triggerHaptic } from '../utils/haptics';
 import { useSwipeBack } from '../hooks/useSwipeBack';
 import {
   IconPlayCircle, IconHistory, IconPlus, IconPalette, IconUser,
-  IconTrophy, IconDice, IconChevronDown, IconTrash, IconStats, IconCards,
+  IconTrophy, IconDice, IconChevronDown, IconTrash, IconStats, IconMafBoard,
   IconCheck, IconArrowRight, IconLock, IconArchive, IconX, IconList,
   IconGoMafia, IconSettings, IconCamera, IconLink, IconEdit,
 } from '../utils/icons';
@@ -1132,7 +1132,7 @@ export function MainMenu() {
           {/* Header */}
           <div className="main-menu-header" style={{ animation: 'floatUp 0.5s var(--ease-out) both' }}>
             <div className="main-menu-logo">
-              <IconCards size={32} color="var(--accent-color, #a855f7)" />
+              <IconMafBoard size={32} color="var(--accent-color, #a855f7)" />
             </div>
             <h1 className="main-menu-title">MafBoard</h1>
             <p className="main-menu-subtitle">Панель управления мафией</p>

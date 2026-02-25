@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { authService } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
-import { IconCards } from '../utils/icons';
+import { IconMafBoard } from '../utils/icons';
 
 const PASSKEY_DISMISSED_KEY = 'maf_passkey_dismissed';
 
@@ -395,7 +395,7 @@ export function AuthModal() {
         </button>
 
         <div className="auth-logo">
-          <IconCards size={40} color="var(--accent-color, #a855f7)" />
+          <IconMafBoard size={40} color="var(--accent-color, #a855f7)" />
         </div>
         <div className="auth-title">Вход в MafBoard</div>
 

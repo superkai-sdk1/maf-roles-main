@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { authService } from '../services/auth';
-import { IconCards } from '../utils/icons';
+import { IconMafBoard } from '../utils/icons';
 
 const PASSKEY_DISMISSED_KEY = 'maf_passkey_dismissed';
 
@@ -22,7 +22,7 @@ function AuthHeader() {
   return (
     <>
       <div className="auth-logo">
-        <IconCards size={40} color="var(--accent-color, #a855f7)" />
+        <IconMafBoard size={40} color="var(--accent-color, #a855f7)" />
       </div>
       <div className="auth-title">MafBoard</div>
     </>

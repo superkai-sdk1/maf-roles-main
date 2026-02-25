@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { IconCards } from '../utils/icons';
+import { IconMafBoard } from '../utils/icons';
 
 function ProfileDropdown({ onNavigate, onClose }) {
   const { user, logout } = useAuth();
@@ -74,7 +74,7 @@ export function Header({ onNavigate }) {
     <header className="site-header">
       <div className="site-header-inner">
         <button className="site-header-logo" onClick={() => onNavigate('landing')}>
-          <IconCards size={28} color="var(--accent-color, #a855f7)" />
+          <IconMafBoard size={28} color="var(--accent-color, #a855f7)" />
           <span className="site-header-logo-text">MafBoard</span>
         </button>
 
