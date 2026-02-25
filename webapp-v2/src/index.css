@@ -165,75 +165,129 @@ html {
   to { transform: rotate(360deg); }
 }
 
-/* Auth Tabs */
-.auth-tabs {
-  display: flex;
-  gap: 4px;
-  width: 100%;
-  background: rgba(255,255,255,0.04);
-  border-radius: 14px;
-  padding: 4px;
-  margin: 8px 0;
-}
-
-.auth-tab {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 10px 6px;
-  border-radius: 11px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: rgba(255,255,255,0.4);
-  font-size: 0.72em;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.auth-tab:active {
-  transform: scale(0.96);
-}
-
-.auth-tab--active {
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-  border-color: rgba(255,255,255,0.1);
-}
-
-.auth-tab--active.auth-tab--primary {
-  background: linear-gradient(135deg, rgba(168,85,247,0.2), rgba(99,102,241,0.12));
-  border-color: rgba(168,85,247,0.3);
-  color: #fff;
-}
-
-.auth-tab-icon {
-  font-size: 1.5em;
-  line-height: 1;
-}
-
-.auth-tab-label {
-  white-space: nowrap;
-}
-
-/* Tab content area */
-.auth-tab-body {
-  width: 100%;
-  min-height: 180px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.auth-tab-content {
+/* Telegram main section */
+.auth-tg-section {
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  animation: authFadeIn 0.2s ease;
+  padding: 8px 0 4px;
+}
+
+.auth-tg-label {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 2px;
+}
+
+/* Alt methods (collapsed section) */
+.auth-alt {
+  width: 100%;
+  margin-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 12px;
+}
+
+.auth-alt-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.3);
+  font-size: 0.78em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.auth-alt-toggle:hover { color: rgba(255,255,255,0.5); }
+
+.auth-alt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  animation: authAltIn 0.2s ease;
+}
+
+@keyframes authAltIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-alt-item {
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  overflow: hidden;
+  transition: border-color 0.2s, background 0.2s;
+}
+.auth-alt-item--open {
+  border-color: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+}
+
+.auth-alt-item-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  font-size: 0.88em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.auth-alt-item-header:hover { color: rgba(255,255,255,0.85); }
+.auth-alt-item--open .auth-alt-item-header { color: #fff; }
+
+.auth-alt-item-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.auth-alt-item-icon--gomafia {
+  background: rgba(168,85,247,0.12);
+  color: #c084fc;
+}
+.auth-alt-item-icon--passkey {
+  background: rgba(34,197,94,0.12);
+  color: #4ade80;
+}
+
+.auth-alt-item-label {
+  flex: 1;
+  text-align: left;
+}
+
+.auth-alt-item-chevron {
+  flex-shrink: 0;
+  opacity: 0.4;
+  transition: transform 0.2s;
+}
+.auth-alt-item--open .auth-alt-item-chevron {
+  transform: rotate(180deg);
+  opacity: 0.7;
+}
+
+.auth-alt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 14px 14px;
+  animation: authAltIn 0.2s ease;
 }
 
 @keyframes authFadeIn {
