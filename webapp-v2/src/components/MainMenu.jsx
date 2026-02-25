@@ -1450,7 +1450,7 @@ export function MainMenu() {
                     </div>
                   </div>
 
-                  {/* GoMafia integration */}
+                  {/* GoMafia (integration + auth) */}
                   {goMafiaProfile ? (
                     <div className="settings-card">
                       <div className="settings-integration-header">
@@ -1519,6 +1519,27 @@ export function MainMenu() {
                         )}
                         <span className="settings-integration-profile-name">{goMafiaProfile.nickname}</span>
                       </div>
+                      {linkedAccounts && (
+                        <div className="settings-gomafia-auth-row">
+                          <div className="settings-gomafia-auth-label">Авторизация</div>
+                          {linkedAccounts.gomafia?.linked ? (
+                            <span className="settings-gomafia-auth-badge settings-gomafia-auth-badge--active">
+                              <IconCheck size={10} /> Привязан
+                            </span>
+                          ) : (
+                            <button
+                              className="settings-gomafia-auth-link"
+                              onClick={() => {
+                                setGoMafiaModal(true);
+                                setGoMafiaLogin({ nickname: goMafiaProfile?.nickname || '', password: '', loading: false, error: '' });
+                                triggerHaptic('light');
+                              }}
+                            >
+                              Привязать
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <button
@@ -1653,43 +1674,6 @@ export function MainMenu() {
                           >
                             Отмена
                           </button>
-                        </div>
-                      )}
-
-                      {/* GoMafia auth (separate from integration) */}
-                      {linkedAccounts.gomafia && (
-                        <div className="settings-card" style={{ padding: '12px 16px' }}>
-                          <div className="auth-method-card" style={{ background: 'none', border: 'none', padding: 0 }}>
-                            <div className="auth-method-icon" style={{ background: 'rgba(168,85,247,0.12)' }}>
-                              <span style={{ fontSize: '1.1em' }}>🎭</span>
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div className="auth-method-name">GoMafia</div>
-                              {linkedAccounts.gomafia.linked ? (
-                                <div className="auth-method-detail">{linkedAccounts.gomafia.nickname}</div>
-                              ) : goMafiaProfile ? (
-                                <div className="auth-method-detail" style={{ color: 'rgba(255,200,50,0.6)' }}>Интеграция есть, авторизация не привязана</div>
-                              ) : (
-                                <div className="auth-method-detail" style={{ color: 'rgba(255,255,255,0.2)' }}>Не привязан</div>
-                              )}
-                            </div>
-                            {linkedAccounts.gomafia.linked ? (
-                              <span className="auth-method-badge auth-method-badge--active">
-                                <IconCheck size={10} /> Привязан
-                              </span>
-                            ) : (
-                              <button
-                                className="auth-method-link-btn"
-                                onClick={() => {
-                                  setGoMafiaModal(true);
-                                  setGoMafiaLogin({ nickname: goMafiaProfile?.nickname || '', password: '', loading: false, error: '' });
-                                  triggerHaptic('light');
-                                }}
-                              >
-                                Привязать
-                              </button>
-                            )}
-                          </div>
                         </div>
                       )}
 
