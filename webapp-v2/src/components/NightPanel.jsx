@@ -2,6 +2,7 @@ import React from 'react';
 import { useGame } from '../context/GameContext';
 import { SlideConfirm } from './SlideConfirm';
 import { triggerHaptic } from '../utils/haptics';
+import { NightTimerBar } from './NightTimerBar';
 
 export const NightPanel = () => {
   const {
@@ -9,7 +10,7 @@ export const NightPanel = () => {
     nightPhase, nightChecks, nightCheckHistory,
     killPlayer, setNightMiss,
     startNightSequence, advanceNightPhase, performNightCheck,
-    findRoleKey, cityMode,
+    findRoleKey, cityMode, gameMode,
     bestMove, toggleBestMove, acceptBestMove, bestMoveAccepted,
     firstKilledPlayer, firstKilledEver,
     killedOnNight,
@@ -17,6 +18,8 @@ export const NightPanel = () => {
     wasKilledBeforeThisNight,
     setMode,
   } = useGame();
+
+  const showTimer = gameMode === 'gomafia' || gameMode === 'funky';
 
   const donKey = findRoleKey('don');
   const sheriffKey = findRoleKey('sheriff');
@@ -57,6 +60,7 @@ export const NightPanel = () => {
       {/* Step 1: Mafia Kill */}
       {(!nightPhase || nightPhase === 'kill') && (
         <div className="glass-card animate-glassReveal" style={{ padding: 16, position: 'relative', zIndex: 1 }}>
+          {showTimer && <NightTimerBar duration={15} />}
           <h3 style={{ fontSize: '1em', fontWeight: 800, color: '#ff453a', marginBottom: 4, textAlign: 'center' }}>
             Мафия убивает
           </h3>
@@ -96,6 +100,7 @@ export const NightPanel = () => {
           allPlayers={allPlayers}
           onCheck={(num) => { performNightCheck(donKey, num); triggerHaptic('medium'); }}
           onSkip={() => { advanceNightPhase(); triggerHaptic('light'); }}
+          timerDuration={showTimer ? 10 : 0}
         />
       )}
 
@@ -112,6 +117,7 @@ export const NightPanel = () => {
           allPlayers={allPlayers}
           onCheck={(num) => { performNightCheck(sheriffKey, num); triggerHaptic('medium'); }}
           onSkip={() => { advanceNightPhase(); triggerHaptic('light'); }}
+          timerDuration={showTimer ? 10 : 0}
         />
       )}
 
@@ -195,6 +201,7 @@ export const NightPanel = () => {
               padding: 16, position: 'relative', zIndex: 1,
               borderColor: 'rgba(255,214,10,0.3)', background: 'rgba(255,214,10,0.05)',
             }}>
+              {showTimer && <NightTimerBar duration={15} />}
               <h3 style={{ fontSize: '1em', fontWeight: 800, color: '#ffd60a', marginBottom: 4, textAlign: 'center' }}>
                 Лучший ход
               </h3>
@@ -278,12 +285,13 @@ export const NightPanel = () => {
   );
 };
 
-function NightCheckStep({ title, subtitle, icon, accentColor, borderColor, bgColor, result, allPlayers, onCheck, onSkip }) {
+function NightCheckStep({ title, subtitle, icon, accentColor, borderColor, bgColor, result, allPlayers, onCheck, onSkip, timerDuration }) {
   return (
     <div className="glass-card animate-glassReveal" style={{
       padding: 16, position: 'relative', zIndex: 1,
       borderColor, background: bgColor,
     }}>
+      {timerDuration > 0 && <NightTimerBar duration={timerDuration} />}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div>
           <h3 style={{ fontSize: '1em', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8, color: accentColor }}>

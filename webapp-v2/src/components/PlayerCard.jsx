@@ -3,6 +3,7 @@ import { useGame } from '../context/GameContext';
 import { useTimer } from '../hooks/useTimer';
 import { getRoleLabel, getCityBestMoveMax } from '../constants/roles';
 import { triggerHaptic } from '../utils/haptics';
+import { NightTimerBar } from './NightTimerBar';
 
 export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mode = 'day' }) => {
   const {
@@ -14,7 +15,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
     expandedCardRK, setExpandedCardRK,
     playersActions, roles, tableOut,
     killedCardPhase, setKilledCardPhase, firstKilledPlayer,
-    cityMode, actionSet,
+    cityMode, gameMode, actionSet,
     nightPhase, nightChecks, performNightCheck,
     doctorHeal, performDoctorHeal, canDoctorHealTarget,
     protocolData, toggleProtocolRole, checkProtocol,
@@ -412,14 +413,17 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
 
           {/* ===== KILLED PLAYER: Protocol + Opinion phase (not in city mode) ===== */}
           {isKilled && cardPhase === 'protocol' && !cityMode && (
-            <>
-              <ProtocolSection rk={rk} tableOut={tableOut} />
-              <OpinionSection rk={rk} tableOut={tableOut} />
-              <button className="glass-btn btn-primary" style={{ width: '100%', marginTop: 10, padding: '10px 16px', fontSize: '0.85em' }}
-                onClick={advanceKilledPhase}>
-                Принять протокол ✓
-              </button>
-            </>
+            <div className="protocol-timer-wrap">
+              {(gameMode === 'gomafia' || gameMode === 'funky') && <NightTimerBar duration={20} />}
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <ProtocolSection rk={rk} tableOut={tableOut} />
+                <OpinionSection rk={rk} tableOut={tableOut} />
+                <button className="glass-btn btn-primary" style={{ width: '100%', marginTop: 10, padding: '10px 16px', fontSize: '0.85em' }}
+                  onClick={advanceKilledPhase}>
+                  Принять протокол ✓
+                </button>
+              </div>
+            </div>
           )}
 
           {/* ===== KILLED PLAYER: Done phase ===== */}

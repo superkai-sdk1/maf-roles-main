@@ -2036,6 +2036,114 @@ body::after {
   letter-spacing: 1px;
 }
 
+/* ── Night Timer Bar (phase countdown overlay) ── */
+
+.night-timer-bar {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.night-timer-bar__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(168, 85, 247, 0.05) 0%,
+    rgba(168, 85, 247, 0.12) 60%,
+    rgba(168, 85, 247, 0.2) 100%
+  );
+  will-change: width;
+}
+
+.night-timer-bar__fill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 30%,
+    rgba(255, 255, 255, 0.06) 42%,
+    rgba(255, 255, 255, 0.02) 58%,
+    transparent 70%,
+    transparent 100%
+  );
+  background-size: 250% 100%;
+  animation: ntWaveShimmer 2.8s ease-in-out infinite;
+}
+
+.night-timer-bar__fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 3px;
+  background: rgba(168, 85, 247, 0.7);
+  box-shadow:
+    0 0 8px rgba(168, 85, 247, 0.5),
+    0 0 20px rgba(168, 85, 247, 0.25),
+    -5px 0 15px rgba(168, 85, 247, 0.15);
+  animation: ntEdgePulse 2s ease-in-out infinite;
+}
+
+.night-timer-bar ~ * {
+  position: relative;
+  z-index: 1;
+}
+
+.night-timer-bar--expired .night-timer-bar__fill {
+  display: none;
+}
+
+.night-timer-bar--expired::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  animation: ntExpiredBlink 0.7s ease-in-out infinite;
+}
+
+.protocol-timer-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-m);
+}
+
+@keyframes ntWaveShimmer {
+  0%   { background-position: 250% 0; }
+  100% { background-position: -250% 0; }
+}
+
+@keyframes ntEdgePulse {
+  0%, 100% { opacity: 0.4; }
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 12px rgba(168, 85, 247, 0.7),
+      0 0 30px rgba(168, 85, 247, 0.35),
+      -8px 0 20px rgba(168, 85, 247, 0.2);
+  }
+}
+
+@keyframes ntExpiredBlink {
+  0%, 100% {
+    background: rgba(255, 69, 58, 0.03);
+    box-shadow: inset 0 0 0 1px rgba(255, 69, 58, 0.15);
+  }
+  50% {
+    background: rgba(255, 69, 58, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(255, 69, 58, 0.45), inset 0 0 40px rgba(255, 69, 58, 0.08);
+  }
+}
+
 /* Candidate Grid (nominations) */
 .candidate-grid {
   display: grid;
