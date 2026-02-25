@@ -219,10 +219,16 @@ export const GameProvider = ({ children }) => {
     if (wsRef.current) wsRef.current.sendFullStateDebounced(s);
   }, []);
 
-  const joinRoom = useCallback((id) => {
+  const joinRoom = useCallback((id, { skipInitialState = false } = {}) => {
     if (wsRef.current) wsRef.current.close();
+    let ignoreNextState = skipInitialState;
     const ws = new MafiaWebSocket(id, (data) => {
       if (data.type === 'state') {
+        if (ignoreNextState) {
+          ignoreNextState = false;
+          if (data.avatars) setAvatars(prev => ({ ...prev, ...data.avatars }));
+          return;
+        }
         if (data.players) setPlayers(data.players);
         if (data.roles) setRoles(data.roles);
         if (data.gamePhase) setGamePhase(data.gamePhase);
@@ -1373,7 +1379,7 @@ export const GameProvider = ({ children }) => {
       if (logins.length > 0) loadAvatars(logins);
     }
 
-    joinRoom(tId);
+    joinRoom(tId, { skipInitialState: true });
     setCurrentSessionId(sessionManager.generateSessionId());
     setScreen('game');
     triggerHaptic('success');

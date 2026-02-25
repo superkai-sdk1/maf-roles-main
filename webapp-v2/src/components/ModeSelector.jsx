@@ -594,7 +594,7 @@ export function ModeSelector() {
     const logins = newPlayers.map(p => p.login).filter(Boolean);
     if (logins.length > 0) loadAvatars(logins);
 
-    joinRoom(tournamentInput.trim());
+    joinRoom(tournamentInput.trim(), { skipInitialState: true });
     setGameMode('gomafia');
     setCurrentSessionId(sessionManager.generateSessionId());
     setScreen('game');
