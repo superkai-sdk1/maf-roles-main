@@ -1665,9 +1665,20 @@ export function MainMenu() {
                           disabled={passkeyRegistering}
                           onClick={async () => {
                             setPasskeyError('');
-                            setPasskeyRegistering(true);
                             triggerHaptic('light');
                             const token = authService.getStoredToken();
+
+                            if (authService.isTelegramWebView()) {
+                              const url = `${window.location.origin}/login/passkey-setup.php?token=${encodeURIComponent(token)}`;
+                              if (window.Telegram?.WebApp?.openLink) {
+                                window.Telegram.WebApp.openLink(url);
+                              } else {
+                                window.open(url, '_blank');
+                              }
+                              return;
+                            }
+
+                            setPasskeyRegistering(true);
                             const result = await authService.passkeyRegister(token);
                             setPasskeyRegistering(false);
                             if (result.success) {

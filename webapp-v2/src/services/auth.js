@@ -125,7 +125,7 @@ async function gomafiaLogin(nickname, password) {
 // =====================================================
 
 function isTelegramWebView() {
-  return !!(window.Telegram?.WebApp);
+  return !!(window.Telegram?.WebApp?.initData);
 }
 
 function isPasskeySupported() {
