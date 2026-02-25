@@ -91,11 +91,11 @@ export function GameScreen() {
       {/* === VOTING FULLSCREEN === */}
       {showVotingScreen && (
         <div className="fixed inset-0 z-40 native-scroll animate-fade-in" style={{ background: 'var(--maf-gradient-bg)' }}>
-          <div className="min-h-full" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
+          <div className="min-h-full max-w-[480px] mx-auto" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
             <VotingPanel />
           </div>
           {createPortal(
-            <nav className="fixed z-50 left-4 right-4 flex items-center justify-around rounded-3xl glass-surface shadow-nav-bar py-2 animate-nav-slide-in" style={{ bottom: 'calc(16px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))' }}>
+            <nav className="fixed z-50 left-0 right-0 max-w-[448px] mx-auto flex items-center justify-around rounded-3xl glass-surface shadow-nav-bar py-2 animate-nav-slide-in" style={{ bottom: 'calc(16px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))' }}>
               <button className={`flex flex-col items-center gap-0.5 py-2 px-1 min-w-[60px] text-white/40 transition-all duration-300 ease-spring ${votingScreenTab === 'voting' ? 'text-white' : ''}`}
                 onClick={() => { setVotingScreenTab('voting'); triggerHaptic('selection'); }}>
                 <span className="text-2xl transition-all duration-300 ease-spring flex items-center justify-center">⚖</span>
@@ -120,7 +120,7 @@ export function GameScreen() {
       {/* === SETTINGS FULLSCREEN === */}
       {showSettingsScreen && (
         <div className="fixed inset-0 z-40 native-scroll animate-fade-in" style={{ background: 'var(--maf-gradient-bg)' }}>
-          <div className="min-h-full" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
+          <div className="min-h-full max-w-[480px] mx-auto" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
             <div className="flex items-center gap-3 mb-4">
               <button className="text-accent text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring"
                 onClick={() => { setShowSettingsScreen(false); triggerHaptic('light'); }}>
@@ -136,7 +136,7 @@ export function GameScreen() {
       {/* === RESULTS FULLSCREEN === */}
       {showResultsScreen && (
         <div className="fixed inset-0 z-40 native-scroll animate-fade-in" style={{ background: 'var(--maf-gradient-bg)' }}>
-          <div className="min-h-full" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
+          <div className="min-h-full max-w-[480px] mx-auto" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, 0px))' }}>
             <div className="flex items-center gap-3 mb-4">
               <button className="text-accent text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring"
                 onClick={() => {
