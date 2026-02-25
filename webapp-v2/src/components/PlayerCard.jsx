@@ -4,7 +4,7 @@ import { useTimer } from '../hooks/useTimer';
 import { getRoleLabel, getCityBestMoveMax } from '../constants/roles';
 import { triggerHaptic } from '../utils/haptics';
 import { NightTimerBar } from './NightTimerBar';
-import { DialerPad, dialerBtn } from './DialerPad';
+import { DialerPad, RowPad, dialerBtn } from './DialerPad';
 
 export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mode = 'day' }) => {
   const {
@@ -522,7 +522,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
           {gamePhase === 'day' && !nominationsLocked && active && !isDead && !cityMode && (
             <div className="mt-3">
               <div className="text-[0.7em] font-bold text-white/40 mb-2">Выставить:</div>
-              <DialerPad items={tableOut} renderButton={(t) => {
+              <RowPad items={tableOut} renderButton={(t) => {
                 const tActive = isPlayerActive(t.roleKey);
                 const isMyNomination = nominations?.[rk]?.includes(t.num);
                 const nominatedByOther = !isMyNomination && Object.entries(nominations || {}).some(([fromRK, targets]) => fromRK !== rk && targets?.includes(t.num));
@@ -577,7 +577,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
             <div className="mt-3">
               <div className="text-sm font-bold mb-2">Лечение Доктора</div>
               {!doctorHeal ? (
-                <DialerPad items={tableOut} renderButton={(t) => (
+                <RowPad items={tableOut} renderButton={(t) => (
                   <button
                     className={`${dialerBtn.compact} ${!canDoctorHealTarget?.(t.num) ? dialerBtn.disabled : dialerBtn.normal}`}
                     disabled={!canDoctorHealTarget?.(t.num)}

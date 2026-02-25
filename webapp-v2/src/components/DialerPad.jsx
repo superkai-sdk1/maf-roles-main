@@ -1,11 +1,33 @@
 import React from 'react';
 
 /**
- * 2-row × 5-column grid:
+ * Phone-style 3-column dialer:
+ *   1  2  3
+ *   4  5  6
+ *   7  8  9
+ *      10
+ */
+export function DialerPad({ items, renderButton, className = '' }) {
+  return (
+    <div className={`grid grid-cols-3 gap-3 justify-items-center ${className}`}>
+      {items.map((item, i) => {
+        const isCenter = items.length === 10 && i === 9;
+        return (
+          <div key={item.num ?? i} className={isCenter ? 'col-start-2' : ''}>
+            {renderButton(item, i)}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * 2-row × 5-column compact grid:
  *   1  2  3  4  5
  *   6  7  8  9  10
  */
-export function DialerPad({ items, renderButton, className = '' }) {
+export function RowPad({ items, renderButton, className = '' }) {
   const firstRow = items.filter((_, i) => i < 5);
   const secondRow = items.filter((_, i) => i >= 5);
   return (
@@ -30,12 +52,12 @@ export function DialerPad({ items, renderButton, className = '' }) {
   );
 }
 
-const SIZE = 'w-[48px] h-[48px]';
+const SIZE = 'w-[56px] h-[56px]';
 const SIZE_COMPACT = 'w-[42px] h-[42px]';
-const BASE = 'rounded-full text-[1em] font-extrabold tabular-nums flex items-center justify-center active:scale-[0.88] transition-all duration-150 ease-spring select-none';
+const BASE = 'rounded-full font-extrabold tabular-nums flex items-center justify-center active:scale-[0.88] transition-all duration-150 ease-spring select-none';
 
 export const dialerBtn = {
-  base: `${SIZE} ${BASE}`,
+  base: `${SIZE} ${BASE} text-[1.1em]`,
   compact: `${SIZE_COMPACT} ${BASE} text-[0.9em]`,
 
   normal: 'bg-white/[0.05] border border-white/[0.10] text-white/70 hover:bg-white/[0.09] hover:border-white/[0.16] shadow-[0_2px_8px_rgba(0,0,0,0.2)]',
