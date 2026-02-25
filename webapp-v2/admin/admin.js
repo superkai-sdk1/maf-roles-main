@@ -1211,7 +1211,7 @@
             statsHtml = '<div class="sync-progress-section"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="admin-badge ' + bc + '">' + bt + '</span>' + (syncStatus.error ? '<span style="font-size:.78em;color:var(--red)">' + esc(syncStatus.error) + '</span>' : '') + '</div><div class="sync-stats-row" style="margin-top:8px"><div class="sync-stat-item"><span class="sync-stat-num">' + (syncStatus.checked||0) + '</span><span class="sync-stat-label">Проверено</span></div><div class="sync-stat-item"><span class="sync-stat-num" style="color:var(--green)">' + (syncStatus.found||0) + '</span><span class="sync-stat-label">Найдено</span></div><div class="sync-stat-item"><span class="sync-stat-num">' + (syncStatus.updated||0) + '</span><span class="sync-stat-label">Обновлено</span></div><div class="sync-stat-item"><span class="sync-stat-num" style="color:var(--accent)">' + (syncStatus.inserted||0) + '</span><span class="sync-stat-label">Добавлено</span></div></div></div>';
         }
 
-        const syncPanel = '<div class="admin-card"><div class="admin-card-header"><div><div class="admin-card-title">Массовая синхронизация с GoMafia.pro</div><div class="admin-card-subtitle">Загрузка логинов, аватаров и клубов по диапазону ID</div></div></div><div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:100px"><label style="font-size:.74em;color:var(--text-3);display:block;margin-bottom:3px">ID с</label><input class="admin-input" id="sync-range-start" type="number" value="1" min="1" style="max-width:120px" ' + (isRunning?'disabled':'') + '></div><div style="flex:1;min-width:100px"><label style="font-size:.74em;color:var(--text-3);display:block;margin-bottom:3px">ID по</label><input class="admin-input" id="sync-range-end" type="number" value="10000" min="2" style="max-width:120px" ' + (isRunning?'disabled':'') + '></div>' + (isRunning ? '<button class="admin-btn admin-btn-danger" onclick="AdminApp.stopSync()">Остановить</button>' : '<button class="admin-btn admin-btn-primary" onclick="AdminApp.startSync()">Запустить</button>') + '</div><div id="sync-status-area">' + progressHtml + statsHtml + '</div></div>';
+        const syncPanel = '<div class="admin-card"><div class="admin-card-header"><div><div class="admin-card-title">Массовая синхронизация с GoMafia.pro</div><div class="admin-card-subtitle">Загрузка логинов, аватаров и клубов по диапазону ID</div></div></div><div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:100px"><label style="font-size:.74em;color:var(--text-3);display:block;margin-bottom:3px">ID с</label><input class="admin-input" id="sync-range-start" type="number" value="1" min="1" style="max-width:120px" ' + (isRunning?'disabled':'') + '></div><div style="flex:1;min-width:100px"><label style="font-size:.74em;color:var(--text-3);display:block;margin-bottom:3px">ID по</label><input class="admin-input" id="sync-range-end" type="number" value="10000" min="2" style="max-width:120px" ' + (isRunning?'disabled':'') + '></div>' + (isRunning ? '<button class="admin-btn admin-btn-danger" onclick="AdminApp.stopSync()">Остановить</button>' : '<button class="admin-btn admin-btn-primary" onclick="AdminApp.startSync()">Запустить</button>') + '<button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="AdminApp.runSyncDiagnostics()" title="Диагностика">🔧</button></div><div id="sync-status-area">' + progressHtml + statsHtml + '</div></div>';
 
         const addPlayerPanel = '<div class="admin-card" style="margin-top:12px"><div class="admin-card-header"><div><div class="admin-card-title">Добавить игрока вручную</div><div class="admin-card-subtitle">Ссылка на профиль GoMafia или числовой ID</div></div></div><div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap"><div style="flex:1;min-width:200px"><input class="admin-input" id="add-player-input" placeholder="https://gomafia.pro/stats/9382 или 9382" onkeydown="if(event.key===\'Enter\')AdminApp.addPlayer()"></div><button class="admin-btn admin-btn-primary" id="add-player-btn" onclick="AdminApp.addPlayer()">Добавить</button></div><div id="add-player-result" style="margin-top:8px"></div></div>';
 
@@ -1227,7 +1227,11 @@
         const re = parseInt(document.getElementById('sync-range-end').value) || 10000;
         if (rs >= re) { toast('Начальный ID < конечного', 'error'); return; }
         if (re - rs > 50000) { toast('Максимум 50 000', 'error'); return; }
-        try { await apiCall('admin-sync-players.php', { body: { action: 'start', rangeStart: rs, rangeEnd: re } }); toast('Синхронизация запущена', 'success'); startSyncPolling(); loadPlayers(); } catch(e) { toast('Ошибка: ' + e.message, 'error'); }
+        try {
+            const result = await apiCall('admin-sync-players.php', { body: { action: 'start', rangeStart: rs, rangeEnd: re } });
+            toast('Синхронизация запущена' + (result.method ? ' (' + result.method + ')' : ''), 'success');
+            startSyncPolling(); loadPlayers();
+        } catch(e) { toast('Ошибка: ' + e.message, 'error'); }
     }
 
     async function stopSync() {
@@ -1294,6 +1298,29 @@
             }
         } catch(e) { resultEl.innerHTML = '<div class="sync-add-result error"><span style="color:var(--red);font-size:.84em">' + esc(e.message) + '</span></div>'; toast('Ошибка: ' + e.message, 'error'); }
         finally { btn.disabled = false; btn.textContent = 'Добавить'; }
+    }
+
+    async function runSyncDiagnostics() {
+        try {
+            const d = await apiCall('admin-sync-players.php', { params: { action: 'diagnostics' } });
+            const lines = [
+                'PHP SAPI: ' + (d.php_sapi || '?'),
+                'PHP Binary: ' + (d.php_binary || '?'),
+                'PHP CLI: ' + (d.php_cli || '?'),
+                'exec(): ' + (d.exec_available ? '✅' : '❌'),
+                'proc_open(): ' + (d.proc_open_available ? '✅' : '❌'),
+                'fastcgi_finish_request(): ' + (d.fastcgi_finish_request ? '✅' : '❌'),
+                'curl: ' + (d.curl_available ? '✅' : '❌'),
+                'allow_url_fopen: ' + (d.allow_url_fopen ? '✅' : '❌'),
+                'Worker exists: ' + (d.worker_exists ? '✅' : '❌'),
+                'Dir writable: ' + (d.dir_writable ? '✅' : '❌'),
+                'GoMafia reachable: ' + (d.gomafia_reachable ? '✅' : '❌'),
+                d.gomafia_build_id ? 'BuildId: ' + d.gomafia_build_id : '',
+                d.disabled_functions ? 'Disabled: ' + d.disabled_functions : '',
+            ].filter(Boolean).join('\n');
+            const logHtml = d.log_file ? '<div style="margin-top:10px"><div style="font-weight:700;font-size:.8em;margin-bottom:4px">Sync Log:</div><pre class="admin-json" style="max-height:200px">' + esc(d.log_file) + '</pre></div>' : '';
+            showModal('Диагностика синхронизации', '<pre class="admin-json" style="white-space:pre-wrap">' + esc(lines) + '</pre>' + logHtml);
+        } catch(e) { toast('Ошибка диагностики: ' + e.message, 'error'); }
     }
 
     // =======================================================================
@@ -1453,7 +1480,7 @@
         loadRooms, clearRoom, deleteRoom, clearAllRooms,
         kickRoomPlayer, setRoomRole, updateRoomField, openRoomPanel,
         // Players
-        searchPlayers, clearPlayerSearch, addPlayer, startSync, stopSync,
+        searchPlayers, clearPlayerSearch, addPlayer, startSync, stopSync, runSyncDiagnostics,
         // Sessions
         sessionsGoToPage,
     };

@@ -1,7 +1,7 @@
 <?php
 // =====================================================
 // Sync Worker — фоновый процесс синхронизации игроков с GoMafia.pro
-// Запускается из admin-sync-players.php
+// Запускается из admin-sync-players.php (exec/proc_open/fastcgi)
 // Аргументы: php sync-worker.php <rangeStart> <rangeEnd>
 // =====================================================
 
@@ -13,12 +13,22 @@ $rangeEnd   = isset($argv[2]) ? (int)$argv[2] : 10000;
 
 $STATUS_FILE = __DIR__ . '/sync-status.json';
 $LOCK_FILE   = __DIR__ . '/sync.lock';
+$LOG_FILE    = __DIR__ . '/sync.log';
 
-// Подключаем БД
-$_savedCwd = getcwd();
-chdir(__DIR__ . '/../../api');
-require_once __DIR__ . '/../../api/db.php';
-chdir($_savedCwd);
+function workerLog($msg) {
+    global $LOG_FILE;
+    @file_put_contents($LOG_FILE, '[' . date('Y-m-d H:i:s') . '] [worker] ' . $msg . "\n", FILE_APPEND | LOCK_EX);
+}
+
+workerLog("Worker started: range {$rangeStart}-{$rangeEnd}, PID=" . getmypid());
+
+// DB — если уже загружен через admin-sync-players.php (FPM inline), не загружаем повторно
+if (!isset($database)) {
+    $_savedCwd = getcwd();
+    chdir(__DIR__ . '/../../api');
+    require_once __DIR__ . '/../../api/db.php';
+    chdir($_savedCwd);
+}
 
 $TABLE_PLAYERS = 'players';
 
@@ -170,9 +180,9 @@ function runSync($database, $rangeStart, $rangeEnd) {
     $status['status'] = 'getting_build_id';
     writeStatus($status);
 
-    // 1. Получаем buildId
     $buildId = getBuildId();
     if (!$buildId) {
+        workerLog("ERROR: Failed to get buildId from gomafia.pro");
         $status['running'] = false;
         $status['status'] = 'error';
         $status['error'] = 'Не удалось получить buildId с gomafia.pro';
@@ -181,6 +191,7 @@ function runSync($database, $rangeStart, $rangeEnd) {
         return;
     }
 
+    workerLog("Got buildId: {$buildId}");
     $status['status'] = 'syncing';
     $status['buildId'] = $buildId;
     writeStatus($status);
@@ -264,14 +275,13 @@ function runSync($database, $rangeStart, $rangeEnd) {
         usleep($DELAY_USEC);
     }
 
-    // Сохраняем оставшийся батч
     if (!empty($batch)) {
         $result = saveBatchToDb($database, $batch);
         $totalUpdated += $result['updated'];
         $totalInserted += $result['inserted'];
+        $batch = [];
     }
 
-    // Финальный статус
     $status = readStatus();
     $status['running'] = false;
     $status['status'] = 'done';
@@ -286,6 +296,7 @@ function runSync($database, $rangeStart, $rangeEnd) {
     }
     writeStatus($status);
     @unlink($LOCK_FILE);
+    workerLog("Sync finished: checked={$checked}, found={$found}, updated={$totalUpdated}, inserted={$totalInserted}");
 }
 
 // ========== Запуск ==========
