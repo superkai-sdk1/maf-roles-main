@@ -191,9 +191,26 @@ export default {
           'font-size': '0.9em',
           outline: 'none',
           'box-shadow': 'inset 0 2px 6px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05)',
+          '&::placeholder': {
+            color: 'rgba(255,255,255,0.3)',
+          },
           '&:focus': {
             'border-color': 'rgba(var(--accent-rgb, 168,85,247), 0.3)',
             'box-shadow': 'inset 0 2px 6px rgba(0,0,0,0.5), 0 0 0 2px rgba(var(--accent-rgb, 168,85,247), 0.15)',
+          },
+        },
+        '.glass-specular': {
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            inset: '0',
+            background: 'var(--glass-specular)',
+            'border-radius': 'inherit',
+            'pointer-events': 'none',
+            opacity: '0.7',
+            'z-index': '0',
           },
         },
       });

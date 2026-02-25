@@ -86,7 +86,7 @@ export function LandingPage({ onNavigate }) {
             shadow-[0_8px_32px_rgba(168,85,247,0.2),0_0_60px_rgba(168,85,247,0.06)]">
             <IconMafBoard size={56} color="var(--accent-color, #a855f7)" />
           </div>
-          <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+          <h1 className="text-[3em] font-black tracking-[-1.5px] leading-[1.1] bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
             MafBoard
           </h1>
           <p className="max-w-sm text-white/50 text-sm leading-relaxed font-medium">
@@ -112,15 +112,15 @@ export function LandingPage({ onNavigate }) {
 
       {/* Features */}
       <section className="px-5 pb-16 max-w-2xl mx-auto">
-        <h2 className="text-accent text-xs font-bold tracking-[0.15em] uppercase text-center mb-8">
+        <h2 className="text-white text-[1.8em] font-black text-center mb-10">
           Возможности
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-stagger">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 animate-stagger">
           {FEATURES.map((f, i) => (
             <div
               key={i}
               className="flex flex-col gap-2 p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06]
-                hover:border-white/[0.12] transition-colors duration-200"
+                hover:border-white/[0.12] hover:bg-white/[0.05] hover:shadow-glass-sm transition-colors duration-200"
             >
               <div className="w-11 h-11 rounded-xl bg-accent-soft flex items-center justify-center text-accent">
                 {f.icon}

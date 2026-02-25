@@ -221,10 +221,10 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
   return (
     <div
       className={`rounded-2xl border transition-all duration-300 ease-spring relative overflow-hidden
-        ${isHighlighted && !isDead ? 'border-accent-soft bg-accent-soft shadow-[0_0_16px_rgba(var(--accent-rgb),0.15)]' : ''}
-        ${isSpeaking && !isDead ? 'border-accent-soft bg-accent-soft shadow-[0_0_20px_rgba(var(--accent-rgb),0.2)]' : ''}
-        ${isKilled || isVoted ? 'opacity-50 border-red-500/20 bg-red-500/[0.03]' : ''}
-        ${isRemoved ? 'opacity-40 border-white/[0.06] bg-white/[0.02]' : ''}
+        ${isHighlighted && !isDead ? 'border-accent-soft bg-accent-soft shadow-[0_0_16px_rgba(var(--accent-rgb),0.15)] scale-[1.01]' : ''}
+        ${isSpeaking && !isDead ? 'border-accent-soft bg-accent-soft shadow-[0_0_20px_rgba(var(--accent-rgb),0.2)] scale-[1.01]' : ''}
+        ${isKilled || isVoted ? 'opacity-[0.18] saturate-[0.25] brightness-[0.7] border-red-500/20 bg-red-500/[0.03]' : ''}
+        ${isRemoved ? 'opacity-[0.15] saturate-[0.2] brightness-[0.65] border-white/[0.06] bg-white/[0.02]' : ''}
         ${isBlinking ? 'animate-killed-blink' : ''}
         ${isNightDon ? 'animate-don-pulse' : ''}
         ${isNightSheriff ? 'animate-sheriff-pulse' : ''}
@@ -234,22 +234,22 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
       style={{ '--i': player.num - 1 }}
     >
       {/* Main row */}
-      <div className="flex items-center gap-3 px-3 py-2.5 cursor-pointer" onClick={handleToggle}>
+      <div className="flex items-center gap-3 px-3.5 py-2.5 cursor-pointer min-h-[64px]" onClick={handleToggle}>
         {/* Avatar */}
         <div className="relative shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08]
+          <div className="w-11 h-11 rounded-full bg-white/[0.06] border border-white/[0.08]
             flex items-center justify-center text-white/60 text-sm font-bold overflow-hidden"
             style={player.avatar_link ? { backgroundImage: `url(${player.avatar_link})`, backgroundSize: 'cover', color: 'transparent' } : {}}>
             {!player.avatar_link && (player.login?.[0]?.toUpperCase() || player.num)}
           </div>
           <span className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] rounded-md
-            bg-white/10 border border-white/[0.15] flex items-center justify-center
-            text-[0.6rem] font-bold text-white/70 px-0.5">{player.num}</span>
+            bg-[rgba(168,85,247,0.85)] border-[1.5px] border-[rgba(10,8,20,0.7)] shadow-[0_1px_6px_rgba(0,0,0,0.4),0_0_8px_rgba(168,85,247,0.25)] flex items-center justify-center
+            text-[0.6rem] font-bold text-white px-0.5">{player.num}</span>
         </div>
 
         {/* Name + meta */}
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold text-white truncate">{player.login || `Игрок ${player.num}`}</div>
+          <div className="text-sm font-bold text-white truncate tracking-[0.2px]">{player.login || `Игрок ${player.num}`}</div>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             {role && gamePhase !== 'discussion' && gamePhase !== 'freeSeating' && gamePhase !== 'day' && (
               <span className={`px-1.5 py-0.5 rounded-md text-[0.6rem] font-bold border ${roleTagColors[role] || 'bg-white/5 text-white/40 border-white/10'}`}>
@@ -266,9 +266,9 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
         <div className="flex items-center gap-1.5 shrink-0">
           {isDead ? (
             <>
-              <span className="text-[0.7em] font-bold text-red-400/70">{statusLabel}</span>
-              <button className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.08]
-                flex items-center justify-center text-sm active:scale-90 transition-transform duration-150 ease-spring"
+              <span className="text-[0.6em] font-bold text-white/30 uppercase tracking-[1px] mr-1.5">{statusLabel}</span>
+              <button className="w-8 h-8 rounded-lg bg-[rgba(48,209,88,0.08)] border border-[rgba(48,209,88,0.20)] text-[#30d158]
+                flex items-center justify-center active:scale-90 transition-transform duration-150 ease-spring"
                 onTouchStart={(e) => { e.stopPropagation(); handleReturnStart(e); }}
                 onTouchEnd={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
                 onTouchMove={handleRemoveMoveCancel}
@@ -313,8 +313,8 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
                 <span className="opacity-60">ТФ</span>
                 <span>{techFoulCount}</span>
               </button>
-              <button className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.08]
-                flex items-center justify-center text-white/30 text-sm font-bold
+              <button className="w-8 h-8 rounded-lg bg-[rgba(255,69,58,0.05)] border border-[rgba(255,69,58,0.12)] text-[rgba(255,69,58,0.45)]
+                flex items-center justify-center text-sm font-bold
                 active:scale-90 transition-all duration-150 ease-spring touch-manipulation"
                 onClick={(e) => e.stopPropagation()}
                 onTouchStart={(e) => { e.stopPropagation(); handleRemoveStart(e); }}

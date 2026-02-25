@@ -12,7 +12,7 @@ export function RolesPhase() {
 
   return (
     <div className="flex flex-col gap-3 animate-fade-in">
-      <div className="flex items-center justify-center gap-2 py-1">
+      <div className="flex flex-wrap items-center justify-center gap-2 py-1">
         <RoleIndicator label="Дон" lit={donCount >= 1} color="#e1bee7" glowColor="rgba(206,147,216,0.5)" />
         <RoleIndicator label="Мафия" lit={blackCount >= 2} partial={blackCount >= 1 && blackCount < 2} color="#c084fc" glowColor="rgba(168,85,247,0.5)" />
         <RoleIndicator label="Шериф" lit={sheriffCount >= 1} color="#ffd54f" glowColor="rgba(255,213,79,0.5)" />
@@ -28,14 +28,14 @@ export function RolesPhase() {
               style={{ animationDelay: `${(p.num - 1) * 30}ms` }}>
               <div className="flex items-center gap-3 px-3 py-2.5">
                 <div className="relative shrink-0">
-                  <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08]
+                  <div className="w-11 h-11 rounded-full bg-white/[0.06] border border-white/[0.08]
                     flex items-center justify-center text-white/60 text-sm font-bold overflow-hidden"
                     style={p.avatar_link ? { backgroundImage: `url(${p.avatar_link})`, backgroundSize: 'cover', color: 'transparent' } : {}}>
                     {!p.avatar_link && (p.login?.[0]?.toUpperCase() || p.num)}
                   </div>
                   <span className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] rounded-md
-                    bg-white/10 border border-white/[0.15] flex items-center justify-center
-                    text-[0.6rem] font-bold text-white/70 px-0.5">{p.num}</span>
+                    bg-[rgba(168,85,247,0.85)] border-[1.5px] border-[rgba(10,8,20,0.7)] shadow-[0_1px_6px_rgba(0,0,0,0.4),0_0_8px_rgba(168,85,247,0.25)] flex items-center justify-center
+                    text-[0.6rem] font-bold text-white px-0.5">{p.num}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold text-white truncate">{p.login || `Игрок ${p.num}`}</div>

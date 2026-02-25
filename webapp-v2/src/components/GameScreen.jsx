@@ -87,7 +87,7 @@ export function GameScreen() {
   const timerProgress = timerMax > 0 ? Math.max(0, Math.min(1, timerTimeLeft / timerMax)) : 0;
 
   return (
-    <div className="min-h-screen bg-maf-bg" style={{ paddingTop: 'var(--safe-top, 0px)' }}>
+    <div className="min-h-screen bg-maf-bg max-w-[480px] mx-auto" style={{ paddingTop: 'var(--safe-top, 0px)' }}>
       {/* === VOTING FULLSCREEN === */}
       {showVotingScreen && (
         <div className="fixed inset-0 z-40 bg-maf-bg overflow-y-auto animate-fade-in">
@@ -247,7 +247,7 @@ export function GameScreen() {
 
             {/* Inline timer card (discussion / free seating) */}
             {rolesDistributed && isTimerPhase && !winnerTeam && (
-              <div className={`relative rounded-2xl overflow-hidden glass-surface shadow-glass-md mb-3 ${timerTimeLeft <= 10 && timerRunning ? 'border border-red-500/20' : ''}`}>
+              <div className={`relative rounded-2xl overflow-hidden glass-surface shadow-glass-md mb-3 ${timerTimeLeft <= 10 && timerRunning ? 'border border-red-500/20 shadow-[0_0_20px_rgba(255,69,58,0.08)]' : ''}`}>
                 <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-[var(--accent-color)] to-indigo-500/80 transition-[width] duration-500 ease-linear opacity-30" style={{ width: `${timerProgress * 100}%` }} />
                 <div className="relative z-[1] flex items-center justify-between px-4 py-3">
                   <div className={`text-2xl font-extrabold tabular-nums text-white/70 ${timerTimeLeft <= 10 && timerRunning ? 'text-red-400 animate-timer-pulse' : ''}`}>
@@ -255,7 +255,7 @@ export function GameScreen() {
                   </div>
                   <div>
                     {!timerRunning ? (
-                      <button className="px-4 py-2 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-emerald-500/15 text-emerald-400 border border-emerald-500/25" onClick={() => {
+                      <button className="px-4 py-2 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-gradient-to-r from-[rgba(168,85,247,0.5)] to-[rgba(99,102,241,0.5)] text-white border border-[rgba(168,85,247,0.3)] shadow-[0_0_12px_rgba(168,85,247,0.25)]" onClick={() => {
                         if (gamePhase === 'discussion') startDiscussionTimer();
                         else startFreeSeatingTimer();
                         triggerHaptic('light');
@@ -298,7 +298,7 @@ export function GameScreen() {
 
             {/* Player cards (day, discussion, freeSeating — not night) */}
             {(gamePhase === 'day' || gamePhase === 'discussion' || gamePhase === 'freeSeating') && (
-              <div className="animate-stagger scroll-stagger flex flex-col gap-2.5">
+              <div className="animate-stagger flex flex-col gap-2.5">
                 {tableOut.map(p => (
                   <PlayerCard key={p.roleKey} player={p} mode={effectiveMode}
                     isSpeaking={currentSpeaker?.roleKey === p.roleKey}
@@ -388,11 +388,11 @@ export function GameScreen() {
                   ⚙ Настройки трансляции
                 </button>
                 {(winnerTeam || gameFinished) && (
-                  <button className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring w-full" onClick={() => { setShowResultsScreen(true); triggerHaptic('light'); }}>
+                  <button className="px-4 py-2.5 rounded-xl bg-[rgba(255,214,10,0.08)] border border-[rgba(255,214,10,0.2)] text-[#ffd60a] text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring w-full" onClick={() => { setShowResultsScreen(true); triggerHaptic('light'); }}>
                     🏆 Итоги
                   </button>
                 )}
-                <button className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring w-full text-red-400/60" onClick={() => {
+                <button className="px-4 py-2.5 rounded-xl bg-[rgba(255,69,58,0.08)] border border-[rgba(255,69,58,0.2)] text-[#ff453a] text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring w-full" onClick={() => {
                   if (gameFinished) returnToMainMenu();
                   else { setShowExitConfirm(true); triggerHaptic('warning'); }
                 }}>

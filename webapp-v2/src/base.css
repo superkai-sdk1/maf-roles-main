@@ -60,6 +60,10 @@
   --maf-bg-secondary: #0d0a2a;
   --maf-gradient-bg: linear-gradient(135deg, #040410 0%, #0d0a2a 25%, #1a0f4a 50%, #0d0a2a 75%, #040410 100%);
 
+  /* Text */
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-muted: rgba(255, 255, 255, 0.30);
+
   /* Component sizes */
   --role-btn-size: 42px;
   --timer-btn-size: 46px;

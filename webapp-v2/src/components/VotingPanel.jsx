@@ -172,9 +172,9 @@ export function VotingPanel() {
   };
 
   const getDialerBtnClasses = ({ voted, votedElsewhere, prefilled }) => {
-    const base = 'h-11 rounded-xl border text-sm font-bold active:scale-90 transition-all duration-150 ease-spring';
+    const base = 'h-11 rounded-full border text-sm font-bold active:scale-90 transition-all duration-150 ease-spring';
     if (voted) return `${base} bg-accent text-white border-transparent shadow-glow-accent`;
-    if (votedElsewhere) return `${base} bg-white/[0.02] border-white/[0.04] text-white/15 cursor-default`;
+    if (votedElsewhere) return `${base} bg-white/[0.02] border-white/[0.04] text-white/15 opacity-[0.18] grayscale pointer-events-none`;
     if (prefilled) return `${base} bg-white/[0.06] border-white/10 text-white/50`;
     return `${base} bg-white/[0.04] border-white/[0.08] text-white/70`;
   };
@@ -183,12 +183,12 @@ export function VotingPanel() {
     <div className="animate-fade-in flex flex-col gap-[14px]">
       {/* Header */}
       <div className="text-center pt-2">
-        <h2 className="text-accent text-xs font-bold tracking-[0.15em] uppercase">Голосование</h2>
+        <h2 className="text-white text-[1.4em] font-extrabold tracking-[0.3px]">Голосование</h2>
         {candidates.length > 0 && votingScreenTab === 'voting' && (
           <div className="flex items-center gap-2 flex-wrap mt-2">
             <span className="text-xs text-white/40 font-medium">Выставлены:</span>
             {candidates.map(num => (
-              <span key={num} className="w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-sm font-bold">{num}</span>
+              <span key={num} className="w-8 h-8 rounded-lg bg-[rgba(255,214,10,0.12)] border border-[rgba(255,214,10,0.30)] text-[#ffd60a] flex items-center justify-center text-sm font-bold">{num}</span>
             ))}
           </div>
         )}
@@ -380,7 +380,7 @@ export function VotingPanel() {
                     <span className="text-[0.7em] text-white/40 uppercase tracking-wider">Поднять:</span>
                     <div className="flex items-center gap-2 flex-wrap mt-1.5 justify-center">
                       {votingTiePlayers.map(num => (
-                        <span key={num} className="w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-sm font-bold">{num}</span>
+                        <span key={num} className="w-8 h-8 rounded-lg bg-[rgba(255,214,10,0.12)] border border-[rgba(255,214,10,0.30)] text-[#ffd60a] flex items-center justify-center text-sm font-bold">{num}</span>
                       ))}
                     </div>
                   </div>

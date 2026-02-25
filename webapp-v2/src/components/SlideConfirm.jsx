@@ -56,7 +56,7 @@ export function SlideConfirm({ label, onConfirm, color = 'violet', compact = fal
       className={`relative overflow-hidden select-none touch-pan-y
         ${compact ? 'h-10 rounded-xl' : 'h-12 rounded-2xl'}
         ${c.bg} border ${c.border}
-        ${disabled ? 'opacity-40 pointer-events-none' : ''}
+        ${disabled ? 'opacity-30 pointer-events-none' : ''}
         ${dragging ? 'scale-[0.98]' : ''}
         transition-transform duration-150 ease-spring`}
       onTouchStart={e => { e.stopPropagation(); handleStart(e.touches[0].clientX); }}
@@ -69,7 +69,7 @@ export function SlideConfirm({ label, onConfirm, color = 'violet', compact = fal
     >
       <div className={`absolute inset-0 ${c.fill} transition-opacity duration-200`} style={{ opacity: progress }} />
       <div
-        className="absolute inset-0 flex items-center justify-center text-white/50 text-xs font-bold tracking-widest uppercase pointer-events-none transition-opacity duration-200"
+        className="absolute inset-0 flex items-center justify-center text-white/60 text-xs font-bold tracking-[0.5px] uppercase pointer-events-none whitespace-nowrap overflow-hidden px-12 transition-opacity duration-200"
         style={{ opacity: 1 - progress * 0.8 }}
       >
         {label}

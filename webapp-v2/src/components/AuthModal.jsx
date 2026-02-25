@@ -308,7 +308,7 @@ function PasskeySuggestModal({ onDone }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
+    <div className="fixed inset-0 z-[100000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
       onClick={state !== 'creating' ? onDone : undefined}>
       <div className="w-full max-w-[360px] glass-surface rounded-3xl p-6 shadow-glass-lg flex flex-col items-center text-center gap-2 animate-scale-in"
         onClick={e => e.stopPropagation()}>
@@ -364,7 +364,7 @@ export function AuthModal() {
   if (!authModalOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
+    <div className="fixed inset-0 z-[100000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
       onClick={hideAuthModal}>
       <div className="relative w-full max-w-[360px] glass-surface rounded-3xl p-6 shadow-glass-lg
         flex flex-col items-center text-center gap-2 animate-scale-in"

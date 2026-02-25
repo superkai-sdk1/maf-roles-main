@@ -172,7 +172,7 @@ export const NightPanel = () => {
                   return (
                     <button key={p.num}
                       onClick={() => { toggleBestMove(p.num); triggerHaptic('selection'); }}
-                      className={`h-11 rounded-xl border text-sm font-bold
+                      className={`h-11 rounded-full border text-sm font-bold
                         active:scale-90 transition-all duration-150 ease-spring
                         ${selected
                           ? 'bg-accent text-white border-transparent shadow-glow-accent'
@@ -250,10 +250,10 @@ function DialerGrid({ allPlayers, isPlayerActive, onSelect, borderColor }) {
           <button key={p.num}
             onClick={() => alive && onSelect(p.num)}
             disabled={!alive}
-            className={`h-11 rounded-xl border text-sm font-bold
+            className={`h-11 rounded-full border text-sm font-bold
               active:scale-90 transition-all duration-150 ease-spring
               ${!alive
-                ? 'bg-white/[0.02] border-white/[0.04] text-white/15 cursor-default'
+                ? 'bg-white/[0.02] border-white/[0.04] text-white/15 opacity-[0.18] grayscale pointer-events-none'
                 : 'bg-white/[0.04] text-white/70 hover:bg-white/[0.08] cursor-pointer'}`}
             style={{ borderColor: alive ? borderColor : undefined }}>
             {p.num}
@@ -291,7 +291,7 @@ function NightCheckStep({ title, subtitle, icon, accentColor, borderColor, bgCol
         <div className="grid grid-cols-5 gap-2">
           {allPlayers.map(p => (
             <button key={p.num} onClick={() => onCheck(p.num)}
-              className="h-11 rounded-xl bg-white/[0.04] text-white/70 text-sm font-bold
+              className="h-11 rounded-full bg-white/[0.04] text-white/70 text-sm font-bold
                 active:scale-90 transition-all duration-150 ease-spring hover:bg-white/[0.08]"
               style={{ border: `1px solid ${borderColor}` }}>
               {p.num}

@@ -28,7 +28,7 @@ function ProfileDropdown({ onNavigate, onClose }) {
       className="absolute right-0 top-full mt-2 w-56 rounded-2xl glass-surface shadow-glass-md animate-slide-down z-50"
     >
       <div className="flex items-center gap-3 px-4 py-3">
-        <div className="w-9 h-9 rounded-xl bg-accent-soft border border-accent-soft flex items-center justify-center text-accent text-sm font-bold shrink-0">
+        <div className="w-9 h-9 rounded-full bg-accent-soft border border-accent-soft flex items-center justify-center text-accent text-sm font-bold shrink-0">
           {displayName.charAt(0).toUpperCase()}
         </div>
         <div className="flex flex-col min-w-0">
@@ -58,7 +58,7 @@ function ProfileDropdown({ onNavigate, onClose }) {
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
           </svg>
           <span>Оверлей</span>
-          <span className="ml-auto text-[0.6rem] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/30">скоро</span>
+          <span className="ml-auto text-[0.6rem] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-full bg-[rgba(168,85,247,0.12)] text-[var(--accent-color)]">скоро</span>
         </button>
 
         <button
@@ -109,11 +109,11 @@ export function Header({ onNavigate }) {
 
         <div className="flex items-center gap-3">
           {isLoading ? (
-            <div className="w-9 h-9 rounded-xl bg-white/[0.06] animate-pulse" />
+            <div className="w-9 h-9 rounded-full bg-white/[0.06] animate-pulse" />
           ) : isAuthenticated ? (
             <div className="relative">
               <button
-                className="w-9 h-9 rounded-xl bg-accent-soft border border-accent-soft flex items-center justify-center
+                className="w-9 h-9 rounded-full bg-accent-soft border border-accent-soft flex items-center justify-center
                   text-accent text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 aria-label="Профиль"
@@ -130,7 +130,7 @@ export function Header({ onNavigate }) {
           ) : (
             <button
               className="px-4 py-2 rounded-xl bg-accent text-white text-sm font-bold
-                active:scale-95 transition-transform duration-150 ease-spring"
+                hover:shadow-[0_4px_20px_rgba(168,85,247,0.2)] active:scale-95 transition-transform duration-150 ease-spring"
               onClick={showAuthModal}
             >
               Войти
