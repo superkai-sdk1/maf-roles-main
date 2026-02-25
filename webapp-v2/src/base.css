@@ -148,11 +148,11 @@ body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Rounded",
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: var(--maf-bg-main);
+  background: var(--maf-gradient-bg);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.35s ease, color 0.35s ease;
+  transition: background 0.5s ease, color 0.35s ease;
 }
 
 /* ==============================

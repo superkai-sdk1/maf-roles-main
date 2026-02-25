@@ -1,19 +1,34 @@
 export const COLOR_SCHEMES = [
-  { key: 'purple', name: 'TITAN', accent: '#a855f7', gradient: ['#a855f7', '#7c3aed'] },
-  { key: 'ruby', name: 'Рубин', accent: '#e0115f', gradient: ['#e0115f', '#b91048'] },
-  { key: 'fire', name: 'Огонь', accent: '#ff512f', gradient: ['#ff512f', '#dd2476'] },
-  { key: 'gold', name: 'Золото', accent: '#ffd700', gradient: ['#ffd700', '#f59e0b'] },
-  { key: 'orange', name: 'Мандарин', accent: '#ffb347', gradient: ['#ffb347', '#ff6723'] },
-  { key: 'lime', name: 'Лайм', accent: '#cddc39', gradient: ['#cddc39', '#8bc34a'] },
-  { key: 'green', name: 'Изумруд', accent: '#6fe7b7', gradient: ['#6fe7b7', '#10b981'] },
-  { key: 'teal', name: 'Бирюза', accent: '#1de9b6', gradient: ['#1de9b6', '#00bfa5'] },
-  { key: 'aqua', name: 'Аквамарин', accent: '#00eaff', gradient: ['#00eaff', '#0097a7'] },
-  { key: 'blue', name: 'Голубой лёд', accent: '#4fc3f7', gradient: ['#4fc3f7', '#0288d1'] },
-  { key: 'steel', name: 'Сталь', accent: '#4682b4', gradient: ['#4682b4', '#34568b'] },
-  { key: 'violet', name: 'Фиалка', accent: '#9f5afd', gradient: ['#9f5afd', '#6d28d9'] },
-  { key: 'rose', name: 'Роза', accent: '#ff007f', gradient: ['#ff007f', '#c2185b'] },
-  { key: 'pink', name: 'Розовый кварц', accent: '#ff6fcb', gradient: ['#ff6fcb', '#d946ef'] },
-  { key: 'silver', name: 'Серебро', accent: '#b0c4de', gradient: ['#b0c4de', '#8e99a4'] },
+  { key: 'purple', name: 'TITAN', accent: '#a855f7', gradient: ['#a855f7', '#7c3aed'],
+    darkBg: ['#040410', '#0d0a2a', '#1a0f4a'], lightBg: ['#f2f0f7', '#e8e4f0', '#ddd6ed'] },
+  { key: 'ruby', name: 'Рубин', accent: '#e0115f', gradient: ['#e0115f', '#b91048'],
+    darkBg: ['#0e0408', '#2a0a16', '#42102a'], lightBg: ['#f7f0f2', '#f0e4e8', '#edcdd6'] },
+  { key: 'fire', name: 'Огонь', accent: '#ff512f', gradient: ['#ff512f', '#dd2476'],
+    darkBg: ['#0e0604', '#2a120a', '#42180f'], lightBg: ['#f7f2f0', '#f0e6e2', '#edd6cc'] },
+  { key: 'gold', name: 'Золото', accent: '#ffd700', gradient: ['#ffd700', '#f59e0b'],
+    darkBg: ['#0e0c04', '#2a220a', '#42360f'], lightBg: ['#f7f5f0', '#f0ece2', '#ede4cc'] },
+  { key: 'orange', name: 'Мандарин', accent: '#ffb347', gradient: ['#ffb347', '#ff6723'],
+    darkBg: ['#0e0904', '#2a1a0a', '#42280f'], lightBg: ['#f7f3f0', '#f0e8e2', '#eddccc'] },
+  { key: 'lime', name: 'Лайм', accent: '#cddc39', gradient: ['#cddc39', '#8bc34a'],
+    darkBg: ['#080e04', '#162a0a', '#264210'], lightBg: ['#f3f7f0', '#eaf0e2', '#deedcc'] },
+  { key: 'green', name: 'Изумруд', accent: '#6fe7b7', gradient: ['#6fe7b7', '#10b981'],
+    darkBg: ['#040e08', '#0a2a18', '#104228'], lightBg: ['#f0f7f3', '#e2f0ea', '#ccedde'] },
+  { key: 'teal', name: 'Бирюза', accent: '#1de9b6', gradient: ['#1de9b6', '#00bfa5'],
+    darkBg: ['#040e0c', '#0a2a24', '#10423a'], lightBg: ['#f0f7f5', '#e2f0ec', '#ccede4'] },
+  { key: 'aqua', name: 'Аквамарин', accent: '#00eaff', gradient: ['#00eaff', '#0097a7'],
+    darkBg: ['#040c0e', '#0a242a', '#103a42'], lightBg: ['#f0f5f7', '#e2ecf0', '#cce4ed'] },
+  { key: 'blue', name: 'Голубой лёд', accent: '#4fc3f7', gradient: ['#4fc3f7', '#0288d1'],
+    darkBg: ['#04080e', '#0a162a', '#0f2442'], lightBg: ['#f0f2f7', '#e2e8f0', '#ccdaed'] },
+  { key: 'steel', name: 'Сталь', accent: '#4682b4', gradient: ['#4682b4', '#34568b'],
+    darkBg: ['#06080c', '#0e1624', '#16223a'], lightBg: ['#f0f2f5', '#e4e8ee', '#d4dae6'] },
+  { key: 'violet', name: 'Фиалка', accent: '#9f5afd', gradient: ['#9f5afd', '#6d28d9'],
+    darkBg: ['#06040e', '#120a2a', '#1e1042'], lightBg: ['#f3f0f7', '#e8e4f0', '#ddd0ed'] },
+  { key: 'rose', name: 'Роза', accent: '#ff007f', gradient: ['#ff007f', '#c2185b'],
+    darkBg: ['#0e0408', '#2a0a18', '#42102c'], lightBg: ['#f7f0f3', '#f0e4ea', '#edccdc'] },
+  { key: 'pink', name: 'Розовый кварц', accent: '#ff6fcb', gradient: ['#ff6fcb', '#d946ef'],
+    darkBg: ['#0e040a', '#2a0a1e', '#421034'], lightBg: ['#f7f0f4', '#f0e4ec', '#edcce2'] },
+  { key: 'silver', name: 'Серебро', accent: '#b0c4de', gradient: ['#b0c4de', '#8e99a4'],
+    darkBg: ['#08080a', '#161620', '#222236'], lightBg: ['#f3f3f5', '#eaeaee', '#dddde4'] },
 ];
 
 const LIGHT_ACCENT_OVERRIDES = {
@@ -48,6 +63,11 @@ export function applyTheme(colorKey) {
   root.setProperty('--accent-gradient', `linear-gradient(135deg, ${color.gradient[0]}, ${color.gradient[1]})`);
   root.setProperty('--accent-gradient-rgb-0', gradRgb0);
   root.setProperty('--accent-gradient-rgb-1', gradRgb1);
+
+  const bg = isLight ? (color.lightBg || ['#f2f2f7', '#e5e5ea', '#e0dced']) : (color.darkBg || ['#040410', '#0d0a2a', '#1a0f4a']);
+  root.setProperty('--maf-bg-main', bg[0]);
+  root.setProperty('--maf-bg-secondary', bg[1]);
+  root.setProperty('--maf-gradient-bg', `linear-gradient(135deg, ${bg[0]} 0%, ${bg[1]} 25%, ${bg[2]} 50%, ${bg[1]} 75%, ${bg[0]} 100%)`);
 
   if (isLight) {
     root.setProperty('--accent-glow', `0 0 16px rgba(${rgb}, 0.25)`);
