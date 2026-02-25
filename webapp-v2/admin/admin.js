@@ -675,52 +675,120 @@
     }
 
     function renderGameEditor(game, userId) {
-        const peoples = game.peoples || [];
+        const peoples = game.peoples || game.players || [];
         const roles = game.roles || {};
         const fouls = game.fouls || {};
         const techFouls = game.techFouls || {};
         const removed = game.removed || {};
         const playersActions = game.playersActions || {};
+        const playerScores = game.playerScores || {};
+        const protocolData = game.protocolData || {};
+        const opinionData = game.opinionData || {};
 
         const roleOptions = [
             ['','—'],['city','🏙 Мирный'],['mafia','🔫 Мафия'],['don','🎩 Дон'],['sheriff','⭐ Шериф'],
             ['doctor','🩺 Доктор'],['maniac','🔪 Маньяк'],['detective','🔍 Детектив'],['kamikaze','💣 Камикадзе'],
             ['immortal','♾ Бессмертный'],['beauty','🌸 Красотка'],['oyabun','☯ Оябун'],['yakuza','⚔ Якудза'],['peace','🕊 Мирный']
         ];
+        const actionOptions = [['','—'],['killed','💀 Убит'],['voted','🗳 Выгнан'],['removed','❌ Удалён'],['fall_removed','4Ф'],['tech_fall_removed','2ТФ']];
 
         let playersRows = '';
         if (peoples.length > 0) {
             playersRows = peoples.map((p, i) => {
                 const login = (p && (p.login || p.name)) || '';
                 if (!login) return '';
-                const role = roles[i] || '';
-                const foul = fouls[i] || 0;
-                const tf = techFouls[i] || 0;
-                const isRemoved = removed[i] || false;
-                const actions = playersActions[i] || {};
-                const actionBadges = Object.keys(actions).slice(0,3).map(k => '<span class="admin-badge" style="font-size:.65em;margin:1px">' + esc(k) + '</span>').join('');
+                const rk = (p && p.roleKey) || String(i);
+                const role = roles[rk] || roles[i] || '';
+                const foul = fouls[rk] || fouls[i] || 0;
+                const tf = techFouls[rk] || techFouls[i] || 0;
+                const isRemoved = removed[rk] || removed[i] || false;
+                const ps = playerScores[rk] || playerScores[i] || { bonus: 0, penalty: 0 };
+                const action = playersActions[rk] || playersActions[i] || '';
                 const darkRoles = ['don','mafia','black','maniac','oyabun','yakuza','ripper','swindler','thief','snitch','fangirl','lawyer'];
                 const lightRoles = ['sheriff','doctor','detective','jailer','bodyguard','judge','priest'];
                 const roleClass = darkRoles.includes(role) ? 'room-role-mafia' : lightRoles.includes(role) ? 'room-role-sheriff' : '';
                 const opts = roleOptions.map(([v,l]) => '<option value="' + v + '"' + (role===v||(v==='mafia'&&role==='black') ? ' selected' : '') + '>' + l + '</option>').join('');
-                return '<tr class="' + (isRemoved ? 'room-player-removed' : '') + '"><td><b>' + (i+1) + '</b></td><td>' + esc(login) + '</td><td><select class="room-role-select ' + roleClass + '" data-field="roles" data-idx="' + i + '">' + opts + '</select></td><td><input type="number" class="game-edit-num" data-field="fouls" data-idx="' + i + '" value="' + foul + '" min="0" max="4"></td><td><input type="number" class="game-edit-num" data-field="techFouls" data-idx="' + i + '" value="' + tf + '" min="0" max="4"></td><td><label class="game-edit-check"><input type="checkbox" data-field="removed" data-idx="' + i + '"' + (isRemoved ? ' checked' : '') + '><span>' + (isRemoved?'Выбыл':'В игре') + '</span></label></td><td>' + actionBadges + '</td></tr>';
+                const actOpts = actionOptions.map(([v,l]) => '<option value="' + v + '"' + (action===v ? ' selected' : '') + '>' + l + '</option>').join('');
+                return '<tr class="' + (isRemoved ? 'room-player-removed' : '') + '">'
+                    + '<td><b>' + (i+1) + '</b></td>'
+                    + '<td>' + esc(login) + '</td>'
+                    + '<td><select class="room-role-select ' + roleClass + '" data-field="roles" data-idx="' + i + '" data-rk="' + esc(rk) + '">' + opts + '</select></td>'
+                    + '<td><input type="number" class="game-edit-num" data-field="fouls" data-idx="' + i + '" data-rk="' + esc(rk) + '" value="' + foul + '" min="0" max="4"></td>'
+                    + '<td><input type="number" class="game-edit-num" data-field="techFouls" data-idx="' + i + '" data-rk="' + esc(rk) + '" value="' + tf + '" min="0" max="4"></td>'
+                    + '<td><label class="game-edit-check"><input type="checkbox" data-field="removed" data-idx="' + i + '" data-rk="' + esc(rk) + '"' + (isRemoved ? ' checked' : '') + '><span>' + (isRemoved?'Выбыл':'В игре') + '</span></label></td>'
+                    + '<td><select class="game-edit-action-select" data-field="playersActions" data-idx="' + i + '" data-rk="' + esc(rk) + '">' + actOpts + '</select></td>'
+                    + '<td class="ge-score-cell"><input type="number" class="game-edit-score game-edit-score--bonus" data-field="bonus" data-idx="' + i + '" data-rk="' + esc(rk) + '" value="' + (ps.bonus||0) + '" step="0.1" placeholder="+"></td>'
+                    + '<td class="ge-score-cell"><input type="number" class="game-edit-score game-edit-score--penalty" data-field="penalty" data-idx="' + i + '" data-rk="' + esc(rk) + '" value="' + (ps.penalty||0) + '" step="0.1" placeholder="−"></td>'
+                    + '</tr>';
             }).filter(Boolean).join('');
         }
 
-        const playersTable = playersRows ? '<div class="game-editor-section"><div class="game-editor-section-title">Игроки (' + peoples.filter(p => p && (p.login||p.name)).length + ')</div><div class="admin-table-wrapper"><table class="admin-table" id="game-editor-players"><thead><tr><th>#</th><th>Игрок</th><th>Роль</th><th>Фолы</th><th>Тех.</th><th>Статус</th><th>Действия</th></tr></thead><tbody>' + playersRows + '</tbody></table></div></div>' : '';
+        const playersTable = playersRows
+            ? '<div class="game-editor-section"><div class="game-editor-section-title">Игроки (' + peoples.filter(p => p && (p.login||p.name)).length + ')</div>'
+              + '<div class="admin-table-wrapper"><table class="admin-table" id="game-editor-players"><thead><tr>'
+              + '<th>#</th><th>Игрок</th><th>Роль</th><th>Фолы</th><th>Тех.</th><th>Статус</th><th>Действие</th><th>+Доп</th><th>−Штраф</th>'
+              + '</tr></thead><tbody>' + playersRows + '</tbody></table></div></div>'
+            : '';
 
         const mode = game.cityMode ? 'Городская мафия' : game.funkyMode ? 'Фанки' : (game.tournamentId ? 'Турнир #' + (game.tournamentId||'') : (game.manualMode ? 'Ручной' : 'GoMafia'));
-        const bestMoveStr = (game.bestMove || []).map(b => b + 1).join(', ');
+        const bestMoveStr = (game.bestMove || []).map(b => typeof b === 'number' ? b + 1 : b).join(', ');
 
+        // Protocol/Opinion section
+        let protoOpinionHtml = '';
+        const protoKeys = Object.keys(protocolData).filter(k => protocolData[k] && Object.values(protocolData[k]).some(v => v));
+        const opinionKeys = Object.keys(opinionData).filter(k => opinionData[k] && Object.values(opinionData[k]).some(v => v));
+        if (protoKeys.length > 0 || opinionKeys.length > 0) {
+            const predLabels = { '': '—', peace: 'М', sheriff: 'Ш', mafia: 'Ч', don: 'Д' };
+            const renderPredRow = (data, key, label) => {
+                const preds = data[key] || {};
+                const cells = peoples.map((_, i) => {
+                    const pred = preds[i+1] || preds[String(i+1)] || '';
+                    const cls = pred === 'don' || pred === 'mafia' ? 'ge-pred--black' : pred === 'sheriff' ? 'ge-pred--sheriff' : pred === 'peace' ? 'ge-pred--peace' : '';
+                    return '<td class="ge-pred-cell ' + cls + '">' + (predLabels[pred]||'—') + '</td>';
+                }).join('');
+                const playerNum = key.includes('-') ? key.split('-').pop() : key;
+                const pObj = peoples[parseInt(playerNum)-1];
+                const pName = pObj ? (pObj.login || pObj.name || '#' + playerNum) : '#' + playerNum;
+                return '<tr><td class="ge-pred-player"><span class="admin-badge admin-badge-accent" style="font-size:.65em">' + label + '</span> ' + esc(pName) + '</td>' + cells + '</tr>';
+            };
+            const numHeaders = peoples.map((_,i) => '<th>' + (i+1) + '</th>').join('');
+            let protoRows = protoKeys.map(k => renderPredRow(protocolData, k, 'Прот.')).join('');
+            let opRows = opinionKeys.map(k => renderPredRow(opinionData, k, 'Мнен.')).join('');
+            protoOpinionHtml = '<div class="game-editor-section"><div class="game-editor-section-title">Протокол и мнение</div>'
+                + '<div class="admin-table-wrapper"><table class="admin-table ge-pred-table"><thead><tr><th>Игрок</th>' + numHeaders + '</tr></thead><tbody>'
+                + protoRows + opRows + '</tbody></table></div>'
+                + '<div style="font-size:.65em;color:var(--text-3);margin-top:4px">М — мирный, Ш — шериф, Ч — чёрный, Д — дон</div></div>';
+        }
+
+        // Voting section
         let votingHtml = '';
         if (game.votingHistory && game.votingHistory.length > 0) {
             const vhRows = game.votingHistory.map((vh, idx) => {
-                const noms = Object.values(vh.nominations || {}).filter(Boolean).length;
-                const winners = (vh.winners || []).map(w => w + 1).join(', ');
-                return '<tr><td>' + (idx+1) + '</td><td>' + noms + '</td><td>' + (winners||'—') + '</td></tr>';
+                const noms = Object.values(vh.nominations || vh.nominees || {}).filter(Boolean).length;
+                const winners = (vh.finalWinners || vh.winners || []).map(w => typeof w === 'number' ? w + 1 : w).join(', ');
+                return '<tr><td>' + (idx+1) + '</td><td>День ' + (vh.dayNumber||'—') + '</td><td>' + noms + '</td><td>' + (winners||'—') + '</td></tr>';
             }).join('');
-            votingHtml = '<div class="game-editor-section"><div class="game-editor-section-title">История голосований</div><div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>Круг</th><th>Номинаций</th><th>Выбыли</th></tr></thead><tbody>' + vhRows + '</tbody></table></div></div>';
+            votingHtml = '<div class="game-editor-section"><div class="game-editor-section-title">История голосований</div><div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>Круг</th><th>День</th><th>Номинаций</th><th>Выбыли</th></tr></thead><tbody>' + vhRows + '</tbody></table></div></div>';
         }
+
+        // Night check section
+        let nightCheckHtml = '';
+        if (game.nightCheckHistory && game.nightCheckHistory.length > 0) {
+            const nchRows = game.nightCheckHistory.map((nc, idx) => {
+                const checkNum = nc.checkedPlayer || nc.num || '—';
+                const checker = nc.checker || nc.role || '—';
+                const result = nc.result || nc.isBlack;
+                const resBadge = result === true || result === 'black' ? '<span class="admin-badge" style="background:rgba(239,68,68,.15);color:#ef4444">Чёрный</span>'
+                    : result === false || result === 'red' ? '<span class="admin-badge" style="background:rgba(34,197,94,.15);color:#22c55e">Красный</span>' : '—';
+                return '<tr><td>Ночь ' + (nc.night||idx+1) + '</td><td>' + esc(String(checker)) + '</td><td>' + checkNum + '</td><td>' + resBadge + '</td></tr>';
+            }).join('');
+            nightCheckHtml = '<div class="game-editor-section"><div class="game-editor-section-title">Ночные проверки</div><div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>Ночь</th><th>Роль</th><th>Игрок</th><th>Результат</th></tr></thead><tbody>' + nchRows + '</tbody></table></div></div>';
+        }
+
+        const gameModeOpts = [['gomafia','GoMafia'],['funky','Фанки'],['city','Городская'],['manual','Ручной']];
+        const curMode = game.gameMode || (game.cityMode ? 'city' : game.funkyMode ? 'funky' : 'gomafia');
+        const gmOpts = gameModeOpts.map(([v,l]) => '<option value="' + v + '"' + (curMode===v ? ' selected' : '') + '>' + l + '</option>').join('');
+        const phaseOpts = ['roles','day','night','voting','finished'].map(v => '<option value="' + v + '"' + ((game.gamePhase||'')=== v ? ' selected' : '') + '>' + v + '</option>').join('');
 
         showModal(`
             <div class="admin-modal-header">
@@ -731,9 +799,12 @@
                 <div class="game-editor-field"><span class="game-editor-label">Session ID</span><span class="game-editor-val" style="font-size:.74em">${esc(game.sessionId||'—')}</span></div>
                 <div class="game-editor-field"><span class="game-editor-label">Режим</span><span class="game-editor-val">${esc(mode)}</span></div>
                 <div class="game-editor-field"><span class="game-editor-label">Дата</span><span class="game-editor-val">${game.timestamp ? formatDate(new Date(game.timestamp)) : '—'}</span></div>
-                <div class="game-editor-field"><span class="game-editor-label">Номер</span><span class="game-editor-val">${game.gameNumber||game.manualGameSelected||'—'}</span></div>
-                <div class="game-editor-field"><span class="game-editor-label">Лучший ход</span><span class="game-editor-val">${bestMoveStr||'—'}</span></div>
+                <div class="game-editor-field"><span class="game-editor-label">Номер</span><span class="game-editor-val">${game.gameNumber||game.gameSelected||game.manualGameSelected||'—'}</span></div>
+                ${game.tournamentName ? '<div class="game-editor-field"><span class="game-editor-label">Турнир</span><span class="game-editor-val">' + esc(game.tournamentName) + '</span></div>' : ''}
+                ${game.tableSelected ? '<div class="game-editor-field"><span class="game-editor-label">Стол</span><span class="game-editor-val">' + game.tableSelected + '</span></div>' : ''}
+                ${game.adminModified ? '<div class="game-editor-field"><span class="game-editor-label">Изменён</span><span class="game-editor-val" style="color:var(--warning)">Админ ' + (game.adminModifiedAt ? formatDate(new Date(game.adminModifiedAt)) : '') + '</span></div>' : ''}
             </div>
+
             <div class="game-editor-section"><div class="game-editor-section-title">Основные параметры</div>
                 <div class="game-editor-controls">
                     <div class="game-editor-control"><label>Победитель</label><select id="ge-winnerTeam">
@@ -743,15 +814,38 @@
                         <option value="mafia" ${game.winnerTeam==='mafia'?'selected':''}>Мафия</option>
                         <option value="draw" ${game.winnerTeam==='draw'?'selected':''}>Ничья</option>
                     </select></div>
-                    <div class="game-editor-control"><label>ПКМ (0-based)</label><input type="number" id="ge-firstKilledPlayer" value="${game.firstKilledPlayer!==null&&game.firstKilledPlayer!==undefined?game.firstKilledPlayer:''}" min="-1" max="10"></div>
-                    <div class="game-editor-control"><label>Убит ночью (0-based)</label><input type="number" id="ge-killedOnNight" value="${game.killedOnNight!==null&&game.killedOnNight!==undefined?game.killedOnNight:''}" min="-1" max="10"></div>
-                    <div class="game-editor-control"><label>Лучший ход (0-based, через запятую)</label><input type="text" id="ge-bestMove" value="${(game.bestMove||[]).join(', ')}" placeholder="0, 3, 5"></div>
+                    <div class="game-editor-control"><label>Режим игры</label><select id="ge-gameMode">${gmOpts}</select></div>
+                    <div class="game-editor-control"><label>Фаза</label><select id="ge-gamePhase">${phaseOpts}</select></div>
+                    <div class="game-editor-control"><label>Номер игры</label><input type="number" id="ge-gameSelected" value="${game.gameSelected||''}" min="0"></div>
+                    <div class="game-editor-control"><label>Стол</label><input type="number" id="ge-tableSelected" value="${game.tableSelected||''}" min="0"></div>
+                    <div class="game-editor-control"><label>День</label><input type="number" id="ge-dayNumber" value="${game.dayNumber||0}" min="0"></div>
+                    <div class="game-editor-control"><label>Ночь</label><input type="number" id="ge-nightNumber" value="${game.nightNumber||0}" min="0"></div>
+                    <div class="game-editor-control"><label>ПУ (roleKey)</label><input type="text" id="ge-firstKilledPlayer" value="${game.firstKilledPlayer||''}" placeholder="roleKey или пусто"></div>
+                    <div class="game-editor-control"><label>ЛХ (номера через запятую)</label><input type="text" id="ge-bestMove" value="${(game.bestMove||[]).join(', ')}" placeholder="1, 3, 5"></div>
+                    <div class="game-editor-control"><label>Турнир ID</label><input type="text" id="ge-tournamentId" value="${game.tournamentId||''}" placeholder="ID турнира"></div>
+                    <div class="game-editor-control"><label>Название турнира</label><input type="text" id="ge-tournamentName" value="${game.tournamentName||''}" placeholder="Название"></div>
+                </div>
+                <div class="game-editor-controls" style="margin-top:8px">
+                    <div class="game-editor-control">
+                        <label class="game-edit-check"><input type="checkbox" id="ge-gameFinished" ${game.gameFinished?'checked':''}><span>Игра завершена</span></label>
+                    </div>
+                    <div class="game-editor-control">
+                        <label class="game-edit-check"><input type="checkbox" id="ge-seriesArchived" ${game.seriesArchived?'checked':''}><span>В истории (архив)</span></label>
+                    </div>
+                    <div class="game-editor-control">
+                        <label class="game-edit-check"><input type="checkbox" id="ge-bestMoveAccepted" ${game.bestMoveAccepted?'checked':''}><span>ЛХ принят</span></label>
+                    </div>
+                    <div class="game-editor-control">
+                        <label class="game-edit-check"><input type="checkbox" id="ge-rolesDistributed" ${game.rolesDistributed?'checked':''}><span>Роли розданы</span></label>
+                    </div>
                 </div>
             </div>
             ${playersTable}
+            ${protoOpinionHtml}
+            ${nightCheckHtml}
             ${votingHtml}
             <div class="game-editor-section"><div class="game-editor-section-title">Raw JSON</div>
-                <textarea class="admin-input game-editor-json" id="ge-raw-json" rows="6">${esc(JSON.stringify(game, null, 2))}</textarea>
+                <textarea class="admin-input game-editor-json" id="ge-raw-json" rows="8">${esc(JSON.stringify(game, null, 2))}</textarea>
                 <div style="font-size:.68em;color:var(--text-3);margin-top:3px">⚠️ Изменения в JSON перезапишут все поля.</div>
             </div>
             <div class="game-editor-actions">
@@ -766,27 +860,53 @@
         const eg = state.editingGame;
         if (!eg) { toast('Нет данных', 'error'); return; }
         const changes = {};
-        const winnerEl = document.getElementById('ge-winnerTeam');
-        if (winnerEl) changes.winnerTeam = winnerEl.value || null;
-        const fkpEl = document.getElementById('ge-firstKilledPlayer');
-        if (fkpEl) changes.firstKilledPlayer = fkpEl.value !== '' ? parseInt(fkpEl.value) : null;
-        const konEl = document.getElementById('ge-killedOnNight');
-        if (konEl) changes.killedOnNight = konEl.value !== '' ? parseInt(konEl.value) : null;
-        const bmEl = document.getElementById('ge-bestMove');
-        if (bmEl) { const val = bmEl.value.trim(); changes.bestMove = val ? val.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) : []; }
+
+        const val = (id) => { const el = document.getElementById(id); return el ? el.value : null; };
+        const chk = (id) => { const el = document.getElementById(id); return el ? el.checked : false; };
+
+        changes.winnerTeam = val('ge-winnerTeam') || null;
+        changes.gameMode = val('ge-gameMode') || null;
+        changes.gamePhase = val('ge-gamePhase') || 'roles';
+        const gs = val('ge-gameSelected'); changes.gameSelected = gs !== '' && gs !== null ? parseInt(gs) : null;
+        const ts = val('ge-tableSelected'); changes.tableSelected = ts !== '' && ts !== null ? parseInt(ts) : null;
+        changes.dayNumber = parseInt(val('ge-dayNumber')) || 0;
+        changes.nightNumber = parseInt(val('ge-nightNumber')) || 0;
+        const fkp = val('ge-firstKilledPlayer'); changes.firstKilledPlayer = fkp || null;
+        const bmVal = (val('ge-bestMove') || '').trim();
+        changes.bestMove = bmVal ? bmVal.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) : [];
+        changes.tournamentId = val('ge-tournamentId') || null;
+        changes.tournamentName = val('ge-tournamentName') || null;
+        changes.gameFinished = chk('ge-gameFinished');
+        changes.seriesArchived = chk('ge-seriesArchived');
+        changes.bestMoveAccepted = chk('ge-bestMoveAccepted');
+        changes.rolesDistributed = chk('ge-rolesDistributed');
+        changes.funkyMode = changes.gameMode === 'funky';
+        changes.cityMode = changes.gameMode === 'city';
+        changes.manualMode = changes.gameMode === 'manual';
+
         const table = document.getElementById('game-editor-players');
         if (table) {
-            const nr = {}, nf = {}, nt = {}, nrem = {};
+            const nr = {}, nf = {}, nt = {}, nrem = {}, nact = {}, nps = {};
             table.querySelectorAll('[data-field]').forEach(el => {
-                const f = el.dataset.field, idx = parseInt(el.dataset.idx);
-                if (isNaN(idx)) return;
-                if (f === 'roles') nr[idx] = el.value;
-                else if (f === 'fouls') nf[idx] = parseInt(el.value) || 0;
-                else if (f === 'techFouls') nt[idx] = parseInt(el.value) || 0;
-                else if (f === 'removed') nrem[idx] = el.checked;
+                const f = el.dataset.field;
+                const rk = el.dataset.rk || String(el.dataset.idx);
+                if (f === 'roles') nr[rk] = el.value;
+                else if (f === 'fouls') nf[rk] = parseInt(el.value) || 0;
+                else if (f === 'techFouls') nt[rk] = parseInt(el.value) || 0;
+                else if (f === 'removed') nrem[rk] = el.checked;
+                else if (f === 'playersActions') nact[rk] = el.value || null;
+                else if (f === 'bonus') {
+                    if (!nps[rk]) nps[rk] = { bonus: 0, penalty: 0, reveal: false };
+                    nps[rk].bonus = parseFloat(el.value) || 0;
+                } else if (f === 'penalty') {
+                    if (!nps[rk]) nps[rk] = { bonus: 0, penalty: 0, reveal: false };
+                    nps[rk].penalty = parseFloat(el.value) || 0;
+                }
             });
-            changes.roles = nr; changes.fouls = nf; changes.techFouls = nt; changes.removed = nrem;
+            changes.roles = nr; changes.fouls = nf; changes.techFouls = nt;
+            changes.removed = nrem; changes.playersActions = nact; changes.playerScores = nps;
         }
+
         let game = eg.source === 'userDetail' ? state.selectedUserDetail.games[eg.index] : state.selectedGameDetail.games[eg.index];
         if (!game || !game.sessionId) { toast('Сессия не найдена', 'error'); return; }
         try {
