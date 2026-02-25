@@ -1955,6 +1955,7 @@ export function MainMenu() {
           modal={newGameModal}
           onSelect={handleSelectNewGameInTournament}
           onClose={closeNewGameModal}
+          onLoadSession={loadSession}
         />,
         document.body
       )}
@@ -2100,9 +2101,16 @@ export function MainMenu() {
   }
 }
 
-function NewGameModal({ modal, onSelect, onClose }) {
+function NewGameModal({ modal, onSelect, onClose, onLoadSession }) {
   const { loading, error, group, games } = modal;
-  const playedGameNums = (group?.sessions || []).map(s => s.gameSelected).filter(Boolean);
+  const sessions = group?.sessions || [];
+  const completedNums = new Set(sessions.filter(s => s.winnerTeam && s.gameFinished).map(s => s.gameSelected));
+  const inProgressMap = {};
+  for (const s of sessions) {
+    if (s.gameSelected != null && !completedNums.has(s.gameSelected)) {
+      inProgressMap[s.gameSelected] = s.sessionId;
+    }
+  }
   const defaultTable = group?.tableSelected;
 
   return (
@@ -2137,10 +2145,11 @@ function NewGameModal({ modal, onSelect, onClose }) {
 
         {!loading && !error && games.length > 0 && (
           <div className="newgame-modal-games">
-            <div className="newgame-modal-hint">Выберите следующую игру:</div>
+            <div className="newgame-modal-hint">Выберите игру:</div>
             <div className="newgame-modal-games-list">
               {games.map(g => {
-                const isPlayed = playedGameNums.includes(g.gameNum);
+                const isCompleted = completedNums.has(g.gameNum);
+                const inProgressSid = inProgressMap[g.gameNum];
                 const table = defaultTable
                   ? g.game?.find(t => t.tableNum === defaultTable) || g.game?.[0]
                   : g.game?.[0];
@@ -2150,13 +2159,22 @@ function NewGameModal({ modal, onSelect, onClose }) {
                 return (
                   <button
                     key={g.gameNum}
-                    className={`newgame-modal-game-btn ${isPlayed ? 'newgame-modal-game-btn--played' : ''}`}
-                    disabled={isPlayed}
-                    onClick={() => { onSelect(g.gameNum, tableNum); triggerHaptic('success'); }}
+                    className={`newgame-modal-game-btn ${isCompleted ? 'newgame-modal-game-btn--played' : ''} ${inProgressSid ? 'newgame-modal-game-btn--active' : ''}`}
+                    disabled={isCompleted}
+                    onClick={() => {
+                      if (inProgressSid) {
+                        onLoadSession(inProgressSid);
+                        onClose();
+                      } else {
+                        onSelect(g.gameNum, tableNum);
+                      }
+                      triggerHaptic('success');
+                    }}
                   >
                     <div className="newgame-modal-game-main">
                       <span className="newgame-modal-game-num">Игра {g.gameNum}</span>
-                      {isPlayed && <span className="newgame-modal-game-badge">Уже сыграна</span>}
+                      {isCompleted && <span className="newgame-modal-game-badge">Уже сыграна</span>}
+                      {inProgressSid && <span className="newgame-modal-game-badge newgame-modal-game-badge--active">В процессе</span>}
                     </div>
                     <div className="newgame-modal-game-meta">
                       <span>Стол {tableNum}</span>

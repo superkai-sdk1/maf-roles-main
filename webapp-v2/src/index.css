@@ -3538,6 +3538,16 @@ body::after {
   cursor: default;
 }
 
+.newgame-modal-game-btn--active {
+  border-color: rgba(168,85,247,0.3);
+  background: rgba(168,85,247,0.06);
+}
+
+.newgame-modal-game-badge--active {
+  background: rgba(168,85,247,0.15);
+  color: var(--accent-color, #a855f7);
+}
+
 .newgame-modal-game-main {
   display: flex;
   align-items: center;
