@@ -514,11 +514,66 @@ html,body{width:100%;height:100%;font-family:var(--font);background:var(--bg);co
     .game-editor-controls{grid-template-columns:1fr}
     .rooms-grid{grid-template-columns:1fr}
     .room-toggles-grid{grid-template-columns:1fr}
+    .gc-controls-grid{grid-template-columns:1fr}
+    .gc-toggles-grid{grid-template-columns:1fr}
+    .gc-info-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:480px){
     .admin-stats-grid{grid-template-columns:1fr}
     .admin-grid-2{grid-template-columns:1fr}
 }
+
+/* ==========================================================================
+   Game Control
+   ========================================================================== */
+.gc-room-selector{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.gc-room-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:100px;border:1px solid var(--border);background:var(--surface-1);color:var(--text-2);font-family:var(--font);font-size:.84em;font-weight:700;cursor:pointer;transition:all .15s var(--ease)}
+.gc-room-btn:hover{background:var(--surface-2);border-color:var(--border-strong)}
+.gc-room-btn.active{background:var(--accent-dim);border-color:var(--border-accent);color:var(--accent)}
+.gc-room-count{font-size:.78em;padding:1px 6px;border-radius:100px;background:var(--surface-3);color:var(--text-3);font-weight:600}
+.gc-room-btn.active .gc-room-count{background:rgba(139,92,246,.2);color:var(--accent-light)}
+
+.gc-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.gc-info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:14px}
+.gc-info-card{display:flex;flex-direction:column;gap:3px;padding:12px 14px;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-m);backdrop-filter:blur(16px) saturate(1.3)}
+.gc-info-label{font-size:.68em;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em}
+.gc-info-val{font-size:1em;font-weight:800;color:var(--text)}
+.gc-info-accent{color:var(--accent)}
+
+.gc-section{margin-bottom:14px}
+.gc-controls-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gc-control{display:flex;flex-direction:column;gap:4px}
+.gc-control label{font-size:.72em;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.03em}
+
+.gc-toggles-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.gc-toggle{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(0,0,0,.1);border-radius:var(--r-xs);cursor:pointer;font-size:.8em;color:var(--text-2);transition:background .12s}
+.gc-toggle:hover{background:var(--surface-2)}
+.gc-toggle input[type="checkbox"]{accent-color:var(--accent);width:14px;height:14px}
+
+/* ==========================================================================
+   Notifications Management
+   ========================================================================== */
+.notif-list{display:flex;flex-direction:column;gap:8px}
+.notif-card{display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-l);cursor:pointer;transition:all .2s var(--ease);backdrop-filter:blur(16px) saturate(1.3);box-shadow:0 2px 8px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.06);position:relative;overflow:hidden}
+.notif-card::after{content:'';position:absolute;inset:0;background:linear-gradient(165deg,rgba(255,255,255,0.04) 0%,transparent 50%);pointer-events:none;border-radius:inherit}
+.notif-card:hover{border-color:var(--border-accent);background:var(--accent-dim);box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.notif-card-icon{width:42px;height:42px;border-radius:var(--r-m);display:flex;align-items:center;justify-content:center;font-size:1.2em;flex-shrink:0;border:1px solid transparent}
+.notif-card-body{flex:1;min-width:0}
+.notif-card-header{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.notif-card-title{font-size:.88em;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notif-card-desc{font-size:.78em;color:var(--text-2);line-height:1.4;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.notif-card-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.notif-card-actions{display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+
+.notif-icon-grid{display:flex;flex-wrap:wrap;gap:4px}
+.notif-icon-btn{width:32px;height:32px;border-radius:var(--r-xs);border:1px solid var(--border);background:var(--surface-1);font-size:1.1em;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.notif-icon-btn:hover{background:var(--surface-2);border-color:var(--border-strong)}
+.notif-icon-btn.active{border-color:var(--accent);background:var(--accent-dim)}
+
+.notif-color-grid{display:flex;flex-wrap:wrap;gap:4px}
+.notif-color-btn{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:all .12s}
+.notif-color-btn:hover{transform:scale(1.15)}
+.notif-color-btn.active{border-color:var(--text);box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--text)}
 
 /* ==========================================================================
    Print

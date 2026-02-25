@@ -438,6 +438,8 @@ export function MainMenu() {
   const [activeTab, setActiveTab] = useState('active');
   const [expandedSeries, setExpandedSeries] = useState({});
   const [menuScreen, setMenuScreen] = useState('game');
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   const [newGameModal, setNewGameModal] = useState({
     visible: false, loading: false, error: '',
@@ -567,6 +569,17 @@ export function MainMenu() {
       try { localStorage.setItem('maf_player_last_viewed', String(now)); } catch {}
     }
   }, [menuScreen, loadPlayerGames]);
+
+  useEffect(() => {
+    if (menuScreen === 'notifications') {
+      setNotificationsLoading(true);
+      fetch('/api/notifications.php')
+        .then(r => r.json())
+        .then(data => setNotifications(data.notifications || []))
+        .catch(() => setNotifications([]))
+        .finally(() => setNotificationsLoading(false));
+    }
+  }, [menuScreen]);
 
   const playerHasUpdates = useMemo(() => {
     if (!playerGames || playerGames.length === 0) return false;
@@ -2102,71 +2115,47 @@ export function MainMenu() {
           {/* =================== NOTIFICATIONS SCREEN =================== */}
           {menuScreen === 'notifications' && (
             <div className="animate-fade-in w-full max-w-[400px] pb-[100px] flex flex-col gap-3">
-              {/* Header */}
               <div className="flex items-center justify-between mb-1">
                 <h2 className="text-[1.3em] font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>Уведомления</h2>
-                <span className="text-[0.65em] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full text-accent" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
-                  скоро
-                </span>
+                {notifications.length > 0 && (
+                  <span className="text-[0.65em] font-bold tracking-wider px-2.5 py-1 rounded-full" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)', color: 'var(--accent-color)' }}>
+                    {notifications.length}
+                  </span>
+                )}
               </div>
 
-              <div className="text-[0.8em] font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
-                Здесь будут отображаться уведомления о турнирах, играх и важных событиях.
-              </div>
-
-              {/* Example notifications */}
-              <div className="flex flex-col gap-2.5 opacity-60 pointer-events-none select-none">
-                <NotificationCard
-                  icon="🏆"
-                  accentColor="#ffd700"
-                  title="Турнир «Кубок Города» начинается"
-                  description="Через 30 минут стартует ваш стол #3. Подготовьтесь к судейству."
-                  time="30 мин назад"
-                  isNew
-                />
-                <NotificationCard
-                  icon="📡"
-                  accentColor="var(--accent-color)"
-                  title="Зритель подключился к комнате"
-                  description="К вашей трансляции подключился новый зритель. Всего: 12."
-                  time="1 ч назад"
-                  isNew
-                />
-                <NotificationCard
-                  icon="🎮"
-                  accentColor="#30d158"
-                  title="Игра #4 завершена"
-                  description="Результаты сохранены. Победа мирных жителей. Баллы начислены."
-                  time="2 ч назад"
-                />
-                <NotificationCard
-                  icon="👤"
-                  accentColor="#4fc3f7"
-                  title="Новый аккаунт GoMafia привязан"
-                  description="Аккаунт player_42 успешно привязан к вашему профилю."
-                  time="вчера"
-                />
-                <NotificationCard
-                  icon="🔔"
-                  accentColor="#ff6fcb"
-                  title="Обновление MafBoard"
-                  description="Вышла версия 2.1 — новые темы, улучшенные голосования и исправления."
-                  time="2 дня назад"
-                />
-              </div>
-
-              {/* Empty state hint */}
-              <div className="flex flex-col items-center gap-3 mt-6 py-8">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
-                  <IconBell size={28} color="var(--accent-color)" />
+              {notificationsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--accent-border)', borderTopColor: 'var(--accent-color)' }} />
                 </div>
-                <div className="text-center">
-                  <div className="text-[0.95em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Уведомления скоро появятся</div>
-                  <div className="text-[0.8em] font-medium max-w-[280px]" style={{ color: 'var(--text-muted)' }}>
-                    Мы работаем над системой уведомлений. Вы будете получать оповещения о турнирах, результатах игр и обновлениях.
+              ) : notifications.length > 0 ? (
+                <div className="flex flex-col gap-2.5">
+                  {notifications.map(n => (
+                    <NotificationCard
+                      key={n.id}
+                      icon={n.icon || '📢'}
+                      accentColor={n.accentColor || 'var(--accent-color)'}
+                      title={n.title}
+                      description={n.description}
+                      time={formatSessionDate(n.created_at)}
+                      isNew={n.pinned}
+                      link={n.link}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-3 mt-6 py-8">
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
+                    <IconBell size={28} color="var(--accent-color)" />
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[0.95em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Нет уведомлений</div>
+                    <div className="text-[0.8em] font-medium max-w-[280px]" style={{ color: 'var(--text-muted)' }}>
+                      Здесь будут появляться уведомления о турнирах, результатах игр и обновлениях.
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -2728,10 +2717,13 @@ function NavItem({ active, primary, onClick, icon, label, badge }) {
   );
 }
 
-function NotificationCard({ icon, accentColor, title, description, time, isNew }) {
+function NotificationCard({ icon, accentColor, title, description, time, isNew, link }) {
+  const Wrapper = link ? 'a' : 'div';
+  const wrapperProps = link ? { href: link, target: '_blank', rel: 'noopener noreferrer' } : {};
   return (
-    <div
-      className="relative p-4 rounded-2xl glass-card flex gap-3"
+    <Wrapper
+      {...wrapperProps}
+      className="relative p-4 rounded-2xl glass-card flex gap-3 no-underline"
       style={isNew ? { borderLeft: `3px solid ${accentColor}` } : {}}
     >
       <div
@@ -2750,7 +2742,7 @@ function NotificationCard({ icon, accentColor, title, description, time, isNew }
         <div className="text-[0.72em] font-medium mt-0.5 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{description}</div>
         <div className="text-[0.62em] font-medium mt-1.5" style={{ color: 'var(--text-muted)' }}>{time}</div>
       </div>
-    </div>
+    </Wrapper>
   );
 }
 

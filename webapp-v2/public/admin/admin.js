@@ -243,6 +243,7 @@
         games: 'Игровые сессии', summaries: 'Итоги вечеров', rooms: 'Комнаты',
         roomDetail: 'Комната', players: 'GoMafia Sync', sessions: 'Auth Сессии',
         system: 'Система', userDetail: 'Пользователь', gameDetail: 'Игры пользователя',
+        gameControl: 'Управление игрой', notifications: 'Уведомления',
     };
 
     function navigate(page, params) {
@@ -269,6 +270,8 @@
             case 'system': loadSystem(); break;
             case 'userDetail': loadUserDetail(params); break;
             case 'gameDetail': loadGameDetail(params); break;
+            case 'gameControl': loadGameControl(params); break;
+            case 'notifications': loadNotifications(); break;
             default: content.innerHTML = '<div class="admin-empty"><h3>Страница не найдена</h3></div>';
         }
     }
@@ -1542,6 +1545,312 @@
 
 
     // =======================================================================
+    // Game Control (Live Room Management)
+    // =======================================================================
+    let gameControlRoom = null;
+    let gameControlData = null;
+    let gameControlPollTimer = null;
+
+    async function loadGameControl(roomId) {
+        const content = document.getElementById('admin-page-content');
+        try {
+            const roomsResp = await apiCall('admin-rooms.php');
+            const rooms = roomsResp.rooms || [];
+            if (rooms.length === 0 && !roomId) {
+                content.innerHTML = '<div class="admin-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".3"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><h3>Нет активных комнат</h3><p>Создайте комнату через основное приложение или подключитесь к существующей</p></div>';
+                return;
+            }
+
+            if (!roomId && rooms.length > 0) {
+                roomId = rooms[0].roomId;
+            }
+            gameControlRoom = roomId;
+            updateBreadcrumb('gameControl', roomId);
+
+            const data = await apiCall('admin-rooms.php', { params: { action: 'detail', roomId } });
+            gameControlData = data;
+
+            const roomSelector = '<div class="gc-room-selector">' + rooms.map(r =>
+                '<button class="gc-room-btn ' + (r.roomId === roomId ? 'active' : '') + '" onclick="AdminApp.loadGameControl(\'' + esc(r.roomId) + '\')">#' + esc(r.roomId) + ' <span class="gc-room-count">' + r.playersCount + '</span></button>'
+            ).join('') + '</div>';
+
+            const phases = ['roles','discussion','freeSeating','day','night','results'];
+            const phaseNames = { roles:'Роли', discussion:'Договорка', freeSeating:'Свободная', day:'День', night:'Ночь', results:'Итоги' };
+            const curPhase = data.rawKeys?.includes('gamePhase') ? (data.rawKeys, '') : '';
+            const rawData = data;
+
+            const statusBadge = data.winnerTeam
+                ? '<span class="admin-badge ' + (data.winnerTeam === 'mafia' ? 'admin-badge-error' : 'admin-badge-success') + '">Победа: ' + esc(data.winnerTeam) + '</span>'
+                : data.players?.some(p => p.role)
+                    ? '<span class="admin-badge admin-badge-accent">Идёт игра</span>'
+                    : '<span class="admin-badge admin-badge-warning">Подготовка</span>';
+
+            const roleOptions = [['','—'],['city','🏙 Мирный'],['black','🔫 Мафия'],['don','🎩 Дон'],['sheriff','⭐ Шериф'],['doctor','🩺 Доктор'],['maniac','🔪 Маньяк'],['peace','🕊 Мирный']];
+            const actionOptions = [['','В игре'],['killed','💀 Убит'],['voted','🗳 Выгнан'],['removed','❌ Удалён'],['fall_removed','4Ф'],['tech_fall_removed','2ТФ']];
+
+            let playersHtml = '';
+            if (data.players && data.players.length > 0) {
+                const pRows = data.players.map(p => {
+                    const darkRoles = ['don','mafia','black','maniac','oyabun','yakuza'];
+                    const lightRoles = ['sheriff','doctor','detective'];
+                    const roleClass = darkRoles.includes(p.role) ? 'room-role-mafia' : lightRoles.includes(p.role) ? 'room-role-sheriff' : '';
+                    const avatar = data.avatars?.[p.login] ? '<img src="' + esc(data.avatars[p.login]) + '" class="room-player-avatar" onerror="this.style.display=\'none\'">' : '';
+                    const rOpts = roleOptions.map(([v,l]) => '<option value="' + v + '"' + ((p.role===v||(v==='black'&&p.role==='mafia')) ? ' selected' : '') + '>' + l + '</option>').join('');
+                    const aOpts = actionOptions.map(([v,l]) => '<option value="' + v + '"' + ((p.removed && v==='removed') ? ' selected' : '') + '>' + l + '</option>').join('');
+                    return '<tr class="' + (p.removed?'room-player-removed':'') + '">'
+                        + '<td><b>' + p.seat + '</b></td>'
+                        + '<td>' + avatar + esc(p.login||p.name||'—') + '</td>'
+                        + '<td><select class="room-role-select ' + roleClass + '" onchange="AdminApp.gcSetRole(\'' + esc(roomId) + '\',' + (p.seat-1) + ',this.value)">' + rOpts + '</select></td>'
+                        + '<td>' + (p.fouls > 0 ? '<span class="admin-badge admin-badge-warning">' + p.fouls + 'Ф</span>' : '0') + '</td>'
+                        + '<td><select class="game-edit-action-select" onchange="AdminApp.gcSetAction(\'' + esc(roomId) + '\',' + (p.seat-1) + ',this.value)">' + aOpts + '</select></td>'
+                        + '</tr>';
+                }).join('');
+                playersHtml = '<div class="admin-card gc-section"><div class="admin-card-header"><div class="admin-card-title">🎭 Игроки (' + data.players.length + ')</div></div>'
+                    + '<div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>#</th><th>Игрок</th><th>Роль</th><th>Фолы</th><th>Действие</th></tr></thead><tbody>' + pRows + '</tbody></table></div></div>';
+            }
+
+            const winnerOpts = [['','Не определён'],['civilians','Мирные'],['mafia','Мафия'],['draw','Ничья']];
+            const winOpts = winnerOpts.map(([v,l]) => '<option value="' + v + '"' + ((data.winnerTeam||'')===v ? ' selected' : '') + '>' + l + '</option>').join('');
+
+            const broadcastHtml = `
+                <div class="admin-card gc-section">
+                    <div class="admin-card-header"><div class="admin-card-title">🖥 Трансляция и настройки</div></div>
+                    <div class="gc-controls-grid">
+                        <div class="gc-control"><label>Основной текст</label><input type="text" class="admin-input" value="${esc(data.mainInfoText||'')}" onchange="AdminApp.gcUpdateField('${esc(roomId)}','mainInfoText',this.value)"></div>
+                        <div class="gc-control"><label>Дополнительный текст</label><input type="text" class="admin-input" value="${esc(data.additionalInfoText||'')}" onchange="AdminApp.gcUpdateField('${esc(roomId)}','additionalInfoText',this.value)"></div>
+                        <div class="gc-control"><label>Победитель</label><select class="admin-select" onchange="AdminApp.gcUpdateField('${esc(roomId)}','winnerTeam',this.value||null)">${winOpts}</select></div>
+                    </div>
+                    <div class="gc-toggles-grid" style="margin-top:12px">
+                        <label class="gc-toggle"><input type="checkbox" ${data.hideSeating?'checked':''} onchange="AdminApp.gcUpdateField('${esc(roomId)}','hideSeating',this.checked)"><span>Скрыть рассадку</span></label>
+                        <label class="gc-toggle"><input type="checkbox" ${data.hideLeaveOrder?'checked':''} onchange="AdminApp.gcUpdateField('${esc(roomId)}','hideLeaveOrder',this.checked)"><span>Скрыть порядок вых.</span></label>
+                        <label class="gc-toggle"><input type="checkbox" ${data.hideRolesStatus?'checked':''} onchange="AdminApp.gcUpdateField('${esc(roomId)}','hideRolesStatus',this.checked)"><span>Скрыть статус ролей</span></label>
+                        <label class="gc-toggle"><input type="checkbox" ${data.hideBestMove?'checked':''} onchange="AdminApp.gcUpdateField('${esc(roomId)}','hideBestMove',this.checked)"><span>Скрыть лучший ход</span></label>
+                    </div>
+                </div>`;
+
+            const infoCards = `
+                <div class="gc-info-grid">
+                    <div class="gc-info-card"><span class="gc-info-label">Комната</span><span class="gc-info-val gc-info-accent">#${esc(roomId)}</span></div>
+                    <div class="gc-info-card"><span class="gc-info-label">Режим</span><span class="gc-info-val">${esc(data.currentMode||'—')}</span></div>
+                    <div class="gc-info-card"><span class="gc-info-label">Игроков</span><span class="gc-info-val">${data.players?.length || 0}</span></div>
+                    <div class="gc-info-card"><span class="gc-info-label">Городская</span><span class="gc-info-val">${data.cityMode?'Да':'Нет'}</span></div>
+                    <div class="gc-info-card"><span class="gc-info-label">Ручной</span><span class="gc-info-val">${data.manualMode?'Да':'Нет'}</span></div>
+                    <div class="gc-info-card"><span class="gc-info-label">Лучший ход</span><span class="gc-info-val">${(data.bestMove||[]).join(', ')||'—'}</span></div>
+                </div>`;
+
+            const actionsHtml = `
+                <div class="admin-card gc-section">
+                    <div class="admin-card-header"><div class="admin-card-title">⚡ Действия</div></div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <button class="admin-btn admin-btn-primary" onclick="AdminApp.loadGameControl('${esc(roomId)}')">🔄 Обновить</button>
+                        <button class="admin-btn admin-btn-secondary" onclick="AdminApp.openRoomPanel('${esc(roomId)}')">🎯 Открыть панель</button>
+                        <button class="admin-btn admin-btn-secondary" onclick="AdminApp.clearRoom('${esc(roomId)}')">🧹 Очистить</button>
+                        <button class="admin-btn admin-btn-danger" onclick="AdminApp.deleteRoom('${esc(roomId)}')">🗑 Удалить</button>
+                    </div>
+                </div>`;
+
+            let votingHtml = '';
+            if (data.votingHistory && data.votingHistory.length > 0) {
+                const vhRows = data.votingHistory.map((vh, idx) => {
+                    const winners = (vh.finalWinners || []).map(w => typeof w === 'number' ? w : w).join(', ');
+                    return '<tr><td>' + (idx+1) + '</td><td>День ' + (vh.dayNumber||'—') + '</td><td>' + (vh.nominees||[]).length + '</td><td>' + (winners||'—') + '</td></tr>';
+                }).join('');
+                votingHtml = '<div class="admin-card gc-section"><div class="admin-card-header"><div class="admin-card-title">🗳 История голосований</div></div><div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>#</th><th>День</th><th>Номинаций</th><th>Выбыли</th></tr></thead><tbody>' + vhRows + '</tbody></table></div></div>';
+            }
+
+            content.innerHTML = roomSelector + '<div class="gc-header">' + statusBadge + '</div>' + infoCards + playersHtml + broadcastHtml + actionsHtml + votingHtml;
+
+        } catch(e) {
+            content.innerHTML = '<div class="admin-empty"><h3>Ошибка</h3><p>' + esc(e.message) + '</p></div>';
+        }
+    }
+
+    async function gcSetRole(roomId, seat, role) {
+        try {
+            await apiCall('admin-rooms.php', { body: { action: 'setRole', roomId, seat, role } });
+            toast('Роль обновлена', 'success');
+        } catch(e) { toast('Ошибка: ' + e.message, 'error'); }
+    }
+
+    async function gcSetAction(roomId, seat, action) {
+        try {
+            const filePath = roomId;
+            const data = await apiCall('admin-rooms.php', { params: { action: 'detail', roomId } });
+            const roomData = {};
+            if (action === 'removed' || action === 'fall_removed' || action === 'tech_fall_removed') {
+                await apiCall('admin-rooms.php', { body: { action: 'updateField', roomId, field: 'nominations', value: {} } });
+            }
+            toast('Действие обновлено', 'success');
+        } catch(e) { toast('Ошибка: ' + e.message, 'error'); }
+    }
+
+    async function gcUpdateField(roomId, field, value) {
+        try {
+            await apiCall('admin-rooms.php', { body: { action: 'updateField', roomId, field, value } });
+            toast('Сохранено', 'success');
+        } catch(e) { toast('Ошибка: ' + e.message, 'error'); }
+    }
+
+
+    // =======================================================================
+    // Notifications Management
+    // =======================================================================
+    let notificationsData = null;
+
+    async function loadNotifications() {
+        const content = document.getElementById('admin-page-content');
+        try {
+            const data = await apiCall('admin-notifications.php');
+            notificationsData = data;
+            const items = data.notifications || [];
+
+            const typeIcons = { tournament:'🏆', game:'🎮', update:'🔔', news:'📰', system:'⚙️', general:'📢' };
+            const typeNames = { tournament:'Турнир', game:'Игра', update:'Обновление', news:'Новость', system:'Система', general:'Общее' };
+
+            let cardsHtml = '';
+            if (items.length > 0) {
+                cardsHtml = items.map(n => {
+                    const typeBadge = '<span class="admin-badge admin-badge-accent">' + (typeNames[n.type]||n.type) + '</span>';
+                    const statusBadge = n.published
+                        ? '<span class="admin-badge admin-badge-success">Опубликовано</span>'
+                        : '<span class="admin-badge admin-badge-muted">Черновик</span>';
+                    const pinnedBadge = n.pinned ? '<span class="admin-badge admin-badge-warning">📌</span>' : '';
+                    const expiredBadge = n.expires_at && new Date(n.expires_at) < new Date()
+                        ? '<span class="admin-badge admin-badge-error">Истекло</span>' : '';
+
+                    return '<div class="notif-card" onclick="AdminApp.editNotification(\'' + esc(n.id) + '\')">'
+                        + '<div class="notif-card-icon" style="background:' + esc(n.accentColor||'var(--accent)') + '15;border-color:' + esc(n.accentColor||'var(--accent)') + '25">' + (n.icon||'📢') + '</div>'
+                        + '<div class="notif-card-body">'
+                        + '<div class="notif-card-header"><span class="notif-card-title">' + esc(n.title) + '</span></div>'
+                        + '<div class="notif-card-desc">' + esc(n.description||'').substring(0, 100) + '</div>'
+                        + '<div class="notif-card-meta">' + typeBadge + statusBadge + pinnedBadge + expiredBadge + '<span style="font-size:.7em;color:var(--text-3)">' + timeAgo(n.created_at) + '</span></div>'
+                        + '</div>'
+                        + '<div class="notif-card-actions" onclick="event.stopPropagation()">'
+                        + '<button class="admin-btn admin-btn-xs ' + (n.published?'admin-btn-secondary':'admin-btn-success') + '" onclick="AdminApp.toggleNotifPublish(\'' + esc(n.id) + '\',' + (n.published?'false':'true') + ')" title="' + (n.published?'Скрыть':'Опубликовать') + '">' + (n.published?'👁':'👁‍🗨') + '</button>'
+                        + '<button class="admin-btn admin-btn-xs admin-btn-danger" onclick="AdminApp.deleteNotification(\'' + esc(n.id) + '\')" title="Удалить">🗑</button>'
+                        + '</div></div>';
+                }).join('');
+            } else {
+                cardsHtml = '<div class="admin-empty"><h3>Нет уведомлений</h3><p>Создайте первое уведомление для пользователей</p></div>';
+            }
+
+            content.innerHTML = `
+                <div class="admin-toolbar">
+                    <div class="admin-toolbar-left">
+                        <span style="font-size:.84em;color:var(--text-2)">Уведомления и новости для пользователей</span>
+                    </div>
+                    <div class="admin-toolbar-right">
+                        <button class="admin-btn admin-btn-primary" onclick="AdminApp.createNotification()">+ Создать</button>
+                        <span style="font-size:.78em;color:var(--text-3)">Всего: ${data.total}</span>
+                    </div>
+                </div>
+                <div class="notif-list">${cardsHtml}</div>`;
+        } catch(e) {
+            content.innerHTML = '<div class="admin-empty"><h3>Ошибка</h3><p>' + esc(e.message) + '</p></div>';
+        }
+    }
+
+    function createNotification() {
+        renderNotificationEditor({});
+    }
+
+    async function editNotification(id) {
+        try {
+            const n = await apiCall('admin-notifications.php', { params: { id } });
+            renderNotificationEditor(n);
+        } catch(e) { toast('Ошибка: ' + e.message, 'error'); }
+    }
+
+    function renderNotificationEditor(n) {
+        const isEdit = !!n.id;
+        const typeOptions = [['news','📰 Новость'],['tournament','🏆 Турнир'],['game','🎮 Игра'],['update','🔔 Обновление'],['system','⚙️ Система'],['general','📢 Общее']];
+        const typeOpts = typeOptions.map(([v,l]) => '<option value="' + v + '"' + ((n.type||'news')===v?' selected':'') + '>' + l + '</option>').join('');
+        const iconPresets = ['📢','🏆','🎮','🔔','📰','⚙️','🎉','🌟','⚡','🎯','📋','👤','📡','💬','🔥','❗'];
+        const iconBtns = iconPresets.map(i => '<button type="button" class="notif-icon-btn" onclick="document.getElementById(\'ne-icon\').value=\'' + i + '\';this.parentElement.querySelectorAll(\'.notif-icon-btn\').forEach(b=>b.classList.remove(\'active\'));this.classList.add(\'active\')">' + i + '</button>').join('');
+        const colorPresets = ['#8b5cf6','#ffd700','#30d158','#ef4444','#3b82f6','#ec4899','#eab308','#4fc3f7','#ff6fcb','#f97316'];
+        const colorBtns = colorPresets.map(c => '<button type="button" class="notif-color-btn' + ((n.accentColor||'#8b5cf6')===c?' active':'') + '" style="background:' + c + '" onclick="document.getElementById(\'ne-accentColor\').value=\'' + c + '\';this.parentElement.querySelectorAll(\'.notif-color-btn\').forEach(b=>b.classList.remove(\'active\'));this.classList.add(\'active\')"></button>').join('');
+
+        showModal(`
+            <div class="admin-modal-header">
+                <div class="admin-modal-title">${isEdit ? 'Редактировать' : 'Создать'} уведомление</div>
+                <button class="admin-modal-close" onclick="AdminApp.closeModal()">✕</button>
+            </div>
+            <div class="game-editor-section"><div class="game-editor-section-title">Основное</div>
+                <div class="game-editor-controls">
+                    <div class="game-editor-control" style="grid-column:span 2"><label>Заголовок</label><input type="text" id="ne-title" class="admin-input" value="${esc(n.title||'')}" placeholder="Заголовок уведомления"></div>
+                    <div class="game-editor-control" style="grid-column:span 2"><label>Описание</label><textarea id="ne-description" class="admin-input" rows="3" placeholder="Текст уведомления">${esc(n.description||'')}</textarea></div>
+                    <div class="game-editor-control"><label>Тип</label><select id="ne-type" class="admin-select">${typeOpts}</select></div>
+                    <div class="game-editor-control"><label>Ссылка (необязательно)</label><input type="text" id="ne-link" class="admin-input" value="${esc(n.link||'')}" placeholder="https://..."></div>
+                </div>
+            </div>
+            <div class="game-editor-section"><div class="game-editor-section-title">Оформление</div>
+                <div class="game-editor-controls">
+                    <div class="game-editor-control"><label>Иконка</label><input type="text" id="ne-icon" class="admin-input" value="${n.icon||'📢'}" style="font-size:1.3em;text-align:center;max-width:60px"><div class="notif-icon-grid" style="margin-top:6px">${iconBtns}</div></div>
+                    <div class="game-editor-control"><label>Цвет акцента</label><input type="text" id="ne-accentColor" class="admin-input" value="${esc(n.accentColor||'#8b5cf6')}" style="max-width:120px"><div class="notif-color-grid" style="margin-top:6px">${colorBtns}</div></div>
+                </div>
+            </div>
+            <div class="game-editor-section"><div class="game-editor-section-title">Публикация</div>
+                <div class="game-editor-controls">
+                    <div class="game-editor-control"><label class="game-edit-check"><input type="checkbox" id="ne-published" ${n.published!==false?'checked':''}><span>Опубликовано</span></label></div>
+                    <div class="game-editor-control"><label class="game-edit-check"><input type="checkbox" id="ne-pinned" ${n.pinned?'checked':''}><span>Закреплено</span></label></div>
+                    <div class="game-editor-control"><label>Истекает (необязательно)</label><input type="datetime-local" id="ne-expires_at" class="admin-input" value="${n.expires_at ? n.expires_at.substring(0,16) : ''}"></div>
+                </div>
+            </div>
+            <div class="game-editor-actions">
+                <button class="admin-btn admin-btn-primary" onclick="AdminApp.saveNotification('${n.id||''}')">${isEdit?'Сохранить':'Создать'}</button>
+                ${isEdit ? '<button class="admin-btn admin-btn-danger" onclick="AdminApp.deleteNotification(\'' + esc(n.id) + '\');AdminApp.closeModal();">Удалить</button>' : ''}
+                <button class="admin-btn admin-btn-secondary" onclick="AdminApp.closeModal()">Отмена</button>
+            </div>
+        `);
+    }
+
+    async function saveNotification(id) {
+        const val = (elId) => { const el = document.getElementById(elId); return el ? (el.tagName === 'TEXTAREA' ? el.value : el.value) : ''; };
+        const chk = (elId) => { const el = document.getElementById(elId); return el ? el.checked : false; };
+
+        const data = {
+            title: val('ne-title'),
+            description: val('ne-description'),
+            type: val('ne-type') || 'news',
+            icon: val('ne-icon') || '📢',
+            accentColor: val('ne-accentColor') || '#8b5cf6',
+            link: val('ne-link') || null,
+            published: chk('ne-published'),
+            pinned: chk('ne-pinned'),
+            expires_at: val('ne-expires_at') ? new Date(val('ne-expires_at')).toISOString() : null,
+        };
+
+        if (!data.title.trim()) { toast('Заголовок обязателен', 'error'); return; }
+
+        try {
+            const body = id ? { id, data } : { data };
+            await apiCall('admin-notifications.php', { body });
+            toast(id ? 'Уведомление обновлено' : 'Уведомление создано', 'success');
+            closeModal();
+            loadNotifications();
+        } catch(e) { toast('Ошибка: ' + e.message, 'error'); }
+    }
+
+    async function deleteNotification(id) {
+        const ok = await confirmDialog('Удалить уведомление?', 'Это действие нельзя отменить.', { danger: true, confirmText: 'Удалить', icon: '🗑️' });
+        if (!ok) return;
+        try {
+            await apiCall('admin-notifications.php', { method: 'DELETE', params: { id } });
+            toast('Уведомление удалено', 'success');
+            if (state.currentPage === 'notifications') loadNotifications();
+        } catch(e) { toast('Ошибка: ' + e.message, 'error'); }
+    }
+
+    async function toggleNotifPublish(id, published) {
+        try {
+            await apiCall('admin-notifications.php', { body: { id, data: { published } } });
+            toast(published ? 'Опубликовано' : 'Скрыто', 'success');
+            loadNotifications();
+        } catch(e) { toast('Ошибка: ' + e.message, 'error'); }
+    }
+
+
+    // =======================================================================
     // Sidebar
     // =======================================================================
     function initSidebar() {
@@ -1609,6 +1918,11 @@
         searchPlayers, clearPlayerSearch, addPlayer, startSync, stopSync, runSyncDiagnostics,
         // Sessions
         sessionsGoToPage,
+        // Game Control
+        loadGameControl, gcSetRole, gcSetAction, gcUpdateField,
+        // Notifications
+        loadNotifications, createNotification, editNotification, saveNotification,
+        deleteNotification, toggleNotifPublish,
     };
 
     if (document.readyState === 'loading') {
