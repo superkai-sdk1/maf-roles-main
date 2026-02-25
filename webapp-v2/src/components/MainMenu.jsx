@@ -568,6 +568,7 @@ export function MainMenu() {
         ...g,
         sessionId: `${s.sessionId}_g${g.gameNumber || idx + 1}`,
         gameSelected: g.gameNumber || idx + 1,
+        gameFinished: true,
         timestamp: g.completedAt,
         updatedAt: g.completedAt,
         seriesArchived: true,
@@ -580,13 +581,18 @@ export function MainMenu() {
           seriesArchived: false,
         });
       }
+      const hasActiveGame = s.gamePhase && s.gamePhase !== 'roles' && !s.gameFinished;
+      const allFinished = pseudoSessions.length > 0
+        && pseudoSessions.every(ps => ps.winnerTeam && ps.gameFinished);
       return {
         tournamentId: s.tournamentId,
         tournamentName: s.tournamentName || 'Фанки',
         gameMode: 'funky',
         isFunky: true,
-        archived: false,
+        archived: s.seriesArchived || false,
+        allGamesFinished: !hasActiveGame && allFinished,
         sessions: pseudoSessions,
+        finishedGamesCount: pseudoSessions.filter(ps => ps.gameFinished).length,
         totalGamesInTournament: pseudoSessions.length,
         lastStartedGameNumber: pseudoSessions.length,
         _originalSessionId: s.sessionId,
@@ -598,8 +604,8 @@ export function MainMenu() {
   const nonFunkyStandalone = useMemo(() => standalone.filter(s => !isFunkySession(s)), [standalone]);
   const activeSessions = useMemo(() => nonFunkyStandalone.filter(s => !s.gameFinished && !s.winnerTeam), [nonFunkyStandalone]);
   const historySessions = useMemo(() => nonFunkyStandalone.filter(s => (s.gameFinished || s.winnerTeam)), [nonFunkyStandalone]);
-  const activeGroups = useMemo(() => [...groups.filter(g => !g.archived), ...funkyGroups], [groups, funkyGroups]);
-  const historyGroups = useMemo(() => groups.filter(g => g.archived), [groups]);
+  const activeGroups = useMemo(() => [...groups.filter(g => !g.archived), ...funkyGroups.filter(g => !g.archived)], [groups, funkyGroups]);
+  const historyGroups = useMemo(() => [...groups.filter(g => g.archived), ...funkyGroups.filter(g => g.archived)], [groups, funkyGroups]);
 
   const displayGroups = activeTab === 'active' ? activeGroups : historyGroups;
   const displayStandalone = activeTab === 'active' ? activeSessions : historySessions;

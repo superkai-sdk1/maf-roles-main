@@ -499,7 +499,7 @@ export const ResultsPanel = () => {
                 </button>
               )}
 
-              {!hasNextTournamentGame && (
+              {!hasNextTournamentGame && gameMode !== 'funky' && (
                 <button className="glass-btn btn-primary w-full py-3 text-sm font-bold flex items-center justify-center gap-2"
                   onClick={() => { startNextGameInSession(); triggerHaptic('success'); }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
