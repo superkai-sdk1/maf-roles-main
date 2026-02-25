@@ -208,6 +208,10 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
 
   const timerStatusText = isRunning && !isPaused ? 'Речь идет' : isPaused ? 'Пауза' : timeLeft === 0 ? 'Время вышло' : 'Готов';
   const isLow = timeLeft <= 10 && isRunning && !isPaused;
+  const showTimerWave = expanded && (isRunning || isPaused || timeLeft > 0) && (
+    (isKilled && (cardPhase === 'timer' || (!cardPhase && !isFirstKilled))) ||
+    (gamePhase === 'day' && active && !isDead)
+  );
 
   const formatTime = (t) => String(t).padStart(2, '0');
 
@@ -221,7 +225,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
 
   return (
     <div
-      className={`glass-card rounded-2xl transition-all duration-300 ease-spring
+      className={`glass-card rounded-2xl relative overflow-hidden transition-all duration-300 ease-spring
         ${isHighlighted && !isDead ? 'border-accent-soft !bg-accent-soft shadow-[0_0_20px_rgba(var(--accent-rgb),0.18),inset_0_1px_0_rgba(255,255,255,0.1)] scale-[1.01]' : ''}
         ${isSpeaking && !isDead ? 'border-accent-soft !bg-accent-soft shadow-[0_0_24px_rgba(var(--accent-rgb),0.22),inset_0_1px_0_rgba(255,255,255,0.1)] scale-[1.01]' : ''}
         ${isKilled || isVoted ? 'opacity-[0.18] saturate-[0.25] brightness-[0.7] !border-red-500/20 !bg-red-500/[0.03]' : ''}
@@ -232,10 +236,19 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
         ${isNightDoctor ? 'animate-doctor-pulse' : ''}
         ${!isDead && !isHighlighted && !isSpeaking ? 'hover:border-white/[0.18] hover:shadow-glass-md' : ''}
         ${expanded ? 'shadow-glass-md !border-white/[0.16]' : ''}`}
-      style={{ '--i': player.num - 1 }}
+      style={{
+        '--i': player.num - 1,
+        ...(showTimerWave ? {
+          '--wave-progress': `${timerProgress * 100}%`,
+          '--wave-anim': isRunning && !isPaused ? 'running' : 'paused',
+        } : {}),
+      }}
     >
+      {showTimerWave && (
+        <div className={`card-timer-wave ${isLow ? 'wave-low' : ''} ${isPaused ? 'wave-paused' : ''}`} />
+      )}
       {/* Main row */}
-      <div className="flex items-center gap-3 px-3.5 py-2.5 cursor-pointer min-h-[64px]" onClick={handleToggle}>
+      <div className="relative z-[1] flex items-center gap-3 px-3.5 py-2.5 cursor-pointer min-h-[64px]" onClick={handleToggle}>
         {/* Avatar */}
         <div className="relative shrink-0">
           <div className="w-11 h-11 rounded-full bg-white/[0.06] border border-white/[0.08]
@@ -344,7 +357,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
 
       {/* Expanded panel */}
       {expanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-white/[0.06] animate-expand">
+        <div className="relative z-[1] px-3 pb-3 pt-1 border-t border-white/[0.06] animate-expand">
           {/* Role assignment */}
           {editRoles && !rolesDistributed && (
             <div className="flex gap-1.5 flex-wrap mb-3">
@@ -396,11 +409,6 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
           {/* KILLED: Timer */}
           {isKilled && (cardPhase === 'timer' || (!cardPhase && !isFirstKilled)) && (
             <div className="mt-3">
-              <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden mb-2">
-                <div className={`h-full rounded-full transition-[width] duration-200
-                  ${isLow ? 'bg-red-500' : isRunning && !isPaused ? 'bg-accent' : 'bg-white/20'}`}
-                  style={{ width: `${timerProgress * 100}%` }} />
-              </div>
               {isFirstKilled && bestMoveAccepted && (
                 <button className="mb-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]
                   text-white/40 text-xs font-bold active:scale-95 transition-transform duration-150 ease-spring"
@@ -484,11 +492,6 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
           {/* ALIVE: Timer (Day mode) */}
           {gamePhase === 'day' && active && !isDead && (
             <div className="mt-3">
-              <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden mb-2">
-                <div className={`h-full rounded-full transition-[width] duration-200
-                  ${isLow ? 'bg-red-500' : isRunning && !isPaused ? 'bg-accent' : 'bg-white/20'}`}
-                  style={{ width: `${timerProgress * 100}%` }} />
-              </div>
               <div className={`px-3 py-1 rounded-full text-[0.65rem] font-bold tracking-wider uppercase w-fit mx-auto mb-1
                 ${isRunning && !isPaused ? 'bg-emerald-500/15 text-emerald-400' :
                   isPaused ? 'bg-amber-500/15 text-amber-400' :
@@ -518,7 +521,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
             </div>
           )}
 
-          {/* ALIVE: Nominations (Day, not locked) */}
+          {/* ALIVE: Nominations (Day, not locked, classic only) */}
           {gamePhase === 'day' && !nominationsLocked && active && !isDead && !cityMode && (
             <div className="mt-3">
               <div className="text-[0.7em] font-bold text-white/40 mb-2">Выставить:</div>
