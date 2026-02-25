@@ -31,8 +31,8 @@ export function RowPad({ items, renderButton, className = '' }) {
   const firstRow = items.filter((_, i) => i < 5);
   const secondRow = items.filter((_, i) => i >= 5);
   return (
-    <div className={`flex flex-col gap-1.5 ${className}`}>
-      <div className="flex gap-1.5 justify-center">
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <div className="flex gap-2 justify-center">
         {firstRow.map((item, i) => (
           <div key={item.num ?? i} className="flex-1 flex justify-center">
             {renderButton(item, i)}
@@ -40,7 +40,7 @@ export function RowPad({ items, renderButton, className = '' }) {
         ))}
       </div>
       {secondRow.length > 0 && (
-        <div className="flex gap-1.5 justify-center">
+        <div className="flex gap-2 justify-center">
           {secondRow.map((item, i) => (
             <div key={item.num ?? (i + 5)} className="flex-1 flex justify-center">
               {renderButton(item, i + 5)}
@@ -52,13 +52,13 @@ export function RowPad({ items, renderButton, className = '' }) {
   );
 }
 
-const SIZE = 'w-[56px] h-[56px]';
-const SIZE_COMPACT = 'w-[42px] h-[42px]';
-const BASE = 'rounded-full font-extrabold tabular-nums flex items-center justify-center active:scale-[0.88] transition-all duration-150 ease-spring select-none';
+const SIZE = 'w-[72px] h-[48px]';
+const SIZE_COMPACT = 'w-[54px] h-[38px]';
+const BASE = 'rounded-xl font-extrabold tabular-nums flex items-center justify-center active:scale-[0.88] transition-all duration-150 ease-spring select-none';
 
 export const dialerBtn = {
   base: `${SIZE} ${BASE} text-[1.1em]`,
-  compact: `${SIZE_COMPACT} ${BASE} text-[0.9em]`,
+  compact: `${SIZE_COMPACT} ${BASE} text-[0.95em]`,
 
   normal: 'bg-white/[0.05] border border-white/[0.10] text-white/70 hover:bg-white/[0.09] hover:border-white/[0.16] shadow-[0_2px_8px_rgba(0,0,0,0.2)]',
   selected: 'bg-accent text-white border border-transparent shadow-glow-accent',
