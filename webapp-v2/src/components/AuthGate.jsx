@@ -180,6 +180,9 @@ function GomafiaSection({ onSuccess }) {
 
   return (
     <form className="auth-alt-body" onSubmit={handleSubmit}>
+      <div className="auth-hint" style={{ margin: 0 }}>
+        Для ранее привязанных аккаунтов GoMafia
+      </div>
       <input
         type="text"
         className="auth-input"
@@ -236,7 +239,7 @@ function PasskeySection({ onSuccess }) {
   return (
     <div className="auth-alt-body">
       <div className="auth-hint" style={{ margin: 0 }}>
-        Face ID, Touch ID или PIN-код устройства
+        Для ранее настроенных PassKey (Face ID, Touch ID, PIN)
       </div>
       {error && <div className="auth-error">{error}</div>}
       <button

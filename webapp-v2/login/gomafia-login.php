@@ -53,7 +53,16 @@ try {
         $gomafiaId = $nickname;
     }
 
-    $user = findOrCreateUserByGomafia($database, $gomafiaId, $profile['nickname'] ?? $nickname);
+    $user = $database->get($TABLE_USERS, '*', ['gomafia_id' => (string)$gomafiaId]);
+    if (!$user) {
+        gmCleanup($cookieFile);
+        jsonError('Аккаунт с этим GoMafia ID не найден. Первичная регистрация возможна только через Telegram. Подключите GoMafia в Профиль → Настройки → Способы авторизации.', 403);
+    }
+
+    // Update nickname if changed
+    $updates = ['updated_at' => date('Y-m-d H:i:s')];
+    if ($profile['nickname'] ?? $nickname) $updates['gomafia_nickname'] = $profile['nickname'] ?? $nickname;
+    $database->update($TABLE_USERS, $updates, ['id' => $user['id']]);
 
     $token = createSession($database, $user['id'], 'gomafia');
 

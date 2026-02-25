@@ -27,7 +27,7 @@ if (empty($credentialId) || empty($authDataB64) || empty($clientDataB64) || empt
 
 // Find the passkey
 $passkey = getPasskeyByCredentialId($database, $credentialId);
-if (!$passkey) jsonError('Credential not found', 404);
+if (!$passkey) jsonError('PassKey не найден. Первичная регистрация возможна только через Telegram. Подключите PassKey в Профиль → Настройки → Способы авторизации.', 404);
 
 // Decode clientDataJSON and verify
 $clientDataJSON = base64url_decode($clientDataB64);
