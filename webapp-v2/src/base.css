@@ -104,23 +104,23 @@
   --maf-bg-secondary: #e5e5ea;
   --maf-gradient-bg: linear-gradient(135deg, #f2f2f7 0%, #e8e6f0 25%, #e0dced 50%, #e8e6f0 75%, #f2f2f7 100%);
 
-  --glass-layer-1: rgba(255, 255, 255, 0.60);
-  --glass-layer-2: rgba(255, 255, 255, 0.70);
-  --glass-layer-3: rgba(255, 255, 255, 0.80);
-  --glass-surface: rgba(255, 255, 255, 0.65);
-  --glass-surface-light: rgba(255, 255, 255, 0.50);
-  --glass-border: rgba(255, 255, 255, 0.70);
-  --glass-border-strong: rgba(255, 255, 255, 0.85);
+  --glass-layer-1: rgba(255, 255, 255, 0.55);
+  --glass-layer-2: rgba(255, 255, 255, 0.65);
+  --glass-layer-3: rgba(255, 255, 255, 0.75);
+  --glass-surface: rgba(255, 255, 255, 0.60);
+  --glass-surface-light: rgba(255, 255, 255, 0.45);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-strong: rgba(0, 0, 0, 0.14);
   --glass-specular: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.5) 35%, rgba(255,255,255,0) 55%);
   --shimmer-gradient: linear-gradient(120deg, transparent 25%, rgba(255,255,255,0.7) 50%, transparent 75%);
 
-  --glass-inner-highlight: inset 0 1px 0 0 rgba(255,255,255,0.85), inset 0 0 0 0.5px rgba(255,255,255,0.4);
-  --glass-frost-bg: linear-gradient(165deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 40%, transparent 70%);
+  --glass-inner-highlight: inset 0 1px 0 0 rgba(255,255,255,0.80), inset 0 -1px 0 0 rgba(0,0,0,0.03);
+  --glass-frost-bg: linear-gradient(165deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 40%, transparent 70%);
 
-  --glass-shadow-sm: 0 1px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.7);
-  --glass-shadow-md: 0 4px 20px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.75);
-  --glass-shadow-lg: 0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.85);
-  --glass-shadow-glow: 0 4px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 0 16px rgba(var(--accent-rgb,168,85,247),0.03);
+  --glass-shadow-sm: 0 1px 6px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+  --glass-shadow-md: 0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05);
+  --glass-shadow-lg: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+  --glass-shadow-glow: 0 4px 20px rgba(0,0,0,0.08), 0 0 12px rgba(var(--accent-rgb,168,85,247),0.06);
 
   --glow-sheriff: 0 0 8px rgba(255, 179, 0, 0.25);
   --glow-mafia: 0 0 8px rgba(168, 85, 247, 0.25);
@@ -136,12 +136,12 @@
   --surface-secondary: rgba(0, 0, 0, 0.04);
   --surface-hover: rgba(0, 0, 0, 0.06);
   --surface-active: rgba(0, 0, 0, 0.08);
-  --surface-border: rgba(0, 0, 0, 0.06);
-  --surface-border-hover: rgba(0, 0, 0, 0.10);
+  --surface-border: rgba(0, 0, 0, 0.08);
+  --surface-border-hover: rgba(0, 0, 0, 0.12);
   --surface-divider: rgba(0, 0, 0, 0.06);
   --surface-input-bg: rgba(0, 0, 0, 0.04);
 
-  --nav-shadow: 0 -1px 0 rgba(0,0,0,0.06), 0 4px 20px rgba(0,0,0,0.06);
+  --nav-shadow: 0 -1px 0 rgba(0,0,0,0.06), 0 4px 20px rgba(0,0,0,0.08);
 }
 
 body {
@@ -222,12 +222,38 @@ body {
   background-color: var(--surface-divider) !important;
 }
 
-/* Header & nav in light mode */
-.light-mode .bg-maf-bg\/80,
-.light-mode .bg-maf-bg {
-  background-color: var(--maf-bg-main) !important;
+/* Light mode: fix !important white border overrides from glass-card hover states */
+.light-mode .hover\:\!border-white\/\[0\.18\]:hover,
+.light-mode .\!border-white\/\[0\.16\],
+.light-mode .\!border-white\/\[0\.18\] {
+  border-color: rgba(0,0,0,0.12) !important;
 }
-.light-mode header.bg-maf-bg\/80 {
+
+/* Light mode: fix border-white on cards */
+.light-mode .border-white\/\[0\.16\] {
+  border-color: rgba(0,0,0,0.10) !important;
+}
+.light-mode .border-white\/\[0\.18\] {
+  border-color: rgba(0,0,0,0.12) !important;
+}
+
+/* Light mode: avatar and badge borders */
+.light-mode .border-white\/\[0\.08\] {
+  border-color: rgba(0,0,0,0.06) !important;
+}
+
+/* Light mode: inner card dividers */
+.light-mode .border-t.border-white\/\[0\.06\] {
+  border-color: rgba(0,0,0,0.06) !important;
+}
+
+/* Light mode: bg-white low-opacity backgrounds */
+.light-mode .bg-white\/\[0\.02\] {
+  background-color: rgba(0,0,0,0.015) !important;
+}
+
+/* Header & nav in light mode */
+.light-mode .bg-maf-bg\/80 {
   background-color: rgba(242, 242, 247, 0.85) !important;
 }
 
