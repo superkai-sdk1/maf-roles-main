@@ -37,6 +37,79 @@ export const ResultsPanel = () => {
     triggerHaptic('success');
   };
 
+  const getScoreBreakdown = (rk) => {
+    if (gameMode !== 'gomafia' && gameMode !== 'funky') return [];
+    const items = [];
+    const isBlack = (r) => r === 'don' || r === 'black';
+    const isFK = rk === firstKilledPlayer;
+
+    if (isFK && bestMoveAccepted && bestMove.length > 0) {
+      let blacks = 0;
+      for (const num of bestMove) {
+        const t = tableOut.find(x => x.num === num);
+        if (t && isBlack(roles[t.roleKey])) blacks++;
+      }
+      const bmTable = { 1: 0.1, 2: 0.3, 3: 0.6 };
+      const val = bmTable[blacks] || 0;
+      if (val > 0) items.push({ type: 'bonus', label: `ЛХ: ${blacks} чёрн.`, value: val });
+      else if (blacks === 0 && bestMove.length > 0) items.push({ type: 'neutral', label: 'ЛХ: 0 чёрных', value: 0 });
+    }
+
+    if (isFK) {
+      const proto = protocolData[rk];
+      if (proto) {
+        let correctBlacks = 0, wrongBlacks = 0, correctReds = 0, wrongReds = 0;
+        for (const [numStr, pred] of Object.entries(proto)) {
+          if (!pred) continue;
+          const t = tableOut.find(x => x.num === parseInt(numStr));
+          if (!t) continue;
+          const black = isBlack(roles[t.roleKey]);
+          if (pred === 'sheriff') {
+            if (black) items.push({ type: 'penalty', label: `Шериф → чёрный (${t.num})`, value: 0.4 });
+            else items.push({ type: 'bonus', label: `Шериф верно (${t.num})`, value: 0.4 });
+          } else if (pred === 'mafia' || pred === 'don') {
+            if (black) correctBlacks++; else wrongBlacks++;
+          } else if (pred === 'peace') {
+            if (!black) correctReds++; else wrongReds++;
+          }
+        }
+        const bkB = { 1: 0.2, 2: 0.5, 3: 0.8 };
+        const bkP = { 1: 0.2, 2: 0.5, 3: 0.8 };
+        if (correctBlacks > 0) items.push({ type: 'bonus', label: `Чёрные верно: ${correctBlacks}`, value: bkB[Math.min(correctBlacks, 3)] || 0 });
+        if (wrongBlacks > 0) items.push({ type: 'penalty', label: `Чёрные ошибка: ${wrongBlacks}`, value: bkP[Math.min(wrongBlacks, 3)] || 0 });
+        if (wrongReds === 0 && correctReds > 0) {
+          const rdB = { 1: 0.1, 2: 0.3, 3: 0.5, 4: 0.7 };
+          items.push({ type: 'bonus', label: `Красные верно: ${correctReds}`, value: rdB[Math.min(correctReds, 4)] || 0 });
+        }
+        if (wrongReds > 0) {
+          const rdP = { 1: 0.2, 2: 0.4 };
+          items.push({ type: 'penalty', label: `Красные ошибка: ${wrongReds}`, value: rdP[Math.min(wrongReds, 2)] || 0 });
+          if (correctReds > 0) items.push({ type: 'neutral', label: `Красные верно: ${correctReds} (сброс)`, value: 0 });
+        }
+      }
+    } else {
+      const opinion = opinionData[rk];
+      if (opinion) {
+        for (const [numStr, pred] of Object.entries(opinion)) {
+          if (pred !== 'sheriff') continue;
+          const t = tableOut.find(x => x.num === parseInt(numStr));
+          if (!t) continue;
+          if (isBlack(roles[t.roleKey])) items.push({ type: 'penalty', label: `Версия: шериф → чёрный (${t.num})`, value: 0.4 });
+          else items.push({ type: 'bonus', label: `Версия: шериф верно (${t.num})`, value: 0.4 });
+        }
+      }
+    }
+
+    const p = tableOut.find(x => x.roleKey === rk);
+    if (p) {
+      if (p.removed || p.fouls >= 4) items.push({ type: 'penalty', label: 'Удаление / 4-й фол', value: 1.0 });
+      const tf = p.techFouls || 0;
+      if (tf >= 2) items.push({ type: 'penalty', label: `${tf} тех. фола`, value: 0.6 });
+      else if (tf === 1) items.push({ type: 'penalty', label: '1 тех. фол', value: 0.3 });
+    }
+    return items;
+  };
+
   return (
     <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Winner selection */}
@@ -220,6 +293,24 @@ export const ResultsPanel = () => {
                             )}
                           </div>
                         )}
+
+                        {/* Score breakdown */}
+                        {(() => {
+                          const breakdown = getScoreBreakdown(rk);
+                          return breakdown.length > 0 ? (
+                            <div className="score-breakdown mb-3">
+                              <div className="score-breakdown-title">Расчёт баллов</div>
+                              {breakdown.map((item, i) => (
+                                <div key={i} className="score-breakdown-row">
+                                  <span className="score-breakdown-label">{item.label}</span>
+                                  <span className={`score-breakdown-value ${item.type === 'bonus' ? 'score-breakdown-value--bonus' : item.type === 'penalty' ? 'score-breakdown-value--penalty' : 'score-breakdown-value--neutral'}`}>
+                                    {item.type === 'bonus' ? `+${item.value.toFixed(1)}` : item.type === 'penalty' ? `-${item.value.toFixed(1)}` : '—'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null;
+                        })()}
 
                         {/* Reveal toggle */}
                         {!viewOnly && (
@@ -499,23 +590,6 @@ export const ResultsPanel = () => {
               <button className="glass-btn w-full opacity-50" onClick={() => { setWinnerTeam(null); triggerHaptic('light'); }}>
                 ← Изменить победителя
               </button>
-
-              {hasNextTournamentGame && (
-                <button className="glass-btn btn-primary w-full py-3 text-sm font-bold"
-                  onClick={() => { startNextTournamentGame(); triggerHaptic('success'); }}>
-                  ▶ Следующая игра в турнире
-                </button>
-              )}
-
-              {!hasNextTournamentGame && gameMode !== 'funky' && (
-                <button className="glass-btn btn-primary w-full py-3 text-sm font-bold flex items-center justify-center gap-2"
-                  onClick={() => { startNextGameInSession(); triggerHaptic('success'); }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                  </svg>
-                  Следующая игра
-                </button>
-              )}
 
               <SlideConfirm
                 label="Сохранить и выйти"

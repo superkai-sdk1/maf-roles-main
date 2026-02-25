@@ -4466,6 +4466,44 @@ body::after {
   box-shadow: var(--glass-shadow-md), 0 0 30px rgba(168,85,247,0.06);
 }
 
+/* Score Breakdown */
+.score-breakdown {
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.score-breakdown-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 8px;
+}
+.score-breakdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+.score-breakdown-row + .score-breakdown-row {
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.score-breakdown-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.55);
+}
+.score-breakdown-value {
+  font-size: 0.8rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.score-breakdown-value--bonus { color: #4caf50; }
+.score-breakdown-value--penalty { color: #f44336; }
+.score-breakdown-value--neutral { color: rgba(255,255,255,0.3); }
+
 /* ============================================= */
 /*  Mobile optimizations                         */
 /* ============================================= */
