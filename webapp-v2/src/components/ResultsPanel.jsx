@@ -66,7 +66,8 @@ export const ResultsPanel = () => {
           const black = isBlack(roles[t.roleKey]);
           if (pred === 'sheriff') {
             if (black) items.push({ type: 'penalty', label: `Шериф → чёрный (${t.num})`, value: 0.4 });
-            else items.push({ type: 'bonus', label: `Шериф верно (${t.num})`, value: 0.4 });
+            else if (roles[t.roleKey] === 'sheriff') items.push({ type: 'bonus', label: `Шериф угадан (${t.num})`, value: 0.4 });
+            else items.push({ type: 'bonus', label: `Верная версия (${t.num} — мирный)`, value: 0.4 });
           } else if (pred === 'mafia' || pred === 'don') {
             if (black) correctBlacks++; else wrongBlacks++;
           } else if (pred === 'peace') {
@@ -95,7 +96,8 @@ export const ResultsPanel = () => {
           const t = tableOut.find(x => x.num === parseInt(numStr));
           if (!t) continue;
           if (isBlack(roles[t.roleKey])) items.push({ type: 'penalty', label: `Версия: шериф → чёрный (${t.num})`, value: 0.4 });
-          else items.push({ type: 'bonus', label: `Версия: шериф верно (${t.num})`, value: 0.4 });
+          else if (roles[t.roleKey] === 'sheriff') items.push({ type: 'bonus', label: `Версия: шериф угадан (${t.num})`, value: 0.4 });
+          else items.push({ type: 'bonus', label: `Верная версия (${t.num} — мирный)`, value: 0.4 });
         }
       }
     }
