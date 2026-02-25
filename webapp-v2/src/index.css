@@ -111,11 +111,12 @@ html {
   padding: 24px;
   padding-top: var(--safe-top, 0px);
   padding-bottom: var(--safe-bottom, 0px);
+  overflow-y: auto;
 }
 
 .auth-card {
   width: 100%;
-  max-width: 340px;
+  max-width: 360px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -147,7 +148,7 @@ html {
   font-size: 0.85em;
   font-weight: 600;
   color: rgba(255,255,255,0.45);
-  margin-bottom: 12px;
+  margin-bottom: 4px;
 }
 
 .auth-spinner {
@@ -157,13 +158,90 @@ html {
   border-top-color: var(--accent-color, #a855f7);
   border-radius: 50%;
   animation: authSpin 0.8s linear infinite;
-  margin: 12px 0;
+  margin: 12px auto;
 }
 
 @keyframes authSpin {
   to { transform: rotate(360deg); }
 }
 
+/* Auth Tabs */
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border-radius: 14px;
+  padding: 4px;
+  margin: 8px 0;
+}
+
+.auth-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 6px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(255,255,255,0.4);
+  font-size: 0.72em;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.auth-tab:active {
+  transform: scale(0.96);
+}
+
+.auth-tab--active {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  border-color: rgba(255,255,255,0.1);
+}
+
+.auth-tab--active.auth-tab--primary {
+  background: linear-gradient(135deg, rgba(168,85,247,0.2), rgba(99,102,241,0.12));
+  border-color: rgba(168,85,247,0.3);
+  color: #fff;
+}
+
+.auth-tab-icon {
+  font-size: 1.5em;
+  line-height: 1;
+}
+
+.auth-tab-label {
+  white-space: nowrap;
+}
+
+/* Tab content area */
+.auth-tab-body {
+  width: 100%;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.auth-tab-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  animation: authFadeIn 0.2s ease;
+}
+
+@keyframes authFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Code display */
 .auth-code-display {
   font-size: 3em;
   font-weight: 900;
@@ -172,7 +250,7 @@ html {
   color: #fff;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 0 30px rgba(168,85,247,0.5);
-  margin: 16px 0 8px;
+  margin: 12px 0 6px;
 }
 
 .auth-timer-bar {
@@ -195,17 +273,118 @@ html {
   font-weight: 700;
   color: rgba(255,255,255,0.35);
   font-variant-numeric: tabular-nums;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .auth-instructions {
-  font-size: 0.9em;
+  font-size: 0.85em;
   font-weight: 600;
   color: rgba(255,255,255,0.55);
   line-height: 1.5;
-  margin: 12px 0;
+  margin: 8px 0;
 }
 
+/* Action buttons (replaces auth-bot-btn) */
+.auth-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: 14px;
+  font-size: 0.9em;
+  font-weight: 800;
+  color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 4px 0;
+}
+
+.auth-action-btn:active {
+  transform: scale(0.97);
+}
+
+.auth-action-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.auth-action-btn--primary {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(168,85,247,0.25), rgba(99,102,241,0.15));
+  border-color: rgba(168,85,247,0.35);
+  box-shadow: 0 4px 20px rgba(168,85,247,0.2);
+}
+
+/* GoMafia form */
+.auth-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+  font-size: 0.9em;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  box-sizing: border-box;
+}
+
+.auth-input::placeholder {
+  color: rgba(255,255,255,0.3);
+}
+
+.auth-input:focus {
+  border-color: rgba(168,85,247,0.5);
+  background: rgba(255,255,255,0.08);
+}
+
+/* PassKey icon */
+.auth-passkey-icon {
+  font-size: 3em;
+  margin: 12px 0 4px;
+}
+
+/* Button spinner */
+.auth-btn-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: authSpin 0.7s linear infinite;
+}
+
+.auth-hint {
+  font-size: 0.72em;
+  font-weight: 600;
+  color: rgba(255,255,255,0.25);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.auth-error {
+  font-size: 0.8em;
+  font-weight: 600;
+  color: #ff453a;
+  margin: 4px 0;
+}
+
+/* Keep old class for backward compat (admin panel) */
 .auth-bot-btn {
   display: inline-flex;
   align-items: center;
@@ -227,20 +406,6 @@ html {
 .auth-bot-btn:active {
   transform: scale(0.97);
   box-shadow: 0 2px 10px rgba(168,85,247,0.15);
-}
-
-.auth-hint {
-  font-size: 0.75em;
-  font-weight: 600;
-  color: rgba(255,255,255,0.25);
-  margin-top: 4px;
-}
-
-.auth-error {
-  font-size: 0.8em;
-  font-weight: 600;
-  color: #ff453a;
-  margin-top: 8px;
 }
 
 /* ============================================= */

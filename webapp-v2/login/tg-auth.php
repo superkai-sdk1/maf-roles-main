@@ -14,7 +14,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $initData = isset($_POST['initData']) ? $_POST['initData'] : file_get_contents('php://input');
 
-// Если пришёл JSON
 $jsonInput = json_decode($initData, true);
 if ($jsonInput && isset($jsonInput['initData'])) {
     $initData = $jsonInput['initData'];
@@ -24,38 +23,39 @@ if (empty($initData)) {
     jsonError('initData is required');
 }
 
-// Валидация HMAC
 if (!validateTelegramInitData($initData, BOT_TOKEN)) {
     jsonError('Invalid initData signature', 403);
 }
 
-// Извлекаем данные пользователя
-$user = extractUserFromInitData($initData);
-if (!$user) {
+$tgUser = extractUserFromInitData($initData);
+if (!$tgUser) {
     jsonError('Could not extract user data');
 }
 
-// Создаём сессию
-$token = createSession(
+$user = findOrCreateUserByTelegram(
     $database,
-    $user['id'],
-    isset($user['username']) ? $user['username'] : null,
-    isset($user['first_name']) ? $user['first_name'] : null,
-    isset($user['last_name']) ? $user['last_name'] : null
+    $tgUser['id'],
+    $tgUser['username'] ?? null,
+    $tgUser['first_name'] ?? null,
+    $tgUser['last_name'] ?? null
 );
 
-// Периодическая очистка старых записей (1% шанс)
+$token = createSession($database, $user['id'], 'telegram');
+
 if (random_int(1, 100) === 1) {
     cleanupExpired($database);
 }
 
-jsonResponse([
-    'token' => $token,
-    'user' => [
-        'id' => $user['id'],
-        'username' => isset($user['username']) ? $user['username'] : null,
-        'first_name' => isset($user['first_name']) ? $user['first_name'] : null,
-        'last_name' => isset($user['last_name']) ? $user['last_name'] : null,
-    ]
+$userResponse = buildUserResponse($database, [
+    'user_id' => $user['id'],
+    'auth_method' => 'telegram',
+    'telegram_id' => $tgUser['id'],
+    'telegram_username' => $tgUser['username'] ?? null,
+    'telegram_first_name' => $tgUser['first_name'] ?? null,
+    'telegram_last_name' => $tgUser['last_name'] ?? null,
 ]);
 
+jsonResponse([
+    'token' => $token,
+    'user' => $userResponse,
+]);

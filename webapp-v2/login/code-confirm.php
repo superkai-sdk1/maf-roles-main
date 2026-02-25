@@ -25,7 +25,6 @@ $firstName = isset($input['first_name']) ? $input['first_name'] : null;
 $lastName = isset($input['last_name']) ? $input['last_name'] : null;
 $botSecret = isset($input['bot_secret']) ? $input['bot_secret'] : '';
 
-// Проверяем секрет бота (используем хеш от BOT_TOKEN)
 $expectedSecret = hash('sha256', BOT_TOKEN);
 if (!hash_equals($expectedSecret, $botSecret)) {
     jsonError('Unauthorized', 403);
@@ -39,7 +38,6 @@ if ($telegramId <= 0) {
     jsonError('Valid telegram_id is required');
 }
 
-// Ищем неподтверждённый активный код
 $codeRow = $database->get($TABLE_AUTH_CODES, ['id', 'code', 'expires_at'], [
     'code' => $code,
     'confirmed_at' => null,
@@ -51,10 +49,9 @@ if (!$codeRow) {
     jsonError('Code not found or expired', 404);
 }
 
-// Создаём сессию
-$token = createSession($database, $telegramId, $username, $firstName, $lastName);
+$user = findOrCreateUserByTelegram($database, $telegramId, $username, $firstName, $lastName);
+$token = createSession($database, $user['id'], 'telegram');
 
-// Обновляем код: помечаем подтверждённым
 $database->update($TABLE_AUTH_CODES, [
     'telegram_id' => $telegramId,
     'token' => $token,
@@ -67,4 +64,3 @@ jsonResponse([
     'success' => true,
     'token' => $token
 ]);
-

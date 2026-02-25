@@ -30,13 +30,9 @@ if (!$session) {
     jsonResponse(['valid' => false]);
 }
 
+$userResponse = buildUserResponse($database, $session);
+
 jsonResponse([
     'valid' => true,
-    'user' => [
-        'id' => $session['telegram_id'],
-        'username' => $session['telegram_username'],
-        'first_name' => $session['telegram_first_name'],
-        'last_name' => $session['telegram_last_name'],
-    ]
+    'user' => $userResponse,
 ]);
-

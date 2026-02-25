@@ -19,3 +19,12 @@ define('CODE_TTL_SECONDS', 300);
 // Интервал поллинга кода на клиенте (мс) - информационный параметр
 define('CODE_POLL_INTERVAL_MS', 2500);
 
+// WebAuthn / PassKey
+$_rpHost = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
+$_rpHostParts = explode(':', $_rpHost);
+define('WEBAUTHN_RP_ID', $_rpHostParts[0]);
+define('WEBAUTHN_RP_NAME', 'MafBoard');
+$_rpScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+define('WEBAUTHN_ORIGIN', "{$_rpScheme}://{$_rpHost}");
+define('CHALLENGE_TTL_SECONDS', 300);
+

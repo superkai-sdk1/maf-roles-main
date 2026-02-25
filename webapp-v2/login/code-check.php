@@ -62,14 +62,11 @@ $database->update($TABLE_AUTH_SESSIONS, [
     'id' => $session['id']
 ]);
 
+$userResponse = buildUserResponse($database, $session);
+
 jsonResponse([
     'confirmed' => true,
     'token' => $codeRow['token'],
-    'user' => [
-        'id' => $session['telegram_id'],
-        'username' => $session['telegram_username'],
-        'first_name' => $session['telegram_first_name'],
-        'last_name' => $session['telegram_last_name'],
-    ]
+    'user' => $userResponse,
 ]);
 
