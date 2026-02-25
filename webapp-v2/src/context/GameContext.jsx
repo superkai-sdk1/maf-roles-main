@@ -1458,15 +1458,9 @@ export const GameProvider = ({ children }) => {
           updatedAt: now, timestamp: now,
         };
         sessionManager.saveSession(data);
-        const token = sessionManager._authToken;
-        if (token) {
-          const sessions = sessionManager.getSessions().map(s => ({
-            ...s, timestamp: s.updatedAt || s.timestamp || now,
-          }));
-          const blob = new Blob(
-            [JSON.stringify({ token, sessions })],
-            { type: 'application/json' }
-          );
+        const beaconPayload = sessionManager.buildBeaconPayload();
+        if (beaconPayload) {
+          const blob = new Blob([beaconPayload], { type: 'application/json' });
           navigator.sendBeacon?.('/api/sessions-sync.php', blob);
         }
       }

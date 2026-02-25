@@ -10,16 +10,20 @@ class SessionManager {
   constructor() {
     this._deletedIds = this._loadTombstones();
     this._sessions = this._loadFromStorage();
-    this._tgCloud = null;
     this._authToken = null;
     this._pushTimer = null;
-    this._initTelegramCloud();
   }
 
   setAuthToken(token) {
     this._authToken = token;
   }
 
+  // Server is the source of truth. On sync:
+  // 1. Fetch server data (sessions + tombstones)
+  // 2. Merge server tombstones into local
+  // 3. Replace local sessions with server sessions (filtered by local tombstones)
+  // 4. Merge any local-only sessions into the set
+  // 5. Push combined state back to server
   async syncWithServer() {
     const token = this._authToken;
     if (!token) return;
@@ -27,11 +31,50 @@ class SessionManager {
       const res = await fetch(`${SYNC_API}?token=${encodeURIComponent(token)}`);
       if (!res.ok) return;
       const data = await res.json();
-      if (Array.isArray(data.sessions) && data.sessions.length > 0) {
-        this._mergeSessions(data.sessions);
-      } else if (this._sessions.length > 0) {
-        this._pushToServerNow();
+
+      // Merge server tombstones into local set
+      if (Array.isArray(data.deleted)) {
+        const now = Date.now();
+        for (const d of data.deleted) {
+          if (d.id && d.ts && (now - d.ts) < TOMBSTONE_TTL) {
+            this._deletedIds.add(d.id);
+          }
+        }
+        this._saveTombstones();
       }
+
+      if (Array.isArray(data.sessions)) {
+        // Build map from server sessions (authoritative), excluding tombstoned
+        const serverMap = new Map();
+        for (const s of data.sessions) {
+          if (s.sessionId && !this._deletedIds.has(s.sessionId)) {
+            serverMap.set(s.sessionId, s);
+          }
+        }
+
+        // Merge local-only sessions (ones not on server yet) into the map
+        for (const s of this._sessions) {
+          if (this._deletedIds.has(s.sessionId)) continue;
+          const serverVersion = serverMap.get(s.sessionId);
+          if (!serverVersion) {
+            serverMap.set(s.sessionId, s);
+          } else {
+            const localTs = s.updatedAt || s.timestamp || 0;
+            const remoteTs = serverVersion.updatedAt || serverVersion.timestamp || 0;
+            if (localTs > remoteTs) {
+              serverMap.set(s.sessionId, s);
+            }
+          }
+        }
+
+        this._sessions = Array.from(serverMap.values())
+          .sort((a, b) => (b.updatedAt || b.timestamp || 0) - (a.updatedAt || a.timestamp || 0))
+          .slice(0, MAX_SESSIONS);
+        this._saveToStorage();
+      }
+
+      // Push local state (including tombstones) to server
+      this._pushToServerNow();
     } catch { /* ignore */ }
   }
 
@@ -55,66 +98,33 @@ class SessionManager {
       await fetch(SYNC_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, sessions }),
+        body: JSON.stringify({ token, sessions, deleted: this._getTombstoneEntries() }),
       });
     } catch { /* ignore */ }
   }
 
-  _initTelegramCloud() {
+  _getTombstoneEntries() {
     try {
-      if (window.Telegram?.WebApp?.CloudStorage) {
-        this._tgCloud = window.Telegram.WebApp.CloudStorage;
-        this._syncFromTelegramCloud();
-      }
-    } catch (e) { /* ignore */ }
+      const raw = localStorage.getItem(TOMBSTONE_KEY);
+      if (!raw) return [];
+      const entries = JSON.parse(raw);
+      if (!Array.isArray(entries)) return [];
+      const now = Date.now();
+      return entries.filter(e => e.id && e.ts && (now - e.ts) < TOMBSTONE_TTL);
+    } catch {
+      return [];
+    }
   }
 
-  _syncFromTelegramCloud() {
-    if (!this._tgCloud) return;
-    try {
-      this._tgCloud.getItem(TOMBSTONE_KEY, (err, value) => {
-        if (!err && value) {
-          try {
-            const remote = JSON.parse(value);
-            if (Array.isArray(remote)) {
-              const now = Date.now();
-              for (const e of remote) {
-                if ((now - e.ts) < TOMBSTONE_TTL) this._deletedIds.add(e.id);
-              }
-            }
-          } catch { /* ignore */ }
-        }
-      });
-      this._tgCloud.getItem(STORAGE_KEY, (err, value) => {
-        if (err || !value) return;
-        try {
-          const cloudSessions = JSON.parse(value);
-          if (Array.isArray(cloudSessions)) {
-            this._mergeSessions(cloudSessions);
-          }
-        } catch (e) { /* ignore */ }
-      });
-    } catch (e) { /* ignore */ }
-  }
-
-  _mergeSessions(remoteSessions) {
-    const map = new Map();
-    for (const s of this._sessions) {
-      map.set(s.sessionId, s);
-    }
-    for (const s of remoteSessions) {
-      if (this._deletedIds.has(s.sessionId)) continue;
-      const existing = map.get(s.sessionId);
-      const remoteTs = s.updatedAt || s.timestamp || 0;
-      const localTs = existing ? (existing.updatedAt || existing.timestamp || 0) : 0;
-      if (!existing || remoteTs > localTs) {
-        map.set(s.sessionId, s);
-      }
-    }
-    this._sessions = Array.from(map.values())
-      .sort((a, b) => (b.updatedAt || b.timestamp || 0) - (a.updatedAt || a.timestamp || 0))
-      .slice(0, MAX_SESSIONS);
-    this._saveToStorage();
+  // Build sendBeacon payload (used by GameContext beforeunload)
+  buildBeaconPayload() {
+    const token = this._authToken;
+    if (!token) return null;
+    const sessions = this._sessions.map(s => ({
+      ...s,
+      timestamp: s.updatedAt || s.timestamp || Date.now(),
+    }));
+    return JSON.stringify({ token, sessions, deleted: this._getTombstoneEntries() });
   }
 
   _loadFromStorage() {
@@ -148,6 +158,21 @@ class SessionManager {
     }
   }
 
+  _saveTombstones() {
+    try {
+      const entries = this._getTombstoneEntries();
+      // Merge any new IDs from _deletedIds that aren't in entries yet
+      const existingSet = new Set(entries.map(e => e.id));
+      const now = Date.now();
+      for (const id of this._deletedIds) {
+        if (!existingSet.has(id)) {
+          entries.push({ id, ts: now });
+        }
+      }
+      localStorage.setItem(TOMBSTONE_KEY, JSON.stringify(entries));
+    } catch { /* ignore */ }
+  }
+
   _addTombstones(sessionIds) {
     const now = Date.now();
     for (const id of sessionIds) {
@@ -163,18 +188,12 @@ class SessionManager {
         }
       }
       localStorage.setItem(TOMBSTONE_KEY, JSON.stringify(existing));
-      if (this._tgCloud) {
-        this._tgCloud.setItem(TOMBSTONE_KEY, JSON.stringify(existing), () => {});
-      }
     } catch { /* ignore */ }
   }
 
   _saveToStorage() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this._sessions));
-      if (this._tgCloud) {
-        this._tgCloud.setItem(STORAGE_KEY, JSON.stringify(this._sessions), () => {});
-      }
     } catch (e) {
       console.error('SessionManager: save error', e);
     }
