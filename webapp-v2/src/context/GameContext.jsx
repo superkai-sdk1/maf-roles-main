@@ -805,6 +805,101 @@ export const GameProvider = ({ children }) => {
     });
   }, []);
 
+  const computeAutoScores = useCallback(() => {
+    if (gameMode !== 'gomafia' && gameMode !== 'funky') return null;
+    const isBlack = (role) => role === 'don' || role === 'black';
+    const scores = {};
+
+    for (const p of tableOut) {
+      const rk = p.roleKey;
+      let bonus = 0;
+      let penalty = 0;
+      const isFK = rk === firstKilledPlayer;
+
+      // 1. Best Move — only for first killed
+      if (isFK && bestMoveAccepted && bestMove.length > 0) {
+        let blacks = 0;
+        for (const num of bestMove) {
+          const t = tableOut.find(x => x.num === num);
+          if (t && isBlack(roles[t.roleKey])) blacks++;
+        }
+        const bmTable = { 1: 0.1, 2: 0.3, 3: 0.6 };
+        bonus += bmTable[blacks] || 0;
+      }
+
+      // 2. Protocol / Opinion
+      if (isFK) {
+        const proto = protocolData[rk];
+        if (proto) {
+          let protoBonus = 0;
+          let protoPenalty = 0;
+          let correctBlacks = 0, wrongBlacks = 0;
+          let correctReds = 0, wrongReds = 0;
+
+          for (const [numStr, pred] of Object.entries(proto)) {
+            if (!pred) continue;
+            const t = tableOut.find(x => x.num === parseInt(numStr));
+            if (!t) continue;
+            const actual = roles[t.roleKey];
+            const targetIsBlack = isBlack(actual);
+
+            if (pred === 'sheriff') {
+              if (targetIsBlack) protoPenalty += 0.4;
+              else protoBonus += 0.4;
+            } else if (pred === 'mafia' || pred === 'don') {
+              if (targetIsBlack) correctBlacks++;
+              else wrongBlacks++;
+            } else if (pred === 'peace') {
+              if (!targetIsBlack) correctReds++;
+              else wrongReds++;
+            }
+          }
+
+          const bkBonus = { 1: 0.2, 2: 0.5, 3: 0.8 };
+          const bkPenalty = { 1: 0.2, 2: 0.5, 3: 0.8 };
+          protoBonus += bkBonus[Math.min(correctBlacks, 3)] || 0;
+          protoPenalty += bkPenalty[Math.min(wrongBlacks, 3)] || 0;
+
+          const rdBonus = { 1: 0.1, 2: 0.3, 3: 0.5, 4: 0.7 };
+          const rdPenalty = { 1: 0.2, 2: 0.4 };
+          if (wrongReds === 0) {
+            protoBonus += rdBonus[Math.min(correctReds, 4)] || 0;
+          }
+          protoPenalty += rdPenalty[Math.min(wrongReds, 2)] || 0;
+
+          bonus += Math.min(protoBonus, 0.8);
+          penalty += protoPenalty;
+        }
+      } else {
+        const opinion = opinionData[rk];
+        if (opinion) {
+          let opBonus = 0;
+          for (const [numStr, pred] of Object.entries(opinion)) {
+            if (pred !== 'sheriff') continue;
+            const t = tableOut.find(x => x.num === parseInt(numStr));
+            if (!t) continue;
+            if (isBlack(roles[t.roleKey])) penalty += 0.4;
+            else opBonus += 0.4;
+          }
+          bonus += Math.min(opBonus, 0.4);
+        }
+      }
+
+      // 3. Penalties
+      if (p.removed || p.fouls >= 4) penalty += 1.0;
+      const tf = p.techFouls || 0;
+      if (tf >= 2) penalty += 0.6;
+      else if (tf === 1) penalty += 0.3;
+
+      scores[rk] = {
+        bonus: Math.round(bonus * 10) / 10,
+        penalty: Math.round(penalty * 10) / 10,
+        reveal: false,
+      };
+    }
+    return scores;
+  }, [gameMode, tableOut, firstKilledPlayer, bestMoveAccepted, bestMove, protocolData, opinionData, roles]);
+
   // =================== Doctor Heal ===================
   const performDoctorHeal = useCallback((num) => {
     setDoctorHeal({ target: num, night: nightNumber });
@@ -1577,7 +1672,7 @@ export const GameProvider = ({ children }) => {
     // Scores
     winnerTeam, setWinnerTeam, playerScores, setPlayerScores,
     gameFinished, setGameFinished, viewOnly, setViewOnly,
-    calculatePlayerScore, adjustScore, toggleReveal,
+    calculatePlayerScore, adjustScore, toggleReveal, computeAutoScores,
     // Broadcast
     mainInfoText, setMainInfoText, additionalInfoText, setAdditionalInfoText,
     mainInfoVisible, setMainInfoVisible, additionalInfoVisible, setAdditionalInfoVisible,

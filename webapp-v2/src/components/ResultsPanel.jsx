@@ -7,7 +7,8 @@ import { triggerHaptic } from '../utils/haptics';
 export const ResultsPanel = () => {
   const {
     tableOut, winnerTeam, setWinnerTeam,
-    playerScores, adjustScore, calculatePlayerScore, toggleReveal,
+    playerScores, setPlayerScores, adjustScore, calculatePlayerScore, toggleReveal,
+    computeAutoScores,
     roles, nightCheckHistory, votingHistory,
     bestMove, bestMoveAccepted, firstKilledPlayer,
     protocolData, opinionData, checkProtocol, checkOpinion,
@@ -29,27 +30,34 @@ export const ResultsPanel = () => {
   const hasNextTournamentGame = gameMode === 'gomafia' && games.length > 0 &&
     games.some(g => g.gameNum === (gameSelected || 0) + 1);
 
+  const selectWinner = (team) => {
+    setWinnerTeam(team);
+    const auto = computeAutoScores();
+    if (auto) setPlayerScores(auto);
+    triggerHaptic('success');
+  };
+
   return (
     <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Winner selection */}
       {!winnerTeam ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <h2 style={{ textAlign: 'center', fontSize: '1.1em', fontWeight: 800, marginBottom: 4 }}>Выберите победителя</h2>
-          <div className="winner-card civilians" onClick={() => { setWinnerTeam('civilians'); triggerHaptic('success'); }}>
+          <div className="winner-card civilians" onClick={() => selectWinner('civilians')}>
             <div style={{ fontSize: 24 }}>👥</div>
             <div>
               <div style={{ fontWeight: 700 }}>Победа мирных</div>
               <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Красная команда</div>
             </div>
           </div>
-          <div className="winner-card mafia" onClick={() => { setWinnerTeam('mafia'); triggerHaptic('success'); }}>
+          <div className="winner-card mafia" onClick={() => selectWinner('mafia')}>
             <div style={{ fontSize: 24 }}>💀</div>
             <div>
               <div style={{ fontWeight: 700 }}>Победа мафии</div>
               <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Черная команда</div>
             </div>
           </div>
-          <div className="winner-card draw" onClick={() => { setWinnerTeam('draw'); triggerHaptic('success'); }}>
+          <div className="winner-card draw" onClick={() => selectWinner('draw')}>
             <div style={{ fontSize: 24 }}>🤝</div>
             <div>
               <div style={{ fontWeight: 700 }}>Ничья</div>
