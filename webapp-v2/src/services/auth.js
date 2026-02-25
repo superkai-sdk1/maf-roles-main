@@ -129,10 +129,9 @@ function isTelegramWebView() {
 }
 
 function isPasskeySupported() {
-  if (isTelegramWebView()) return false;
   return !!(window.PublicKeyCredential &&
-    typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function' &&
-    typeof navigator.credentials?.create === 'function');
+    typeof navigator.credentials?.create === 'function' &&
+    typeof navigator.credentials?.get === 'function');
 }
 
 async function isPasskeyAvailable() {
@@ -170,7 +169,7 @@ function bufferToBase64(buffer) {
 
 async function passkeyAuth() {
   if (!isPasskeySupported()) {
-    return { success: false, error: 'Ваш браузер не поддерживает PassKey' };
+    return { success: false, error: 'Ваш браузер не поддерживает PassKey. Попробуйте обновить браузер.' };
   }
 
   try {
@@ -211,13 +210,16 @@ async function passkeyAuth() {
     if (e.name === 'NotAllowedError') {
       return { success: false, error: 'Операция отменена' };
     }
+    if (e.name === 'NotSupportedError') {
+      return { success: false, error: 'PassKey не поддерживается в этом окружении' };
+    }
     return { success: false, error: e.message };
   }
 }
 
 async function passkeyRegister(token, deviceName) {
   if (!isPasskeySupported()) {
-    return { success: false, error: 'Ваш браузер не поддерживает PassKey' };
+    return { success: false, error: 'Ваш браузер не поддерживает PassKey. Попробуйте обновить браузер.' };
   }
 
   try {

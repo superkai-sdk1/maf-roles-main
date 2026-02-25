@@ -53,9 +53,10 @@ jsonResponse([
         'timeout' => 120000,
         'excludeCredentials' => $excludeCredentials,
         'authenticatorSelection' => [
+            'authenticatorAttachment' => 'platform',
             'residentKey' => 'required',
             'requireResidentKey' => true,
-            'userVerification' => 'preferred',
+            'userVerification' => 'required',
         ],
         'attestation' => 'none',
     ],

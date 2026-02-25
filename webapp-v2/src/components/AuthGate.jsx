@@ -5,6 +5,21 @@ import { IconCards } from '../utils/icons';
 const TAB_TELEGRAM = 'telegram';
 const TAB_GOMAFIA = 'gomafia';
 const TAB_PASSKEY = 'passkey';
+const PASSKEY_DISMISSED_KEY = 'maf_passkey_dismissed';
+
+function shouldSuggestPasskey(userData) {
+  if (!userData || userData.passkey_linked) return false;
+  if (authService.isTelegramWebView()) return false;
+  if (!authService.isPasskeySupported()) return false;
+  try {
+    const dismissed = localStorage.getItem(PASSKEY_DISMISSED_KEY);
+    if (dismissed) {
+      const ts = parseInt(dismissed, 10);
+      if (Date.now() - ts < 7 * 24 * 60 * 60 * 1000) return false;
+    }
+  } catch { /* ignore */ }
+  return true;
+}
 
 function AuthHeader() {
   return (
@@ -207,13 +222,8 @@ function GomafiaTab({ onSuccess }) {
 }
 
 function PasskeyTab({ onSuccess }) {
-  const [supported, setSupported] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    authService.isPasskeyAvailable().then(setSupported);
-  }, []);
 
   const handleAuth = async () => {
     setError('');
@@ -229,50 +239,14 @@ function PasskeyTab({ onSuccess }) {
     }
   };
 
-  if (supported === null) {
-    return (
-      <div className="auth-tab-content">
-        <div className="auth-spinner" />
-      </div>
-    );
-  }
-
-  if (authService.isTelegramWebView()) {
-    return (
-      <div className="auth-tab-content">
-        <div className="auth-passkey-icon">🔐</div>
-        <div className="auth-instructions" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          PassKey недоступен в Telegram
-        </div>
-        <div className="auth-hint">
-          Откройте MafBoard в браузере (Safari, Chrome) для входа через PassKey.
-          <br />В Telegram используйте авторизацию через Telegram или GoMafia.
-        </div>
-      </div>
-    );
-  }
-
-  if (!authService.isPasskeySupported()) {
-    return (
-      <div className="auth-tab-content">
-        <div className="auth-passkey-icon">🔐</div>
-        <div className="auth-hint">
-          Ваш браузер не поддерживает PassKey.
-          <br />Используйте Telegram или GoMafia для входа.
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="auth-tab-content">
       <div className="auth-passkey-icon">🔐</div>
       <div className="auth-instructions">
-        Войдите с помощью сохранённого PassKey
+        Войдите с помощью биометрии
       </div>
       <div className="auth-hint" style={{ marginBottom: 8 }}>
-        Если вы ранее добавили PassKey в настройках профиля, нажмите кнопку ниже.
-        Браузер предложит выбрать сохранённый ключ или использовать биометрию.
+        Face ID, Touch ID или PIN-код устройства
       </div>
       {error && <div className="auth-error">{error}</div>}
       <button
@@ -287,8 +261,78 @@ function PasskeyTab({ onSuccess }) {
         )}
       </button>
       <div className="auth-hint" style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, lineHeight: 1.5 }}>
-        Ещё нет PassKey? Войдите через Telegram или GoMafia,
-        затем добавьте PassKey в Профиль → Настройки → Способы авторизации.
+        PassKey создаётся автоматически при первом входе через Telegram или GoMafia.
+      </div>
+    </div>
+  );
+}
+
+function PasskeySuggest({ user, onDone }) {
+  const [state, setState] = useState('prompt');
+  const [error, setError] = useState('');
+
+  const handleCreate = async () => {
+    setState('creating');
+    setError('');
+    const token = authService.getStoredToken();
+    const result = await authService.passkeyRegister(token);
+    if (result.success) {
+      setState('done');
+    } else {
+      setError(result.error || 'Не удалось создать PassKey');
+      setState('prompt');
+    }
+  };
+
+  if (state === 'done') {
+    return (
+      <div className="auth-overlay">
+        <div className="auth-card">
+          <div className="auth-passkey-icon" style={{ fontSize: '2.5em' }}>&#x2705;</div>
+          <div className="auth-title" style={{ fontSize: '1.15em', marginTop: 8 }}>PassKey создан!</div>
+          <div className="auth-hint" style={{ marginBottom: 16 }}>
+            Теперь вы можете входить с помощью биометрии (Face ID, Touch ID, PIN).
+          </div>
+          <button className="auth-action-btn auth-action-btn--primary" onClick={onDone}>
+            Продолжить
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="auth-overlay">
+      <div className="auth-card">
+        <div className="auth-passkey-icon" style={{ fontSize: '2.5em' }}>🔐</div>
+        <div className="auth-title" style={{ fontSize: '1.15em', marginTop: 8 }}>Быстрый вход</div>
+        <div className="auth-hint" style={{ marginBottom: 4, lineHeight: 1.6 }}>
+          Настройте вход по биометрии, чтобы в следующий раз
+          входить через Face ID, Touch ID или PIN-код.
+        </div>
+        {error && <div className="auth-error" style={{ margin: '8px 0' }}>{error}</div>}
+        <button
+          className="auth-action-btn auth-action-btn--primary"
+          onClick={handleCreate}
+          disabled={state === 'creating'}
+          style={{ marginTop: 12 }}
+        >
+          {state === 'creating' ? (
+            <><span className="auth-btn-spinner" /> Настройка...</>
+          ) : (
+            'Настроить PassKey'
+          )}
+        </button>
+        <button
+          className="auth-action-btn"
+          onClick={() => {
+            try { localStorage.setItem(PASSKEY_DISMISSED_KEY, String(Date.now())); } catch {}
+            onDone();
+          }}
+          style={{ marginTop: 6, opacity: 0.5 }}
+        >
+          Пропустить
+        </button>
       </div>
     </div>
   );
@@ -311,7 +355,11 @@ export function AuthGate({ children }) {
       if (!mountedRef.current) return;
       if (result.authenticated) {
         setUser(result.user);
-        setState('ready');
+        if (shouldSuggestPasskey(result.user)) {
+          setState('suggest_passkey');
+        } else {
+          setState('ready');
+        }
       } else {
         setState('choose_method');
       }
@@ -320,10 +368,22 @@ export function AuthGate({ children }) {
 
   const handleSuccess = useCallback((userData) => {
     setUser(userData);
+    if (shouldSuggestPasskey(userData)) {
+      setState('suggest_passkey');
+    } else {
+      setState('ready');
+    }
+  }, []);
+
+  const handlePasskeySuggestDone = useCallback(() => {
     setState('ready');
   }, []);
 
   if (state === 'ready') return children;
+
+  if (state === 'suggest_passkey') {
+    return <PasskeySuggest user={user} onDone={handlePasskeySuggestDone} />;
+  }
 
   if (state === 'loading') {
     return (
