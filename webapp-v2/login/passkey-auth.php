@@ -70,11 +70,22 @@ $counter = unpack('N', substr($authData, 33, 4))[1];
 
 // Verify signature
 $publicKeyDer = base64_decode($passkey['public_key']);
+if (!$publicKeyDer) jsonError('Corrupted public key in database', 500);
+
 $pem = spkiToPem($publicKeyDer);
 $signature = base64url_decode($signatureB64);
 
+$keyCheck = openssl_pkey_get_public($pem);
+if (!$keyCheck) {
+    error_log("WebAuthn auth: invalid PEM key for credential {$credentialId}, pkLen=" . strlen($passkey['public_key']));
+    jsonError('Invalid stored public key', 500);
+}
+
 $valid = verifyWebAuthnSignature($authData, $clientDataJSON, $signature, $pem, (int)$passkey['algorithm']);
 if (!$valid) {
+    $keyDetails = openssl_pkey_get_details($keyCheck);
+    $keyType = $keyDetails ? $keyDetails['type'] : 'unknown';
+    error_log("WebAuthn auth FAILED: credId={$credentialId}, alg={$passkey['algorithm']}, keyType={$keyType}, sigLen=" . strlen($signature) . ", authDataLen=" . strlen($authData) . ", clientDataLen=" . strlen($clientDataJSON));
     jsonError('Invalid signature', 403);
 }
 

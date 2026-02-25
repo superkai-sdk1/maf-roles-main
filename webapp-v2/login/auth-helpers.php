@@ -512,40 +512,107 @@ function getAllPasskeyCredentialIds($database) {
  */
 function ecSignatureToDer($signature) {
     $length = strlen($signature);
+    if ($length === 0 || $length % 2 !== 0) return false;
+
     $half = intdiv($length, 2);
     $r = substr($signature, 0, $half);
     $s = substr($signature, $half);
 
     $r = ltrim($r, "\x00");
-    if ($r === '') $r = "\x00";
+    if ($r === '' || $r === false) $r = "\x00";
     if (ord($r[0]) & 0x80) $r = "\x00" . $r;
 
     $s = ltrim($s, "\x00");
-    if ($s === '') $s = "\x00";
+    if ($s === '' || $s === false) $s = "\x00";
     if (ord($s[0]) & 0x80) $s = "\x00" . $s;
 
     $rLen = strlen($r);
     $sLen = strlen($s);
+    $totalLen = $rLen + $sLen + 4;
 
-    return "\x30" . chr($rLen + $sLen + 4) . "\x02" . chr($rLen) . $r . "\x02" . chr($sLen) . $s;
+    if ($totalLen > 127) return false;
+
+    return "\x30" . chr($totalLen) . "\x02" . chr($rLen) . $r . "\x02" . chr($sLen) . $s;
 }
 
 /**
- * Verify a WebAuthn assertion signature
+ * Check if a binary string looks like a DER-encoded ECDSA signature
+ */
+function isEcDerSignature($sig) {
+    if (strlen($sig) < 8) return false;
+    return ord($sig[0]) === 0x30 && ord($sig[2]) === 0x02;
+}
+
+/**
+ * Detect key type from PEM: 'ec' or 'rsa'
+ */
+function detectKeyType($publicKeyPem) {
+    $key = openssl_pkey_get_public($publicKeyPem);
+    if (!$key) return null;
+    $details = openssl_pkey_get_details($key);
+    if (!$details) return null;
+    if ($details['type'] === OPENSSL_KEYTYPE_EC) return 'ec';
+    if ($details['type'] === OPENSSL_KEYTYPE_RSA) return 'rsa';
+    return null;
+}
+
+/**
+ * Verify a WebAuthn assertion signature with robust fallbacks
  */
 function verifyWebAuthnSignature($authenticatorData, $clientDataJSON, $signature, $publicKeyPem, $algorithm) {
     $clientDataHash = hash('sha256', $clientDataJSON, true);
     $signedData = $authenticatorData . $clientDataHash;
 
-    if ($algorithm === -7) {
-        // ES256 — signature is IEEE P1363, convert to DER
-        $derSignature = ecSignatureToDer($signature);
-        return openssl_verify($signedData, $derSignature, $publicKeyPem, OPENSSL_ALGO_SHA256) === 1;
-    } elseif ($algorithm === -257) {
-        // RS256
-        return openssl_verify($signedData, $signature, $publicKeyPem, OPENSSL_ALGO_SHA256) === 1;
+    $keyResource = openssl_pkey_get_public($publicKeyPem);
+    if (!$keyResource) {
+        error_log("WebAuthn: failed to load public key PEM");
+        return false;
     }
 
+    $keyType = detectKeyType($publicKeyPem);
+    $sigLen = strlen($signature);
+
+    if ($keyType === 'ec' || $algorithm === -7) {
+        // Try P1363→DER conversion (standard WebAuthn format)
+        if ($sigLen === 64 || $sigLen === 96 || $sigLen === 132) {
+            $derSig = ecSignatureToDer($signature);
+            if ($derSig !== false) {
+                $result = openssl_verify($signedData, $derSig, $keyResource, OPENSSL_ALGO_SHA256);
+                if ($result === 1) return true;
+            }
+        }
+
+        // Maybe signature is already in DER format (some authenticators)
+        if (isEcDerSignature($signature)) {
+            $result = openssl_verify($signedData, $signature, $keyResource, OPENSSL_ALGO_SHA256);
+            if ($result === 1) return true;
+        }
+
+        // Fallback: try raw signature
+        $result = openssl_verify($signedData, $signature, $keyResource, OPENSSL_ALGO_SHA256);
+        if ($result === 1) return true;
+    }
+
+    if ($keyType === 'rsa' || $algorithm === -257) {
+        $result = openssl_verify($signedData, $signature, $keyResource, OPENSSL_ALGO_SHA256);
+        if ($result === 1) return true;
+    }
+
+    // Last resort: try all approaches regardless of stored algorithm
+    if ($keyType === null) {
+        $derSig = ecSignatureToDer($signature);
+        if ($derSig !== false) {
+            $result = openssl_verify($signedData, $derSig, $keyResource, OPENSSL_ALGO_SHA256);
+            if ($result === 1) return true;
+        }
+        $result = openssl_verify($signedData, $signature, $keyResource, OPENSSL_ALGO_SHA256);
+        if ($result === 1) return true;
+    }
+
+    error_log("WebAuthn: signature verification failed. algorithm={$algorithm}, keyType={$keyType}, sigLen={$sigLen}");
+    while ($err = openssl_error_string()) {
+        error_log("WebAuthn OpenSSL error: {$err}");
+    }
     return false;
 }
 
