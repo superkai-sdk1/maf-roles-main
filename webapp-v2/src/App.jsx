@@ -57,9 +57,16 @@ function OverlayPlaceholder({ onNavigate }) {
   );
 }
 
+const ROUTES = { '/': 'landing', '/panel': 'panel', '/overlay': 'overlay' };
+const PATHS = { landing: '/', panel: '/panel', overlay: '/overlay' };
+
+function pageFromPath() {
+  return ROUTES[window.location.pathname] || 'landing';
+}
+
 function AppShell() {
   const { isAuthenticated, isLoading, isTelegramWebView, showAuthModal } = useAuth();
-  const [page, setPage] = useState('landing');
+  const [page, setPage] = useState(pageFromPath);
   const rootRef = useRef(null);
 
   useEffect(() => {
@@ -67,6 +74,12 @@ function AppShell() {
   }, []);
 
   useNativeScroll(rootRef);
+
+  useEffect(() => {
+    const onPop = () => setPage(pageFromPath());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -90,6 +103,13 @@ function AppShell() {
     }
     return () => html.classList.remove('app-mode');
   }, [page, isAuthenticated]);
+
+  useEffect(() => {
+    const target = PATHS[page] || '/';
+    if (window.location.pathname !== target) {
+      window.history.pushState(null, '', target);
+    }
+  }, [page]);
 
   const handleNavigate = useCallback((target) => {
     if (target === 'panel' && !isAuthenticated) {
