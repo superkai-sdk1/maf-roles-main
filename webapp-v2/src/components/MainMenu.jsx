@@ -468,6 +468,8 @@ export function MainMenu() {
   const [playerError, setPlayerError] = useState('');
   const [playerDetailSession, setPlayerDetailSession] = useState(null);
   const [playerDetailLoading, setPlayerDetailLoading] = useState(false);
+  const [playerDetailTab, setPlayerDetailTab] = useState('scores');
+  const [playerSelectedGame, setPlayerSelectedGame] = useState(null);
   const [playerLastViewed, setPlayerLastViewed] = useState(() => {
     try { return parseInt(localStorage.getItem('maf_player_last_viewed') || '0', 10); } catch { return 0; }
   });
@@ -548,6 +550,9 @@ export function MainMenu() {
       const data = await playerApi.getPlayerSessionDetail(token, sessionId, judgeId);
       if (data && !data.error) {
         setPlayerDetailSession(data);
+        setPlayerDetailTab('scores');
+        const games = data.gamesHistory || [];
+        setPlayerSelectedGame(games.length > 0 ? games.length - 1 : null);
         setMenuScreen('playerDetail');
       }
     } catch {}
@@ -2232,86 +2237,103 @@ export function MainMenu() {
                 </div>
               )}
 
-              {!playerLoading && !playerError && playerGames && playerGames.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {playerGames.map((game, idx) => {
-                    const isNew = new Date(game.updated_at).getTime() > playerLastViewed;
-                    const isWin = game.winner_team === 'peace' ? (game.player_role === 'Мирный' || game.player_role === 'Шериф') :
-                                  game.winner_team === 'mafia' ? (game.player_role === 'Мафия' || game.player_role === 'Дон') : false;
-                    const winColor = game.winner_team === 'peace' ? '#30d158' : game.winner_team === 'mafia' ? '#ff453a' : 'var(--text-muted)';
-                    const winLabel = game.winner_team === 'peace' ? 'Мирные' : game.winner_team === 'mafia' ? 'Мафия' : game.game_finished ? 'Ничья' : 'В процессе';
-
-                    return (
-                      <button
-                        key={`${game.session_id}-${idx}`}
-                        className="relative w-full text-left p-3.5 rounded-2xl glass-card transition-all active:scale-[0.98] cursor-pointer"
-                        style={isNew ? { borderLeft: '3px solid var(--accent-color)' } : {}}
-                        onClick={() => { loadPlayerSessionDetail(game.session_id, game.judge_telegram_id); triggerHaptic('light'); }}
-                        disabled={playerDetailLoading}
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-[0.85em] font-bold truncate" style={{ color: 'var(--text-primary)' }}>
-                              {game.tournament_name || 'Игра'}
-                            </div>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              {game.game_mode && (
-                                <span className="text-[0.6em] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md" style={{ background: 'var(--accent-surface)', color: 'var(--accent-color)' }}>
-                                  {game.game_mode}
+              {!playerLoading && !playerError && playerGames && playerGames.length > 0 && (() => {
+                const grouped = {};
+                playerGames.forEach(g => {
+                  const key = g.session_id;
+                  if (!grouped[key]) grouped[key] = { tournament_name: g.tournament_name, game_mode: g.game_mode, session_id: g.session_id, judge_telegram_id: g.judge_telegram_id, games: [] };
+                  grouped[key].games.push(g);
+                });
+                const sessions = Object.values(grouped);
+                return (
+                  <div className="flex flex-col gap-3">
+                    {sessions.map((sess) => {
+                      const latestGame = sess.games[0];
+                      const isNew = sess.games.some(g => new Date(g.updated_at).getTime() > playerLastViewed);
+                      const winColor = latestGame.winner_team === 'civilians' ? '#30d158' : latestGame.winner_team === 'mafia' ? '#ff453a' : 'var(--text-muted)';
+                      const winLabel = latestGame.winner_team === 'civilians' ? 'Мирные' : latestGame.winner_team === 'mafia' ? 'Мафия' : latestGame.game_finished ? 'Ничья' : 'В процессе';
+                      return (
+                        <button
+                          key={sess.session_id}
+                          className="relative w-full text-left p-3.5 rounded-2xl glass-card transition-all active:scale-[0.98] cursor-pointer"
+                          style={isNew ? { borderLeft: '3px solid var(--accent-color)' } : {}}
+                          onClick={() => { loadPlayerSessionDetail(sess.session_id, sess.judge_telegram_id); triggerHaptic('light'); }}
+                          disabled={playerDetailLoading}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[0.85em] font-bold truncate" style={{ color: 'var(--text-primary)' }}>
+                                {sess.tournament_name || 'Игра'}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {sess.game_mode && (
+                                  <span className="text-[0.6em] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md" style={{ background: 'var(--accent-surface)', color: 'var(--accent-color)' }}>
+                                    {sess.game_mode}
+                                  </span>
+                                )}
+                                <span className="text-[0.65em] font-medium" style={{ color: 'var(--text-muted)' }}>
+                                  {new Date(latestGame.updated_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                 </span>
-                              )}
-                              <span className="text-[0.65em] font-medium" style={{ color: 'var(--text-muted)' }}>
-                                {new Date(game.updated_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                              </span>
+                              </div>
                             </div>
+                            {latestGame.player_score !== null && (
+                              <div className="text-[1.4em] font-black tabular-nums" style={{ color: 'var(--text-primary)' }}>
+                                {latestGame.player_score}
+                              </div>
+                            )}
                           </div>
-                          {game.player_score !== null && (
-                            <div className="text-[1.4em] font-black tabular-nums" style={{ color: isWin ? '#30d158' : 'var(--text-primary)' }}>
-                              {game.player_score}
-                            </div>
-                          )}
-                        </div>
 
-                        <div className="flex items-center gap-3">
-                          {game.player_num !== null && (
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[0.7em] font-black shrink-0" style={{ background: 'var(--accent-surface)', color: 'var(--accent-color)' }}>
-                              {game.player_num}
-                            </div>
-                          )}
-                          {game.player_role && (
-                            <span className="text-[0.75em] font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                              {game.player_role}
+                          <div className="flex items-center gap-3">
+                            {latestGame.player_num !== null && (
+                              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[0.7em] font-black shrink-0" style={{ background: 'var(--accent-surface)', color: 'var(--accent-color)' }}>
+                                {latestGame.player_num}
+                              </div>
+                            )}
+                            {latestGame.player_role && (
+                              <span className="text-[0.75em] font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                                {latestGame.player_role}
+                              </span>
+                            )}
+                            {latestGame.player_action && (
+                              <span className="text-[0.65em] font-medium px-1.5 py-0.5 rounded-md" style={{ background: 'rgba(255,69,58,0.1)', color: '#ff453a' }}>
+                                {latestGame.player_action}
+                              </span>
+                            )}
+                            <span className="ml-auto text-[0.65em] font-bold" style={{ color: winColor }}>
+                              {winLabel}
                             </span>
-                          )}
-                          {game.player_action && (
-                            <span className="text-[0.65em] font-medium px-1.5 py-0.5 rounded-md" style={{ background: 'rgba(255,69,58,0.1)', color: '#ff453a' }}>
-                              {game.player_action}
-                            </span>
-                          )}
-                          <span className="ml-auto text-[0.65em] font-bold" style={{ color: winColor }}>
-                            {winLabel}
-                          </span>
-                        </div>
+                          </div>
 
-                        {isNew && (
-                          <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-[var(--accent-color)] shadow-[0_0_6px_var(--accent-color)]" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                          {isNew && (
+                            <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-[var(--accent-color)] shadow-[0_0_6px_var(--accent-color)]" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
           {/* =================== PLAYER DETAIL SCREEN =================== */}
-          {menuScreen === 'playerDetail' && playerDetailSession && (
+          {menuScreen === 'playerDetail' && playerDetailSession && (() => {
+            const allGames = playerDetailSession.gamesHistory || [];
+            const hasMultipleGames = allGames.length > 1;
+            const activeGame = playerSelectedGame !== null && allGames[playerSelectedGame] ? allGames[playerSelectedGame] : (allGames.length > 0 ? allGames[allGames.length - 1] : playerDetailSession.currentGame);
+            const gamePlayers = activeGame?.players || [];
+            const wt = activeGame?.winnerTeam;
+            const wtIsCiv = wt === 'civilians';
+            const wtLabel = wtIsCiv ? 'Победа мирных' : wt === 'mafia' ? 'Победа мафии' : wt === 'draw' ? 'Ничья' : null;
+
+            return (
             <div className="animate-fade-in w-full max-w-[400px] pb-[100px] flex flex-col gap-3">
+              {/* Header */}
               <div className="flex items-center gap-3 mb-1">
                 <button
                   className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all active:scale-90"
                   style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}
-                  onClick={() => { setMenuScreen('player'); setPlayerDetailSession(null); triggerHaptic('light'); }}
+                  onClick={() => { setMenuScreen('player'); setPlayerDetailSession(null); setPlayerSelectedGame(null); triggerHaptic('light'); }}
                 >
                   <IconArrowRight size={16} color="var(--accent-color)" style={{ transform: 'rotate(180deg)' }} />
                 </button>
@@ -2325,67 +2347,161 @@ export function MainMenu() {
                         {playerDetailSession.gameMode}
                       </span>
                     )}
+                    {playerDetailSession.gameSelected && (
+                      <span className="text-[0.6em] font-medium" style={{ color: 'var(--text-muted)' }}>
+                        Игра {playerDetailSession.gameSelected}{playerDetailSession.tableSelected ? ` • Стол ${playerDetailSession.tableSelected}` : ''}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {playerDetailSession.winnerTeam && (
-                <div className="p-3 rounded-xl text-center font-bold text-[0.85em]" style={{
-                  background: playerDetailSession.winnerTeam === 'peace' ? 'rgba(48,209,88,0.12)' : 'rgba(255,69,58,0.12)',
-                  color: playerDetailSession.winnerTeam === 'peace' ? '#30d158' : '#ff453a',
-                  border: `1px solid ${playerDetailSession.winnerTeam === 'peace' ? 'rgba(48,209,88,0.2)' : 'rgba(255,69,58,0.2)'}`,
-                }}>
-                  {playerDetailSession.winnerTeam === 'peace' ? 'Победа мирных' : 'Победа мафии'}
+              {/* Game selector for multiple games */}
+              {hasMultipleGames && (
+                <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
+                  {allGames.map((g, idx) => {
+                    const isActive = playerSelectedGame === idx;
+                    const gWt = g.winnerTeam;
+                    const gColor = gWt === 'civilians' ? '#30d158' : gWt === 'mafia' ? '#ff453a' : 'var(--text-muted)';
+                    return (
+                      <button
+                        key={idx}
+                        className="shrink-0 px-3 py-1.5 rounded-xl text-[0.72em] font-bold transition-all active:scale-95"
+                        style={{
+                          background: isActive ? 'var(--accent-color)' : 'var(--accent-surface)',
+                          color: isActive ? '#fff' : gColor,
+                          border: isActive ? 'none' : '1px solid var(--accent-border)',
+                        }}
+                        onClick={() => { setPlayerSelectedGame(idx); setPlayerDetailTab('scores'); triggerHaptic('selection'); }}
+                      >
+                        Игра {g.gameNumber || idx + 1}
+                      </button>
+                    );
+                  })}
+                  <button
+                    className="shrink-0 px-3 py-1.5 rounded-xl text-[0.72em] font-bold transition-all active:scale-95"
+                    style={{
+                      background: playerSelectedGame === -1 ? 'var(--accent-color)' : 'var(--accent-surface)',
+                      color: playerSelectedGame === -1 ? '#fff' : 'var(--accent-color)',
+                      border: playerSelectedGame === -1 ? 'none' : '1px solid var(--accent-border)',
+                    }}
+                    onClick={() => { setPlayerSelectedGame(-1); triggerHaptic('selection'); }}
+                  >
+                    Общая таблица
+                  </button>
                 </div>
               )}
 
-              <div className="rounded-2xl overflow-hidden glass-card">
-                <div className="grid grid-cols-[40px_1fr_auto_auto] gap-x-2 p-2.5 text-[0.6em] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)' }}>
-                  <span className="text-center">#</span>
-                  <span>Игрок</span>
-                  <span className="text-center">Роль</span>
-                  <span className="text-center w-12">Балл</span>
-                </div>
-                {(playerDetailSession.players || []).map((p, i) => {
-                  const isSelf = p.login === playerNickname;
-                  const isMafia = p.role === 'Мафия' || p.role === 'Дон';
-                  return (
-                    <div
-                      key={i}
-                      className="grid grid-cols-[40px_1fr_auto_auto] gap-x-2 px-2.5 py-2 items-center"
-                      style={{
-                        borderBottom: i < (playerDetailSession.players || []).length - 1 ? '1px solid var(--border-color)' : 'none',
-                        background: isSelf ? 'var(--accent-surface)' : 'transparent',
-                      }}
-                    >
-                      <span className="text-center text-[0.8em] font-bold tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                        {p.num || i + 1}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="text-[0.82em] font-semibold truncate" style={{ color: isSelf ? 'var(--accent-color)' : 'var(--text-primary)' }}>
-                          {p.login || '—'}
+              {/* ===== OVERALL TABLE MODE ===== */}
+              {playerSelectedGame === -1 && hasMultipleGames && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-4 text-[0.75em] font-bold" style={{ color: 'var(--text-muted)' }}>
+                    <span>Всего игр: {allGames.length}</span>
+                    <span style={{ color: '#30d158' }}>Мирные: {allGames.filter(g => g.winnerTeam === 'civilians').length}</span>
+                    <span style={{ color: '#ff453a' }}>Мафия: {allGames.filter(g => g.winnerTeam === 'mafia').length}</span>
+                  </div>
+                  {/* Per-game summary rows */}
+                  {allGames.map((g, idx) => {
+                    const selfPlayer = g.players?.find(p => p.login === playerNickname);
+                    const gWt = g.winnerTeam;
+                    const gColor = gWt === 'civilians' ? '#30d158' : gWt === 'mafia' ? '#ff453a' : 'var(--text-muted)';
+                    const gLabel = gWt === 'civilians' ? 'Мирные' : gWt === 'mafia' ? 'Мафия' : 'Ничья';
+                    return (
+                      <button
+                        key={idx}
+                        className="w-full text-left p-3 rounded-xl glass-card transition-all active:scale-[0.98]"
+                        onClick={() => { setPlayerSelectedGame(idx); setPlayerDetailTab('scores'); triggerHaptic('light'); }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-[0.75em] font-black w-6 text-center" style={{ color: 'var(--accent-color)' }}>#{g.gameNumber || idx + 1}</span>
+                            {selfPlayer && (
+                              <>
+                                <span className="text-[0.72em] font-semibold" style={{ color: selfPlayer.isBlack ? '#ff453a' : '#30d158' }}>
+                                  {selfPlayer.role}
+                                </span>
+                                {selfPlayer.action && (
+                                  <span className="text-[0.6em] font-medium px-1 py-0.5 rounded" style={{ background: 'rgba(255,69,58,0.1)', color: '#ff453a' }}>
+                                    {selfPlayer.action}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[0.65em] font-bold" style={{ color: gColor }}>{gLabel}</span>
+                            {selfPlayer && selfPlayer.score !== null && (
+                              <span className="text-[1em] font-black tabular-nums" style={{ color: 'var(--text-primary)' }}>{selfPlayer.score}</span>
+                            )}
+                          </div>
                         </div>
-                        {p.action && (
-                          <span className="text-[0.65em] font-medium px-1 py-0.5 rounded" style={{ background: 'rgba(255,69,58,0.1)', color: '#ff453a' }}>
-                            {p.action}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[0.72em] font-semibold px-1.5 py-0.5 rounded-md text-center" style={{
-                        background: isMafia ? 'rgba(255,69,58,0.1)' : 'rgba(48,209,88,0.08)',
-                        color: isMafia ? '#ff453a' : '#30d158',
-                      }}>
-                        {p.role || '—'}
-                      </span>
-                      <span className="text-[0.9em] font-black tabular-nums text-center w-12" style={{ color: 'var(--text-primary)' }}>
-                        {p.score !== null && p.score !== undefined ? p.score : '—'}
-                      </span>
+                      </button>
+                    );
+                  })}
+                  {/* Overall totals table */}
+                  <PlayerDetailScoresTable players={(() => {
+                    const totals = {};
+                    allGames.forEach(g => {
+                      (g.players || []).forEach(p => {
+                        if (!totals[p.login]) totals[p.login] = { login: p.login, totalScore: 0, games: 0, roles: [] };
+                        totals[p.login].totalScore += (p.score || 0);
+                        totals[p.login].games++;
+                        if (p.role) totals[p.login].roles.push(p.role);
+                      });
+                    });
+                    return Object.values(totals).sort((a, b) => b.totalScore - a.totalScore).map((t, i) => ({
+                      num: i + 1, login: t.login, role: `${t.games} игр`, isBlack: false,
+                      action: null, score: Math.round(t.totalScore * 100) / 100, fouls: 0, techFouls: 0,
+                    }));
+                  })()} selfNickname={playerNickname} isOverall />
+                </div>
+              )}
+
+              {/* ===== SINGLE GAME MODE ===== */}
+              {playerSelectedGame !== -1 && activeGame && (
+                <div className="flex flex-col gap-3">
+                  {/* Winner banner */}
+                  {wtLabel && (
+                    <div className="p-3 rounded-xl text-center font-bold text-[0.85em]" style={{
+                      background: wtIsCiv ? 'rgba(48,209,88,0.12)' : 'rgba(255,69,58,0.12)',
+                      color: wtIsCiv ? '#30d158' : '#ff453a',
+                      border: `1px solid ${wtIsCiv ? 'rgba(48,209,88,0.2)' : 'rgba(255,69,58,0.2)'}`,
+                    }}>
+                      {wtLabel}
                     </div>
-                  );
-                })}
-              </div>
+                  )}
+
+                  {/* Tabs */}
+                  <div className="flex rounded-xl overflow-hidden" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
+                    {['scores', 'summary'].map(tab => (
+                      <button
+                        key={tab}
+                        className="flex-1 py-2 text-[0.75em] font-bold transition-all"
+                        style={{
+                          background: playerDetailTab === tab ? 'var(--accent-color)' : 'transparent',
+                          color: playerDetailTab === tab ? '#fff' : 'var(--text-muted)',
+                        }}
+                        onClick={() => { setPlayerDetailTab(tab); triggerHaptic('selection'); }}
+                      >
+                        {tab === 'scores' ? 'Баллы' : 'Сводка'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Scores tab */}
+                  {playerDetailTab === 'scores' && (
+                    <PlayerDetailScoresTable players={gamePlayers} selfNickname={playerNickname} />
+                  )}
+
+                  {/* Summary tab */}
+                  {playerDetailTab === 'summary' && (
+                    <PlayerDetailSummary game={activeGame} selfNickname={playerNickname} />
+                  )}
+                </div>
+              )}
             </div>
-          )}
+            );
+          })()}
 
         </div>
       </div>
@@ -2645,5 +2761,197 @@ function pluralGames(n) {
   if (last === 1) return 'игра';
   if (last >= 2 && last <= 4) return 'игры';
   return 'игр';
+}
+
+function PlayerDetailScoresTable({ players, selfNickname, isOverall }) {
+  return (
+    <div className="rounded-2xl overflow-hidden glass-card">
+      <div className="grid gap-x-2 p-2.5 text-[0.6em] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', gridTemplateColumns: '32px 1fr auto auto' }}>
+        <span className="text-center">#</span>
+        <span>Игрок</span>
+        <span className="text-center">{isOverall ? 'Игры' : 'Роль'}</span>
+        <span className="text-center w-12">Балл</span>
+      </div>
+      {players.map((p, i) => {
+        const isSelf = p.login === selfNickname;
+        return (
+          <div
+            key={i}
+            className="grid gap-x-2 px-2.5 py-2 items-center"
+            style={{
+              gridTemplateColumns: '32px 1fr auto auto',
+              borderBottom: i < players.length - 1 ? '1px solid var(--border-color)' : 'none',
+              background: isSelf ? 'var(--accent-surface)' : 'transparent',
+            }}
+          >
+            <span className="text-center text-[0.8em] font-bold tabular-nums" style={{ color: 'var(--text-muted)' }}>
+              {p.num || i + 1}
+            </span>
+            <div className="min-w-0">
+              <div className="text-[0.82em] font-semibold truncate" style={{ color: isSelf ? 'var(--accent-color)' : 'var(--text-primary)' }}>
+                {p.login || '—'}
+              </div>
+              <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                {p.action && (
+                  <span className="text-[0.6em] font-medium px-1 py-0.5 rounded" style={{ background: 'rgba(255,69,58,0.1)', color: '#ff453a' }}>
+                    {p.action}
+                  </span>
+                )}
+                {p.fouls > 0 && (
+                  <span className="text-[0.6em] font-medium px-1 py-0.5 rounded" style={{ background: 'rgba(255,165,0,0.1)', color: '#ffa500' }}>
+                    {p.fouls} фол{p.fouls > 1 ? 'а' : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+            <span className="text-[0.72em] font-semibold px-1.5 py-0.5 rounded-md text-center" style={{
+              background: isOverall ? 'var(--accent-surface)' : (p.isBlack ? 'rgba(255,69,58,0.1)' : 'rgba(48,209,88,0.08)'),
+              color: isOverall ? 'var(--accent-color)' : (p.isBlack ? '#ff453a' : '#30d158'),
+            }}>
+              {p.role || '—'}
+            </span>
+            <span className="text-[0.9em] font-black tabular-nums text-center w-12" style={{ color: 'var(--text-primary)' }}>
+              {p.score !== null && p.score !== undefined ? p.score : '—'}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PlayerDetailSummary({ game, selfNickname }) {
+  if (!game) return null;
+  const { votingHistory = [], nightCheckHistory = [], killedOnNight = {}, nightMisses = {}, doctorHealHistory = [], bestMove = [], bestMoveAccepted, firstKilledPlayer, players = [], dayNumber = 0, nightNumber = 0 } = game;
+  const maxRound = Math.max(dayNumber, nightNumber, Object.keys(killedOnNight).length);
+
+  const playerByRk = {};
+  const playerByNum = {};
+  players.forEach(p => { if (p.login) playerByRk[p.login] = p; if (p.num) playerByNum[p.num] = p; });
+
+  const getLogin = (rk) => {
+    const p = players.find(pl => pl.login === rk || pl.num === rk);
+    return p ? p.login : rk;
+  };
+
+  const rounds = [];
+  for (let r = 1; r <= maxRound; r++) {
+    const nightEvents = [];
+    const killedKey = String(r);
+    const killed = killedOnNight[killedKey] || killedOnNight[r];
+    if (killed) {
+      const kp = players.find(p => p.num === killed);
+      nightEvents.push({ type: 'kill', icon: '💀', text: `Убит: ${kp ? kp.login : killed} (${killed})` });
+    }
+    if (nightMisses[killedKey] || nightMisses[r]) {
+      nightEvents.push({ type: 'miss', icon: '🎯', text: 'Промах мафии' });
+    }
+    const heals = doctorHealHistory.filter(h => h.night === r);
+    heals.forEach(h => nightEvents.push({ type: 'heal', icon: '💊', text: `Доктор лечит: ${h.targetLogin || h.target}` }));
+
+    const checks = nightCheckHistory.filter(c => c.night === r);
+    checks.forEach(c => {
+      const checkerLabel = c.checkerRole === 'don' ? 'Дон' : c.checkerRole === 'sheriff' ? 'Шериф' : c.checkerRole;
+      nightEvents.push({ type: 'check', icon: c.found ? '✅' : '❌', text: `${checkerLabel} → ${c.targetLogin || c.target}: ${c.result || (c.found ? 'Найден' : 'Не найден')}` });
+    });
+
+    const dayEvents = [];
+    const dayVotes = votingHistory.filter(v => v.dayNumber === r);
+    dayVotes.forEach(v => {
+      const stages = v.stages || [];
+      stages.forEach(st => {
+        const results = st.results || [];
+        results.forEach(res => {
+          const numVoted = res.candidate || res.num;
+          const vp = players.find(p => p.num === numVoted);
+          const voterNums = res.voters || [];
+          dayEvents.push({
+            type: 'vote',
+            icon: '🗳️',
+            text: `${vp ? vp.login : numVoted} (${numVoted}): ${voterNums.length} голос${voterNums.length !== 1 ? 'ов' : ''}`,
+            voters: voterNums,
+          });
+        });
+        if (st.type === 'tie' || st.type === 'lift') {
+          dayEvents.push({ type: 'stage', icon: '⚖️', text: st.type === 'tie' ? 'Перестрелка' : 'Подъём' });
+        }
+      });
+      if (v.finalWinners && v.finalWinners.length > 0) {
+        const names = v.finalWinners.map(num => { const p = players.find(pl => pl.num === num); return p ? p.login : num; });
+        dayEvents.push({ type: 'result', icon: '🚪', text: `Выбывают: ${names.join(', ')}` });
+      }
+    });
+
+    if (nightEvents.length > 0 || dayEvents.length > 0) {
+      rounds.push({ round: r, nightEvents, dayEvents });
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Best move */}
+      {bestMove.length > 0 && (
+        <div className="p-3 rounded-xl glass-card">
+          <div className="text-[0.65em] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>Лучший ход</div>
+          <div className="flex items-center gap-2">
+            {bestMove.map((num, i) => {
+              const p = players.find(pl => pl.num === num);
+              return (
+                <div key={i} className="w-8 h-8 rounded-lg flex items-center justify-center text-[0.75em] font-black" style={{
+                  background: p?.isBlack ? 'rgba(255,69,58,0.15)' : 'rgba(48,209,88,0.1)',
+                  color: p?.isBlack ? '#ff453a' : '#30d158',
+                  border: `1px solid ${p?.isBlack ? 'rgba(255,69,58,0.25)' : 'rgba(48,209,88,0.2)'}`,
+                }}>
+                  {num}
+                </div>
+              );
+            })}
+            <span className="ml-2 text-[0.72em] font-semibold" style={{ color: bestMoveAccepted ? '#30d158' : '#ff453a' }}>
+              {bestMoveAccepted ? 'Принят' : 'Не принят'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Timeline */}
+      {rounds.map(({ round, nightEvents, dayEvents }) => (
+        <div key={round} className="flex flex-col gap-1.5">
+          <div className="text-[0.65em] font-black uppercase tracking-wider px-1" style={{ color: 'var(--accent-color)' }}>
+            Раунд {round}
+          </div>
+
+          {nightEvents.length > 0 && (
+            <div className="p-2.5 rounded-xl" style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.12)' }}>
+              <div className="text-[0.58em] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'rgba(129,140,248,0.8)' }}>Ночь {round}</div>
+              {nightEvents.map((ev, i) => (
+                <div key={i} className="flex items-start gap-2 py-0.5">
+                  <span className="text-[0.75em] shrink-0">{ev.icon}</span>
+                  <span className="text-[0.72em] font-medium" style={{ color: 'var(--text-secondary)' }}>{ev.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {dayEvents.length > 0 && (
+            <div className="p-2.5 rounded-xl" style={{ background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.1)' }}>
+              <div className="text-[0.58em] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'rgba(251,191,36,0.7)' }}>День {round}</div>
+              {dayEvents.map((ev, i) => (
+                <div key={i} className="flex items-start gap-2 py-0.5">
+                  <span className="text-[0.75em] shrink-0">{ev.icon}</span>
+                  <span className="text-[0.72em] font-medium" style={{ color: 'var(--text-secondary)' }}>{ev.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {rounds.length === 0 && (
+        <div className="text-center py-8 text-[0.8em] font-medium" style={{ color: 'var(--text-muted)' }}>
+          Нет данных о ходе игры
+        </div>
+      )}
+    </div>
+  );
 }
 

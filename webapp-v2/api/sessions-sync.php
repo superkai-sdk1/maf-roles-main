@@ -61,7 +61,32 @@ try {
     error_log('Game sessions migration error: ' . $e->getMessage());
 }
 
+$ROLE_LABELS_SYNC = [
+    'don' => 'Дон', 'black' => 'Мафия', 'sheriff' => 'Шериф', 'peace' => 'Мирный',
+    'detective' => 'Детектив', 'doctor' => 'Доктор', 'kamikaze' => 'Камикадзе',
+    'immortal' => 'Бессмертный', 'beauty' => 'Красотка', 'maniac' => 'Маньяк',
+    'oyabun' => 'Оябун', 'yakuza' => 'Якудза', 'mafia' => 'Мафия',
+];
+$BLACK_ROLES_SYNC = ['don','black','oyabun','yakuza','maniac','ripper','swindler','thief','snitch','fangirl','lawyer','mafia'];
+
+function computePlayerScore($roleKey, $roles, $playerScores, $winnerTeam) {
+    global $BLACK_ROLES_SYNC;
+    if (!$winnerTeam) return null;
+    $s = 0;
+    $role = isset($roles[$roleKey]) ? $roles[$roleKey] : '';
+    $isBlack = in_array($role, $BLACK_ROLES_SYNC);
+    if ($winnerTeam === 'civilians' && !$isBlack) $s += 1;
+    if ($winnerTeam === 'mafia' && $isBlack) $s += 1;
+    if (isset($playerScores[$roleKey]) && is_array($playerScores[$roleKey])) {
+        $ps = $playerScores[$roleKey];
+        $s += floatval($ps['bonus'] ?? 0);
+        $s -= floatval($ps['penalty'] ?? 0);
+    }
+    return round($s * 100) / 100;
+}
+
 function indexPlayerSessions($database, $tableName, $sessions, $telegramId) {
+    global $ROLE_LABELS_SYNC;
     if (empty($sessions)) return;
     $stmt = $database->pdo->prepare("
         INSERT INTO `{$tableName}` (`player_login`, `session_id`, `judge_telegram_id`, `tournament_name`, `game_mode`, `winner_team`, `game_finished`, `player_role`, `player_score`, `player_action`, `player_num`, `updated_at`)
@@ -82,27 +107,19 @@ function indexPlayerSessions($database, $tableName, $sessions, $telegramId) {
     foreach ($sessions as $s) {
         if (empty($s['sessionId'])) continue;
         $players = isset($s['players']) && is_array($s['players']) ? $s['players'] : [];
-        $tableOut = [];
-        if (!empty($s['roles']) && is_array($s['roles'])) {
-            foreach ($players as $p) {
-                $rk = isset($p['roleKey']) ? $p['roleKey'] : '';
-                $p['role'] = isset($s['roles'][$rk]) ? $s['roles'][$rk] : null;
-                $p['action'] = isset($s['playersActions'][$rk]) ? $s['playersActions'][$rk] : null;
-                $tableOut[] = $p;
-            }
-        } else {
-            $tableOut = $players;
-        }
-        foreach ($tableOut as $p) {
+        $roles = isset($s['roles']) && is_array($s['roles']) ? $s['roles'] : [];
+        $actions = isset($s['playersActions']) && is_array($s['playersActions']) ? $s['playersActions'] : [];
+        $playerScores = isset($s['playerScores']) && is_array($s['playerScores']) ? $s['playerScores'] : [];
+        $winnerTeam = isset($s['winnerTeam']) ? $s['winnerTeam'] : null;
+
+        foreach ($players as $p) {
             $login = isset($p['login']) ? trim($p['login']) : '';
             if ($login === '') continue;
-            $score = null;
-            if (isset($s['playerScores']) && is_array($s['playerScores'])) {
-                $rk = isset($p['roleKey']) ? $p['roleKey'] : '';
-                if (isset($s['playerScores'][$rk])) {
-                    $score = (float)$s['playerScores'][$rk];
-                }
-            }
+            $rk = isset($p['roleKey']) ? $p['roleKey'] : '';
+            $role = isset($roles[$rk]) ? $roles[$rk] : '';
+            $roleLabel = isset($ROLE_LABELS_SYNC[$role]) ? $ROLE_LABELS_SYNC[$role] : ($role ?: null);
+            $score = computePlayerScore($rk, $roles, $playerScores, $winnerTeam);
+            $action = isset($actions[$rk]) ? $actions[$rk] : null;
             try {
                 $stmt->execute([
                     ':login' => $login,
@@ -110,11 +127,11 @@ function indexPlayerSessions($database, $tableName, $sessions, $telegramId) {
                     ':jid' => $telegramId,
                     ':tname' => isset($s['tournamentName']) ? $s['tournamentName'] : null,
                     ':gmode' => isset($s['gameMode']) ? $s['gameMode'] : null,
-                    ':wteam' => isset($s['winnerTeam']) ? $s['winnerTeam'] : null,
-                    ':gfin' => (!empty($s['gameFinished']) || !empty($s['winnerTeam'])) ? 1 : 0,
-                    ':prole' => isset($p['role']) ? $p['role'] : null,
+                    ':wteam' => $winnerTeam,
+                    ':gfin' => (!empty($s['gameFinished']) || !empty($winnerTeam)) ? 1 : 0,
+                    ':prole' => $roleLabel,
                     ':pscore' => $score,
-                    ':paction' => isset($p['action']) ? $p['action'] : null,
+                    ':paction' => $action,
                     ':pnum' => isset($p['num']) ? (int)$p['num'] : null,
                     ':upd' => $now,
                 ]);

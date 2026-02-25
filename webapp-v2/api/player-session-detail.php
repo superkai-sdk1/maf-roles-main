@@ -47,6 +47,80 @@ if (!$access) {
     exit;
 }
 
+$ROLE_LABELS = [
+    'don' => 'Дон', 'black' => 'Мафия', 'sheriff' => 'Шериф', 'peace' => 'Мирный',
+    'detective' => 'Детектив', 'jailer' => 'Тюремщик', 'prostitute' => 'Проститутка',
+    'bodyguard' => 'Телохранитель', 'sleepwalker' => 'Лунатик', 'journalist' => 'Журналист',
+    'doctor' => 'Доктор', 'priest' => 'Священник', 'judge' => 'Судья',
+    'kamikaze' => 'Камикадзе', 'immortal' => 'Бессмертный', 'beauty' => 'Красотка',
+    'oyabun' => 'Оябун', 'yakuza' => 'Якудза', 'maniac' => 'Маньяк',
+    'ripper' => 'Потрошитель', 'swindler' => 'Аферист', 'thief' => 'Вор',
+    'snitch' => 'Стукач', 'fangirl' => 'Поклонница', 'lawyer' => 'Адвокат',
+    'mafia' => 'Мафия',
+];
+
+$BLACK_ROLES = ['don','black','oyabun','yakuza','maniac','ripper','swindler','thief','snitch','fangirl','lawyer','mafia'];
+
+function calculateScore($roleKey, $roles, $playerScores, $winnerTeam) {
+    global $BLACK_ROLES;
+    if (!$winnerTeam) return 0;
+    $s = 0;
+    $role = isset($roles[$roleKey]) ? $roles[$roleKey] : '';
+    $isBlack = in_array($role, $BLACK_ROLES);
+    if ($winnerTeam === 'civilians' && !$isBlack) $s += 1;
+    if ($winnerTeam === 'mafia' && $isBlack) $s += 1;
+    if (isset($playerScores[$roleKey]) && is_array($playerScores[$roleKey])) {
+        $ps = $playerScores[$roleKey];
+        $s += floatval($ps['bonus'] ?? 0);
+        $s -= floatval($ps['penalty'] ?? 0);
+    }
+    return round($s * 100) / 100;
+}
+
+function extractGameData($game, $roleLabels, $blackRoles) {
+    $players = isset($game['players']) && is_array($game['players']) ? $game['players'] : [];
+    $roles = isset($game['roles']) && is_array($game['roles']) ? $game['roles'] : [];
+    $actions = isset($game['playersActions']) && is_array($game['playersActions']) ? $game['playersActions'] : [];
+    $scores = isset($game['playerScores']) && is_array($game['playerScores']) ? $game['playerScores'] : [];
+    $foulsData = isset($game['fouls']) && is_array($game['fouls']) ? $game['fouls'] : [];
+    $techFoulsData = isset($game['techFouls']) && is_array($game['techFouls']) ? $game['techFouls'] : [];
+    $winnerTeam = isset($game['winnerTeam']) ? $game['winnerTeam'] : null;
+
+    $resultPlayers = [];
+    foreach ($players as $p) {
+        $rk = isset($p['roleKey']) ? $p['roleKey'] : '';
+        $role = isset($roles[$rk]) ? $roles[$rk] : '';
+        $resultPlayers[] = [
+            'num' => isset($p['num']) ? (int)$p['num'] : null,
+            'login' => isset($p['login']) ? $p['login'] : '',
+            'roleKey' => $role,
+            'role' => isset($roleLabels[$role]) ? $roleLabels[$role] : ($role ?: null),
+            'isBlack' => in_array($role, $blackRoles),
+            'action' => isset($actions[$rk]) ? $actions[$rk] : null,
+            'score' => calculateScore($rk, $roles, $scores, $winnerTeam),
+            'fouls' => isset($foulsData[$rk]) ? (int)$foulsData[$rk] : 0,
+            'techFouls' => isset($techFoulsData[$rk]) ? (int)$techFoulsData[$rk] : 0,
+            'scoreDetails' => isset($scores[$rk]) && is_array($scores[$rk]) ? $scores[$rk] : null,
+        ];
+    }
+
+    return [
+        'winnerTeam' => $winnerTeam,
+        'gameFinished' => !empty($game['gameFinished']) || !empty($winnerTeam),
+        'players' => $resultPlayers,
+        'votingHistory' => isset($game['votingHistory']) ? $game['votingHistory'] : [],
+        'nightCheckHistory' => isset($game['nightCheckHistory']) ? $game['nightCheckHistory'] : [],
+        'killedOnNight' => isset($game['killedOnNight']) ? $game['killedOnNight'] : [],
+        'nightMisses' => isset($game['nightMisses']) ? $game['nightMisses'] : [],
+        'doctorHealHistory' => isset($game['doctorHealHistory']) ? $game['doctorHealHistory'] : [],
+        'bestMove' => isset($game['bestMove']) ? $game['bestMove'] : [],
+        'bestMoveAccepted' => !empty($game['bestMoveAccepted']),
+        'firstKilledPlayer' => isset($game['firstKilledPlayer']) ? $game['firstKilledPlayer'] : null,
+        'dayNumber' => isset($game['dayNumber']) ? (int)$game['dayNumber'] : 0,
+        'nightNumber' => isset($game['nightNumber']) ? (int)$game['nightNumber'] : 0,
+    ];
+}
+
 try {
     $row = $database->get('game_sessions', ['sessions_json'], ['telegram_id' => $judgeId]);
     if (!$row || empty($row['sessions_json'])) {
@@ -76,34 +150,30 @@ try {
         exit;
     }
 
-    $players = isset($target['players']) && is_array($target['players']) ? $target['players'] : [];
-    $roles = isset($target['roles']) && is_array($target['roles']) ? $target['roles'] : [];
-    $actions = isset($target['playersActions']) && is_array($target['playersActions']) ? $target['playersActions'] : [];
-    $scores = isset($target['playerScores']) && is_array($target['playerScores']) ? $target['playerScores'] : [];
-    $foulsData = isset($target['fouls']) && is_array($target['fouls']) ? $target['fouls'] : [];
-    $techFoulsData = isset($target['techFouls']) && is_array($target['techFouls']) ? $target['techFouls'] : [];
+    $currentGame = extractGameData($target, $ROLE_LABELS, $BLACK_ROLES);
 
-    $resultPlayers = [];
-    foreach ($players as $p) {
-        $rk = isset($p['roleKey']) ? $p['roleKey'] : '';
-        $resultPlayers[] = [
-            'num' => isset($p['num']) ? (int)$p['num'] : null,
-            'login' => isset($p['login']) ? $p['login'] : '',
-            'role' => isset($roles[$rk]) ? $roles[$rk] : null,
-            'action' => isset($actions[$rk]) ? $actions[$rk] : null,
-            'score' => isset($scores[$rk]) ? (float)$scores[$rk] : null,
-            'fouls' => isset($foulsData[$rk]) ? (int)$foulsData[$rk] : 0,
-            'techFouls' => isset($techFoulsData[$rk]) ? (int)$techFoulsData[$rk] : 0,
-        ];
+    $gamesHistoryRaw = isset($target['gamesHistory']) && is_array($target['gamesHistory']) ? $target['gamesHistory'] : [];
+    $gamesHistory = [];
+    foreach ($gamesHistoryRaw as $idx => $g) {
+        $gd = extractGameData($g, $ROLE_LABELS, $BLACK_ROLES);
+        $gd['gameNumber'] = isset($g['gameNumber']) ? (int)$g['gameNumber'] : ($idx + 1);
+        $gd['completedAt'] = isset($g['completedAt']) ? $g['completedAt'] : null;
+        $gamesHistory[] = $gd;
+    }
+
+    if ($currentGame['gameFinished']) {
+        $currentGame['gameNumber'] = count($gamesHistory) + 1;
+        $gamesHistory[] = $currentGame;
     }
 
     echo json_encode([
         'sessionId' => $target['sessionId'],
         'tournamentName' => isset($target['tournamentName']) ? $target['tournamentName'] : null,
         'gameMode' => isset($target['gameMode']) ? $target['gameMode'] : null,
-        'winnerTeam' => isset($target['winnerTeam']) ? $target['winnerTeam'] : null,
-        'gameFinished' => !empty($target['gameFinished']) || !empty($target['winnerTeam']),
-        'players' => $resultPlayers,
+        'gameSelected' => isset($target['gameSelected']) ? $target['gameSelected'] : null,
+        'tableSelected' => isset($target['tableSelected']) ? $target['tableSelected'] : null,
+        'currentGame' => $currentGame,
+        'gamesHistory' => $gamesHistory,
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (\Throwable $e) {
