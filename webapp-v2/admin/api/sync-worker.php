@@ -29,6 +29,20 @@ function workerLog($msg) {
 
 workerLog("Worker started: range {$rangeStart}-{$rangeEnd}, PID=" . getmypid());
 
+// Acquire exclusive lock — prevents duplicate workers
+$_lockFp = @fopen($LOCK_FILE, 'c+');
+if ($_lockFp) {
+    if (!flock($_lockFp, LOCK_EX | LOCK_NB)) {
+        workerLog("Another worker is already running, exiting.");
+        fclose($_lockFp);
+        exit(0);
+    }
+    ftruncate($_lockFp, 0);
+    rewind($_lockFp);
+    fwrite($_lockFp, (string)getmypid());
+    fflush($_lockFp);
+}
+
 if (!isset($database)) {
     $_savedCwd = getcwd();
     chdir(__DIR__ . '/../../api');
@@ -242,7 +256,6 @@ function runSync($database, $rangeStart, $rangeEnd) {
         $status['status'] = 'error';
         $status['error'] = 'Не удалось получить buildId с gomafia.pro';
         writeStatus($status);
-        @unlink($LOCK_FILE);
         return;
     }
 
@@ -267,7 +280,6 @@ function runSync($database, $rangeStart, $rangeEnd) {
             $status['status'] = 'stopped';
             $status['running'] = false;
             writeStatus($status);
-            @unlink($LOCK_FILE);
             workerLog("Stopped by user at ID {$batchStart}");
             return;
         }
@@ -391,9 +403,15 @@ function runSync($database, $rangeStart, $rangeEnd) {
         $status['note'] = "Остановлено: {$MAX_CONSECUTIVE_EMPTY} пустых ID подряд";
     }
     writeStatus($status);
-    @unlink($LOCK_FILE);
     workerLog("Sync finished in {$elapsed}s: checked={$checked}, found={$found}, updated={$totalUpdated}, inserted={$totalInserted}, speed={$status['speed']} IDs/s");
 }
 
 // ========== Launch ==========
 runSync($database, $rangeStart, $rangeEnd);
+
+// Release lock and cleanup
+if (isset($_lockFp) && is_resource($_lockFp)) {
+    flock($_lockFp, LOCK_UN);
+    fclose($_lockFp);
+}
+@unlink($LOCK_FILE);

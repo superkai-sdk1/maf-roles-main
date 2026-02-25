@@ -256,26 +256,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $status['stoppedAt'] = date('c');
             writeStatus($status);
         }
-        @unlink($LOCK_FILE);
+
+        // Try to kill the worker process if PID is in the lock file
+        if (file_exists($LOCK_FILE)) {
+            $pid = (int)trim(@file_get_contents($LOCK_FILE));
+            if ($pid > 0) {
+                @posix_kill($pid, 15); // SIGTERM
+                syncLog("Sent SIGTERM to PID {$pid}");
+            }
+            @unlink($LOCK_FILE);
+        }
+
         jsonResponse(['ok' => true, 'message' => 'Stop signal sent']);
     }
 
     // --- START ---
     if ($action === 'start') {
-        if (file_exists($LOCK_FILE)) {
-            $status = readStatus();
-            if ($status && isset($status['running']) && $status['running']) {
-                $lastUpdate = isset($status['updatedAt']) ? strtotime($status['updatedAt']) : 0;
-                if (time() - $lastUpdate < 90) {
-                    jsonError('Синхронизация уже запущена', 409);
-                }
+        // Atomic lock via flock() — prevents race conditions
+        $lockFp = @fopen($LOCK_FILE, 'c+');
+        if (!$lockFp) jsonError('Не удалось создать lock файл', 500);
+
+        if (!flock($lockFp, LOCK_EX | LOCK_NB)) {
+            fclose($lockFp);
+            jsonError('Синхронизация уже запущена', 409);
+        }
+
+        // Double-check status (lock acquired, but maybe stale lock file)
+        $status = readStatus();
+        if ($status && isset($status['running']) && $status['running']) {
+            $lastUpdate = isset($status['updatedAt']) ? strtotime($status['updatedAt']) : 0;
+            if (time() - $lastUpdate < 90) {
+                flock($lockFp, LOCK_UN);
+                fclose($lockFp);
+                jsonError('Синхронизация уже запущена', 409);
             }
         }
 
         $rangeStart = isset($input['rangeStart']) ? max(1, (int)$input['rangeStart']) : 1;
         $rangeEnd   = isset($input['rangeEnd'])   ? min(50000, (int)$input['rangeEnd']) : 10000;
 
-        if ($rangeStart >= $rangeEnd) jsonError('rangeStart must be less than rangeEnd');
+        if ($rangeStart >= $rangeEnd) {
+            flock($lockFp, LOCK_UN);
+            fclose($lockFp);
+            jsonError('rangeStart must be less than rangeEnd');
+        }
+
+        // Write PID to lock file
+        ftruncate($lockFp, 0);
+        rewind($lockFp);
+        fwrite($lockFp, (string)getmypid());
+        fflush($lockFp);
 
         $initStatus = [
             'running' => true,
@@ -294,11 +324,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'error' => null,
         ];
         writeStatus($initStatus);
-        file_put_contents($LOCK_FILE, getmypid(), LOCK_EX);
 
         syncLog("=== Sync start request: range {$rangeStart}-{$rangeEnd} ===");
 
         $method = launchWorker($rangeStart, $rangeEnd);
+
+        // Release lock (worker will acquire its own)
+        flock($lockFp, LOCK_UN);
+        fclose($lockFp);
 
         if ($method === 'fpm') {
             http_response_code(200);
