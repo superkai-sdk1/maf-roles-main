@@ -20,12 +20,12 @@ const getResultText = (s) => {
   return 'В процессе';
 };
 
-const getResultDotColor = (s) => {
-  if (s.gameFinished && s.winnerTeam === 'civilians') return 'bg-red-500';
-  if (s.gameFinished && s.winnerTeam === 'mafia') return 'bg-slate-400';
-  if (s.gameFinished && s.winnerTeam === 'draw') return 'bg-white';
-  if (s.winnerTeam && !s.gameFinished) return 'bg-orange-400';
-  return 'bg-emerald-400';
+const getStatusStyle = (s) => {
+  if (s.gameFinished && s.winnerTeam === 'civilians') return { dot: 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]', text: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20' };
+  if (s.gameFinished && s.winnerTeam === 'mafia') return { dot: 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]', text: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20' };
+  if (s.gameFinished && s.winnerTeam === 'draw') return { dot: 'bg-zinc-400', text: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-500/20' };
+  if (s.winnerTeam && !s.gameFinished) return { dot: 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]', text: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' };
+  return { dot: 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)] animate-pulse', text: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' };
 };
 
 const getModeLabel = (mode) => {
@@ -70,165 +70,178 @@ export function TwSeriesCard({ group, expanded, onToggle, onLoadSession, onDelet
   }, [onLoadSession]);
 
   return (
-    <div className={`relative w-full rounded-2xl overflow-hidden transition-all duration-300
-      ${group.archived ? 'opacity-70' : ''}
+    <div className={`relative w-full overflow-hidden transition-all duration-300 rounded-3xl
+      ${group.archived ? 'opacity-60' : ''}
       ${expanded
-        ? 'bg-white/[0.06] border border-white/[0.18] shadow-[0_8px_32px_rgba(0,0,0,0.35)]'
-        : 'bg-white/[0.04] border border-white/[0.10] hover:border-white/[0.15]'}
-      backdrop-blur-md`}
+        ? 'bg-gradient-to-br from-white/[0.08] to-white/[0.03] border border-purple-500/20 shadow-[0_12px_40px_rgba(0,0,0,0.4),0_0_60px_rgba(168,85,247,0.08)]'
+        : 'bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] hover:border-purple-500/15 hover:shadow-[0_4px_20px_rgba(0,0,0,0.3)]'}`}
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-white/[0.05] to-transparent pointer-events-none rounded-2xl" />
+      {/* Left accent bar */}
+      <div className={`absolute left-0 top-3 bottom-3 w-[3px] rounded-full transition-all duration-300
+        ${expanded ? 'bg-gradient-to-b from-purple-400 to-indigo-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]' : 'bg-white/[0.08]'}`} />
 
       {/* Header */}
-      <div className="relative z-10 flex items-center gap-3 p-4 cursor-pointer active:bg-white/[0.03] transition-colors" onClick={handleToggle}>
-        <div className={`w-11 h-11 rounded-[14px] flex items-center justify-center shrink-0
+      <div className="relative z-10 flex items-center gap-3.5 pl-5 pr-4 py-4 cursor-pointer active:bg-white/[0.02] transition-colors" onClick={handleToggle}>
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-300
           ${group.archived
-            ? 'bg-white/[0.04] border border-white/[0.08]'
-            : 'bg-purple-500/10 border border-purple-500/[0.15]'}`}
+            ? 'bg-white/[0.04] border border-white/[0.06]'
+            : expanded
+              ? 'bg-gradient-to-br from-purple-500/20 to-indigo-500/10 border border-purple-500/25 shadow-[0_0_20px_rgba(168,85,247,0.15)]'
+              : 'bg-purple-500/[0.08] border border-purple-500/10'}`}
         >
           {group.archived
-            ? <IconLock size={20} color="rgba(255,255,255,0.4)" />
+            ? <IconLock size={20} color="rgba(255,255,255,0.35)" />
             : group.gameMode === 'gomafia'
               ? <IconGoMafia size={28} />
               : group.isFunky
-                ? <IconDice size={20} color="var(--accent-color, #a855f7)" />
-                : <IconTrophy size={20} color="var(--accent-color, #a855f7)" />
+                ? <IconDice size={22} color="var(--accent-color, #a855f7)" />
+                : <IconTrophy size={22} color="var(--accent-color, #a855f7)" />
           }
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="font-bold text-[1em] text-white truncate mb-1">{group.tournamentName}</div>
+          <div className="font-extrabold text-[0.95em] text-white truncate tracking-tight">{group.tournamentName}</div>
 
-          <div className="flex items-center gap-2 flex-wrap mb-2">
+          <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
             {modeLabel && (
-              <span className="text-[0.65em] font-extrabold px-2 py-0.5 rounded-lg bg-purple-500/[0.12] text-[var(--accent-color,#a855f7)] uppercase tracking-wide border border-purple-500/[0.15]">
+              <span className="text-[0.6em] font-black px-2 py-[3px] rounded-md bg-gradient-to-r from-purple-500/15 to-indigo-500/10 text-purple-300 uppercase tracking-widest border border-purple-500/20">
                 {modeLabel}
               </span>
             )}
             {!group.isFunky && group.tableSelected && (
-              <span className="text-[0.72em] text-white/40 font-semibold">Стол {group.tableSelected}</span>
+              <span className="text-[0.68em] text-white/30 font-semibold">Стол {group.tableSelected}</span>
             )}
             {!group.isFunky && (
-              <span className="text-[0.72em] text-white/40 font-semibold">
+              <span className="text-[0.68em] text-white/30 font-semibold">
                 Игра {group.lastStartedGameNumber || group.sessions.length}
               </span>
             )}
           </div>
 
           {group.isFunky ? (
-            <div className="text-[0.65em] text-white/30 font-semibold">
+            <div className="text-[0.65em] text-white/25 font-semibold mt-2">
               {completedGames} {completedGames === 1 ? 'игра' : completedGames < 5 ? 'игры' : 'игр'} сыграно
             </div>
           ) : (
-            <>
-              <div className="h-[3px] bg-white/[0.06] rounded-full overflow-hidden mb-1">
+            <div className="mt-2.5">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[0.6em] text-white/25 font-bold uppercase tracking-wider">Прогресс</span>
+                <span className="text-[0.6em] text-white/35 font-bold tabular-nums">{completedGames}/{totalGames}</span>
+              </div>
+              <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-[var(--accent-color,#a855f7)] to-indigo-500 transition-all duration-500"
-                  style={{ width: `${progress}%` }}
+                  className="h-full rounded-full transition-all duration-700 ease-out"
+                  style={{
+                    width: `${progress}%`,
+                    background: 'linear-gradient(90deg, var(--accent-color, #a855f7), #818cf8, #6366f1)',
+                    boxShadow: progress > 0 ? '0 0 12px rgba(168,85,247,0.4)' : 'none',
+                  }}
                 />
               </div>
-              <div className="text-[0.65em] text-white/30 font-semibold">
-                {completedGames} из {totalGames} завершено
-              </div>
-            </>
+            </div>
           )}
         </div>
 
-        <span className={`shrink-0 flex transition-transform duration-300 ${expanded ? 'rotate-180' : 'rotate-0'}`}>
-          <IconChevronDown size={18} color="rgba(255,255,255,0.3)" />
+        <span className={`shrink-0 flex transition-transform duration-300 ease-out ${expanded ? 'rotate-180' : 'rotate-0'}`}>
+          <IconChevronDown size={16} color="rgba(255,255,255,0.25)" />
         </span>
       </div>
 
       {/* Expanded body */}
       {expanded && (
-        <div className="relative z-10 border-t border-white/[0.06] bg-black/20 animate-[fadeIn_0.2s_ease-out]">
-          <div className="px-2 pt-1.5">
-            {group.sessions.map((s, idx) => (
-              <div
-                key={s.sessionId}
-                className={`flex items-center gap-2 py-[11px] px-3 rounded-xl cursor-pointer transition-colors active:bg-white/[0.05]
-                  ${s.seriesArchived ? 'opacity-50 cursor-default' : ''}`}
-                onClick={() => handleGameRowClick(s)}
-              >
-                <div className="flex flex-col gap-0.5 min-w-[80px]">
-                  <span className="text-[0.85em] font-bold text-white/75 whitespace-nowrap">
-                    Игра {s.gameSelected || idx + 1}
-                  </span>
-                  {s.tableSelected && (
-                    <span className="text-[0.7em] text-white/30 whitespace-nowrap font-semibold">Стол {s.tableSelected}</span>
-                  )}
+        <div className="relative z-10 mx-3 mb-3 rounded-2xl bg-black/30 border border-white/[0.05] overflow-hidden">
+          <div className="divide-y divide-white/[0.04]">
+            {group.sessions.map((s, idx) => {
+              const st = getStatusStyle(s);
+              return (
+                <div
+                  key={s.sessionId}
+                  className={`flex items-center gap-3 py-3 px-4 cursor-pointer transition-all hover:bg-white/[0.03] active:bg-white/[0.06]
+                    ${s.seriesArchived ? 'opacity-40' : ''}`}
+                  onClick={() => handleGameRowClick(s)}
+                >
+                  <div className="flex flex-col gap-0.5 min-w-[70px]">
+                    <span className="text-[0.82em] font-bold text-white/80">
+                      Игра {s.gameSelected || idx + 1}
+                    </span>
+                    {s.tableSelected && (
+                      <span className="text-[0.65em] text-white/25 font-medium">Стол {s.tableSelected}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-1 justify-end">
+                    <span className={`inline-flex items-center gap-1.5 text-[0.72em] font-bold py-1 px-2.5 rounded-lg border ${st.bg}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+                      <span className={st.text}>{getResultText(s)}</span>
+                    </span>
+                    <span className="text-[0.65em] text-white/15 font-medium">{formatTime(s.timestamp || s.updatedAt)}</span>
+                    {!s.seriesArchived && !isGameComplete(s) && (
+                      <button
+                        className="p-1 opacity-30 hover:opacity-80 active:bg-red-500/20 rounded-md transition-all"
+                        onClick={(e) => { e.stopPropagation(); onDeleteSession(s.sessionId); triggerHaptic('warning'); }}
+                      >
+                        <IconTrash size={12} color="rgba(255,255,255,0.5)" />
+                      </button>
+                    )}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 flex-1 justify-end">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${getResultDotColor(s)}`} />
-                  <span className="text-[0.78em] text-white/50 font-medium">{getResultText(s)}</span>
-                  <span className="text-[0.7em] text-white/20 whitespace-nowrap">{formatTime(s.timestamp || s.updatedAt)}</span>
-                  {!s.seriesArchived && !isGameComplete(s) && (
-                    <button
-                      className="p-1.5 opacity-40 hover:opacity-100 active:bg-red-500/[0.15] rounded-lg transition-all"
-                      onClick={(e) => { e.stopPropagation(); onDeleteSession(s.sessionId); triggerHaptic('warning'); }}
-                    >
-                      <IconTrash size={13} color="rgba(255,255,255,0.4)" />
-                    </button>
-                  )}
-                  <IconArrowRight size={14} color="rgba(255,255,255,0.15)" />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-2 px-3 py-2.5 pb-3.5">
+          <div className="flex flex-wrap gap-1.5 p-3 pt-2 border-t border-white/[0.04]">
             {!group.archived && onNewGame && (
               <button
-                className="flex-1 flex items-center justify-center gap-[7px] py-[11px] px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all active:scale-[0.97] border border-white/[0.08] bg-white/[0.04] text-white/60 hover:bg-white/[0.07]"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.75em] transition-all active:scale-[0.97] bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/20 text-purple-300 hover:from-purple-500/15 hover:to-indigo-500/15"
                 onClick={(e) => { e.stopPropagation(); onNewGame(group); triggerHaptic('medium'); }}
               >
-                <IconPlus size={15} /><span>Новая игра</span>
+                <IconPlus size={14} /><span>Новая игра</span>
               </button>
             )}
             {hasFinishedGames && (
               <button
-                className="flex-1 flex items-center justify-center gap-[7px] py-[11px] px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all active:scale-[0.97] border border-white/[0.08] bg-white/[0.04] text-white/60 hover:bg-white/[0.07]"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.75em] transition-all active:scale-[0.97] border border-white/[0.06] bg-white/[0.03] text-white/50 hover:bg-white/[0.06]"
                 onClick={(e) => { e.stopPropagation(); onShowTable?.(group); triggerHaptic('light'); }}
               >
-                <IconList size={15} /><span>{group.isFunky ? 'Итоги' : 'Таблица'}</span>
+                <IconList size={14} /><span>{group.isFunky ? 'Итоги' : 'Таблица'}</span>
               </button>
             )}
             {!group.archived && !group.allGamesFinished && (
               confirmAction === 'delete' ? (
-                <div className="flex-1 flex items-center gap-2 animate-[fadeIn_0.2s_ease-out]">
-                  <span className="text-[0.8em] font-bold text-white/60 whitespace-nowrap">Удалить серию?</span>
-                  <button className="flex-1 py-2.5 px-3.5 rounded-[10px] font-bold text-[0.8em] bg-red-500/[0.15] border border-red-500/30 text-red-400 active:scale-95 transition-transform" onClick={handleDeleteSeriesClick}>Да</button>
-                  <button className="flex-1 py-2.5 px-3.5 rounded-[10px] font-bold text-[0.8em] bg-white/[0.04] border border-white/[0.08] text-white/40 active:scale-95 transition-transform" onClick={handleCancelConfirm}>Нет</button>
+                <div className="flex-1 flex items-center gap-1.5">
+                  <span className="text-[0.75em] font-bold text-white/50 whitespace-nowrap">Удалить?</span>
+                  <button className="flex-1 py-2 px-3 rounded-xl font-bold text-[0.75em] bg-red-500/15 border border-red-500/25 text-red-400 active:scale-95 transition-transform" onClick={handleDeleteSeriesClick}>Да</button>
+                  <button className="flex-1 py-2 px-3 rounded-xl font-bold text-[0.75em] bg-white/[0.03] border border-white/[0.06] text-white/35 active:scale-95 transition-transform" onClick={handleCancelConfirm}>Нет</button>
                 </div>
               ) : (
                 <button
-                  className="flex-1 flex items-center justify-center gap-[7px] py-[11px] px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all active:scale-[0.97] bg-red-500/[0.05] border border-red-500/[0.18] text-red-400/80 hover:bg-red-500/[0.1]"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.75em] transition-all active:scale-[0.97] bg-red-500/[0.05] border border-red-500/15 text-red-400/60 hover:bg-red-500/10"
                   onClick={handleDeleteSeriesClick}
                 >
-                  <IconTrash size={15} /><span>Удалить серию</span>
+                  <IconTrash size={14} /><span>Удалить</span>
                 </button>
               )
             )}
             {!group.archived && group.allGamesFinished && (
               confirmAction === 'save' ? (
-                <div className="flex-1 flex items-center gap-2 animate-[fadeIn_0.2s_ease-out]">
-                  <span className="text-[0.8em] font-bold text-white/60 whitespace-nowrap">Сохранить?</span>
-                  <button className="flex-1 py-2.5 px-3.5 rounded-[10px] font-bold text-[0.8em] bg-emerald-500/[0.15] border border-emerald-500/30 text-emerald-400 active:scale-95 transition-transform" onClick={handleSaveSeriesClick}>Да</button>
-                  <button className="flex-1 py-2.5 px-3.5 rounded-[10px] font-bold text-[0.8em] bg-white/[0.04] border border-white/[0.08] text-white/40 active:scale-95 transition-transform" onClick={handleCancelConfirm}>Нет</button>
+                <div className="flex-1 flex items-center gap-1.5">
+                  <span className="text-[0.75em] font-bold text-white/50 whitespace-nowrap">Сохранить?</span>
+                  <button className="flex-1 py-2 px-3 rounded-xl font-bold text-[0.75em] bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 active:scale-95 transition-transform" onClick={handleSaveSeriesClick}>Да</button>
+                  <button className="flex-1 py-2 px-3 rounded-xl font-bold text-[0.75em] bg-white/[0.03] border border-white/[0.06] text-white/35 active:scale-95 transition-transform" onClick={handleCancelConfirm}>Нет</button>
                 </div>
               ) : (
                 <button
-                  className="flex-1 flex items-center justify-center gap-[7px] py-[11px] px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all active:scale-[0.97] border border-white/[0.08] bg-white/[0.04] text-white/60 hover:bg-white/[0.07]"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.75em] transition-all active:scale-[0.97] bg-emerald-500/[0.08] border border-emerald-500/15 text-emerald-400/70 hover:bg-emerald-500/15"
                   onClick={handleSaveSeriesClick}
                 >
-                  <IconCheck size={15} /><span>Сохранить серию</span>
+                  <IconCheck size={14} /><span>Сохранить серию</span>
                 </button>
               )
             )}
             {group.archived && (
-              <div className="flex-1 flex items-center justify-center gap-2 py-[11px] px-3 rounded-xl text-[0.78em] font-bold text-white/30 bg-white/[0.02] border border-white/[0.05]">
-                <IconLock size={13} /><span>Серия завершена</span>
+              <div className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-[0.75em] font-bold text-white/20 bg-white/[0.02]">
+                <IconLock size={12} /><span>Серия завершена</span>
               </div>
             )}
           </div>
@@ -247,6 +260,7 @@ export function TwStandaloneCard({ session, onLoad, onDelete }) {
   const modeLabel = getModeLabel(session.gameMode);
   const gh = session.gamesHistory || [];
   const hasMultipleGames = gh.length > 0;
+  const st = getStatusStyle(session);
 
   const allGamesForDisplay = useMemo(() => {
     const result = gh.map((g, idx) => ({
@@ -275,123 +289,126 @@ export function TwStandaloneCard({ session, onLoad, onDelete }) {
     const mafWins = allGamesForDisplay.filter(g => g.winnerTeam === 'mafia').length;
 
     return (
-      <div className={`relative w-full rounded-2xl overflow-hidden backdrop-blur-md transition-all duration-300
-        bg-white/[0.04] border border-white/[0.10] hover:border-white/[0.15]
-        ${expanded ? 'shadow-[0_4px_24px_rgba(0,0,0,0.3)]' : ''}`}
+      <div className={`relative w-full overflow-hidden transition-all duration-300 rounded-3xl
+        bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] hover:border-purple-500/15
+        ${expanded ? 'shadow-[0_8px_32px_rgba(0,0,0,0.35)]' : ''}`}
       >
-        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.05] to-transparent pointer-events-none rounded-2xl" />
+        <div className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-white/[0.06]" />
 
-        <div className="relative z-10 p-4 pr-12 cursor-pointer" onClick={() => { setExpanded(!expanded); triggerHaptic('selection'); }}>
-          <div className="flex justify-between items-start mb-2 gap-2.5">
-            <div className="font-bold text-[1em] text-white flex-1 min-w-0 truncate">
+        <div className="relative z-10 pl-5 pr-12 py-4 cursor-pointer" onClick={() => { setExpanded(!expanded); triggerHaptic('selection'); }}>
+          <div className="flex justify-between items-center mb-2">
+            <div className="font-extrabold text-[0.95em] text-white flex-1 min-w-0 truncate tracking-tight">
               {getSessionName(session)}
-              <span className="text-[0.65em] font-extrabold px-2 py-0.5 rounded-md bg-purple-500/[0.12] text-[var(--accent-color,#a855f7)] ml-2 tracking-tight border border-purple-500/[0.18] align-middle">
+            </div>
+            <div className="flex items-center gap-2 shrink-0 ml-2">
+              <span className="text-[0.65em] font-black px-2 py-[3px] rounded-md bg-purple-500/10 text-purple-300 border border-purple-500/20 tabular-nums">
                 {totalGames} {totalGames === 1 ? 'игра' : totalGames < 5 ? 'игры' : 'игр'}
               </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[0.75em] text-white/30 whitespace-nowrap shrink-0">
-                {formatTime(session.timestamp || session.updatedAt)}
-              </span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                className={`transition-transform duration-200 shrink-0 ${expanded ? 'rotate-180' : 'rotate-0'}`}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                className={`transition-transform duration-300 ${expanded ? 'rotate-180' : 'rotate-0'}`}>
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 text-[0.85em] font-bold py-0.5 px-2.5 rounded-[10px] bg-white/[0.06] border border-white/[0.08]">
-              <span className={`w-2 h-2 rounded-full shrink-0 ${getResultDotColor(session)}`} />
-              {getResultText(session)}
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 text-[0.72em] font-bold py-1 px-2.5 rounded-lg border ${st.bg}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+              <span className={st.text}>{getResultText(session)}</span>
             </span>
             {modeLabel && (
-              <span className="text-[0.7em] py-0.5 px-2 rounded-lg bg-purple-500/10 text-[var(--accent-color,#a855f7)] font-extrabold uppercase tracking-wide border border-purple-500/[0.15]">
+              <span className="text-[0.6em] font-black px-2 py-[3px] rounded-md bg-gradient-to-r from-purple-500/15 to-indigo-500/10 text-purple-300 uppercase tracking-widest border border-purple-500/20">
                 {modeLabel}
               </span>
             )}
             {(civWins > 0 || mafWins > 0) && (
-              <span className="text-[0.8em] font-extrabold inline-flex items-center gap-[3px] font-mono tracking-tight">
-                <span className="text-red-400">{civWins}</span>
-                <span className="text-white/20">:</span>
-                <span className="text-sky-400">{mafWins}</span>
+              <span className="text-[0.8em] font-black inline-flex items-center gap-1 tabular-nums ml-auto">
+                <span className="text-rose-400">{civWins}</span>
+                <span className="text-white/15">:</span>
+                <span className="text-cyan-400">{mafWins}</span>
               </span>
             )}
+            <span className="text-[0.65em] text-white/15 font-medium ml-auto">{formatTime(session.timestamp || session.updatedAt)}</span>
           </div>
         </div>
 
         {expanded && (
-          <div className="relative z-10 border-t border-white/[0.06] mt-0 pt-2 pb-1 px-4 animate-[fadeIn_0.15s_ease-out]">
-            {allGamesForDisplay.map((g, idx) => {
-              const winLabel = g.winnerTeam === 'civilians' ? 'Мирные' : g.winnerTeam === 'mafia' ? 'Мафия' : g.winnerTeam === 'draw' ? 'Ничья' : 'В процессе';
-              const winColor = g.winnerTeam === 'civilians' ? 'text-red-400' : g.winnerTeam === 'mafia' ? 'text-sky-400' : g.winnerTeam === 'draw' ? 'text-white/50' : 'text-white/30';
-              const rounds = Math.max(g.nightNumber || 0, g.dayNumber || 0);
-              return (
-                <div key={idx} className="flex items-center gap-2.5 py-2 px-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] mb-1 transition-colors">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[0.8em] font-extrabold bg-purple-500/[0.08] border border-purple-500/[0.15] text-[var(--accent-color,#a855f7)] shrink-0">
-                    {g.gameNumber}
+          <div className="relative z-10 mx-3 mb-3 rounded-2xl bg-black/30 border border-white/[0.05] overflow-hidden">
+            <div className="divide-y divide-white/[0.04]">
+              {allGamesForDisplay.map((g, idx) => {
+                const gst = getStatusStyle(g);
+                const rounds = Math.max(g.nightNumber || 0, g.dayNumber || 0);
+                return (
+                  <div key={idx} className="flex items-center gap-3 py-2.5 px-3.5">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[0.8em] font-black bg-purple-500/[0.08] border border-purple-500/15 text-purple-300 shrink-0 tabular-nums">
+                      {g.gameNumber}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[0.8em] font-semibold text-white/70">Игра {g.gameNumber}</span>
+                      {rounds > 0 && <span className="text-[0.6em] text-white/15 ml-1.5 font-medium">{rounds} раунд</span>}
+                    </div>
+                    <span className={`text-[0.72em] font-bold ${gst.text}`}>{getResultText(g)}</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-semibold">Игра {g.gameNumber}</span>
-                    {rounds > 0 && <span className="text-[0.6rem] text-white/20 ml-1.5">{rounds}р</span>}
-                  </div>
-                  <span className={`text-xs font-bold ${winColor}`}>{winLabel}</span>
-                </div>
-              );
-            })}
-            <button
-              className="w-full py-2.5 mt-1.5 mb-2 rounded-xl bg-purple-500/[0.08] border border-purple-500/[0.18] text-[var(--accent-color,#a855f7)] text-[0.85em] font-bold cursor-pointer transition-all active:scale-[0.98] active:bg-purple-500/[0.15] hover:bg-purple-500/[0.12]"
-              onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}
-            >
-              Открыть сессию
-            </button>
+                );
+              })}
+            </div>
+            <div className="p-2.5 border-t border-white/[0.04]">
+              <button
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/20 text-purple-300 text-[0.82em] font-bold cursor-pointer transition-all active:scale-[0.98] hover:from-purple-500/15 hover:to-indigo-500/15"
+                onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}
+              >
+                Открыть сессию
+              </button>
+            </div>
           </div>
         )}
 
         <button
-          className="absolute top-1/2 right-2.5 -translate-y-1/2 z-20 w-[34px] h-[34px] rounded-[10px] flex items-center justify-center bg-transparent border border-red-500/25 text-red-500/50 cursor-pointer transition-all active:scale-90 active:bg-red-500/70 active:text-white"
+          className="absolute top-1/2 right-3 -translate-y-1/2 z-20 w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.03] border border-red-500/15 text-red-400/40 cursor-pointer transition-all active:scale-90 active:bg-red-500/60 active:text-white hover:bg-red-500/10 hover:text-red-400/70"
           onClick={(e) => { e.stopPropagation(); onDelete(session.sessionId); triggerHaptic('warning'); }}
         >
-          <IconTrash size={14} color="currentColor" />
+          <IconTrash size={13} color="currentColor" />
         </button>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full py-4 px-4 pr-12 rounded-2xl cursor-pointer transition-all duration-300 backdrop-blur-md overflow-hidden bg-white/[0.04] border border-white/[0.10] hover:border-white/[0.15] active:scale-[0.98] active:bg-white/[0.08]"
+    <div className="relative w-full overflow-hidden transition-all duration-300 rounded-3xl cursor-pointer bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] hover:border-purple-500/15 hover:shadow-[0_4px_20px_rgba(0,0,0,0.3)] active:scale-[0.98]"
       onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-white/[0.05] to-transparent pointer-events-none" />
+      <div className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-white/[0.06]" />
 
-      <div className="relative z-10 flex justify-between items-start mb-2 gap-2.5">
-        <div className="font-bold text-[1em] text-white flex-1 min-w-0 truncate">
-          {getSessionName(session)}
-          {session.gameSelected && (
-            <span className="text-[0.7em] text-white/35 ml-1.5 font-semibold">И{session.gameSelected}/С{session.tableSelected}</span>
+      <div className="relative z-10 pl-5 pr-12 py-4">
+        <div className="flex justify-between items-center mb-2">
+          <div className="font-extrabold text-[0.95em] text-white flex-1 min-w-0 truncate tracking-tight">
+            {getSessionName(session)}
+            {session.gameSelected && (
+              <span className="text-[0.65em] text-white/25 ml-1.5 font-semibold tracking-normal">И{session.gameSelected}/С{session.tableSelected}</span>
+            )}
+          </div>
+          <span className="text-[0.65em] text-white/15 font-medium shrink-0">
+            {formatTime(session.timestamp || session.updatedAt)}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1.5 text-[0.72em] font-bold py-1 px-2.5 rounded-lg border ${st.bg}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+            <span className={st.text}>{getResultText(session)}</span>
+          </span>
+          {modeLabel && (
+            <span className="text-[0.6em] font-black px-2 py-[3px] rounded-md bg-gradient-to-r from-purple-500/15 to-indigo-500/10 text-purple-300 uppercase tracking-widest border border-purple-500/20">
+              {modeLabel}
+            </span>
           )}
         </div>
-        <span className="text-[0.75em] text-white/30 whitespace-nowrap shrink-0">
-          {formatTime(session.timestamp || session.updatedAt)}
-        </span>
-      </div>
-
-      <div className="relative z-10 flex flex-wrap gap-2 items-center">
-        <span className="inline-flex items-center gap-1.5 text-[0.85em] font-bold py-0.5 px-2.5 rounded-[10px] bg-white/[0.06] border border-white/[0.08]">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${getResultDotColor(session)}`} />
-          {getResultText(session)}
-        </span>
-        {modeLabel && (
-          <span className="text-[0.7em] py-0.5 px-2 rounded-lg bg-purple-500/10 text-[var(--accent-color,#a855f7)] font-extrabold uppercase tracking-wide border border-purple-500/[0.15]">
-            {modeLabel}
-          </span>
-        )}
       </div>
 
       <button
-        className="absolute top-1/2 right-2.5 -translate-y-1/2 z-20 w-[34px] h-[34px] rounded-[10px] flex items-center justify-center bg-transparent border border-red-500/25 text-red-500/50 cursor-pointer transition-all active:scale-90 active:bg-red-500/70 active:text-white"
+        className="absolute top-1/2 right-3 -translate-y-1/2 z-20 w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.03] border border-red-500/15 text-red-400/40 cursor-pointer transition-all active:scale-90 active:bg-red-500/60 active:text-white hover:bg-red-500/10 hover:text-red-400/70"
         onClick={(e) => { e.stopPropagation(); onDelete(session.sessionId); triggerHaptic('warning'); }}
       >
-        <IconTrash size={14} color="currentColor" />
+        <IconTrash size={13} color="currentColor" />
       </button>
     </div>
   );
@@ -405,27 +422,31 @@ export function TwGameList({
 }) {
   return (
     <>
-      <div className="flex items-center w-full max-w-[400px] pl-1 mb-3">
-        <span className="text-[0.85em] font-bold text-white/40 uppercase tracking-[1.2px]">
-          {activeTab === 'active' ? 'Активные игры' : 'История игр'}
-        </span>
-        <span className="ml-1.5 bg-white/[0.06] px-2 py-[1px] rounded-[10px] text-[0.76em] text-white/50 border border-white/[0.06]">
+      {/* Section header */}
+      <div className="flex items-center justify-between w-full max-w-[400px] mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-1 h-5 rounded-full bg-gradient-to-b from-purple-400 to-indigo-500" />
+          <span className="text-[0.9em] font-extrabold text-white/60 tracking-tight">
+            {activeTab === 'active' ? 'Активные игры' : 'История игр'}
+          </span>
+        </div>
+        <span className="text-[0.7em] font-black px-2.5 py-1 rounded-lg bg-white/[0.04] text-white/30 border border-white/[0.06] tabular-nums">
           {totalCount}
         </span>
       </div>
 
-      <div className="flex flex-col gap-2.5 w-full max-w-[400px] pb-[100px]">
+      <div className="flex flex-col gap-3 w-full max-w-[400px] pb-[100px]">
         {displayGroups.length === 0 && displayStandalone.length === 0 ? (
-          <div className="py-12 px-5 text-center border-2 border-dashed border-white/[0.08] rounded-2xl">
-            <div className="mb-4 flex justify-center opacity-30">
-              <IconDice size={48} color="rgba(255,255,255,0.15)" />
+          <div className="py-16 px-6 text-center rounded-3xl bg-gradient-to-br from-white/[0.03] to-transparent border border-dashed border-white/[0.06]">
+            <div className="w-16 h-16 rounded-2xl bg-purple-500/[0.06] border border-purple-500/10 flex items-center justify-center mx-auto mb-4">
+              <IconDice size={32} color="rgba(168,85,247,0.3)" />
             </div>
-            <div className="text-[0.9em] text-white/30 font-semibold mb-2">
-              Нет {activeTab === 'active' ? 'активных' : 'завершенных'} игр
+            <div className="text-[0.95em] text-white/35 font-bold mb-1.5">
+              {activeTab === 'active' ? 'Нет активных игр' : 'История пуста'}
             </div>
             {activeTab === 'active' && (
-              <div className="text-[0.8em] text-white/20 font-medium">
-                Создайте новую игру — она сохранится автоматически
+              <div className="text-[0.8em] text-white/18 font-medium leading-relaxed max-w-[260px] mx-auto">
+                Нажмите «Новая» чтобы создать игру — она сохранится автоматически
               </div>
             )}
           </div>
