@@ -519,7 +519,29 @@ header {
 .chat-messages-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.1) transparent;
+  overscroll-behavior: contain;
 }
 .chat-messages-scroll::-webkit-scrollbar { width: 4px; }
 .chat-messages-scroll::-webkit-scrollbar-track { background: transparent; }
 .chat-messages-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+.chat-bubble-out {
+  background: var(--accent-color); color: #fff;
+  border-bottom-right-radius: 6px;
+}
+.chat-bubble-in {
+  background: var(--glass-bg, rgba(255,255,255,0.06));
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.08));
+  color: var(--text-primary, #fff);
+  border-bottom-left-radius: 6px;
+}
+.chat-input {
+  min-height: 44px;
+  line-height: 1.4;
+  transition: border-color 0.2s;
+}
+.chat-input:focus {
+  border-color: var(--accent-color) !important;
+}
+.chat-overlay {
+  -webkit-overflow-scrolling: touch;
+}

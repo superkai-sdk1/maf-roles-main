@@ -450,6 +450,8 @@ export function MainMenu() {
   const [chatUnread, setChatUnread] = useState(0);
   const chatEndRef = useRef(null);
   const chatPollRef = useRef(null);
+  const chatTabBarRef = useRef(null);
+  const [chatAreaTop, setChatAreaTop] = useState(0);
 
   const [newGameModal, setNewGameModal] = useState({
     visible: false, loading: false, error: '',
@@ -645,9 +647,36 @@ export function MainMenu() {
 
   useEffect(() => {
     if (menuScreen === 'notifications' && eventsTab === 'chat') {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      requestAnimationFrame(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      });
     }
   }, [chatMessages, menuScreen, eventsTab]);
+
+  useEffect(() => {
+    if (menuScreen === 'notifications' && eventsTab === 'chat' && chatTabBarRef.current) {
+      const scrollParent = chatTabBarRef.current.closest('.native-scroll');
+      if (scrollParent) scrollParent.scrollTop = 0;
+
+      requestAnimationFrame(() => {
+        const rect = chatTabBarRef.current?.getBoundingClientRect();
+        if (rect) setChatAreaTop(rect.bottom);
+      });
+
+      const measure = () => {
+        const rect = chatTabBarRef.current?.getBoundingClientRect();
+        if (rect) setChatAreaTop(rect.bottom);
+      };
+
+      if (scrollParent) scrollParent.style.overflow = 'hidden';
+      window.addEventListener('resize', measure);
+      return () => {
+        window.removeEventListener('resize', measure);
+        if (scrollParent) scrollParent.style.overflow = '';
+      };
+    }
+    setChatAreaTop(0);
+  }, [menuScreen, eventsTab]);
 
   useEffect(() => {
     const token = authService.getStoredToken();
@@ -2192,8 +2221,8 @@ export function MainMenu() {
 
           {/* =================== EVENTS SCREEN (NOTIFICATIONS + CHAT) =================== */}
           {menuScreen === 'notifications' && (
-            <div className="animate-fade-in w-full max-w-[400px] pb-[100px] flex flex-col gap-0">
-              <div className="flex items-center gap-1 p-1 rounded-2xl mb-3" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+            <div className={`animate-fade-in w-full max-w-[400px] flex flex-col gap-0 ${eventsTab === 'notifications' ? 'pb-[100px]' : 'pb-2'}`}>
+              <div ref={chatTabBarRef} className="flex items-center gap-1 p-1 rounded-2xl mb-3" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
                 <button
                   className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.78em] font-bold transition-all duration-200 ${eventsTab === 'notifications' ? 'text-white shadow-md' : 'text-white/40'}`}
                   style={eventsTab === 'notifications' ? { background: 'var(--accent-color)' } : {}}
@@ -2252,87 +2281,92 @@ export function MainMenu() {
                   )}
                 </div>
               )}
+            </div>
+          )}
 
-              {eventsTab === 'chat' && (
-                <div className="flex flex-col" style={{ height: 'calc(100dvh - 200px)' }}>
-                  <div className="flex-1 overflow-y-auto flex flex-col gap-2 px-1 py-2 chat-messages-scroll">
-                    {chatLoading ? (
-                      <div className="flex items-center justify-center py-12">
-                        <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--accent-border)', borderTopColor: 'var(--accent-color)' }} />
-                      </div>
-                    ) : chatMessages.length > 0 ? (
-                      <>
-                        {chatMessages.map(msg => (
-                          <div key={msg.id} className={`flex ${msg.direction === 'in' ? 'justify-end' : 'justify-start'}`}>
-                            <div
-                              className="max-w-[80%] px-3.5 py-2.5 rounded-2xl text-[0.82em] leading-relaxed"
-                              style={msg.direction === 'in' ? {
-                                background: 'var(--accent-color)',
-                                color: '#fff',
-                                borderBottomRightRadius: '6px',
-                              } : {
-                                background: 'var(--glass-bg)',
-                                border: '1px solid var(--glass-border)',
-                                color: 'var(--text-primary)',
-                                borderBottomLeftRadius: '6px',
-                              }}
-                            >
-                              {msg.direction === 'out' && (
-                                <div className="text-[0.7em] font-bold mb-1" style={{ color: 'var(--accent-color)' }}>Поддержка</div>
-                              )}
-                              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.message_text}</div>
-                              <div className="text-[0.65em] mt-1 opacity-50 text-right">
-                                {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                              </div>
+          {menuScreen === 'notifications' && eventsTab === 'chat' && chatAreaTop > 0 && createPortal(
+            <div
+              className="chat-overlay"
+              style={{
+                position: 'fixed',
+                top: chatAreaTop + 4,
+                left: 0,
+                right: 0,
+                bottom: `calc(80px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))`,
+                zIndex: 40,
+                display: 'flex',
+                flexDirection: 'column',
+                pointerEvents: 'auto',
+              }}
+            >
+              <div className="flex flex-col flex-1 min-h-0 w-full max-w-[400px] mx-auto" style={{ padding: '0 20px' }}>
+                <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 py-2 chat-messages-scroll">
+                  {chatLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--accent-border)', borderTopColor: 'var(--accent-color)' }} />
+                    </div>
+                  ) : chatMessages.length > 0 ? (
+                    <>
+                      <div className="flex-1" />
+                      {chatMessages.map(msg => (
+                        <div key={msg.id} className={`flex ${msg.direction === 'in' ? 'justify-end' : 'justify-start'}`}>
+                          <div
+                            className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-[0.82em] leading-relaxed ${msg.direction === 'in' ? 'chat-bubble-out' : 'chat-bubble-in'}`}
+                          >
+                            {msg.direction === 'out' && (
+                              <div className="text-[0.7em] font-bold mb-1" style={{ color: 'var(--accent-color)' }}>Поддержка</div>
+                            )}
+                            <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.message_text}</div>
+                            <div className="text-[0.65em] mt-1 opacity-50 text-right">
+                              {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                             </div>
                           </div>
-                        ))}
-                        <div ref={chatEndRef} />
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-center gap-3 mt-8 py-8">
-                        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
-                          <IconMessageCircle size={28} color="var(--accent-color)" />
                         </div>
-                        <div className="text-center">
-                          <div className="text-[0.95em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Чат с поддержкой</div>
-                          <div className="text-[0.8em] font-medium max-w-[280px]" style={{ color: 'var(--text-muted)' }}>
-                            Напишите нам, и мы ответим как можно скорее.
-                          </div>
+                      ))}
+                      <div ref={chatEndRef} />
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center flex-1 gap-3">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
+                        <IconMessageCircle size={26} color="var(--accent-color)" />
+                      </div>
+                      <div className="text-center">
+                        <div className="text-[0.9em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Чат с поддержкой</div>
+                        <div className="text-[0.75em] font-medium max-w-[260px]" style={{ color: 'var(--text-muted)' }}>
+                          Напишите нам, и мы ответим как можно скорее.
                         </div>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-end gap-2 pt-2 pb-1">
-                    <div className="flex-1 relative">
-                      <textarea
-                        className="w-full resize-none rounded-2xl px-4 py-3 text-[0.82em] font-medium outline-none transition-all"
-                        style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', maxHeight: '120px', minHeight: '44px' }}
-                        placeholder="Написать сообщение..."
-                        value={chatInput}
-                        onChange={e => setChatInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
-                        rows={1}
-                        maxLength={2000}
-                      />
                     </div>
-                    <button
-                      className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all active:scale-90"
-                      style={{ background: chatInput.trim() ? 'var(--accent-color)' : 'var(--glass-bg)', border: `1px solid ${chatInput.trim() ? 'transparent' : 'var(--glass-border)'}` }}
-                      onClick={sendChatMessage}
-                      disabled={chatSending || !chatInput.trim()}
-                    >
-                      {chatSending ? (
-                        <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }} />
-                      ) : (
-                        <IconSend size={18} color={chatInput.trim() ? '#fff' : 'rgba(255,255,255,0.3)'} />
-                      )}
-                    </button>
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
+
+                <div className="flex items-end gap-2 py-2 shrink-0">
+                  <textarea
+                    className="flex-1 resize-none rounded-2xl px-4 py-3 text-[0.82em] font-medium outline-none transition-all chat-input"
+                    style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', maxHeight: '100px' }}
+                    placeholder="Написать сообщение..."
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
+                    rows={1}
+                    maxLength={2000}
+                  />
+                  <button
+                    className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all active:scale-90"
+                    style={{ background: chatInput.trim() ? 'var(--accent-color)' : 'var(--glass-bg)', border: `1px solid ${chatInput.trim() ? 'transparent' : 'var(--glass-border)'}` }}
+                    onClick={sendChatMessage}
+                    disabled={chatSending || !chatInput.trim()}
+                  >
+                    {chatSending ? (
+                      <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }} />
+                    ) : (
+                      <IconSend size={18} color={chatInput.trim() ? '#fff' : 'rgba(255,255,255,0.3)'} />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
           )}
 
           {/* =================== PLAYER SCREEN =================== */}
