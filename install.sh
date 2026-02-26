@@ -350,6 +350,7 @@ CREATE TABLE IF NOT EXISTS \`payment_requests\` (
     log_step "Step 7/8: Restarting services"
     . "$NVM_DIR/nvm.sh"
 
+    pm2 delete "mafboard-websocket" 2>/dev/null || true
     pm2 restart "$BACKEND_SERVICE_NAME" 2>/dev/null || log_warn "Socket.IO service not found"
 
     pm2 delete "$BOT_SERVICE_NAME" 2>/dev/null || true
