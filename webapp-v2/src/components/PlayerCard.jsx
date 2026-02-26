@@ -554,7 +554,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
           {gamePhase === 'day' && !nominationsLocked && active && !isDead && !cityMode && (
             <div className="space-y-3">
               <div className="flex justify-between items-center px-1">
-                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Выставить на голосование</span>
+                <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.3em]">Выставить на голосование</span>
                 {isNominated && <span className="text-[9px] font-black text-indigo-400">ВЫСТАВЛЕН</span>}
               </div>
               <div className="grid grid-cols-5 gap-2">
@@ -572,8 +572,8 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
                         isMyNomination
                           ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] border border-indigo-400 scale-105'
                           : isDisabled
-                            ? 'bg-white/[0.02] text-white/10 border border-white/[0.03]'
-                            : 'bg-white/5 text-white/30 border border-white/5 hover:border-white/10'
+                            ? 'bg-white/[0.03] text-white/15 border border-white/[0.05]'
+                            : 'bg-white/[0.08] text-white/50 border border-white/10 hover:border-white/20 hover:bg-white/[0.12]'
                       }`}
                     >
                       {t.num}
