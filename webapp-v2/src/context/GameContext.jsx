@@ -265,6 +265,14 @@ export const GameProvider = ({ children }) => {
     socketRef.current = conn;
   }, []);
 
+  const pushFullStateToOverlay = useCallback(() => {
+    setTimeout(() => {
+      if (socketRef.current?.connected) {
+        socketRef.current.sendFull(gameStateSnapshotRef.current());
+      }
+    }, 300);
+  }, []);
+
   const disconnectRoom = useCallback(() => {
     if (socketRef.current) socketRef.current.close();
     socketRef.current = null;
@@ -1109,8 +1117,9 @@ export const GameProvider = ({ children }) => {
     setDoctorLastHealTarget(null);
     timerModule.clearAllTimers();
     setActiveTab('table');
+    pushFullStateToOverlay();
     triggerHaptic('success');
-  }, [saveGameToHistory]);
+  }, [saveGameToHistory, pushFullStateToOverlay]);
 
   const currentGameNumber = useMemo(() => gamesHistory.length + 1, [gamesHistory.length]);
 
@@ -1215,6 +1224,8 @@ export const GameProvider = ({ children }) => {
   const startNewGame = useCallback(() => {
     saveCurrentSession();
     if (socketRef.current) socketRef.current.close();
+    socketRef.current = null;
+    setRoomId(null); setRoomInput(''); setRoomError(null);
     resetGameState();
     setCurrentSessionId(null);
     setScreen('modes');
@@ -1222,8 +1233,8 @@ export const GameProvider = ({ children }) => {
 
   const returnToMainMenu = useCallback(() => {
     saveCurrentSession();
-    if (socketRef.current) socketRef.current.close();
-    resetGameState(); setCurrentSessionId(null);
+    resetGameState();
+    setCurrentSessionId(null);
     setSessionsList(sessionManager.getSessions());
     setScreen('menu');
   }, [saveCurrentSession, resetGameState]);
@@ -1287,10 +1298,15 @@ export const GameProvider = ({ children }) => {
       setAvatars(avatarMap);
     }
 
+    if (s.roomId) {
+      setRoomId(s.roomId);
+      joinRoom(s.roomId);
+    }
+
     setFunkyEditSessionId(s.sessionId);
     setScreen('modes');
     triggerHaptic('light');
-  }, [saveCurrentSession, resetGameState]);
+  }, [saveCurrentSession, resetGameState, joinRoom]);
 
   const deleteSession = useCallback((sid) => {
     sessionManager.removeSession(sid);
@@ -1414,11 +1430,10 @@ export const GameProvider = ({ children }) => {
       if (logins.length > 0) loadAvatars(logins);
     }
 
-    joinRoom(tId, { skipInitialState: true });
     setCurrentSessionId(sessionManager.generateSessionId());
     setScreen('game');
     triggerHaptic('success');
-  }, [saveCurrentSession, resetGameState, joinRoom, loadAvatars]);
+  }, [saveCurrentSession, resetGameState, loadAvatars]);
 
   const startNextTournamentGame = useCallback(() => {
     saveGameToHistory();
@@ -1466,7 +1481,8 @@ export const GameProvider = ({ children }) => {
     }
     setCurrentSessionId(sessionManager.generateSessionId());
     setActiveTab('table');
-  }, [saveGameToHistory, saveCurrentSession, gameSelected, tableSelected, getGames, loadAvatars]);
+    pushFullStateToOverlay();
+  }, [saveGameToHistory, saveCurrentSession, gameSelected, tableSelected, getGames, loadAvatars, pushFullStateToOverlay]);
 
   // Load sessions on mount + sync with server
   useEffect(() => {
@@ -1734,7 +1750,7 @@ export const GameProvider = ({ children }) => {
     autoStartTimerRK, setAutoStartTimerRK,
     expandedCardRK, setExpandedCardRK,
     // Room/WS
-    roomId, setRoomId, joinRoom, disconnectRoom, syncState, roomInput, setRoomInput, roomError, setRoomError,
+    roomId, setRoomId, joinRoom, disconnectRoom, syncState, pushFullStateToOverlay, roomInput, setRoomInput, roomError, setRoomError,
     // Day Speaker
     currentDaySpeakerIndex, setCurrentDaySpeakerIndex,
     daySpeakerStartNum,

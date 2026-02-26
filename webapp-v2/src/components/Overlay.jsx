@@ -31,7 +31,7 @@ export function Overlay() {
     const conn = createOverlayConnection({
       onRoomCode: (code) => setRoomCode(code),
       onHostConnected: () => setHostConnected(true),
-      onHostDisconnected: () => setHostConnected(false),
+      onHostDisconnected: () => { setHostConnected(false); setGameState({}); },
       onOverlayClosed: () => {},
       onStateUpdate: (data) => setGameState(prev => mergeState(prev, data)),
     });
