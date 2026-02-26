@@ -153,12 +153,12 @@ export function VotingPanel() {
           onClick={() => { if (!disabled) { onToggle(p.num); triggerHaptic('selection'); } }}
           className={`h-16 rounded-[1.5rem] flex items-center justify-center text-2xl font-black transition-all duration-200 ${
             disabled
-              ? 'bg-black/20 text-slate-800 border border-transparent opacity-30 cursor-not-allowed'
+              ? 'bg-black/20 text-white/10 border border-transparent opacity-30 cursor-not-allowed'
               : selected
-                ? 'bg-purple-600 text-white shadow-[0_0_35px_rgba(168,85,247,0.5)] border border-purple-400 scale-105 ring-2 ring-purple-300/20'
+                ? 'bg-accent text-white shadow-[0_0_35px_rgba(var(--accent-rgb),0.5)] border border-accent scale-105 ring-2 ring-[rgba(var(--accent-rgb),0.2)]'
                 : prefilled
                   ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
-                  : 'bg-white/5 text-slate-400 border border-white/5 hover:bg-white/10'
+                  : 'bg-white/[0.05] text-white/40 border border-white/[0.06] hover:bg-white/[0.08]'
           }`}
         >
           {p.num}
@@ -189,7 +189,7 @@ export function VotingPanel() {
         <div
           className={`text-[64px] font-black leading-none tracking-tighter tabular-nums mb-2 select-none cursor-pointer transition-all ${
             low ? 'text-rose-500 animate-pulse'
-              : timer.isRunning && !timer.isPaused ? 'text-white'
+              : timer.isRunning && !timer.isPaused ? 'text-semantic-primary'
               : timer.isPaused ? 'text-amber-400/70'
               : timer.timeLeft === 0 ? 'text-red-400/60' : 'text-white/60'
           }`}
@@ -199,32 +199,35 @@ export function VotingPanel() {
         >
           {timer.timeLeft}
         </div>
-        <div className="w-full max-w-[180px] h-1 bg-white/5 rounded-full overflow-hidden mb-4">
+        <div className="w-full max-w-[180px] h-1 bg-white/[0.05] rounded-full overflow-hidden mb-4">
           <div
             className={`h-full rounded-full transition-all duration-1000 ease-linear ${
               low ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]'
-                : timer.isRunning && !timer.isPaused ? 'bg-indigo-500 shadow-[0_0_8px_#6366f1]'
-                : timer.isPaused ? 'bg-amber-400/60' : 'bg-white/10'
+                : timer.isRunning && !timer.isPaused ? 'bg-accent shadow-glow-accent'
+                : timer.isPaused ? 'bg-amber-400/60' : 'bg-white/[0.10]'
             }`}
             style={{ width: `${(timer.timeLeft / (timer === lastSpeechTimer ? 60 : 30)) * 100}%` }}
           />
         </div>
         {extra}
-        <div className="text-[0.55rem] text-white/15 text-center mt-2">Клик: Старт/Пауза | Удержание: Сброс</div>
+        <div className="text-[0.55rem] text-white/20 text-center mt-2">Клик: Старт/Пауза | Удержание: Сброс</div>
       </div>
     );
   };
 
+  /* ── Card wrapper style ── */
+  const cardBase = 'bg-glass-surface backdrop-blur-3xl shadow-glass-md';
+
   return (
     <div className="animate-fade-in flex flex-col gap-4">
 
-      {/* ══════════ HEADER ══════════ */}
+      {/* ══════════ HEADER — candidate ribbon ══════════ */}
       {votingScreenTab === 'voting' && candidates.length > 0 && (
-        <div className="w-full bg-white/5 border border-white/10 p-3 rounded-2xl shadow-xl">
+        <div className={`w-full bg-white/[0.05] border border-white/[0.08] p-3 rounded-2xl shadow-glass-sm`}>
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2 shrink-0">
-              <Users size={12} className="text-slate-500" />
-              <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest">Выставлены:</span>
+              <Users size={12} className="text-white/30" />
+              <span className="text-[9px] text-white/30 font-black uppercase tracking-widest">Выставлены:</span>
             </div>
             <div className="flex flex-wrap gap-1.5 justify-end">
               {votingOrder.map((num, idx) => (
@@ -234,8 +237,8 @@ export function VotingPanel() {
                     idx === votingCurrentIndex && !votingFinished
                       ? 'bg-yellow-400 border-yellow-300 text-black shadow-[0_0_12px_rgba(250,204,21,0.5)] scale-110 z-10'
                       : idx < votingCurrentIndex
-                        ? 'bg-purple-900/30 border-purple-500/30 text-purple-400 opacity-60'
-                        : 'bg-white/5 border-white/5 text-slate-500'
+                        ? 'bg-[rgba(var(--accent-rgb),0.15)] border-[rgba(var(--accent-rgb),0.2)] text-accent opacity-60'
+                        : 'bg-white/[0.05] border-white/[0.06] text-white/30'
                   }`}
                 >
                   {num}
@@ -250,7 +253,7 @@ export function VotingPanel() {
         <>
           {/* No candidates */}
           {!showVotingModal && candidates.length === 0 && (
-            <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 text-center animate-fade-in">
+            <div className={`${cardBase} border border-glass-border rounded-[2.5rem] p-8 text-center animate-fade-in`}>
               <div className="text-[2.5em] mb-3 opacity-30">⚖️</div>
               <h3 className="text-base font-bold mb-1.5">Нет выставленных игроков</h3>
               <p className="text-[0.85em] text-white/35">
@@ -264,7 +267,7 @@ export function VotingPanel() {
 
               {/* Day 0: single candidate */}
               {votingDay0SingleCandidate && (
-                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 text-center animate-fade-in">
+                <div className={`${cardBase} border border-glass-border rounded-[2.5rem] p-8 text-center animate-fade-in`}>
                   <div className="text-[2.5em] mb-3 opacity-40">☝️</div>
                   <h3 className="text-base font-bold mb-2">
                     Выставлен 1 кандидат — #{votingDay0SingleCandidate}
@@ -273,7 +276,7 @@ export function VotingPanel() {
                     На нулевом голосовании выставлен только один игрок. Голосование не проводится.
                   </p>
                   <button onClick={() => { dismissDay0VotingAndGoToNight(); triggerHaptic('medium'); }}
-                    className="bg-white text-black h-14 px-10 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
+                    className="bg-accent text-white h-14 px-10 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
                     Перейти в ночь
                   </button>
                 </div>
@@ -281,7 +284,7 @@ export function VotingPanel() {
 
               {/* Day 0: triple tie */}
               {votingDay0TripleTie && (
-                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 text-center animate-fade-in">
+                <div className={`${cardBase} border border-glass-border rounded-[2.5rem] p-8 text-center animate-fade-in`}>
                   <div className="text-[2.5em] mb-3 opacity-40">⚖️</div>
                   <h3 className="text-base font-bold mb-2">
                     Ничья {votingDay0TripleTiePlayers.length} игроков
@@ -297,7 +300,7 @@ export function VotingPanel() {
                     На нулевом голосовании невозможно деление {votingDay0TripleTiePlayers.length} игроков.
                   </p>
                   <button onClick={() => { dismissDay0VotingAndGoToNight(); triggerHaptic('medium'); }}
-                    className="bg-white text-black h-14 px-10 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
+                    className="bg-accent text-white h-14 px-10 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
                     Перейти в ночь
                   </button>
                 </div>
@@ -305,7 +308,7 @@ export function VotingPanel() {
 
               {/* ── Tie split timer ── */}
               {votingTieTimerActive && (
-                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-yellow-400/20 rounded-[2.5rem] p-6 text-center animate-fade-in">
+                <div className={`${cardBase} border border-yellow-400/20 rounded-[2.5rem] p-6 text-center animate-fade-in`}>
                   <h3 className="text-base font-black text-yellow-400 mb-4">Деление игроков</h3>
                   <div className="flex items-center gap-2 flex-wrap mb-5 justify-center">
                     {votingTiePlayers.map((num, i) => {
@@ -316,8 +319,8 @@ export function VotingPanel() {
                           isCurrent
                             ? 'bg-yellow-400 border-yellow-300 text-black shadow-[0_0_12px_rgba(250,204,21,0.5)] scale-110'
                             : isDone
-                              ? 'bg-white/5 border-white/5 text-white/25'
-                              : 'bg-white/5 border-white/10 text-white/60'
+                              ? 'bg-white/[0.05] border-white/[0.06] text-white/20'
+                              : 'bg-white/[0.05] border-white/[0.08] text-white/60'
                         }`}>{num}</div>
                       );
                     })}
@@ -338,7 +341,7 @@ export function VotingPanel() {
                               {votingTieSpeakerIdx >= votingTiePlayers.length - 1 ? 'Завершить' : 'Дальше'}
                             </button>
                           ) : (
-                            <button className="px-7 py-3 bg-white/5 rounded-2xl border border-white/10 text-white/50 font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all"
+                            <button className="px-7 py-3 bg-white/[0.05] rounded-2xl border border-white/[0.08] text-white/50 font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all"
                               onClick={() => { tieTimer.stop(); advanceTieSpeaker(); triggerHaptic('light'); }}>
                               {votingTieSpeakerIdx >= votingTiePlayers.length - 1 ? 'Завершить' : 'Пропустить'}
                             </button>
@@ -353,12 +356,12 @@ export function VotingPanel() {
                       <p className="text-[0.85em] text-white/40 mb-4">Все кандидаты высказались</p>
                       {votingStage === 'tie' ? (
                         <button onClick={() => { startLiftVoting(); triggerHaptic('medium'); }}
-                          className="w-full bg-white text-black h-14 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
+                          className="w-full bg-accent text-white h-14 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
                           Голосование за подъём
                         </button>
                       ) : (
                         <button onClick={() => { startTieVoting(); triggerHaptic('medium'); }}
-                          className="w-full bg-white text-black h-14 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
+                          className="w-full bg-accent text-white h-14 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
                           Повторное голосование
                         </button>
                       )}
@@ -369,7 +372,7 @@ export function VotingPanel() {
 
               {/* ── Last speech ── */}
               {votingLastSpeechActive && votingWinners.length > 0 && (
-                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-red-500/20 rounded-[2.5rem] p-6 text-center animate-fade-in">
+                <div className={`${cardBase} border border-red-500/20 rounded-[2.5rem] p-6 text-center animate-fade-in`}>
                   <h3 className="text-base font-black text-red-400 mb-3">Крайняя речь</h3>
                   {votingWinners.map(num => {
                     const p = tableOut[num - 1];
@@ -384,12 +387,12 @@ export function VotingPanel() {
                     extra={
                       <div className="flex gap-3">
                         {lastSpeechTimer.timeLeft > 0 && lastSpeechFoulCount < 2 && (
-                          <button className="px-7 py-3 bg-white text-black rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all shadow-xl"
+                          <button className="px-7 py-3 bg-accent text-white rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all shadow-xl"
                             onClick={() => { lastSpeechTimer.addTime(30); setLastSpeechFoulCount(c => c + 1); triggerHaptic('warning'); }}>
                             +30 сек (+Ф)
                           </button>
                         )}
-                        <button className="p-3 bg-white/5 rounded-2xl border border-white/10 active:scale-95 transition-all"
+                        <button className="p-3 bg-white/[0.05] rounded-2xl border border-white/[0.08] active:scale-95 transition-all"
                           onClick={() => { lastSpeechTimer.stop(); setLastSpeechFoulCount(0); triggerHaptic('light'); }}>
                           <RotateCcw size={18} className="text-white/50" />
                         </button>
@@ -410,13 +413,13 @@ export function VotingPanel() {
 
               {/* ── Lift voting ── */}
               {votingStage === 'lift' && !votingFinished && (
-                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-6 animate-fade-in">
+                <div className={`${cardBase} border border-glass-border rounded-[2.5rem] p-6 animate-fade-in`}>
                   <div className="flex justify-between items-center mb-5">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                    <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-accent animate-pulse shadow-[0_0_8px_rgba(var(--accent-rgb),0.8)]" />
                       Голосование за подъём
                     </span>
-                    <span className="text-[10px] font-black text-slate-400 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
+                    <span className="text-[10px] font-black text-white/40 bg-white/[0.05] px-3 py-1.5 rounded-xl border border-white/[0.06]">
                       {votingLiftResults.length} / {Math.ceil(alivePlayers.length / 2 + 0.1)} нужно
                     </span>
                   </div>
@@ -437,13 +440,13 @@ export function VotingPanel() {
                     onToggle: (num) => toggleLiftVote(num),
                   })}
 
-                  <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
+                  <div className="mt-8 pt-6 border-t border-white/[0.06] flex items-center justify-between">
                     <div className="flex flex-col">
-                      <span className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">Голосов ЗА:</span>
-                      <span className="text-4xl font-black text-white leading-none tracking-tighter">{votingLiftResults.length}</span>
+                      <span className="text-[10px] uppercase font-black text-white/30 tracking-widest mb-1">Голосов ЗА:</span>
+                      <span className="text-4xl font-black leading-none tracking-tighter">{votingLiftResults.length}</span>
                     </div>
                     <button onClick={() => { finishLiftVoting(); triggerHaptic('medium'); }}
-                      className="bg-white text-black h-14 px-10 rounded-[1.5rem] font-black flex items-center gap-3 active:scale-95 transition-all shadow-xl text-[10px] uppercase tracking-[0.2em]">
+                      className="bg-accent text-white h-14 px-10 rounded-[1.5rem] font-black flex items-center gap-3 active:scale-95 transition-all shadow-xl text-[10px] uppercase tracking-[0.2em]">
                       Завершить
                       <ChevronRight size={18} strokeWidth={3} />
                     </button>
@@ -453,21 +456,21 @@ export function VotingPanel() {
 
               {/* ══════════ MAIN / TIE VOTING ══════════ */}
               {(votingStage === 'main' || votingStage === 'tie') && !votingFinished && !votingTieTimerActive && (
-                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-6 shadow-2xl flex flex-col animate-fade-in">
+                <div className={`${cardBase} border border-glass-border rounded-[2.5rem] p-6 shadow-2xl flex flex-col animate-fade-in`}>
 
                   <div className="flex justify-between items-center mb-6">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                    <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-accent animate-pulse shadow-[0_0_8px_rgba(var(--accent-rgb),0.8)]" />
                       {votingStage === 'tie' ? 'Повторное' : 'Активная фаза'}
                     </span>
-                    <span className="text-[10px] font-black text-slate-400 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
+                    <span className="text-[10px] font-black text-white/40 bg-white/[0.05] px-3 py-1.5 rounded-xl border border-white/[0.06]">
                       ЭТАП {votingCurrentIndex + 1} / {votingOrder.length}
                     </span>
                   </div>
 
                   <div className="text-center mb-8">
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-purple-400/80 mb-3 font-black">Голосуем за игрока:</p>
-                    <h2 className="text-4xl font-black text-white tracking-tight">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-accent opacity-80 mb-3 font-black">Голосуем за игрока:</p>
+                    <h2 className="text-4xl font-black tracking-tight">
                       <span className="text-yellow-400">#{currentCandidate}</span> {tableOut[currentCandidate - 1]?.login || ''}
                     </h2>
                   </div>
@@ -476,12 +479,12 @@ export function VotingPanel() {
                   {cityMode ? (
                     <div className="flex items-center justify-center gap-6 mb-8">
                       <button onClick={() => setCityVoteCounts(prev => ({ ...prev, [currentCandidate]: Math.max(0, (prev[currentCandidate] || 0) - 1) }))}
-                        className="w-16 h-16 rounded-[1.5rem] bg-white/5 border border-white/10 text-white/70 text-2xl font-black flex items-center justify-center active:scale-95 transition-all">−</button>
-                      <span className="text-5xl font-black tabular-nums min-w-[64px] text-center" style={{ color: 'var(--accent-color)' }}>
+                        className="w-16 h-16 rounded-[1.5rem] bg-white/[0.04] border border-white/[0.08] text-white/70 text-2xl font-black flex items-center justify-center active:scale-95 transition-all">−</button>
+                      <span className="text-5xl font-black text-accent tabular-nums min-w-[64px] text-center">
                         {cityVoteCounts[currentCandidate] || 0}
                       </span>
                       <button onClick={() => setCityVoteCounts(prev => ({ ...prev, [currentCandidate]: (prev[currentCandidate] || 0) + 1 }))}
-                        className="w-16 h-16 rounded-[1.5rem] bg-white/5 border border-white/10 text-white/70 text-2xl font-black flex items-center justify-center active:scale-95 transition-all">+</button>
+                        className="w-16 h-16 rounded-[1.5rem] bg-white/[0.04] border border-white/[0.08] text-white/70 text-2xl font-black flex items-center justify-center active:scale-95 transition-all">+</button>
                     </div>
                   ) : (
                     <div className="mb-8">
@@ -496,11 +499,11 @@ export function VotingPanel() {
                   )}
 
                   {/* Bottom confirmation */}
-                  <div className="mt-auto pt-6 border-t border-white/5 space-y-5">
+                  <div className="mt-auto pt-6 border-t border-white/[0.06] space-y-5">
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">Голосов ЗА:</span>
-                        <span className="text-5xl font-black text-white leading-none tracking-tighter">
+                        <span className="text-[10px] uppercase font-black text-white/30 tracking-widest mb-1">Голосов ЗА:</span>
+                        <span className="text-5xl font-black leading-none tracking-tighter">
                           {cityMode ? (cityVoteCounts[currentCandidate] || 0) : (currentVotes.length + (isLastCandidate ? remainingVoters.length : 0))}
                         </span>
                       </div>
@@ -508,12 +511,12 @@ export function VotingPanel() {
                       <div className="flex items-center gap-2">
                         {votingCurrentIndex > 0 && (
                           <button onClick={() => { setVotingCurrentIndex(i => i - 1); triggerHaptic('light'); }}
-                            className="h-14 px-5 rounded-[1.5rem] bg-white/5 border border-white/10 text-white/50 font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
+                            className="h-14 px-5 rounded-[1.5rem] bg-white/[0.05] border border-white/[0.08] text-white/50 font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
                             Назад
                           </button>
                         )}
                         <button onClick={() => { acceptCurrentCandidateVotes(); triggerHaptic('light'); }}
-                          className="bg-white text-black h-14 px-10 rounded-[1.5rem] font-black flex items-center gap-3 active:scale-95 transition-all shadow-xl text-[10px] uppercase tracking-[0.2em]">
+                          className="bg-accent text-white h-14 px-10 rounded-[1.5rem] font-black flex items-center gap-3 active:scale-95 transition-all shadow-xl text-[10px] uppercase tracking-[0.2em]">
                           {votingCurrentIndex >= votingOrder.length - 1 ? 'Завершить' : 'Принять'}
                           <ChevronRight size={18} strokeWidth={3} />
                         </button>
@@ -522,13 +525,13 @@ export function VotingPanel() {
 
                     {/* Results so far */}
                     {Object.keys(votingResults).length > 0 && (
-                      <div className="bg-white/[0.03] p-4 rounded-2xl border border-white/5">
-                        <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-2 block">Текущий результат</span>
+                      <div className="bg-white/[0.03] p-4 rounded-2xl border border-white/[0.06]">
+                        <span className="text-[9px] text-white/30 font-black uppercase tracking-widest mb-2 block">Текущий результат</span>
                         <div className="flex flex-col gap-1.5">
                           {votingOrder.slice(0, votingCurrentIndex + 1).map(c => (
                             <div key={c} className="flex justify-between items-center">
                               <span className="text-xs font-bold text-white/40">#{c} {tableOut[c - 1]?.login || ''}</span>
-                              <span className="text-xs font-black text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20">
+                              <span className="text-xs font-black text-accent bg-accent-soft px-2.5 py-1 rounded-lg border border-accent-soft">
                                 {(votingResults[String(c)] || []).length} голосов
                               </span>
                             </div>
@@ -542,7 +545,7 @@ export function VotingPanel() {
 
               {/* No winners / finished */}
               {votingFinished && votingWinners.length === 0 && !votingTieTimerActive && (
-                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 text-center animate-fade-in">
+                <div className={`${cardBase} border border-glass-border rounded-[2.5rem] p-8 text-center animate-fade-in`}>
                   {votingStage === 'lift' ? (
                     <>
                       <h3 className="text-base font-bold mb-2">Голосов за подъём недостаточно</h3>
@@ -559,7 +562,7 @@ export function VotingPanel() {
                       <h3 className="text-base font-bold mb-2">Голосование завершено</h3>
                       <p className="text-[0.85em] text-white/40 mb-5">Никто не выбыл</p>
                       <button onClick={() => { closeVotingAndApply(); triggerHaptic('light'); }}
-                        className="bg-white text-black h-14 px-10 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
+                        className="bg-accent text-white h-14 px-10 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
                         Закрыть
                       </button>
                     </>
@@ -581,7 +584,7 @@ export function VotingPanel() {
             </div>
           ) : (
             [...votingHistory].reverse().map((v, i) => (
-              <div key={i} className="bg-[#0d0d1f]/60 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4">
+              <div key={i} className="bg-glass-surface backdrop-blur-xl border border-glass-border rounded-2xl p-4 shadow-glass-sm">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[0.7em] font-black text-white/40 uppercase tracking-wider">
                     Голосование #{v.votingNumber} (День {v.dayNumber})
@@ -629,7 +632,7 @@ export function VotingPanel() {
                                 <span className="text-[0.85em] font-black text-yellow-400">
                                   #{cNum} {tableOut[Number(cNum) - 1]?.login || ''}
                                 </span>
-                                <span className="text-[0.8em] font-black text-purple-400">
+                                <span className="text-[0.8em] font-black text-accent">
                                   {voteCount} {voteCount === 1 ? 'голос' : voteCount >= 2 && voteCount <= 4 ? 'голоса' : 'голосов'}
                                 </span>
                               </div>
