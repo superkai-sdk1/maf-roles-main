@@ -2,7 +2,7 @@
   "name": "MafBoard",
   "short_name": "MafBoard",
   "description": "Mafia game board — управление столом, таймеры, голосование и статистика",
-  "start_url": "/",
+  "start_url": "/panel",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0814",
