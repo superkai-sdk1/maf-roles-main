@@ -23,7 +23,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
     protocolAccepted, setProtocolAccepted,
     advanceNightPhase,
     bestMove, toggleBestMove, acceptBestMove, bestMoveAccepted, canShowBestMove,
-    startDaySpeakerFlow,
+    startDaySpeakerFlow, nextDaySpeaker,
   } = useGame();
 
   const cardRef = useRef(null);
@@ -548,6 +548,14 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
                 )}
               </div>
               <div className="text-[0.65rem] text-white/25 text-center mt-2">Клик: Старт/Пауза | Удержание: Сброс</div>
+              {isSpeaking && (
+                <button
+                  className="w-full mt-3 px-4 py-3 rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring"
+                  onClick={() => { nextDaySpeaker(); triggerHaptic('light'); }}
+                >
+                  Далее →
+                </button>
+              )}
             </div>
           )}
 

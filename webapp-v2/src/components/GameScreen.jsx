@@ -253,27 +253,6 @@ export function GameScreen() {
               </div>
             )}
 
-            {/* Day speaker indicator */}
-            {gamePhase === 'day' && rolesDistributed && !winnerTeam && (
-              <>
-                {currentSpeaker ? (
-                  <div className="flex items-center justify-between px-4 py-3 rounded-2xl glass-card mb-3 animate-fade-in">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-white">#{currentSpeaker.num} {currentSpeaker.login || `Игрок ${currentSpeaker.num}`}</span>
-                      <span className="text-xs text-white/40 font-medium">
-                        {(() => {
-                          const startIdx = activePlayers.findIndex(p => p.num === daySpeakerStartNum);
-                          const actual = startIdx >= 0 ? startIdx : 0;
-                          const spoken = (currentDaySpeakerIndex - actual + activePlayers.length) % activePlayers.length + 1;
-                          return `${spoken}/${activePlayers.length}`;
-                        })()}
-                      </span>
-                    </div>
-                    <button className="px-4 py-2.5 rounded-xl bg-accent text-white border border-white/[0.08] text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring" onClick={nextDaySpeaker}>Далее</button>
-                  </div>
-                ) : null}
-              </>
-            )}
 
             {/* Night phase indicator */}
             {gamePhase === 'night' && (
