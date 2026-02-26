@@ -7,11 +7,10 @@ import { ResultsPanel } from './ResultsPanel';
 import { SettingsPanel } from './SettingsPanel';
 import { RolesPhase } from './RolesPhase';
 import { NightPanel } from './NightPanel';
-import { SlideConfirm } from './SlideConfirm';
 import { InertiaSlider } from './InertiaSlider';
 import { triggerHaptic } from '../utils/haptics';
 import { useSwipeBack } from '../hooks/useSwipeBack';
-import { Gavel, Moon, Sun, X, MonitorPlay, LogOut, Trophy } from 'lucide-react';
+import { Gavel, Moon, Sun, X, MonitorPlay, LogOut, Trophy, Play, SkipForward } from 'lucide-react';
 
 export function GameScreen() {
   const {
@@ -97,7 +96,7 @@ export function GameScreen() {
             <VotingPanel />
           </div>
           {createPortal(
-            <nav className="fixed z-50 left-0 right-0 max-w-[448px] mx-auto flex items-center justify-around rounded-3xl glass-surface shadow-nav-bar py-2 animate-nav-slide-in" style={{ bottom: 'calc(16px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))' }}>
+            <nav className="fixed z-50 left-0 right-0 max-w-[448px] mx-auto flex items-center justify-around rounded-3xl glass-surface shadow-nav-bar py-2 animate-nav-slide-in" style={{ bottom: 'calc(16px + var(--safe-bottom, 0px))' }}>
               <button className={`flex flex-col items-center gap-0.5 py-2 px-1 min-w-[60px] text-white/40 transition-all duration-300 ease-spring ${votingScreenTab === 'voting' ? 'text-white' : ''}`}
                 onClick={() => { setVotingScreenTab('voting'); triggerHaptic('selection'); }}>
                 <span className="text-2xl transition-all duration-300 ease-spring flex items-center justify-center">⚖</span>
@@ -232,18 +231,25 @@ export function GameScreen() {
           )}
 
           {/* Players list */}
-          <div className="flex flex-col gap-3" style={{ padding: 'calc(16px + var(--safe-top, 0px)) 16px calc(120px + var(--safe-bottom, env(safe-area-inset-bottom, 0px))) 16px' }}>
+          <div className="flex flex-col gap-3" style={{ padding: '16px 16px calc(120px + var(--safe-bottom, 0px)) 16px' }}>
             {/* Roles phase */}
             {gamePhase === 'roles' && <RolesPhase />}
 
             {/* Roles slider — inline under table */}
             {gamePhase === 'roles' && !rolesDistributed && (
               <div className="mt-3 animate-fade-in">
-                <SlideConfirm label="Начать договорку" onConfirm={() => {
-                  const r = confirmRolesDistribution();
-                  if (!r.valid) { setShowRolesAlert(true); triggerHaptic('warning'); }
-                  else triggerHaptic('success');
-                }} color="violet" compact />
+                <InertiaSlider
+                  label="Начать договорку"
+                  baseColor="bg-gradient-to-br from-violet-500 to-indigo-600"
+                  glowColor="shadow-violet-500/50"
+                  onComplete={() => {
+                    const r = confirmRolesDistribution();
+                    if (!r.valid) { setShowRolesAlert(true); triggerHaptic('warning'); }
+                    else triggerHaptic('success');
+                  }}
+                  icon={<Play size={18} fill="white" />}
+                  compact
+                />
               </div>
             )}
 
@@ -314,20 +320,22 @@ export function GameScreen() {
             {rolesDistributed && isTimerPhase && !winnerTeam && (
               <div className="flex flex-col gap-3 mt-3 animate-fade-in">
                 <div className="mt-3">
-                  <SlideConfirm
+                  <InertiaSlider
                     label={
                       gamePhase === 'discussion'
                         ? (discussionTimeLeft <= 0
                             ? (cityMode ? 'Завершить знакомство' : 'Завершить договорку')
                             : (cityMode ? 'Пропустить знакомство' : 'Пропустить договорку'))
-                        : (freeSeatingTimeLeft <= 0 ? 'Утро' : 'Пропустить свободную посадку')
+                        : (freeSeatingTimeLeft <= 0 ? 'Утро' : 'Пропустить свободную')
                     }
-                    onConfirm={() => {
+                    baseColor="bg-gradient-to-br from-amber-400 to-orange-500"
+                    glowColor="shadow-amber-500/50"
+                    onComplete={() => {
                       if (gamePhase === 'discussion') advanceFromDiscussion();
                       else advanceFromFreeSeating();
                       triggerHaptic('light');
                     }}
-                    color="amber"
+                    icon={<SkipForward size={18} fill="white" />}
                     compact
                   />
                 </div>

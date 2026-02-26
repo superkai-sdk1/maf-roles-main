@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '../context/GameContext';
-import { SlideConfirm } from './SlideConfirm';
 import { triggerHaptic } from '../utils/haptics';
 import { DialerPad, dialerBtn } from './DialerPad';
 import { Crosshair, Search, Star, SkipForward, XCircle, Heart } from 'lucide-react';
@@ -60,7 +59,6 @@ export const NightPanel = () => {
     killedOnNight,
     doctorHeal, performDoctorHeal, canDoctorHealTarget, doctorLastHealTarget, doctorHealHistory,
     wasKilledBeforeThisNight,
-    setMode,
   } = useGame();
 
   const showTimer = gameMode === 'gomafia' || gameMode === 'funky';
@@ -254,17 +252,7 @@ export const NightPanel = () => {
             </div>
           )}
 
-          {/* Morning slider */}
-          {(bestMoveAccepted || !firstKilledPlayer || killedThisNight.length === 0) && (
-            <div className="mt-1">
-              <SlideConfirm
-                label="В городе утро"
-                onConfirm={() => { setMode('day'); triggerHaptic('success'); }}
-                color="morning"
-                compact
-              />
-            </div>
-          )}
+          {/* Morning transition is handled by the control panel InertiaSlider below */}
         </div>
       )}
 
