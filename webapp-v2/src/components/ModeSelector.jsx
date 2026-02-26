@@ -4,6 +4,8 @@ import { goMafiaApi } from '../services/api';
 import { sessionManager } from '../services/sessionManager';
 import { triggerHaptic } from '../utils/haptics';
 import { useSwipeBack } from '../hooks/useSwipeBack';
+import { useSubscription } from '../hooks/useSubscription';
+import { SubscriptionGate } from './SubscriptionGate';
 import {
   CITY_ROLES_ALL, CITY_OPTIONAL_ROLES, getCityActiveRoles,
 } from '../constants/roles';
@@ -31,6 +33,10 @@ export function ModeSelector() {
   } = useGame();
 
   const [step, setStep] = useState('modes');
+  const [gateFeature, setGateFeature] = useState(null);
+  const gomafiaSub = useSubscription('gomafia');
+  const funkySub = useSubscription('funky');
+  const citySub = useSubscription('city_mafia');
   const [tournamentInput, setTournamentInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -609,6 +615,7 @@ export function ModeSelector() {
     }
     if (step === 'modes') returnToMainMenu();
     else if (step === 'game_select') setStep('browser');
+    else if (step === 'paywall') { setGateFeature(null); setStep('modes'); }
     else if (step === 'gomafia') setStep('browser');
     else if (step === 'browser' || step === 'browser_loading') setStep('modes');
     else if (step === 'city') {
@@ -618,12 +625,13 @@ export function ModeSelector() {
       else setStep('modes');
     }
     else setStep('modes');
-  }, [step, cityStep, returnToMainMenu, funkyEditSessionId, setFunkyEditSessionId]);
+  }, [step, cityStep, returnToMainMenu, funkyEditSessionId, setFunkyEditSessionId, setGateFeature]);
 
   useSwipeBack(goBack);
 
   const getTitle = () => {
     if (step === 'modes') return 'Новая игра';
+    if (step === 'paywall') return 'Подписка';
     if (step === 'gomafia') return 'GoMafia';
     if (step === 'funky') return 'Фанки';
     if (step === 'city') return 'Городская мафия';
@@ -678,8 +686,8 @@ export function ModeSelector() {
         {step === 'modes' && (
           <div className="flex flex-col gap-3 animate-stagger">
             <button
-              className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-card-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-accent/20"
-              onClick={() => { openBrowser(); triggerHaptic('selection'); }}
+              className={`relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-card-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-accent/20 ${!gomafiaSub.hasAccess ? 'opacity-60' : ''}`}
+              onClick={() => { if (!gomafiaSub.hasAccess) { setGateFeature('gomafia'); setStep('paywall'); return; } openBrowser(); triggerHaptic('selection'); }}
             >
               <div className="absolute top-0 left-0 w-[3px] h-full bg-gradient-to-b from-accent to-indigo-500 rounded-l-full" />
               <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full opacity-[0.04] group-hover:opacity-[0.08] transition-opacity" style={{ background: 'var(--accent-color)' }} />
@@ -687,15 +695,15 @@ export function ModeSelector() {
                 <IconGoMafia size={28} />
               </div>
               <div className="flex-1 min-w-0 relative z-[1]">
-                <div className="text-[1.1em] font-black text-white mb-0.5">GoMafia</div>
+                <div className="text-[1.1em] font-black text-white mb-0.5 flex items-center gap-2">GoMafia{!gomafiaSub.hasAccess && <IconLock size={14} color="rgba(255,255,255,0.3)" />}</div>
                 <div className="text-[0.78em] text-white/40 leading-relaxed">Турниры и миникапы с gomafia.pro</div>
               </div>
               <IconChevronRight size={18} color="rgba(255,255,255,0.2)" className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
             </button>
 
             <button
-              className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-card-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-accent/20"
-              onClick={() => { initFunky(); triggerHaptic('selection'); }}
+              className={`relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-card-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-accent/20 ${!funkySub.hasAccess ? 'opacity-60' : ''}`}
+              onClick={() => { if (!funkySub.hasAccess) { setGateFeature('funky'); setStep('paywall'); return; } initFunky(); triggerHaptic('selection'); }}
             >
               <div className="absolute top-0 left-0 w-[3px] h-full bg-gradient-to-b from-accent to-purple-400 rounded-l-full" />
               <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full opacity-[0.04] group-hover:opacity-[0.08] transition-opacity" style={{ background: 'var(--accent-color)' }} />
@@ -703,15 +711,15 @@ export function ModeSelector() {
                 <IconDice size={26} color="var(--accent-color, #a855f7)" />
               </div>
               <div className="flex-1 min-w-0 relative z-[1]">
-                <div className="text-[1.1em] font-black text-white mb-0.5">Фанки</div>
+                <div className="text-[1.1em] font-black text-white mb-0.5 flex items-center gap-2">Фанки{!funkySub.hasAccess && <IconLock size={14} color="rgba(255,255,255,0.3)" />}</div>
                 <div className="text-[0.78em] text-white/40 leading-relaxed">Свободные фановые игры с друзьями</div>
               </div>
               <IconChevronRight size={18} color="rgba(255,255,255,0.2)" className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
             </button>
 
             <button
-              className="relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-card-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-[rgba(79,195,247,0.2)]"
-              onClick={() => { initCity(); triggerHaptic('selection'); }}
+              className={`relative w-full flex items-center gap-4 p-5 rounded-[22px] glass-card-md overflow-hidden text-left active:scale-[0.98] transition-all duration-200 group hover:border-[rgba(79,195,247,0.2)] ${!citySub.hasAccess ? 'opacity-60' : ''}`}
+              onClick={() => { if (!citySub.hasAccess) { setGateFeature('city_mafia'); setStep('paywall'); return; } initCity(); triggerHaptic('selection'); }}
             >
               <div className="absolute top-0 left-0 w-[3px] h-full bg-gradient-to-b from-[#4fc3f7] to-[#0288d1] rounded-l-full" />
               <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full opacity-[0.04] group-hover:opacity-[0.08] transition-opacity" style={{ background: '#4fc3f7' }} />
@@ -719,7 +727,7 @@ export function ModeSelector() {
                 <IconCity size={26} color="#4fc3f7" />
               </div>
               <div className="flex-1 min-w-0 relative z-[1]">
-                <div className="text-[1.1em] font-black text-white mb-0.5">Городская мафия</div>
+                <div className="text-[1.1em] font-black text-white mb-0.5 flex items-center gap-2">Городская мафия{!citySub.hasAccess && <IconLock size={14} color="rgba(255,255,255,0.3)" />}</div>
                 <div className="text-[0.78em] text-white/40 leading-relaxed">Доктор, камикадзе, маньяк и блэкджек</div>
               </div>
               <IconChevronRight size={18} color="rgba(255,255,255,0.2)" className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
@@ -750,6 +758,15 @@ export function ModeSelector() {
                 <div className="text-[0.75em] text-white/25 mt-0.5">Ведение клубного рейтинга игроков</div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ===== Subscription Paywall ===== */}
+        {step === 'paywall' && gateFeature && (
+          <div className="animate-fade-in">
+            <SubscriptionGate feature={gateFeature}>
+              <div />
+            </SubscriptionGate>
           </div>
         )}
 

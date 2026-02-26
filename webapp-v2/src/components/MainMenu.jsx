@@ -7,6 +7,7 @@ import { authService } from '../services/auth';
 import { COLOR_SCHEMES, applyTheme, applyDarkMode } from '../constants/themes';
 import { triggerHaptic } from '../utils/haptics';
 import { useSwipeBack } from '../hooks/useSwipeBack';
+import { SubscriptionGate } from './SubscriptionGate';
 import {
   IconPlayCircle, IconHistory, IconPlus, IconPalette, IconUser,
   IconTrophy, IconDice, IconChevronDown, IconTrash, IconStats, IconMafBoard,
@@ -2161,6 +2162,7 @@ export function MainMenu() {
 
           {/* =================== PLAYER SCREEN =================== */}
           {menuScreen === 'player' && (
+            <SubscriptionGate feature="gomafia">
             <div className="animate-fade-in w-full max-w-[400px] pb-[100px] flex flex-col gap-3">
               <div className="flex items-center justify-between mb-1">
                 <h2 className="text-[1.3em] font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>Мои игры</h2>
@@ -2303,6 +2305,7 @@ export function MainMenu() {
                 );
               })()}
             </div>
+            </SubscriptionGate>
           )}
 
           {/* =================== PLAYER DETAIL SCREEN =================== */}
