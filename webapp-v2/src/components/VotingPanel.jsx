@@ -3,7 +3,7 @@ import { useGame } from '../context/GameContext';
 import { useTimer } from '../hooks/useTimer';
 import { SlideConfirm } from './SlideConfirm';
 import { triggerHaptic } from '../utils/haptics';
-import { ChevronRight, Users, RotateCcw } from 'lucide-react';
+import { ChevronRight, Users, RotateCcw, GripVertical, Plus, X, Pencil } from 'lucide-react';
 
 export function VotingPanel() {
   const {
@@ -22,6 +22,7 @@ export function VotingPanel() {
     votingDay0SingleCandidate, votingDay0TripleTie, votingDay0TripleTiePlayers,
     dismissDay0VotingAndGoToNight,
     handleGoToNight,
+    updateVotingOrder,
   } = useGame();
 
   // === Controllable tie speech timer ===
@@ -80,6 +81,13 @@ export function VotingPanel() {
   const [lastSpeechFoulCount, setLastSpeechFoulCount] = useState(0);
   const prevLastSpeechActive = useRef(false);
 
+  const [showEditOrder, setShowEditOrder] = useState(false);
+  const [editOrder, setEditOrder] = useState([]);
+  const [editDragIdx, setEditDragIdx] = useState(null);
+  const [editDragOverIdx, setEditDragOverIdx] = useState(null);
+  const editListRef = useRef(null);
+  const editDragStateRef = useRef({ active: false, sourceIdx: null, overIdx: null });
+
   useEffect(() => {
     if (votingLastSpeechActive && !prevLastSpeechActive.current) {
       lastSpeechTimer.start(60);
@@ -136,6 +144,160 @@ export function VotingPanel() {
   const formatTime = (t) => String(t).padStart(2, '0');
 
   const timerIsLow = (timer) => timer.timeLeft <= 10 && timer.isRunning && !timer.isPaused;
+
+  /* ── Edit voting order handlers ── */
+  const editAvailablePlayers = alivePlayers.filter(p => !editOrder.includes(p.num));
+
+  const openEditOrder = useCallback(() => {
+    setEditOrder([...votingOrder]);
+    setShowEditOrder(true);
+    triggerHaptic('light');
+  }, [votingOrder]);
+
+  const applyEditOrder = useCallback(() => {
+    if (editOrder.length === 0) { setShowEditOrder(false); return; }
+    const orderChanged = editOrder.length !== votingOrder.length ||
+      editOrder.some((num, idx) => votingOrder[idx] !== num);
+    if (orderChanged) updateVotingOrder(editOrder);
+    setShowEditOrder(false);
+    triggerHaptic('medium');
+  }, [editOrder, votingOrder, updateVotingOrder]);
+
+  const cancelEditOrder = useCallback(() => {
+    setShowEditOrder(false);
+    triggerHaptic('light');
+  }, []);
+
+  const addToOrder = useCallback((num) => {
+    setEditOrder(prev => prev.includes(num) ? prev : [...prev, num]);
+    triggerHaptic('selection');
+  }, []);
+
+  const removeFromOrder = useCallback((num) => {
+    setEditOrder(prev => prev.filter(n => n !== num));
+    triggerHaptic('selection');
+  }, []);
+
+  const handleEditDragStart = useCallback((idx, e) => {
+    setEditDragIdx(idx);
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', 'reorder:' + idx);
+    }
+    triggerHaptic('light');
+  }, []);
+
+  const handleEditDragOver = useCallback((idx) => {
+    setEditDragOverIdx(idx);
+  }, []);
+
+  const handleEditDragEnd = useCallback(() => {
+    setEditDragIdx(null);
+    setEditDragOverIdx(null);
+  }, []);
+
+  const handleCandidateDrop = useCallback((targetIdx, e) => {
+    e.preventDefault();
+    const data = e.dataTransfer?.getData('text/plain') || '';
+    if (data.startsWith('reorder:')) {
+      const sourceIdx = parseInt(data.split(':')[1]);
+      if (sourceIdx !== targetIdx) {
+        setEditOrder(prev => {
+          const arr = [...prev];
+          const [moved] = arr.splice(sourceIdx, 1);
+          arr.splice(targetIdx, 0, moved);
+          return arr;
+        });
+      }
+    } else if (data.startsWith('add:')) {
+      const num = parseInt(data.split(':')[1]);
+      setEditOrder(prev => {
+        if (prev.includes(num)) return prev;
+        const arr = [...prev];
+        arr.splice(targetIdx, 0, num);
+        return arr;
+      });
+    }
+    setEditDragIdx(null);
+    setEditDragOverIdx(null);
+    triggerHaptic('medium');
+  }, []);
+
+  const handleAvailableDragStart = useCallback((num, e) => {
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('text/plain', 'add:' + num);
+    }
+    triggerHaptic('light');
+  }, []);
+
+  const handleEndzoneDrop = useCallback((e) => {
+    e.preventDefault();
+    const data = e.dataTransfer?.getData('text/plain') || '';
+    if (data.startsWith('add:')) {
+      const num = parseInt(data.split(':')[1]);
+      setEditOrder(prev => prev.includes(num) ? prev : [...prev, num]);
+      triggerHaptic('selection');
+    } else if (data.startsWith('reorder:')) {
+      const sourceIdx = parseInt(data.split(':')[1]);
+      setEditOrder(prev => {
+        const arr = [...prev];
+        const [moved] = arr.splice(sourceIdx, 1);
+        arr.push(moved);
+        return arr;
+      });
+      triggerHaptic('medium');
+    }
+    setEditDragIdx(null);
+    setEditDragOverIdx(null);
+  }, []);
+
+  const startTouchReorder = useCallback((idx, e) => {
+    e.preventDefault();
+    editDragStateRef.current = { active: true, sourceIdx: idx, overIdx: null };
+    setEditDragIdx(idx);
+    setEditDragOverIdx(null);
+    triggerHaptic('light');
+
+    const moveHandler = (me) => {
+      me.preventDefault();
+      const touch = me.touches[0];
+      const container = editListRef.current;
+      if (!container) return;
+      const items = container.querySelectorAll('[data-edit-idx]');
+      for (let i = 0; i < items.length; i++) {
+        const rect = items[i].getBoundingClientRect();
+        if (touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+          editDragStateRef.current.overIdx = i;
+          setEditDragOverIdx(i);
+          return;
+        }
+      }
+    };
+
+    const endHandler = () => {
+      const { sourceIdx, overIdx } = editDragStateRef.current;
+      if (sourceIdx !== null && overIdx !== null && sourceIdx !== overIdx) {
+        setEditOrder(prev => {
+          const arr = [...prev];
+          const [moved] = arr.splice(sourceIdx, 1);
+          arr.splice(overIdx, 0, moved);
+          return arr;
+        });
+        triggerHaptic('medium');
+      }
+      editDragStateRef.current = { active: false, sourceIdx: null, overIdx: null };
+      setEditDragIdx(null);
+      setEditDragOverIdx(null);
+      window.removeEventListener('touchmove', moveHandler);
+      window.removeEventListener('touchend', endHandler);
+      window.removeEventListener('touchcancel', endHandler);
+    };
+
+    window.addEventListener('touchmove', moveHandler, { passive: false });
+    window.addEventListener('touchend', endHandler);
+    window.addEventListener('touchcancel', endHandler);
+  }, []);
 
   /* ── Voting grid button renderer ── */
   const renderVotingGrid = ({ players, isSelected, isDisabled, isPrefilled, onToggle }) => {
@@ -221,8 +383,99 @@ export function VotingPanel() {
   return (
     <div className="animate-fade-in flex flex-col gap-4">
 
+      {/* ══════════ EDIT VOTING ORDER SCREEN ══════════ */}
+      {showEditOrder && votingScreenTab === 'voting' && (
+        <div className="animate-fade-in flex flex-col gap-4">
+          <div className={`${cardBase} border border-glass-border rounded-[2.5rem] p-5`}>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-sm font-black uppercase tracking-wide">Изменить порядок</h3>
+              <div className="flex gap-2">
+                <button onClick={cancelEditOrder}
+                  className="h-10 px-4 rounded-xl bg-white/[0.05] border border-white/[0.08] text-white/50 font-bold text-[10px] uppercase tracking-widest active:scale-95 transition-all">
+                  Отмена
+                </button>
+                <button onClick={applyEditOrder}
+                  disabled={editOrder.length === 0}
+                  className="h-10 px-5 rounded-xl bg-accent text-white font-bold text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg disabled:opacity-30 disabled:cursor-not-allowed">
+                  Готово
+                </button>
+              </div>
+            </div>
+            {(votingCurrentIndex > 0 || Object.keys(votingResults).length > 0) && (
+              <p className="text-[0.7rem] text-amber-400/70 mt-2">
+                ⚠ Изменения сбросят текущий прогресс голосования
+              </p>
+            )}
+          </div>
+
+          <div className={`${cardBase} border border-glass-border rounded-[2.5rem] p-5`}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">Порядок голосования</span>
+              <span className="text-[9px] font-black text-white/40 bg-white/[0.05] px-2.5 py-1 rounded-lg border border-white/[0.06]">
+                {editOrder.length} {editOrder.length === 1 ? 'игрок' : editOrder.length >= 2 && editOrder.length <= 4 ? 'игрока' : 'игроков'}
+              </span>
+            </div>
+            <div ref={editListRef} className="flex flex-col gap-1.5"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleEndzoneDrop}>
+              {editOrder.map((num, idx) => {
+                const p = tableOut[num - 1];
+                return (
+                  <div key={num} data-edit-idx={idx}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all duration-200 ${
+                      editDragIdx === idx ? 'opacity-30 scale-[0.97]' : 'bg-white/[0.04]'
+                    } ${editDragOverIdx === idx && editDragIdx !== idx ? 'border-t-2 border-t-accent bg-accent/5' : 'border-white/[0.08]'}`}
+                    onDragOver={(e) => { e.preventDefault(); handleEditDragOver(idx); }}
+                    onDrop={(e) => handleCandidateDrop(idx, e)}>
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg cursor-grab touch-none shrink-0 active:cursor-grabbing active:bg-white/[0.08] transition-colors"
+                      draggable
+                      onDragStart={(e) => handleEditDragStart(idx, e)}
+                      onDragEnd={handleEditDragEnd}
+                      onTouchStart={(e) => startTouchReorder(idx, e)}>
+                      <GripVertical size={16} className="text-white/25" />
+                    </div>
+                    <span className="text-sm font-black text-yellow-400 min-w-[28px]">#{num}</span>
+                    <span className="text-sm font-bold text-white/60 flex-1 truncate">{p?.login || ''}</span>
+                    <button onClick={() => removeFromOrder(num)}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/[0.04] border border-white/[0.06] active:scale-90 transition-all hover:bg-red-500/10 hover:border-red-500/20">
+                      <X size={12} className="text-white/30" />
+                    </button>
+                  </div>
+                );
+              })}
+              {editOrder.length === 0 && (
+                <div className="py-6 text-center text-white/20 text-[0.8em]">
+                  Добавьте игроков из списка ниже
+                </div>
+              )}
+            </div>
+          </div>
+
+          {editAvailablePlayers.length > 0 && (
+            <div className={`${cardBase} border border-glass-border rounded-[2.5rem] p-5`}>
+              <span className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-3 block">Добавить игрока</span>
+              <div className="flex flex-col gap-1.5">
+                {editAvailablePlayers.map(p => (
+                  <div key={p.num}
+                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] cursor-pointer active:scale-[0.98] transition-all hover:bg-white/[0.05]"
+                    draggable
+                    onDragStart={(e) => handleAvailableDragStart(p.num, e)}
+                    onClick={() => addToOrder(p.num)}>
+                    <span className="text-sm font-black text-white/30 min-w-[28px]">#{p.num}</span>
+                    <span className="text-sm font-bold text-white/40 flex-1 truncate">{p.login || ''}</span>
+                    <div className="w-7 h-7 flex items-center justify-center rounded-lg bg-accent/10 border border-accent/20">
+                      <Plus size={12} className="text-accent" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ══════════ HEADER — candidate ribbon ══════════ */}
-      {votingScreenTab === 'voting' && candidates.length > 0 && (
+      {!showEditOrder && votingScreenTab === 'voting' && candidates.length > 0 && (
         <div className={`w-full bg-white/[0.05] border border-white/[0.08] p-3 rounded-2xl shadow-glass-sm`}>
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2 shrink-0">
@@ -249,7 +502,7 @@ export function VotingPanel() {
         </div>
       )}
 
-      {votingScreenTab === 'voting' && (
+      {!showEditOrder && votingScreenTab === 'voting' && (
         <>
           {/* No candidates */}
           {!showVotingModal && candidates.length === 0 && (
@@ -543,6 +796,15 @@ export function VotingPanel() {
                 </div>
               )}
 
+              {/* Edit voting order button */}
+              {(votingStage === 'main' || votingStage === 'tie') && !votingFinished && !votingTieTimerActive && !votingLastSpeechActive && (
+                <button onClick={openEditOrder}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white/50 font-bold text-[11px] uppercase tracking-[0.15em] active:scale-[0.98] transition-all hover:bg-white/[0.06]">
+                  <Pencil size={14} className="text-white/40" />
+                  Изменить порядок
+                </button>
+              )}
+
               {/* No winners / finished */}
               {votingFinished && votingWinners.length === 0 && !votingTieTimerActive && (
                 <div className={`${cardBase} border border-glass-border rounded-[2.5rem] p-8 text-center animate-fade-in`}>
@@ -575,7 +837,7 @@ export function VotingPanel() {
       )}
 
       {/* ══════════ HISTORY ══════════ */}
-      {votingScreenTab === 'history' && (
+      {!showEditOrder && votingScreenTab === 'history' && (
         <div className="animate-fade-in flex flex-col gap-3">
           {votingHistory.length === 0 ? (
             <div className="py-10 text-center text-white/25">

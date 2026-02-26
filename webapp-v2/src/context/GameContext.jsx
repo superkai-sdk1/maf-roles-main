@@ -695,6 +695,14 @@ export const GameProvider = ({ children }) => {
     setVotingFinished(false); setVotingWinners([]); setVotingStage('lift');
   }, [votingTiePlayers, votingStage, votingResults, votingOrder]);
 
+  const updateVotingOrder = useCallback((newOrder) => {
+    setVotingOrder(newOrder);
+    setVotingCurrentIndex(0);
+    setVotingResults({});
+    setCityVoteCounts({});
+    setCurrentVotingSession(prev => prev ? { ...prev, nominationsAll: [...newOrder] } : prev);
+  }, []);
+
   const toggleLiftVote = useCallback((num) => {
     const rk = tableOut[num - 1]?.roleKey;
     if (!isPlayerActive(rk)) return;
@@ -1696,7 +1704,7 @@ export const GameProvider = ({ children }) => {
     votingDay0SingleCandidate, votingDay0TripleTie, votingDay0TripleTiePlayers,
     dismissDay0VotingAndGoToNight,
     getNominatedCandidates, toggleNomination, startVoting, toggleVotingSelection,
-    acceptCurrentCandidateVotes, startTieVoting, startLiftVoting,
+    acceptCurrentCandidateVotes, startTieVoting, startLiftVoting, updateVotingOrder,
     toggleLiftVote, finishLiftVoting, closeVotingAndApply,
     // Voting Timers
     votingTieTimerActive, setVotingTieTimerActive,
