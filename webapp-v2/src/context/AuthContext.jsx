@@ -31,6 +31,7 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [needsPasskeySuggest, setNeedsPasskeySuggest] = useState(false);
+  const [subscriptions, setSubscriptions] = useState({});
   const [isTelegramWebView, setIsTelegramWebView] = useState(false);
   const mountedRef = useRef(true);
 
@@ -49,6 +50,9 @@ export function AuthProvider({ children }) {
       if (result.authenticated) {
         setUser(result.user);
         setIsAuthenticated(true);
+        if (result.user && result.user.subscriptions) {
+          setSubscriptions(result.user.subscriptions);
+        }
         if (shouldSuggestPasskey(result.user)) {
           setNeedsPasskeySuggest(true);
         }
@@ -69,6 +73,9 @@ export function AuthProvider({ children }) {
     setUser(userData);
     setIsAuthenticated(true);
     setAuthModalOpen(false);
+    if (userData && userData.subscriptions) {
+      setSubscriptions(userData.subscriptions);
+    }
     if (shouldSuggestPasskey(userData)) {
       setNeedsPasskeySuggest(true);
     }
@@ -78,10 +85,27 @@ export function AuthProvider({ children }) {
     setNeedsPasskeySuggest(false);
   }, []);
 
+  const refreshSubscriptions = useCallback(async () => {
+    const token = authService.getStoredToken();
+    if (!token) return;
+    try {
+      const resp = await fetch(`/api/subscription-check.php?token=${encodeURIComponent(token)}`);
+      const data = await resp.json();
+      if (data.subscriptions) {
+        const active = {};
+        for (const [slug, info] of Object.entries(data.subscriptions)) {
+          if (info.has_access) active[slug] = info;
+        }
+        setSubscriptions(active);
+      }
+    } catch {}
+  }, []);
+
   const logout = useCallback(() => {
     authService.logout();
     setUser(null);
     setIsAuthenticated(false);
+    setSubscriptions({});
     setNeedsPasskeySuggest(false);
   }, []);
 
@@ -92,10 +116,12 @@ export function AuthProvider({ children }) {
     authModalOpen,
     needsPasskeySuggest,
     isTelegramWebView,
+    subscriptions,
     showAuthModal,
     hideAuthModal,
     handleAuthSuccess,
     dismissPasskeySuggest,
+    refreshSubscriptions,
     logout,
   };
 

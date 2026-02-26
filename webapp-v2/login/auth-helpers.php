@@ -159,8 +159,205 @@ try {
             KEY `expires_at` (`expires_at`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+    // ===== Subscription tables =====
+    $database->pdo->exec("
+        CREATE TABLE IF NOT EXISTS `user_subscriptions` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `user_id` int(11) DEFAULT NULL,
+            `telegram_id` bigint(20) DEFAULT NULL,
+            `feature` varchar(50) NOT NULL,
+            `status` varchar(20) NOT NULL DEFAULT 'active',
+            `started_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `expires_at` datetime NOT NULL,
+            `is_trial` tinyint(1) NOT NULL DEFAULT 0,
+            `created_by` varchar(100) DEFAULT NULL,
+            `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `user_id` (`user_id`),
+            KEY `telegram_id` (`telegram_id`),
+            KEY `feature` (`feature`),
+            KEY `status` (`status`),
+            KEY `expires_at` (`expires_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    $database->pdo->exec("
+        CREATE TABLE IF NOT EXISTS `promo_codes` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `code` varchar(50) NOT NULL,
+            `features` text NOT NULL,
+            `duration_days` int(11) NOT NULL DEFAULT 30,
+            `max_uses` int(11) NOT NULL DEFAULT 1,
+            `current_uses` int(11) NOT NULL DEFAULT 0,
+            `is_active` tinyint(1) NOT NULL DEFAULT 1,
+            `created_by` varchar(100) DEFAULT NULL,
+            `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `expires_at` datetime DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `code` (`code`),
+            KEY `is_active` (`is_active`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    $database->pdo->exec("
+        CREATE TABLE IF NOT EXISTS `promo_activations` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `promo_id` int(11) NOT NULL,
+            `user_id` int(11) DEFAULT NULL,
+            `telegram_id` bigint(20) DEFAULT NULL,
+            `activated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `promo_id` (`promo_id`),
+            KEY `user_id` (`user_id`),
+            KEY `telegram_id` (`telegram_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    $database->pdo->exec("
+        CREATE TABLE IF NOT EXISTS `bot_messages` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `telegram_id` bigint(20) NOT NULL,
+            `direction` varchar(10) NOT NULL DEFAULT 'in',
+            `message_text` text NOT NULL,
+            `message_type` varchar(30) NOT NULL DEFAULT 'text',
+            `admin_id` bigint(20) DEFAULT NULL,
+            `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `is_read` tinyint(1) NOT NULL DEFAULT 0,
+            PRIMARY KEY (`id`),
+            KEY `telegram_id` (`telegram_id`),
+            KEY `direction` (`direction`),
+            KEY `is_read` (`is_read`),
+            KEY `created_at` (`created_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    $database->pdo->exec("
+        CREATE TABLE IF NOT EXISTS `payment_requests` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `user_id` int(11) DEFAULT NULL,
+            `telegram_id` bigint(20) NOT NULL,
+            `features` text NOT NULL,
+            `amount` int(11) NOT NULL DEFAULT 0,
+            `status` varchar(20) NOT NULL DEFAULT 'pending',
+            `admin_note` text DEFAULT NULL,
+            `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `confirmed_at` datetime DEFAULT NULL,
+            `confirmed_by` bigint(20) DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            KEY `user_id` (`user_id`),
+            KEY `telegram_id` (`telegram_id`),
+            KEY `status` (`status`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
 } catch (\Throwable $e) {
     error_log('Auth migration error: ' . $e->getMessage());
+}
+
+// =====================================================
+// Subscription constants & helpers
+// =====================================================
+
+define('SUBSCRIPTION_FEATURES', [
+    'gomafia'     => 'GoMafia',
+    'funky'       => 'Фанки',
+    'city_mafia'  => 'Городская мафия',
+    'minicaps'    => 'Миникапы',
+    'club_rating' => 'Клубный рейтинг',
+]);
+define('PRICE_PER_FEATURE', 299);
+define('PRICE_ALL_FEATURES', 990);
+define('TRIAL_DAYS', 3);
+
+function getActiveSubscriptions($database, $telegramId) {
+    $now = date('Y-m-d H:i:s');
+    $rows = $database->select('user_subscriptions', '*', [
+        'telegram_id' => $telegramId,
+        'status' => 'active',
+        'expires_at[>]' => $now,
+    ]);
+    $features = [];
+    foreach ($rows as $row) {
+        if ($row['feature'] === 'all') {
+            foreach (SUBSCRIPTION_FEATURES as $slug => $name) {
+                $features[$slug] = [
+                    'name' => $name, 'expires_at' => $row['expires_at'],
+                    'is_trial' => (bool)$row['is_trial'],
+                    'days_left' => max(0, (int)ceil((strtotime($row['expires_at']) - time()) / 86400)),
+                ];
+            }
+        } else {
+            $slug = $row['feature'];
+            if (isset(SUBSCRIPTION_FEATURES[$slug])) {
+                if (!isset($features[$slug]) || strtotime($row['expires_at']) > strtotime($features[$slug]['expires_at'])) {
+                    $features[$slug] = [
+                        'name' => SUBSCRIPTION_FEATURES[$slug], 'expires_at' => $row['expires_at'],
+                        'is_trial' => (bool)$row['is_trial'],
+                        'days_left' => max(0, (int)ceil((strtotime($row['expires_at']) - time()) / 86400)),
+                    ];
+                }
+            }
+        }
+    }
+    return $features;
+}
+
+function hasFeatureAccess($database, $telegramId, $feature) {
+    return isset(getActiveSubscriptions($database, $telegramId)[$feature]);
+}
+
+function canActivateTrial($database, $telegramId) {
+    return !$database->get('user_subscriptions', 'id', ['telegram_id' => $telegramId, 'is_trial' => 1]);
+}
+
+function activateTrial($database, $telegramId, $userId = null) {
+    if (!canActivateTrial($database, $telegramId)) return false;
+    $database->insert('user_subscriptions', [
+        'user_id' => $userId, 'telegram_id' => $telegramId, 'feature' => 'all',
+        'status' => 'active', 'started_at' => date('Y-m-d H:i:s'),
+        'expires_at' => date('Y-m-d H:i:s', time() + TRIAL_DAYS * 86400),
+        'is_trial' => 1, 'created_by' => 'trial',
+    ]);
+    return true;
+}
+
+function grantSubscription($database, $telegramId, $feature, $days, $createdBy, $userId = null) {
+    $existing = $database->get('user_subscriptions', '*', [
+        'telegram_id' => $telegramId, 'feature' => $feature,
+        'status' => 'active', 'expires_at[>]' => date('Y-m-d H:i:s'),
+    ]);
+    if ($existing) {
+        $database->update('user_subscriptions', [
+            'expires_at' => date('Y-m-d H:i:s', strtotime($existing['expires_at']) + $days * 86400),
+        ], ['id' => $existing['id']]);
+        return $existing['id'];
+    }
+    $database->insert('user_subscriptions', [
+        'user_id' => $userId, 'telegram_id' => $telegramId, 'feature' => $feature,
+        'status' => 'active', 'started_at' => date('Y-m-d H:i:s'),
+        'expires_at' => date('Y-m-d H:i:s', time() + $days * 86400),
+        'is_trial' => 0, 'created_by' => $createdBy,
+    ]);
+    return $database->id();
+}
+
+function revokeSubscription($database, $telegramId, $feature) {
+    $database->update('user_subscriptions', [
+        'status' => 'expired', 'expires_at' => date('Y-m-d H:i:s'),
+    ], ['telegram_id' => $telegramId, 'feature' => $feature, 'status' => 'active']);
+}
+
+function expireOldSubscriptions($database) {
+    $database->update('user_subscriptions', ['status' => 'expired'], [
+        'status' => 'active', 'expires_at[<]' => date('Y-m-d H:i:s'),
+    ]);
+}
+
+function calculatePrice($features) {
+    if (in_array('all', $features)) return PRICE_ALL_FEATURES;
+    $count = count($features);
+    if ($count >= count(SUBSCRIPTION_FEATURES)) return PRICE_ALL_FEATURES;
+    return $count * PRICE_PER_FEATURE;
 }
 
 // =====================================================
@@ -657,6 +854,18 @@ function buildUserResponse($database, $session) {
                 $response['last_name'] = $user['telegram_last_name'];
             }
         }
+    }
+
+    if (!empty($session['telegram_id'])) {
+        expireOldSubscriptions($database);
+        $subs = getActiveSubscriptions($database, $session['telegram_id']);
+        $response['subscriptions'] = $subs;
+        $response['has_active_subscription'] = !empty($subs);
+        $response['can_activate_trial'] = canActivateTrial($database, $session['telegram_id']);
+    } else {
+        $response['subscriptions'] = [];
+        $response['has_active_subscription'] = false;
+        $response['can_activate_trial'] = false;
     }
 
     return $response;

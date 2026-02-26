@@ -244,6 +244,9 @@
         roomDetail: 'Комната', players: 'GoMafia Sync', sessions: 'Auth Сессии',
         system: 'Система', userDetail: 'Пользователь', gameDetail: 'Игры пользователя',
         gameControl: 'Управление игрой', notifications: 'Уведомления',
+        subscriptions: 'Подписки', subscriptionDetail: 'Подписка',
+        promos: 'Промокоды', promoDetail: 'Промокод',
+        messages: 'Сообщения', messageChat: 'Чат',
     };
 
     function navigate(page, params) {
@@ -272,6 +275,12 @@
             case 'gameDetail': loadGameDetail(params); break;
             case 'gameControl': loadGameControl(params); break;
             case 'notifications': loadNotifications(); break;
+            case 'subscriptions': loadSubscriptions(); break;
+            case 'subscriptionDetail': loadSubscriptionDetail(params); break;
+            case 'promos': loadPromos(); break;
+            case 'promoDetail': loadPromoDetail(params); break;
+            case 'messages': loadMessages(); break;
+            case 'messageChat': loadMessageChat(params); break;
             default: content.innerHTML = '<div class="admin-empty"><h3>Страница не найдена</h3></div>';
         }
     }
@@ -279,7 +288,8 @@
     function updateBreadcrumb(page, params) {
         const bc = document.getElementById('admin-breadcrumb');
         const parentPages = {
-            userDetail: 'users', gameDetail: 'games', roomDetail: 'rooms'
+            userDetail: 'users', gameDetail: 'games', roomDetail: 'rooms',
+            subscriptionDetail: 'subscriptions', promoDetail: 'promos', messageChat: 'messages',
         };
         if (parentPages[page]) {
             const parentTitle = pageTitles[parentPages[page]];
@@ -1853,6 +1863,411 @@
     // =======================================================================
     // Sidebar
     // =======================================================================
+    // =======================================================================
+    // Subscriptions Management
+    // =======================================================================
+    const FEATURES_LIST = {
+        gomafia: 'GoMafia', funky: 'Фанки', city_mafia: 'Городская мафия',
+        minicaps: 'Миникапы', club_rating: 'Клубный рейтинг',
+    };
+
+    async function loadSubscriptions() {
+        try {
+            const search = state.subsSearch || '';
+            const filter = state.subsFilter || 'all';
+            const page = state.subsPage || 1;
+            const resp = await fetch(`${API_BASE}admin-subscriptions.php?token=${state.token}&search=${encodeURIComponent(search)}&filter=${filter}&page=${page}`);
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            const content = document.getElementById('admin-page-content');
+            let html = `<div class="admin-toolbar">
+                <div class="admin-filter-group">
+                    <select onchange="AdminApp.subsFilterChange(this.value)">
+                        <option value="all" ${filter==='all'?'selected':''}>Все</option>
+                        <option value="active" ${filter==='active'?'selected':''}>Активные</option>
+                        <option value="expired" ${filter==='expired'?'selected':''}>Истёкшие</option>
+                        <option value="trial" ${filter==='trial'?'selected':''}>Триал</option>
+                    </select>
+                    <div class="admin-search-box">
+                        <input type="text" placeholder="Поиск..." value="${esc(search)}" onkeydown="if(event.key==='Enter')AdminApp.subsSearch(this.value)">
+                        <button onclick="AdminApp.subsSearch(this.previousElementSibling.value)">🔍</button>
+                    </div>
+                </div>
+            </div>`;
+            if (!data.users || data.users.length === 0) {
+                html += '<div class="admin-empty"><h3>Нет данных</h3></div>';
+            } else {
+                html += '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Пользователь</th><th>Telegram ID</th><th>Активных</th><th>Триал</th><th>Действия</th></tr></thead><tbody>';
+                for (const u of data.users) {
+                    const name = u.first_name ? esc(u.first_name) + (u.last_name ? ' ' + esc(u.last_name) : '') : 'N/A';
+                    const uname = u.username ? `@${esc(u.username)}` : '';
+                    const activeCount = Object.keys(u.active_features || {}).length;
+                    html += `<tr>
+                        <td><strong>${name}</strong><br><small>${uname}</small></td>
+                        <td><code>${u.telegram_id}</code></td>
+                        <td>${activeCount > 0 ? `<span class="admin-badge admin-badge-success">${activeCount}</span>` : '<span class="admin-badge">0</span>'}</td>
+                        <td>${u.has_trial == 1 ? '✅' : '—'}</td>
+                        <td><button class="admin-btn admin-btn-sm" onclick="AdminApp.navigate('subscriptionDetail','${u.telegram_id}')">Подробнее</button></td>
+                    </tr>`;
+                }
+                html += '</tbody></table></div>';
+                if (data.totalPages > 1) html += renderPagination(data.page, data.totalPages, 'subsGoToPage');
+            }
+            content.innerHTML = html;
+        } catch (e) { document.getElementById('admin-page-content').innerHTML = `<div class="admin-alert admin-alert-error">${esc(e.message)}</div>`; }
+    }
+    function subsFilterChange(v) { state.subsFilter = v; state.subsPage = 1; loadSubscriptions(); }
+    function subsSearchFn(v) { state.subsSearch = v; state.subsPage = 1; loadSubscriptions(); }
+    function subsGoToPage(p) { state.subsPage = p; loadSubscriptions(); }
+
+    async function loadSubscriptionDetail(tgId) {
+        try {
+            const resp = await fetch(`${API_BASE}admin-subscriptions.php?token=${state.token}&telegram_id=${tgId}`);
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            const content = document.getElementById('admin-page-content');
+            const u = data.user || {};
+            const name = u.telegram_first_name || 'N/A';
+            let html = `<div class="admin-detail-header">
+                <h3>${esc(name)} ${u.telegram_last_name ? esc(u.telegram_last_name) : ''}</h3>
+                <small>@${esc(u.telegram_username || '—')} · TG ID: ${tgId}</small>
+            </div>`;
+            html += `<div class="admin-detail-grid"><div class="admin-card"><div class="admin-card-header"><h4>Активные подписки</h4></div><div class="admin-card-body">`;
+            const active = data.active_features || {};
+            if (Object.keys(active).length === 0) {
+                html += '<p>Нет активных подписок</p>';
+            } else {
+                for (const [slug, info] of Object.entries(active)) {
+                    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-subtle)">
+                        <span><strong>${esc(info.name)}</strong> ${info.is_trial ? '<small>(триал)</small>' : ''}<br><small>до ${formatDate(info.expires_at)} (${info.days_left} дн.)</small></span>
+                        <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="AdminApp.subsAction('revoke','${tgId}','${slug}')">Отключить</button>
+                    </div>`;
+                }
+            }
+            html += `</div></div><div class="admin-card"><div class="admin-card-header"><h4>Действия</h4></div><div class="admin-card-body">
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+                    <select id="sub-feature-select"><option value="all">Все разделы</option>`;
+            for (const [s, n] of Object.entries(FEATURES_LIST)) html += `<option value="${s}">${esc(n)}</option>`;
+            html += `</select><select id="sub-days-select"><option value="7">7 дней</option><option value="14">14 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option><option value="365">1 год</option></select>
+                    <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="AdminApp.subsAction('grant','${tgId}')">Выдать</button>
+                </div>
+                <div style="display:flex;gap:8px">
+                    <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="AdminApp.subsAction('revoke_all','${tgId}')">Отключить всё</button>
+                </div>
+            </div></div></div>`;
+            html += '<div class="admin-card" style="margin-top:16px"><div class="admin-card-header"><h4>История</h4></div><div class="admin-card-body">';
+            if (!data.history || data.history.length === 0) { html += '<p>Пусто</p>'; }
+            else {
+                html += '<table class="admin-table"><thead><tr><th>Раздел</th><th>Статус</th><th>Начало</th><th>Окончание</th><th>Источник</th></tr></thead><tbody>';
+                for (const h of data.history) {
+                    const sClass = h.status === 'active' && new Date(h.expires_at) > new Date() ? 'admin-badge-success' : '';
+                    html += `<tr><td>${esc(FEATURES_LIST[h.feature] || h.feature)}</td>
+                        <td><span class="admin-badge ${sClass}">${h.status}${h.is_trial ? ' (триал)' : ''}</span></td>
+                        <td>${formatDate(h.started_at)}</td><td>${formatDate(h.expires_at)}</td><td><small>${esc(h.created_by || '—')}</small></td></tr>`;
+                }
+                html += '</tbody></table>';
+            }
+            html += '</div></div>';
+            content.innerHTML = html;
+        } catch (e) { document.getElementById('admin-page-content').innerHTML = `<div class="admin-alert admin-alert-error">${esc(e.message)}</div>`; }
+    }
+
+    async function subsAction(action, tgId, feature) {
+        try {
+            const body = { action, telegram_id: parseInt(tgId) };
+            if (action === 'grant') {
+                body.feature = document.getElementById('sub-feature-select').value;
+                body.days = parseInt(document.getElementById('sub-days-select').value);
+            }
+            if (feature) body.feature = feature;
+            const resp = await fetch(`${API_BASE}admin-subscriptions.php?token=${state.token}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            toast(data.message || 'Готово', 'success');
+            loadSubscriptionDetail(tgId);
+        } catch (e) { toast(e.message, 'error'); }
+    }
+
+    // =======================================================================
+    // Promo Codes Management
+    // =======================================================================
+    async function loadPromos() {
+        try {
+            const filter = state.promosFilter || 'all';
+            const page = state.promosPage || 1;
+            const resp = await fetch(`${API_BASE}admin-promos.php?token=${state.token}&filter=${filter}&page=${page}`);
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            const content = document.getElementById('admin-page-content');
+            let html = `<div class="admin-toolbar">
+                <div class="admin-filter-group">
+                    <select onchange="AdminApp.promosFilterChange(this.value)">
+                        <option value="all" ${filter==='all'?'selected':''}>Все</option>
+                        <option value="active" ${filter==='active'?'selected':''}>Активные</option>
+                        <option value="inactive" ${filter==='inactive'?'selected':''}>Неактивные</option>
+                    </select>
+                    <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="AdminApp.showCreatePromo()">+ Создать</button>
+                </div>
+            </div>`;
+            if (!data.promos || data.promos.length === 0) {
+                html += '<div class="admin-empty"><h3>Нет промокодов</h3></div>';
+            } else {
+                html += '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Код</th><th>Разделы</th><th>Срок</th><th>Исп.</th><th>Статус</th><th>Действия</th></tr></thead><tbody>';
+                for (const p of data.promos) {
+                    const feats = (p.features_parsed || []).map(f => f === 'all' ? 'Все' : (FEATURES_LIST[f] || f)).join(', ');
+                    html += `<tr>
+                        <td><code>${esc(p.code)}</code></td>
+                        <td>${esc(feats)}</td><td>${p.duration_days} дн.</td>
+                        <td>${p.current_uses}/${p.max_uses || '∞'}</td>
+                        <td>${p.is_active ? '<span class="admin-badge admin-badge-success">Актив</span>' : '<span class="admin-badge">Неактив</span>'}</td>
+                        <td>
+                            <button class="admin-btn admin-btn-sm" onclick="AdminApp.navigate('promoDetail','${p.id}')">👁</button>
+                            <button class="admin-btn admin-btn-sm" onclick="AdminApp.togglePromo(${p.id})">${p.is_active ? '⏸' : '▶'}</button>
+                            <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="AdminApp.deletePromo(${p.id})">🗑</button>
+                        </td>
+                    </tr>`;
+                }
+                html += '</tbody></table></div>';
+                if (data.totalPages > 1) html += renderPagination(data.page, data.totalPages, 'promosGoToPage');
+            }
+            content.innerHTML = html;
+        } catch (e) { document.getElementById('admin-page-content').innerHTML = `<div class="admin-alert admin-alert-error">${esc(e.message)}</div>`; }
+    }
+    function promosFilterChange(v) { state.promosFilter = v; state.promosPage = 1; loadPromos(); }
+    function promosGoToPage(p) { state.promosPage = p; loadPromos(); }
+
+    function showCreatePromo() {
+        let featOpts = '<label><input type="checkbox" name="pf" value="all"> Все разделы</label>';
+        for (const [s, n] of Object.entries(FEATURES_LIST)) featOpts += `<label><input type="checkbox" name="pf" value="${s}"> ${esc(n)}</label>`;
+        showModal(`<div class="admin-modal-header"><h3>Новый промокод</h3></div>
+            <div class="admin-modal-body">
+                <div class="admin-form-group"><label>Код (пусто = автогенерация)</label><input type="text" id="promo-code" placeholder="MYCODE"></div>
+                <div class="admin-form-group"><label>Разделы</label><div style="display:flex;flex-direction:column;gap:4px">${featOpts}</div></div>
+                <div class="admin-form-group"><label>Срок (дней)</label><input type="number" id="promo-days" value="30" min="1"></div>
+                <div class="admin-form-group"><label>Макс. использований (0 = безлимит)</label><input type="number" id="promo-max" value="1" min="0"></div>
+            </div>
+            <div class="admin-modal-footer">
+                <button class="admin-btn admin-btn-secondary" onclick="AdminApp.closeModal()">Отмена</button>
+                <button class="admin-btn admin-btn-primary" onclick="AdminApp.savePromo()">Создать</button>
+            </div>`);
+    }
+
+    async function savePromo() {
+        const code = (document.getElementById('promo-code').value || '').trim();
+        const checks = document.querySelectorAll('input[name="pf"]:checked');
+        const features = Array.from(checks).map(c => c.value);
+        if (features.length === 0) { toast('Выберите хотя бы один раздел', 'error'); return; }
+        const days = parseInt(document.getElementById('promo-days').value) || 30;
+        const maxUses = parseInt(document.getElementById('promo-max').value) || 0;
+        try {
+            const resp = await fetch(`${API_BASE}admin-promos.php?token=${state.token}`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ action:'create', code, features, duration_days: days, max_uses: maxUses })
+            });
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            closeModal(); toast(data.message || 'Создано', 'success'); loadPromos();
+        } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function togglePromo(id) {
+        try {
+            const resp = await fetch(`${API_BASE}admin-promos.php?token=${state.token}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'toggle', id }) });
+            const data = await resp.json(); if (data.error) throw new Error(data.error); loadPromos();
+        } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function deletePromo(id) {
+        const ok = await confirmDialog('Удалить промокод?', 'Это действие нельзя отменить.');
+        if (!ok) return;
+        try {
+            const resp = await fetch(`${API_BASE}admin-promos.php?token=${state.token}&id=${id}`, { method:'DELETE' });
+            const data = await resp.json(); if (data.error) throw new Error(data.error);
+            toast('Удалено', 'success'); loadPromos();
+        } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function loadPromoDetail(id) {
+        try {
+            const resp = await fetch(`${API_BASE}admin-promos.php?token=${state.token}&id=${id}`);
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            const p = data.promo;
+            const content = document.getElementById('admin-page-content');
+            const feats = (p.features_parsed || []).map(f => f === 'all' ? 'Все' : (FEATURES_LIST[f] || f)).join(', ');
+            let html = `<div class="admin-detail-header"><h3>Промокод: <code>${esc(p.code)}</code></h3>
+                <small>Создан: ${formatDate(p.created_at)} · ${p.is_active ? '🟢 Активен' : '🔴 Неактивен'}</small></div>
+                <div class="admin-detail-grid"><div class="admin-card"><div class="admin-card-header"><h4>Параметры</h4></div><div class="admin-card-body">
+                <p><strong>Разделы:</strong> ${esc(feats)}</p>
+                <p><strong>Срок:</strong> ${p.duration_days} дней</p>
+                <p><strong>Использований:</strong> ${p.current_uses} / ${p.max_uses || '∞'}</p>
+                ${p.expires_at ? `<p><strong>Истекает:</strong> ${formatDate(p.expires_at)}</p>` : ''}
+                </div></div>`;
+            html += '<div class="admin-card"><div class="admin-card-header"><h4>Активации</h4></div><div class="admin-card-body">';
+            if (!data.activations || data.activations.length === 0) { html += '<p>Пока нет активаций</p>'; }
+            else {
+                html += '<table class="admin-table"><thead><tr><th>Пользователь</th><th>Telegram ID</th><th>Дата</th></tr></thead><tbody>';
+                for (const a of data.activations) {
+                    html += `<tr><td>${esc(a.telegram_first_name || '—')} ${a.telegram_username ? '(@' + esc(a.telegram_username) + ')' : ''}</td>
+                        <td><code>${a.telegram_id}</code></td><td>${formatDate(a.activated_at)}</td></tr>`;
+                }
+                html += '</tbody></table>';
+            }
+            html += '</div></div></div>';
+            content.innerHTML = html;
+        } catch (e) { document.getElementById('admin-page-content').innerHTML = `<div class="admin-alert admin-alert-error">${esc(e.message)}</div>`; }
+    }
+
+    // =======================================================================
+    // Messages / Chat Management
+    // =======================================================================
+    async function loadMessages() {
+        try {
+            const page = state.messagesPage || 1;
+            const resp = await fetch(`${API_BASE}admin-messages.php?token=${state.token}&page=${page}`);
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            const content = document.getElementById('admin-page-content');
+            if (data.pending_payments > 0) {
+                var alert = `<div class="admin-alert admin-alert-warning">💰 Ожидает подтверждения: <strong>${data.pending_payments}</strong> заявок на оплату</div>`;
+            } else { var alert = ''; }
+            let html = alert;
+            if (!data.conversations || data.conversations.length === 0) {
+                html += '<div class="admin-empty"><h3>Нет сообщений</h3></div>';
+            } else {
+                html += '<div class="admin-messages-list">';
+                for (const c of data.conversations) {
+                    const name = c.first_name ? esc(c.first_name) + (c.last_name ? ' ' + esc(c.last_name) : '') : 'User';
+                    const uname = c.username ? `@${esc(c.username)}` : '';
+                    const lastMsg = c.last_message ? (c.last_message.length > 60 ? esc(c.last_message.substring(0, 60)) + '…' : esc(c.last_message)) : '';
+                    html += `<div class="admin-message-item ${c.unread_count > 0 ? 'unread' : ''}" onclick="AdminApp.navigate('messageChat','${c.telegram_id}')">
+                        <div class="admin-message-item-left">
+                            <div class="admin-user-avatar">${(c.first_name || 'U')[0].toUpperCase()}</div>
+                            <div><strong>${name}</strong> <small>${uname}</small><br><small class="text-muted">${lastMsg}</small></div>
+                        </div>
+                        <div class="admin-message-item-right">
+                            <small>${formatDate(c.last_message_at)}</small>
+                            ${c.unread_count > 0 ? `<span class="admin-nav-badge">${c.unread_count}</span>` : ''}
+                        </div>
+                    </div>`;
+                }
+                html += '</div>';
+                if (data.totalPages > 1) html += renderPagination(data.page, data.totalPages, 'messagesGoToPage');
+            }
+            content.innerHTML = html;
+            const badge = document.getElementById('unread-messages-badge');
+            const totalUnread = (data.conversations || []).reduce((s, c) => s + parseInt(c.unread_count || 0), 0);
+            if (badge) { badge.textContent = totalUnread; badge.style.display = totalUnread > 0 ? '' : 'none'; }
+        } catch (e) { document.getElementById('admin-page-content').innerHTML = `<div class="admin-alert admin-alert-error">${esc(e.message)}</div>`; }
+    }
+    function messagesGoToPage(p) { state.messagesPage = p; loadMessages(); }
+
+    async function loadMessageChat(tgId) {
+        try {
+            const resp = await fetch(`${API_BASE}admin-messages.php?token=${state.token}&telegram_id=${tgId}`);
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            const u = data.user || {};
+            const content = document.getElementById('admin-page-content');
+            let html = `<div class="admin-detail-header"><h3>${esc(u.telegram_first_name || 'User')} ${esc(u.telegram_last_name || '')}</h3>
+                <small>@${esc(u.telegram_username || '—')} · TG ID: ${tgId}</small></div>`;
+
+            // Pending payments
+            const pendingPays = (data.payments || []).filter(p => p.status === 'pending');
+            if (pendingPays.length > 0) {
+                html += '<div class="admin-alert admin-alert-warning">';
+                for (const p of pendingPays) {
+                    const feats = (p.features_parsed || []).map(f => f === 'all' ? 'Все' : (FEATURES_LIST[f] || f)).join(', ');
+                    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
+                        <span>💰 Заявка #${p.id}: ${esc(feats)} — <strong>${p.amount}₽</strong></span>
+                        <span>
+                            <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="AdminApp.confirmPayment(${p.id},'${tgId}')">✅ Подтвердить</button>
+                            <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="AdminApp.rejectPayment(${p.id},'${tgId}')">❌ Отклонить</button>
+                        </span>
+                    </div>`;
+                }
+                html += '</div>';
+            }
+
+            html += '<div class="admin-chat-messages" id="chat-messages">';
+            for (const m of (data.messages || [])) {
+                const isOut = m.direction === 'out';
+                html += `<div class="admin-chat-msg ${isOut ? 'out' : 'in'}">
+                    <div class="admin-chat-bubble">${esc(m.message_text)}
+                        <div class="admin-chat-time">${formatDate(m.created_at)}</div>
+                    </div></div>`;
+            }
+            html += '</div>';
+            html += `<div class="admin-chat-input">
+                <input type="text" id="chat-reply-text" placeholder="Написать ответ..." onkeydown="if(event.key==='Enter')AdminApp.sendReply('${tgId}')">
+                <button class="admin-btn admin-btn-primary" onclick="AdminApp.sendReply('${tgId}')">Отправить</button>
+            </div>`;
+            content.innerHTML = html;
+            const msgsDiv = document.getElementById('chat-messages');
+            if (msgsDiv) msgsDiv.scrollTop = msgsDiv.scrollHeight;
+
+            // Mark as read
+            fetch(`${API_BASE}admin-messages.php?token=${state.token}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'mark_read', telegram_id: parseInt(tgId) }) });
+        } catch (e) { document.getElementById('admin-page-content').innerHTML = `<div class="admin-alert admin-alert-error">${esc(e.message)}</div>`; }
+    }
+
+    async function sendReply(tgId) {
+        const input = document.getElementById('chat-reply-text');
+        const text = (input.value || '').trim();
+        if (!text) return;
+        input.value = '';
+        try {
+            const resp = await fetch(`${API_BASE}admin-messages.php?token=${state.token}`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ action:'reply', telegram_id: parseInt(tgId), text })
+            });
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            // Also send via Telegram bot
+            if (data.send_via_bot) {
+                fetch(`${API_BASE}admin-bot-send.php`, { method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ token: state.token, telegram_id: parseInt(tgId), text: data.text || text }) });
+            }
+            loadMessageChat(tgId);
+        } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function confirmPayment(payId, tgId) {
+        const ok = await confirmDialog('Подтвердить оплату?', 'Подписка будет активирована.');
+        if (!ok) return;
+        try {
+            const resp = await fetch(`${API_BASE}admin-messages.php?token=${state.token}`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ action:'confirm_payment', payment_id: payId })
+            });
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            if (data.send_via_bot) {
+                fetch(`${API_BASE}admin-bot-send.php`, { method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ token: state.token, telegram_id: parseInt(tgId), text: data.text }) });
+            }
+            toast('Оплата подтверждена', 'success'); loadMessageChat(tgId);
+        } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function rejectPayment(payId, tgId) {
+        const ok = await confirmDialog('Отклонить оплату?', 'Заявка будет отклонена.');
+        if (!ok) return;
+        try {
+            const resp = await fetch(`${API_BASE}admin-messages.php?token=${state.token}`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ action:'reject_payment', payment_id: payId, note: '' })
+            });
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            if (data.send_via_bot) {
+                fetch(`${API_BASE}admin-bot-send.php`, { method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ token: state.token, telegram_id: parseInt(tgId), text: data.text }) });
+            }
+            toast('Отклонено', 'success'); loadMessageChat(tgId);
+        } catch (e) { toast(e.message, 'error'); }
+    }
+
     function initSidebar() {
         const toggleBtn = document.getElementById('sidebar-toggle-btn');
         const closeBtn = document.getElementById('sidebar-close-btn');
@@ -1923,6 +2338,14 @@
         // Notifications
         loadNotifications, createNotification, editNotification, saveNotification,
         deleteNotification, toggleNotifPublish,
+        // Subscriptions
+        loadSubscriptions, loadSubscriptionDetail, subsAction, subsFilterChange,
+        subsSearch: subsSearchFn, subsGoToPage,
+        // Promos
+        loadPromos, loadPromoDetail, showCreatePromo, savePromo, togglePromo, deletePromo,
+        promosFilterChange, promosGoToPage,
+        // Messages
+        loadMessages, loadMessageChat, sendReply, confirmPayment, rejectPayment, messagesGoToPage,
     };
 
     if (document.readyState === 'loading') {

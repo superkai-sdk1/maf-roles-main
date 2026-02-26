@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { IconMafBoard } from '../utils/icons';
+import { MafBoardLogo } from './MafBoardLogo';
 
 function ProfileDropdown({ onNavigate, onClose }) {
   const { user, logout } = useAuth();
@@ -106,7 +106,7 @@ export function Header({ onNavigate }) {
           className="flex items-center gap-2 bg-transparent border-none cursor-pointer"
           onClick={() => onNavigate('landing')}
         >
-          <IconMafBoard size={28} color="var(--accent-color, #a855f7)" />
+          <MafBoardLogo size={28} />
           <span className="text-base font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>MafBoard</span>
         </button>
 

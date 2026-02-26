@@ -460,3 +460,59 @@ nav,
 header {
   transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, color 0.35s ease, backdrop-filter 0.35s ease;
 }
+
+/* Subscription Gate */
+.subscription-gate {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 300px; padding: 32px;
+}
+.subscription-gate-content {
+  text-align: center; max-width: 400px;
+}
+.subscription-gate-icon {
+  font-size: 48px; margin-bottom: 16px;
+}
+.subscription-gate-title {
+  font-size: 18px; font-weight: 700; margin: 0 0 8px;
+  color: var(--text-primary);
+}
+.subscription-gate-text {
+  font-size: 14px; color: var(--text-secondary); margin: 0 0 20px;
+}
+.subscription-gate-pricing {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 16px; border-radius: 12px;
+  background: var(--surface-2, rgba(255,255,255,0.04));
+  font-size: 14px; margin-bottom: 20px;
+}
+.subscription-gate-divider {
+  font-size: 12px; color: var(--text-secondary); text-transform: uppercase;
+}
+.subscription-gate-all {
+  color: var(--accent-color, #a855f7); font-weight: 600;
+}
+.subscription-gate-actions {
+  display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+}
+.subscription-gate-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 10px 20px; border-radius: 10px; font-size: 14px;
+  font-weight: 600; text-decoration: none; transition: all 0.2s;
+}
+.subscription-gate-btn.primary {
+  background: var(--accent-color, #a855f7); color: #fff;
+}
+.subscription-gate-btn.primary:hover { filter: brightness(1.1); }
+.subscription-gate-btn.secondary {
+  background: var(--surface-2, rgba(255,255,255,0.06));
+  color: var(--text-primary); border: 1px solid var(--border-subtle);
+}
+.subscription-gate-btn.secondary:hover { background: var(--surface-3, rgba(255,255,255,0.1)); }
+.subscription-gate-inline {
+  cursor: help; opacity: 0.5;
+}
+.subscription-trial-warning {
+  background: rgba(234, 179, 8, 0.12); border: 1px solid rgba(234, 179, 8, 0.3);
+  color: #eab308; padding: 8px 14px; border-radius: 8px;
+  font-size: 13px; margin-bottom: 12px; text-align: center;
+}

@@ -416,6 +416,86 @@ CREATE TABLE IF NOT EXISTS \`auth_codes\` (
   KEY \`code\` (\`code\`),
   KEY \`expires_at\` (\`expires_at\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`user_subscriptions\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`user_id\` int(11) DEFAULT NULL,
+  \`telegram_id\` bigint(20) DEFAULT NULL,
+  \`feature\` varchar(50) NOT NULL,
+  \`status\` varchar(20) NOT NULL DEFAULT 'active',
+  \`started_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`expires_at\` datetime NOT NULL,
+  \`is_trial\` tinyint(1) NOT NULL DEFAULT 0,
+  \`created_by\` varchar(100) DEFAULT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (\`id\`),
+  KEY \`user_id\` (\`user_id\`),
+  KEY \`telegram_id\` (\`telegram_id\`),
+  KEY \`feature\` (\`feature\`),
+  KEY \`status\` (\`status\`),
+  KEY \`expires_at\` (\`expires_at\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`promo_codes\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`code\` varchar(50) NOT NULL,
+  \`features\` text NOT NULL,
+  \`duration_days\` int(11) NOT NULL DEFAULT 30,
+  \`max_uses\` int(11) NOT NULL DEFAULT 1,
+  \`current_uses\` int(11) NOT NULL DEFAULT 0,
+  \`is_active\` tinyint(1) NOT NULL DEFAULT 1,
+  \`created_by\` varchar(100) DEFAULT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`expires_at\` datetime DEFAULT NULL,
+  PRIMARY KEY (\`id\`),
+  UNIQUE KEY \`code\` (\`code\`),
+  KEY \`is_active\` (\`is_active\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`promo_activations\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`promo_id\` int(11) NOT NULL,
+  \`user_id\` int(11) DEFAULT NULL,
+  \`telegram_id\` bigint(20) DEFAULT NULL,
+  \`activated_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (\`id\`),
+  KEY \`promo_id\` (\`promo_id\`),
+  KEY \`user_id\` (\`user_id\`),
+  KEY \`telegram_id\` (\`telegram_id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`bot_messages\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`telegram_id\` bigint(20) NOT NULL,
+  \`direction\` varchar(10) NOT NULL DEFAULT 'in',
+  \`message_text\` text NOT NULL,
+  \`message_type\` varchar(30) NOT NULL DEFAULT 'text',
+  \`admin_id\` bigint(20) DEFAULT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`is_read\` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (\`id\`),
+  KEY \`telegram_id\` (\`telegram_id\`),
+  KEY \`direction\` (\`direction\`),
+  KEY \`is_read\` (\`is_read\`),
+  KEY \`created_at\` (\`created_at\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`payment_requests\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`user_id\` int(11) DEFAULT NULL,
+  \`telegram_id\` bigint(20) NOT NULL,
+  \`features\` text NOT NULL,
+  \`amount\` int(11) NOT NULL DEFAULT 0,
+  \`status\` varchar(20) NOT NULL DEFAULT 'pending',
+  \`admin_note\` text DEFAULT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`confirmed_at\` datetime DEFAULT NULL,
+  \`confirmed_by\` bigint(20) DEFAULT NULL,
+  PRIMARY KEY (\`id\`),
+  KEY \`user_id\` (\`user_id\`),
+  KEY \`telegram_id\` (\`telegram_id\`),
+  KEY \`status\` (\`status\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 "
 
 log_info "Database '${DB_NAME}' and tables created"
