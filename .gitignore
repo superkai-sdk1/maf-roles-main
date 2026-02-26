@@ -10,7 +10,3 @@ webapp-v2/api/db.php
 webapp-v2/login/node_modules/
 webapp-v2/login/auth-config.php
 webapp-v2/admin/api/admin-config.php
-websocket/node_modules/
-websocket/roomStates.json
-websocket/api/room_*.json
-websocket/avatars_*.json

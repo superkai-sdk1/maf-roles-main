@@ -52,7 +52,7 @@ echo -e "${RED}WARNING: The following will be removed:${NC}"
 echo -e "  - Project files:     ${YELLOW}$PROJECT_DEST_DIR${NC}"
 echo -e "  - Nginx config:      ${YELLOW}$DOMAIN${NC}"
 echo -e "  - SSL certificate:   ${YELLOW}$DOMAIN${NC}"
-echo -e "  - PM2 services:      ${YELLOW}mafboard-websocket, mafboard-auth-bot${NC}"
+echo -e "  - PM2 services:      ${YELLOW}mafboard-socketio, mafboard-auth-bot${NC}"
 echo -e "  - Config:            ${YELLOW}$CONFIG_FILE${NC}"
 if [ "$DELETE_DB" = "y" ] || [ "$DELETE_DB" = "Y" ]; then
     echo -e "  - MySQL database:    ${YELLOW}YES${NC}"
@@ -70,7 +70,8 @@ echo -e "${YELLOW}--- Stopping PM2 services ---${NC}"
 export NVM_DIR="/root/.nvm"
 if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh"; fi
 if command -v pm2 &> /dev/null; then
-    pm2 delete "mafboard-websocket" 2>/dev/null || echo "  WebSocket service not found"
+    pm2 delete "mafboard-socketio" 2>/dev/null || echo "  Socket.IO service not found"
+    pm2 delete "mafboard-websocket" 2>/dev/null || true
     pm2 delete "mafboard-auth-bot" 2>/dev/null || echo "  Bot service not found"
     pm2 save --force
     pm2 unstartup 2>/dev/null || true

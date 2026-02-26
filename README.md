@@ -8,13 +8,13 @@
 ┌─────────────────────────────────────────────────┐
 │  Nginx (443 SSL)                                │
 │  ┌──────────┐ ┌──────────┐ ┌──────────────────┐ │
-│  │  /       │ │ /api/    │ │ /bridge (WS)     │ │
+│  │  /       │ │ /api/    │ │ /socket.io/      │ │
 │  │  SPA     │ │ PHP-FPM  │ │ → Node.js :8081  │ │
 │  │  React   │ │ MySQL    │ │                  │ │
 │  └──────────┘ └──────────┘ └──────────────────┘ │
 └─────────────────────────────────────────────────┘
          │                          │
-    webapp-v2/dist         websocket/ws.js
+    webapp-v2/dist         socketio/server.js
                                     │
                            webapp-v2/login/bot.js
                            (Telegram Auth Bot)
@@ -24,7 +24,7 @@
 |-----------|-----------|------|
 | Frontend SPA | React 18, Vite 4, Tailwind CSS 3 | — (Nginx) |
 | API Backend | PHP 8.2-FPM, MySQL 8, Medoo ORM | unix socket |
-| WebSocket | Node.js, ws library | 8081 |
+| Real-time | Socket.IO (TODO) | 8081 |
 | Auth Bot | Node.js, node-telegram-bot-api | — (polling) |
 | Process Manager | PM2 | — |
 | Web Server | Nginx + Let's Encrypt SSL | 80, 443 |
@@ -79,13 +79,9 @@ MafBoard/
 │       ├── constants/      # Роли, темы
 │       ├── context/        # GameContext (состояние игры)
 │       ├── hooks/          # useTimer, useSwipeBack, useNativeScroll
-│       ├── services/       # API, WebSocket, Sessions, Auth
+│       ├── services/       # API, Sessions, Auth
 │       ├── utils/          # Иконки, хаптика, Telegram SDK
 │       └── media/          # SVG-ассеты
-│
-└── websocket/              # WebSocket сервер
-    ├── ws.js               # Сервер (Node.js)
-    └── package.json
 ```
 
 ## Требования к серверу
@@ -147,7 +143,7 @@ sudo bash install.sh
 6. Соберёт React-приложение (`npm run build`)
 7. Настроит Nginx с SSL сертификатом
 8. Настроит файрвол (UFW)
-9. Запустит WebSocket сервер и Telegram бота через PM2
+9. Запустит Telegram бота через PM2
 
 ### 4. После установки
 
@@ -185,7 +181,7 @@ sudo bash install.sh --update
 ## Разработка (локально)
 
 ```bash
-# Запуск WebSocket + Vite dev server
+# Запуск Vite dev server
 bash start-dev.sh
 ```
 
@@ -200,10 +196,8 @@ API-запросы проксируются через Vite к `http://localhost
 ```bash
 pm2 status                           # Статус сервисов
 pm2 logs                             # Все логи
-pm2 logs mafboard-websocket          # Логи WebSocket
 pm2 logs mafboard-auth-bot           # Логи бота
 pm2 restart all                      # Перезапуск всех
-pm2 restart mafboard-websocket       # Перезапуск WebSocket
 ```
 
 ### Nginx
@@ -264,22 +258,6 @@ sudo certbot renew
 | `/login/code-confirm.php` | POST | Подтверждение кода ботом |
 | `/login/session-validate.php` | GET | Валидация токена сессии |
 
-## WebSocket
-
-Подключение: `wss://domain/bridge` (проксируется Nginx на порт 8081).
-
-Типы сообщений:
-- `joinRoom` — вход в комнату
-- `state` — полная синхронизация
-- `roleChange` — смена роли
-- `actionChange` — действие игрока
-- `highlight` — подсветка игрока
-- `avatarChange` — смена аватара
-- `panelStateChange` — состояние панели
-- `bestMoveChange` / `bestMoveConfirm` — лучший ход
-- `votingStart` / `votingSelection` / `votingFinish` — голосование
-- `reset` — сброс комнаты
-
 ## Удаление
 
 ```bash
@@ -299,13 +277,6 @@ sudo nginx -t                        # Проверить конфиг
 sudo systemctl status nginx          # Статус nginx
 sudo systemctl status php8.2-fpm     # Статус PHP
 pm2 status                           # Статус PM2
-```
-
-### WebSocket не подключается
-```bash
-pm2 logs mafboard-websocket          # Логи
-curl -i http://localhost:8081         # Проверка порта
-sudo ss -tlnp | grep 8081            # Слушает ли порт
 ```
 
 ### Бот не отвечает

@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { MafiaWebSocket } from '../services/websocket';
 import { isBlackRole, getCityBestMoveMax } from '../constants/roles';
 import { sessionManager } from '../services/sessionManager';
 import { timerModule } from '../services/timerModule';
@@ -178,7 +177,6 @@ export const GameProvider = ({ children }) => {
   const [tournamentsHasMore, setTournamentsHasMore] = useState(false);
   const [tournamentsPage, setTournamentsPage] = useState(1);
 
-  const wsRef = useRef(null);
   const discussionTimerRef = useRef(null);
   const freeSeatingTimerRef = useRef(null);
   const nightAutoCloseRef = useRef(null);
@@ -222,50 +220,12 @@ export const GameProvider = ({ children }) => {
     return true;
   }, [playersActions, killedOnNight, nightNumber]);
 
-  // =================== WebSocket ===================
-  const syncState = useCallback((s) => {
-    if (wsRef.current) wsRef.current.sendFullStateDebounced(s);
-  }, []);
+  // =================== Real-time sync (TODO: Socket.IO) ===================
+  const syncState = useCallback(() => {}, []);
 
-  const joinRoom = useCallback((id, { skipInitialState = false } = {}) => {
-    if (wsRef.current) wsRef.current.close();
-    let ignoreNextState = skipInitialState;
-    const ws = new MafiaWebSocket(id, (data) => {
-      if (data.type === 'state') {
-        if (ignoreNextState) {
-          ignoreNextState = false;
-          if (data.avatars) setAvatars(prev => ({ ...prev, ...data.avatars }));
-          return;
-        }
-        if (data.players) setPlayers(data.players);
-        if (data.roles) setRoles(data.roles);
-        if (data.gamePhase) setGamePhase(data.gamePhase);
-        if (data.dayNumber !== undefined) setDayNumber(data.dayNumber);
-        if (data.nightNumber !== undefined) setNightNumber(data.nightNumber);
-        if (data.playersActions) setPlayersActions(data.playersActions);
-        if (data.fouls) setFouls(data.fouls);
-        if (data.techFouls) setTechFouls(data.techFouls);
-        if (data.removed) setRemoved(data.removed);
-        if (data.nightCheckHistory) setNightCheckHistory(data.nightCheckHistory);
-        if (data.votingHistory) setVotingHistory(data.votingHistory);
-        if (data.bestMove) setBestMove(data.bestMove);
-        if (data.firstKilledPlayer !== undefined) setFirstKilledPlayer(data.firstKilledPlayer);
-        if (data.highlightedPlayer !== undefined) setHighlightedPlayer(data.highlightedPlayer);
-        if (data.nightPhase !== undefined) setNightPhase(data.nightPhase);
-        if (data.avatarsFromServer) setAvatars(data.avatarsFromServer);
-        if (data.nominations) setNominations(data.nominations);
-        if (data.winnerTeam) setWinnerTeam(data.winnerTeam);
-        if (data.playerScores) setPlayerScores(data.playerScores);
-        if (data.mainInfoText !== undefined) setMainInfoText(data.mainInfoText);
-        if (data.additionalInfoText !== undefined) setAdditionalInfoText(data.additionalInfoText);
-      }
-    });
-    ws.connect();
-    wsRef.current = ws;
+  const joinRoom = useCallback((id) => {
     setRoomId(id);
   }, []);
-
-  useEffect(() => () => { if (wsRef.current) wsRef.current.close(); }, []);
 
   // =================== Roles ===================
   const roleSet = useCallback((rk, type) => {
@@ -1207,7 +1167,6 @@ export const GameProvider = ({ children }) => {
 
   const startNewGame = useCallback(() => {
     saveCurrentSession();
-    if (wsRef.current) wsRef.current.close();
     resetGameState();
     setCurrentSessionId(null);
     setScreen('modes');
@@ -1215,7 +1174,6 @@ export const GameProvider = ({ children }) => {
 
   const returnToMainMenu = useCallback(() => {
     saveCurrentSession();
-    if (wsRef.current) wsRef.current.close();
     resetGameState(); setCurrentSessionId(null);
     setSessionsList(sessionManager.getSessions());
     setScreen('menu');
@@ -1226,7 +1184,6 @@ export const GameProvider = ({ children }) => {
     if (!s) return;
 
     saveCurrentSession();
-    if (wsRef.current) wsRef.current.close();
     resetGameState();
 
     setCurrentSessionId(s.sessionId);
@@ -1385,7 +1342,6 @@ export const GameProvider = ({ children }) => {
 
   const startTournamentGameFromMenu = useCallback((tData, tId, tName, gameNum, tableNum) => {
     saveCurrentSession();
-    if (wsRef.current) wsRef.current.close();
     resetGameState();
 
     setTournament(tData);

@@ -2,12 +2,12 @@
 
 # ==============================================================================
 # MafBoard v2 — Production Installation Script for Ubuntu
-# v2.0: webapp-v2 (React/Vite) + PHP API + WebSocket + Telegram Bot + SSL
+# v2.0: webapp-v2 (React/Vite) + PHP API + Socket.IO + Telegram Bot + SSL
 #
 # Components:
 #   - Nginx (reverse proxy + static files)
 #   - PHP 8.2-FPM + MySQL 8 (API backend)
-#   - Node.js 20 (WebSocket server + Telegram auth bot)
+#   - Node.js 20 (Socket.IO server + Telegram auth bot)
 #   - PM2 (process manager)
 #   - Certbot (Let's Encrypt SSL)
 #   - Vite build (React SPA)
@@ -37,7 +37,7 @@ PROJECT_SOURCE_DIR=$(cd "$(dirname "$0")" && pwd)
 NODE_VERSION="20"
 PHP_VERSION="8.2"
 BACKEND_PORT="8081"
-BACKEND_SERVICE_NAME="mafboard-websocket"
+BACKEND_SERVICE_NAME="mafboard-socketio"
 BOT_SERVICE_NAME="mafboard-auth-bot"
 CONFIG_FILE="/etc/mafboard/config.env"
 
@@ -331,8 +331,6 @@ CREATE TABLE IF NOT EXISTS \`payment_requests\` (
 
     # Install Node.js dependencies
     log_step "Step 4/8: Updating Node.js dependencies"
-    cd "$DEST/websocket"
-    npm install --production
     cd "$DEST/webapp-v2/login"
     npm install --production
 
@@ -347,13 +345,12 @@ CREATE TABLE IF NOT EXISTS \`payment_requests\` (
     log_step "Step 6/8: Fixing permissions"
     chown -R www-data:www-data "$DEST"
     chmod -R 755 "$DEST"
-    chmod -R 775 "$DEST/websocket"
 
     # Restart services — recreate bot if path changed
     log_step "Step 7/8: Restarting services"
     . "$NVM_DIR/nvm.sh"
 
-    pm2 restart "$BACKEND_SERVICE_NAME" 2>/dev/null || log_warn "WebSocket service not found"
+    pm2 restart "$BACKEND_SERVICE_NAME" 2>/dev/null || log_warn "Socket.IO service not found"
 
     pm2 delete "$BOT_SERVICE_NAME" 2>/dev/null || true
     pm2 start "$DEST/webapp-v2/login/bot.js" \
@@ -393,7 +390,7 @@ echo -e "  This script will install and configure:"
 echo -e "    ${BOLD}1.${NC} Nginx + SSL (Let's Encrypt)"
 echo -e "    ${BOLD}2.${NC} PHP ${PHP_VERSION}-FPM + MySQL 8"
 echo -e "    ${BOLD}3.${NC} Node.js ${NODE_VERSION} (NVM) + PM2"
-echo -e "    ${BOLD}4.${NC} WebSocket server"
+echo -e "    ${BOLD}4.${NC} Socket.IO server"
 echo -e "    ${BOLD}5.${NC} Telegram authentication bot"
 echo -e "    ${BOLD}6.${NC} Build React app (Vite)"
 echo ""
@@ -844,10 +841,7 @@ log_info "PHP backend configured"
 # ==============================================================================
 log_step "Step 6/10: Installing Node.js dependencies"
 
-# WebSocket server
-cd "$PROJECT_DEST_DIR/websocket"
-npm install --production
-log_info "WebSocket dependencies installed"
+log_info "Node.js dependencies step (Socket.IO server will be added later)"
 
 # Telegram auth bot
 cd "$PROJECT_DEST_DIR/webapp-v2/login"
@@ -881,12 +875,6 @@ log_step "Step 8/10: Setting file permissions"
 
 chown -R www-data:www-data "$PROJECT_DEST_DIR"
 chmod -R 755 "$PROJECT_DEST_DIR"
-chmod -R 775 "$PROJECT_DEST_DIR/websocket"
-
-# Create writable directories for WebSocket
-mkdir -p "$PROJECT_DEST_DIR/websocket/api"
-chown -R www-data:www-data "$PROJECT_DEST_DIR/websocket"
-
 log_info "Permissions set"
 
 # ==============================================================================
@@ -975,20 +963,7 @@ server {
         }
     }
 
-    # --- WebSocket proxy ---
-    location /bridge {
-        proxy_pass http://127.0.0.1:$BACKEND_PORT;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
-        proxy_read_timeout 86400s;
-        proxy_send_timeout 86400s;
-    }
+    # --- Socket.IO proxy (will be configured when Socket.IO server is added) ---
 
     # --- Static file caching ---
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
@@ -1030,13 +1005,10 @@ log_info "Firewall configured"
 . "$NVM_DIR/nvm.sh"
 
 pm2 delete "$BACKEND_SERVICE_NAME" 2>/dev/null || true
+pm2 delete "mafboard-websocket" 2>/dev/null || true
 pm2 delete "$BOT_SERVICE_NAME" 2>/dev/null || true
 
-# WebSocket server
-pm2 start "$PROJECT_DEST_DIR/websocket/ws.js" \
-    --interpreter "$NODE_PATH" \
-    --name "$BACKEND_SERVICE_NAME" \
-    --cwd "$PROJECT_DEST_DIR/websocket"
+# Socket.IO server (will be added later)
 
 # Telegram auth bot
 pm2 start "$PROJECT_DEST_DIR/webapp-v2/login/bot.js" \
@@ -1089,13 +1061,13 @@ echo -e "  ${BOLD}Telegram bot:${NC}    ${GREEN}@$BOT_USERNAME${NC}"
 echo -e "  ${BOLD}Admin TG ID:${NC}     ${GREEN}$ADMIN_TELEGRAM_ID${NC}"
 echo ""
 echo -e "  ${YELLOW}PM2 Services:${NC}"
-echo -e "    - ${CYAN}$BACKEND_SERVICE_NAME${NC} — WebSocket server (port $BACKEND_PORT)"
+echo -e "    - ${CYAN}$BACKEND_SERVICE_NAME${NC} — Socket.IO server (port $BACKEND_PORT)"
 echo -e "    - ${CYAN}$BOT_SERVICE_NAME${NC} — Telegram auth bot"
 echo ""
 echo -e "  ${YELLOW}Useful commands:${NC}"
 echo -e "    pm2 status                          — service status"
 echo -e "    pm2 logs                            — all logs"
-echo -e "    pm2 logs $BACKEND_SERVICE_NAME      — WebSocket logs"
+echo -e "    pm2 logs $BACKEND_SERVICE_NAME      — Socket.IO logs"
 echo -e "    pm2 logs $BOT_SERVICE_NAME          — Bot logs"
 echo -e "    pm2 restart all                     — restart services"
 echo -e "    sudo bash install.sh --update       — update from Git"

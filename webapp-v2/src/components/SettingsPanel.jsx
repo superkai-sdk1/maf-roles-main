@@ -5,7 +5,6 @@ import { triggerHaptic } from '../utils/haptics';
 
 export function SettingsPanel() {
   const {
-    roomId, roomInput, setRoomInput, joinRoom,
     selectedColorScheme, setSelectedColorScheme,
     darkMode, setDarkMode,
     mainInfoText, setMainInfoText,
@@ -15,19 +14,12 @@ export function SettingsPanel() {
     hideRolesStatus, setHideRolesStatus,
     hideBestMove, setHideBestMove,
     tournamentId, tournamentName, gameMode,
-    syncState,
     gameSelected, tableSelected,
     dayNumber, nightNumber, gamePhase,
     tableOut,
     judgeNickname, setJudgeNickname,
     judgeAvatar, setJudgeAvatar,
   } = useGame();
-
-  const handleJoinRoom = () => {
-    if (!roomInput?.trim()) return;
-    joinRoom(roomInput.trim());
-    triggerHaptic('success');
-  };
 
   const selectColor = (key) => {
     setSelectedColorScheme(key);
@@ -44,35 +36,6 @@ export function SettingsPanel() {
 
   return (
     <div className="flex flex-col gap-[14px] animate-fade-in">
-      {/* Room */}
-      <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
-        <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-3">
-          {roomId ? '📡' : '📴'} Комната трансляции
-        </h3>
-        {roomId ? (
-          <div className="text-[0.85em] font-bold text-status-success py-1.5 px-3.5 rounded-[10px] inline-flex items-center gap-1.5 bg-status-success/10 border border-status-success/20">
-            Подключена: {roomId}
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="ID комнаты"
-              value={roomInput || ''}
-              onChange={e => setRoomInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleJoinRoom()}
-              className="flex-1 input-field"
-            />
-            <button
-              onClick={handleJoinRoom}
-              className="px-[18px] py-2.5 rounded-xl bg-accent text-white text-[0.85em] font-bold active:scale-[0.97] transition-transform duration-150 ease-spring"
-            >
-              Войти
-            </button>
-          </div>
-        )}
-      </div>
-
       {/* Judge */}
       <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
         <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-3">
@@ -85,7 +48,7 @@ export function SettingsPanel() {
               type="text"
               placeholder="Ваш ник"
               value={judgeNickname || ''}
-              onChange={e => { setJudgeNickname(e.target.value); syncState?.({ judgeNickname: e.target.value }); }}
+              onChange={e => setJudgeNickname(e.target.value)}
               className="w-full input-field mt-1.5"
             />
           </div>
@@ -95,7 +58,7 @@ export function SettingsPanel() {
               type="text"
               placeholder="https://..."
               value={judgeAvatar || ''}
-              onChange={e => { setJudgeAvatar(e.target.value); syncState?.({ judgeAvatar: e.target.value }); }}
+              onChange={e => setJudgeAvatar(e.target.value)}
               className="w-full input-field mt-1.5"
             />
           </div>
@@ -124,7 +87,7 @@ export function SettingsPanel() {
             <input
               type="text"
               value={mainInfoText || ''}
-              onChange={e => { setMainInfoText(e.target.value); syncState?.({ mainInfoText: e.target.value }); }}
+              onChange={e => setMainInfoText(e.target.value)}
               className="w-full input-field mt-1.5"
             />
           </div>
@@ -133,7 +96,7 @@ export function SettingsPanel() {
             <input
               type="text"
               value={additionalInfoText || ''}
-              onChange={e => { setAdditionalInfoText(e.target.value); syncState?.({ additionalInfoText: e.target.value }); }}
+              onChange={e => setAdditionalInfoText(e.target.value)}
               className="w-full input-field mt-1.5"
             />
           </div>
@@ -220,7 +183,6 @@ export function SettingsPanel() {
           {gameSelected && <div>Игра: {gameSelected}, Стол: {tableSelected}</div>}
           <div>Фаза: {gamePhase} | День: {dayNumber} | Ночь: {nightNumber}</div>
           <div>Игроков: {tableOut.length} (живых: {aliveCount})</div>
-          {roomId && <div>Комната: {roomId}</div>}
         </div>
       </div>
     </div>

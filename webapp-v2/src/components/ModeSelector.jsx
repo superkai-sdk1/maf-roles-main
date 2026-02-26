@@ -20,7 +20,7 @@ import {
 export function ModeSelector() {
   const {
     setScreen, setGameMode, setPlayers, setTournament, setTournamentId, setTournamentName,
-    setGameSelected, setTableSelected, joinRoom, setCityMode, setFunkyMode, setManualMode,
+    setGameSelected, setTableSelected, setCityMode, setFunkyMode, setManualMode,
     setCurrentSessionId, returnToMainMenu,
     funkyPlayers, setFunkyPlayers, funkyPlayerInputs, setFunkyPlayerInputs,
     funkyGameNumber, setFunkyGameNumber,
@@ -599,7 +599,6 @@ export function ModeSelector() {
     const logins = newPlayers.map(p => p.login).filter(Boolean);
     if (logins.length > 0) loadAvatars(logins);
 
-    joinRoom(tournamentInput.trim(), { skipInitialState: true });
     setGameMode('gomafia');
     setCurrentSessionId(sessionManager.generateSessionId());
     setScreen('game');
