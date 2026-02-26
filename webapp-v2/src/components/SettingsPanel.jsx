@@ -5,6 +5,7 @@ import { triggerHaptic } from '../utils/haptics';
 
 export function SettingsPanel() {
   const {
+    roomId, roomInput, setRoomInput, joinRoom, syncState,
     selectedColorScheme, setSelectedColorScheme,
     darkMode, setDarkMode,
     mainInfoText, setMainInfoText,
@@ -21,6 +22,12 @@ export function SettingsPanel() {
     judgeAvatar, setJudgeAvatar,
   } = useGame();
 
+  const handleJoinRoom = () => {
+    if (!roomInput?.trim()) return;
+    joinRoom(roomInput.trim());
+    triggerHaptic('success');
+  };
+
   const selectColor = (key) => {
     setSelectedColorScheme(key);
     applyTheme(key);
@@ -36,6 +43,41 @@ export function SettingsPanel() {
 
   return (
     <div className="flex flex-col gap-[14px] animate-fade-in">
+      {/* Room */}
+      <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
+        <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-3">
+          {roomId ? '\uD83D\uDCE1' : '\uD83D\uDCF4'} Комната трансляции
+        </h3>
+        {roomId ? (
+          <div className="text-[0.85em] font-bold text-status-success py-1.5 px-3.5 rounded-[10px] inline-flex items-center gap-1.5 bg-status-success/10 border border-status-success/20">
+            Подключена: {roomId}
+          </div>
+        ) : (
+          <div>
+            <p className="text-[0.75em] mb-2" style={{ color: 'var(--text-muted)' }}>
+              Введите код с OBS-оверлея для синхронизации
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="4-значный код"
+                maxLength={4}
+                value={roomInput || ''}
+                onChange={e => setRoomInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onKeyDown={e => e.key === 'Enter' && handleJoinRoom()}
+                className="flex-1 input-field text-center text-lg tracking-[0.3em] font-bold"
+              />
+              <button
+                onClick={handleJoinRoom}
+                className="px-[18px] py-2.5 rounded-xl bg-accent text-white text-[0.85em] font-bold active:scale-[0.97] transition-transform duration-150 ease-spring"
+              >
+                Подключить
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Judge */}
       <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
         <h3 className="text-[0.9em] font-bold flex items-center gap-2 mb-3">
@@ -48,7 +90,7 @@ export function SettingsPanel() {
               type="text"
               placeholder="Ваш ник"
               value={judgeNickname || ''}
-              onChange={e => setJudgeNickname(e.target.value)}
+              onChange={e => { setJudgeNickname(e.target.value); syncState({ judgeNickname: e.target.value }); }}
               className="w-full input-field mt-1.5"
             />
           </div>
@@ -58,7 +100,7 @@ export function SettingsPanel() {
               type="text"
               placeholder="https://..."
               value={judgeAvatar || ''}
-              onChange={e => setJudgeAvatar(e.target.value)}
+              onChange={e => { setJudgeAvatar(e.target.value); syncState({ judgeAvatar: e.target.value }); }}
               className="w-full input-field mt-1.5"
             />
           </div>
@@ -87,7 +129,7 @@ export function SettingsPanel() {
             <input
               type="text"
               value={mainInfoText || ''}
-              onChange={e => setMainInfoText(e.target.value)}
+              onChange={e => { setMainInfoText(e.target.value); syncState({ mainInfoText: e.target.value }); }}
               className="w-full input-field mt-1.5"
             />
           </div>
@@ -96,7 +138,7 @@ export function SettingsPanel() {
             <input
               type="text"
               value={additionalInfoText || ''}
-              onChange={e => setAdditionalInfoText(e.target.value)}
+              onChange={e => { setAdditionalInfoText(e.target.value); syncState({ additionalInfoText: e.target.value }); }}
               className="w-full input-field mt-1.5"
             />
           </div>
@@ -183,6 +225,7 @@ export function SettingsPanel() {
           {gameSelected && <div>Игра: {gameSelected}, Стол: {tableSelected}</div>}
           <div>Фаза: {gamePhase} | День: {dayNumber} | Ночь: {nightNumber}</div>
           <div>Игроков: {tableOut.length} (живых: {aliveCount})</div>
+          {roomId && <div>Комната: {roomId}</div>}
         </div>
       </div>
     </div>

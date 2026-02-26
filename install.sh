@@ -323,6 +323,25 @@ CREATE TABLE IF NOT EXISTS \`payment_requests\` (
         sed -i "s|$DEST/webapp/admin/|$DEST/webapp-v2/admin/|g" "$NGINX_CONF"
         # Remove legacy /panel block if present
         sed -i '/# --- Old webapp/,/^    }/d' "$NGINX_CONF"
+        # Add Socket.IO proxy if not present
+        if ! grep -q 'location /socket.io/' "$NGINX_CONF"; then
+            sed -i '/# --- Static file caching ---/i\
+    # --- Socket.IO proxy ---\
+    location /socket.io/ {\
+        proxy_pass http://127.0.0.1:'"$BACKEND_PORT"';\
+        proxy_http_version 1.1;\
+        proxy_set_header Upgrade $http_upgrade;\
+        proxy_set_header Connection "upgrade";\
+        proxy_set_header Host $host;\
+        proxy_set_header X-Real-IP $remote_addr;\
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\
+        proxy_set_header X-Forwarded-Proto $scheme;\
+        proxy_read_timeout 120s;\
+        proxy_send_timeout 120s;\
+    }\
+' "$NGINX_CONF"
+            log_info "Socket.IO proxy location added to Nginx"
+        fi
         nginx -t && systemctl reload nginx
         log_info "Nginx config updated"
     else
@@ -331,6 +350,9 @@ CREATE TABLE IF NOT EXISTS \`payment_requests\` (
 
     # Install Node.js dependencies
     log_step "Step 4/8: Updating Node.js dependencies"
+    cd "$DEST/socketio"
+    npm install --production
+
     cd "$DEST/webapp-v2/login"
     npm install --production
 
@@ -351,7 +373,11 @@ CREATE TABLE IF NOT EXISTS \`payment_requests\` (
     . "$NVM_DIR/nvm.sh"
 
     pm2 delete "mafboard-websocket" 2>/dev/null || true
-    pm2 restart "$BACKEND_SERVICE_NAME" 2>/dev/null || log_warn "Socket.IO service not found"
+    pm2 delete "$BACKEND_SERVICE_NAME" 2>/dev/null || true
+    pm2 start "$DEST/socketio/server.js" \
+        --interpreter "$NODE_PATH" \
+        --name "$BACKEND_SERVICE_NAME" \
+        --cwd "$DEST/socketio"
 
     pm2 delete "$BOT_SERVICE_NAME" 2>/dev/null || true
     pm2 start "$DEST/webapp-v2/login/bot.js" \
@@ -842,7 +868,10 @@ log_info "PHP backend configured"
 # ==============================================================================
 log_step "Step 6/10: Installing Node.js dependencies"
 
-log_info "Node.js dependencies step (Socket.IO server will be added later)"
+# Socket.IO server
+cd "$PROJECT_DEST_DIR/socketio"
+npm install --production
+log_info "Socket.IO server dependencies installed"
 
 # Telegram auth bot
 cd "$PROJECT_DEST_DIR/webapp-v2/login"
@@ -964,7 +993,19 @@ server {
         }
     }
 
-    # --- Socket.IO proxy (will be configured when Socket.IO server is added) ---
+    # --- Socket.IO proxy ---
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:${BACKEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
 
     # --- Static file caching ---
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
@@ -1009,7 +1050,11 @@ pm2 delete "$BACKEND_SERVICE_NAME" 2>/dev/null || true
 pm2 delete "mafboard-websocket" 2>/dev/null || true
 pm2 delete "$BOT_SERVICE_NAME" 2>/dev/null || true
 
-# Socket.IO server (will be added later)
+# Socket.IO server
+pm2 start "$PROJECT_DEST_DIR/socketio/server.js" \
+    --interpreter "$NODE_PATH" \
+    --name "$BACKEND_SERVICE_NAME" \
+    --cwd "$PROJECT_DEST_DIR/socketio"
 
 # Telegram auth bot
 pm2 start "$PROJECT_DEST_DIR/webapp-v2/login/bot.js" \

@@ -1,0 +1,14 @@
+{
+  "name": "mafboard-socketio",
+  "version": "1.0.0",
+  "description": "Socket.IO server for MafBoard real-time sync",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.4",
+    "node-fetch": "^2.6.7",
+    "uuid": "^9.0.0"
+  }
+}

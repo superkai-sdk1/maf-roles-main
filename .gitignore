@@ -10,3 +10,7 @@ webapp-v2/api/db.php
 webapp-v2/login/node_modules/
 webapp-v2/login/auth-config.php
 webapp-v2/admin/api/admin-config.php
+socketio/node_modules/
+socketio/api/
+socketio/*.json
+!socketio/package.json

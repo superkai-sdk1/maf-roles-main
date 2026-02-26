@@ -21,6 +21,10 @@ echo ""
 cleanup() {
     echo ""
     echo -e "${YELLOW}Останавливаю серверы...${NC}"
+    if [ ! -z "$SIO_PID" ]; then
+        kill $SIO_PID 2>/dev/null
+        echo -e "  Socket.IO сервер остановлен (PID: $SIO_PID)"
+    fi
     if [ ! -z "$VITE_PID" ]; then
         kill $VITE_PID 2>/dev/null
         echo -e "  Vite dev сервер остановлен (PID: $VITE_PID)"
@@ -30,16 +34,31 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM
 
-# 1. Проверяем зависимости webapp-v2
-echo -e "${YELLOW}[1/2] Проверяю зависимости webapp-v2...${NC}"
+# 1. Проверяем зависимости socketio
+echo -e "${YELLOW}[1/4] Проверяю зависимости Socket.IO сервера...${NC}"
+if [ ! -d "$SCRIPT_DIR/socketio/node_modules" ]; then
+    cd "$SCRIPT_DIR/socketio" && npm install
+else
+    echo -e "  ${GREEN}✓ Зависимости уже установлены${NC}"
+fi
+
+# 2. Проверяем зависимости webapp-v2
+echo -e "${YELLOW}[2/4] Проверяю зависимости webapp-v2...${NC}"
 if [ ! -d "$SCRIPT_DIR/webapp-v2/node_modules" ]; then
     cd "$SCRIPT_DIR/webapp-v2" && npm install
 else
     echo -e "  ${GREEN}✓ Зависимости уже установлены${NC}"
 fi
 
-# 2. Запускаем Vite dev сервер
-echo -e "${YELLOW}[2/2] Запускаю Vite dev сервер (порт 5173)...${NC}"
+# 3. Запускаем Socket.IO сервер
+echo -e "${YELLOW}[3/4] Запускаю Socket.IO сервер (порт 8081)...${NC}"
+cd "$SCRIPT_DIR/socketio"
+node server.js &
+SIO_PID=$!
+sleep 1
+
+# 4. Запускаем Vite dev сервер
+echo -e "${YELLOW}[4/4] Запускаю Vite dev сервер (порт 5173)...${NC}"
 cd "$SCRIPT_DIR/webapp-v2"
 npx vite &
 VITE_PID=$!
@@ -50,7 +69,9 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Всё запущено! Откройте:${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
-echo -e "  ${CYAN}Frontend:${NC}  http://localhost:5173"
+echo -e "  ${CYAN}Frontend:${NC}     http://localhost:5173"
+echo -e "  ${CYAN}Overlay:${NC}      http://localhost:5173/overlay"
+echo -e "  ${CYAN}Socket.IO:${NC}    http://localhost:8081"
 echo ""
 echo -e "  ${YELLOW}Ctrl+C для остановки${NC}"
 echo ""

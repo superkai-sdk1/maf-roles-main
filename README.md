@@ -24,7 +24,7 @@
 |-----------|-----------|------|
 | Frontend SPA | React 18, Vite 4, Tailwind CSS 3 | — (Nginx) |
 | API Backend | PHP 8.2-FPM, MySQL 8, Medoo ORM | unix socket |
-| Real-time | Socket.IO (TODO) | 8081 |
+| Real-time | Socket.IO | 8081 |
 | Auth Bot | Node.js, node-telegram-bot-api | — (polling) |
 | Process Manager | PM2 | — |
 | Web Server | Nginx + Let's Encrypt SSL | 80, 443 |
@@ -38,6 +38,10 @@ MafBoard/
 ├── start-dev.sh            # Запуск для разработки
 ├── README.md
 ├── .gitignore
+│
+├── socketio/               # Socket.IO сервер (real-time sync)
+│   ├── server.js           # Сервер — комнаты, коды, роли, state
+│   └── package.json
 │
 ├── webapp-v2/              # React SPA + PHP Backend + Auth + Admin
 │   ├── index.html
@@ -79,7 +83,7 @@ MafBoard/
 │       ├── constants/      # Роли, темы
 │       ├── context/        # GameContext (состояние игры)
 │       ├── hooks/          # useTimer, useSwipeBack, useNativeScroll
-│       ├── services/       # API, Sessions, Auth
+│       ├── services/       # API, Sessions, Auth, Socket.IO client
 │       ├── utils/          # Иконки, хаптика, Telegram SDK
 │       └── media/          # SVG-ассеты
 ```
@@ -181,13 +185,15 @@ sudo bash install.sh --update
 ## Разработка (локально)
 
 ```bash
-# Запуск Vite dev server
+# Запуск Vite dev server + Socket.IO server
 bash start-dev.sh
 ```
 
-Откройте `http://localhost:5173`.
+Откройте:
+- Панель: `http://localhost:5173`
+- OBS-оверлей: `http://localhost:5173/overlay`
 
-API-запросы проксируются через Vite к `http://localhost` (настраивается в `vite.config.js`).
+Socket.IO сервер запускается на порту 8081. API-запросы проксируются через Vite к `http://localhost` (настраивается в `vite.config.js`).
 
 ## Управление
 
@@ -196,6 +202,7 @@ API-запросы проксируются через Vite к `http://localhost
 ```bash
 pm2 status                           # Статус сервисов
 pm2 logs                             # Все логи
+pm2 logs mafboard-socketio           # Логи Socket.IO
 pm2 logs mafboard-auth-bot           # Логи бота
 pm2 restart all                      # Перезапуск всех
 ```
