@@ -2711,7 +2711,7 @@ export function MainMenu() {
         <nav className="fixed z-50 left-0 right-0 max-w-[448px] mx-auto flex items-center justify-around rounded-3xl glass-surface shadow-nav-bar py-2 animate-nav-slide-in" style={{ bottom: 'calc(16px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))' }}>
           <NavItem active={!tableGroup && menuScreen === 'game' && activeTab === 'active'}
             onClick={() => { setTableGroup(null); setMenuScreen('game'); setActiveTab('active'); triggerHaptic('selection'); }}
-            icon={<IconPlayCircle size={20} />} label="Активные" />
+            icon={<IconPlayCircle size={20} />} label="Судья" />
           <NavItem active={!tableGroup && menuScreen === 'player'}
             onClick={() => { setTableGroup(null); setMenuScreen('player'); triggerHaptic('selection'); }}
             icon={<IconTarget size={20} />} label="Игрок" badge={playerHasUpdates} />
