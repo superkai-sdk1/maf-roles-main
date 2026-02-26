@@ -53,6 +53,9 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
     if (autoExpandPlayer === rk) {
       setExpandedCardRK(rk);
       setAutoExpandPlayer(null);
+      setTimeout(() => {
+        cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
     }
   }, [autoExpandPlayer, rk, setAutoExpandPlayer, setExpandedCardRK]);
 
