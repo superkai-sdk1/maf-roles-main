@@ -1911,7 +1911,7 @@
                     </tr>`;
                 }
                 html += '</tbody></table></div>';
-                if (data.totalPages > 1) html += renderPagination(data.page, data.totalPages, 'subsGoToPage');
+                if (data.totalPages > 1) html += renderPagination(data.page, data.totalPages, 'AdminApp.subsGoToPage');
             }
             content.innerHTML = html;
         } catch (e) { document.getElementById('admin-page-content').innerHTML = `<div class="admin-alert admin-alert-error">${esc(e.message)}</div>`; }
@@ -2028,7 +2028,7 @@
                     </tr>`;
                 }
                 html += '</tbody></table></div>';
-                if (data.totalPages > 1) html += renderPagination(data.page, data.totalPages, 'promosGoToPage');
+                if (data.totalPages > 1) html += renderPagination(data.page, data.totalPages, 'AdminApp.promosGoToPage');
             }
             content.innerHTML = html;
         } catch (e) { document.getElementById('admin-page-content').innerHTML = `<div class="admin-alert admin-alert-error">${esc(e.message)}</div>`; }
@@ -2152,7 +2152,7 @@
                     </div>`;
                 }
                 html += '</div>';
-                if (data.totalPages > 1) html += renderPagination(data.page, data.totalPages, 'messagesGoToPage');
+                if (data.totalPages > 1) html += renderPagination(data.page, data.totalPages, 'AdminApp.messagesGoToPage');
             }
             content.innerHTML = html;
             const badge = document.getElementById('unread-messages-badge');
