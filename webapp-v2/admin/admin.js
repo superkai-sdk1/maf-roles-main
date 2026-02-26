@@ -1750,6 +1750,7 @@
                         <span style="font-size:.84em;color:var(--text-2)">Уведомления и новости для пользователей</span>
                     </div>
                     <div class="admin-toolbar-right">
+                        <button class="admin-btn admin-btn-accent" onclick="AdminApp.broadcastNotification()" title="Рассылка через бот">📡 Рассылка</button>
                         <button class="admin-btn admin-btn-primary" onclick="AdminApp.createNotification()">+ Создать</button>
                         <span style="font-size:.78em;color:var(--text-3)">Всего: ${data.total}</span>
                     </div>
@@ -1804,6 +1805,7 @@
                     <div class="game-editor-control"><label class="game-edit-check"><input type="checkbox" id="ne-published" ${n.published!==false?'checked':''}><span>Опубликовано</span></label></div>
                     <div class="game-editor-control"><label class="game-edit-check"><input type="checkbox" id="ne-pinned" ${n.pinned?'checked':''}><span>Закреплено</span></label></div>
                     <div class="game-editor-control"><label>Истекает (необязательно)</label><input type="datetime-local" id="ne-expires_at" class="admin-input" value="${n.expires_at ? n.expires_at.substring(0,16) : ''}"></div>
+                    ${!isEdit ? '<div class="game-editor-control"><label class="game-edit-check"><input type="checkbox" id="ne-broadcast"><span>📡 Отправить через бот</span></label><div style="font-size:.7em;color:var(--text-3);margin-top:4px">Отправит уведомление всем пользователям в Telegram</div></div>' : ''}
                 </div>
             </div>
             <div class="game-editor-actions">
@@ -1832,12 +1834,22 @@
 
         if (!data.title.trim()) { toast('Заголовок обязателен', 'error'); return; }
 
+        const shouldBroadcast = !id && chk('ne-broadcast');
+
         try {
             const body = id ? { id, data } : { data };
             await apiCall('admin-notifications.php', { body });
             toast(id ? 'Уведомление обновлено' : 'Уведомление создано', 'success');
             closeModal();
             loadNotifications();
+
+            if (shouldBroadcast && data.published) {
+                const broadcastText = (data.icon || '📢') + ' <b>' + data.title + '</b>\n\n' + data.description;
+                try {
+                    const result = await apiCall('admin-broadcast.php', { body: { text: broadcastText } });
+                    toast(`Рассылка: ${result.sent} отправлено`, 'success');
+                } catch(e) { toast('Ошибка рассылки: ' + e.message, 'error'); }
+            }
         } catch(e) { toast('Ошибка: ' + e.message, 'error'); }
     }
 
@@ -1857,6 +1869,51 @@
             toast(published ? 'Опубликовано' : 'Скрыто', 'success');
             loadNotifications();
         } catch(e) { toast('Ошибка: ' + e.message, 'error'); }
+    }
+
+    function broadcastNotification() {
+        showModal(`
+            <div class="admin-modal-header">
+                <div class="admin-modal-title">📡 Рассылка через бот</div>
+                <button class="admin-modal-close" onclick="AdminApp.closeModal()">✕</button>
+            </div>
+            <div class="game-editor-section">
+                <div class="game-editor-section-title">Текст рассылки</div>
+                <div class="game-editor-controls">
+                    <div class="game-editor-control" style="grid-column:span 2">
+                        <label>Сообщение (поддерживается HTML: &lt;b&gt;, &lt;i&gt;, &lt;a&gt;)</label>
+                        <textarea id="broadcast-text" class="admin-input" rows="5" placeholder="Текст сообщения для всех пользователей..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="admin-alert" style="margin:12px 0;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);color:#eab308;font-size:.8em;padding:10px 14px;border-radius:10px">
+                ⚠️ Сообщение будет отправлено <b>всем</b> пользователям бота в Telegram.
+            </div>
+            <div class="game-editor-actions">
+                <button class="admin-btn admin-btn-primary" id="broadcast-send-btn" onclick="AdminApp.sendBroadcast()">Отправить рассылку</button>
+                <button class="admin-btn admin-btn-secondary" onclick="AdminApp.closeModal()">Отмена</button>
+            </div>
+        `);
+    }
+
+    async function sendBroadcast() {
+        const text = document.getElementById('broadcast-text')?.value?.trim();
+        if (!text) { toast('Введите текст сообщения', 'error'); return; }
+
+        const ok = await confirmDialog('Отправить рассылку?', 'Сообщение будет отправлено всем пользователям бота.', { confirmText: 'Отправить', icon: '📡' });
+        if (!ok) return;
+
+        const btn = document.getElementById('broadcast-send-btn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Отправка...'; }
+
+        try {
+            const result = await apiCall('admin-broadcast.php', { body: { text } });
+            closeModal();
+            toast(`Рассылка завершена: ${result.sent} отправлено, ${result.failed} ошибок`, 'success');
+        } catch(e) {
+            toast('Ошибка: ' + e.message, 'error');
+            if (btn) { btn.disabled = false; btn.textContent = 'Отправить рассылку'; }
+        }
     }
 
 
@@ -1893,6 +1950,9 @@
                         <button onclick="AdminApp.subsSearch(this.previousElementSibling.value)">🔍</button>
                     </div>
                 </div>
+                <div class="admin-toolbar-right">
+                    <button class="admin-btn admin-btn-primary" onclick="AdminApp.showGrantSubModal()">+ Назначить подписку</button>
+                </div>
             </div>`;
             if (!data.users || data.users.length === 0) {
                 html += '<div class="admin-empty"><h3>Нет данных</h3></div>';
@@ -1919,6 +1979,108 @@
     function subsFilterChange(v) { state.subsFilter = v; state.subsPage = 1; loadSubscriptions(); }
     function subsSearchFn(v) { state.subsSearch = v; state.subsPage = 1; loadSubscriptions(); }
     function subsGoToPage(p) { state.subsPage = p; loadSubscriptions(); }
+
+    function showGrantSubModal() {
+        const featureOpts = Object.entries(FEATURES_LIST).map(([s,n]) => `<option value="${s}">${esc(n)}</option>`).join('');
+        showModal(`
+            <div class="admin-modal-header">
+                <div class="admin-modal-title">Назначить подписку</div>
+                <button class="admin-modal-close" onclick="AdminApp.closeModal()">✕</button>
+            </div>
+            <div class="game-editor-section">
+                <div class="game-editor-section-title">Поиск пользователя</div>
+                <div style="display:flex;gap:8px;margin-bottom:12px">
+                    <input type="text" id="grant-user-search" class="admin-input" placeholder="Имя, @username или Telegram ID..." style="flex:1" onkeydown="if(event.key==='Enter')AdminApp.searchUsersForSub()">
+                    <button class="admin-btn admin-btn-primary" onclick="AdminApp.searchUsersForSub()">🔍 Найти</button>
+                </div>
+                <div id="grant-user-results" style="max-height:250px;overflow-y:auto"></div>
+            </div>
+            <div class="game-editor-section" id="grant-sub-options" style="display:none">
+                <div class="game-editor-section-title">Параметры подписки</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <input type="hidden" id="grant-tg-id" value="">
+                    <div id="grant-selected-user" style="font-size:.85em;font-weight:600;color:var(--accent);padding:6px 12px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);border-radius:8px"></div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap">
+                    <select id="grant-feature" class="admin-select">
+                        <option value="all">Все разделы (990₽)</option>
+                        ${featureOpts}
+                    </select>
+                    <select id="grant-days" class="admin-select">
+                        <option value="7">7 дней</option>
+                        <option value="14">14 дней</option>
+                        <option value="30" selected>30 дней</option>
+                        <option value="90">90 дней</option>
+                        <option value="180">180 дней</option>
+                        <option value="365">1 год</option>
+                    </select>
+                    <button class="admin-btn admin-btn-primary" onclick="AdminApp.grantSubToUser()">Назначить</button>
+                </div>
+            </div>
+        `);
+    }
+
+    async function searchUsersForSub() {
+        const q = document.getElementById('grant-user-search')?.value?.trim();
+        if (!q || q.length < 2) { toast('Минимум 2 символа', 'error'); return; }
+        const results = document.getElementById('grant-user-results');
+        results.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-3)">Поиск...</div>';
+        try {
+            const resp = await fetch(`${API_BASE}admin-subscriptions.php?token=${state.token}&search_users=${encodeURIComponent(q)}`);
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            const users = data.users || [];
+            if (users.length === 0) {
+                results.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-3)">Пользователи не найдены</div>';
+                return;
+            }
+            results.innerHTML = users.map(u => {
+                const name = esc(u.display_name || u.telegram_first_name || 'N/A');
+                const uname = u.telegram_username ? `@${esc(u.telegram_username)}` : '';
+                const activeCount = Object.keys(u.active_features || {}).length;
+                const activeLabel = activeCount > 0
+                    ? `<span class="admin-badge admin-badge-success" style="font-size:.65em">${activeCount} акт.</span>`
+                    : '<span class="admin-badge" style="font-size:.65em">0 акт.</span>';
+                const safeLabel = (name + ' ' + uname).replace(/'/g, "\\'");
+                return `<div class="grant-user-row" onclick="AdminApp.selectUserForSub(${u.telegram_id},'${safeLabel}')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border-subtle);cursor:pointer;border-radius:8px;transition:background .15s" onmouseenter="this.style.background='rgba(255,255,255,.04)'" onmouseleave="this.style.background=''">
+                    <div>
+                        <strong style="font-size:.85em">${name}</strong>
+                        <span style="font-size:.75em;color:var(--text-3);margin-left:6px">${uname}</span>
+                        <br><code style="font-size:.7em;color:var(--text-3)">ID: ${u.telegram_id}</code>
+                    </div>
+                    <div>${activeLabel}</div>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            results.innerHTML = `<div style="text-align:center;padding:12px;color:var(--red)">${esc(e.message)}</div>`;
+        }
+    }
+
+    function selectUserForSub(tgId, displayName) {
+        document.getElementById('grant-tg-id').value = tgId;
+        document.getElementById('grant-selected-user').textContent = displayName + ' (ID: ' + tgId + ')';
+        document.getElementById('grant-sub-options').style.display = '';
+        document.querySelectorAll('.grant-user-row').forEach(r => r.style.background = '');
+    }
+
+    async function grantSubToUser() {
+        const tgId = document.getElementById('grant-tg-id')?.value;
+        const feature = document.getElementById('grant-feature')?.value;
+        const days = parseInt(document.getElementById('grant-days')?.value || '30');
+        if (!tgId) { toast('Выберите пользователя', 'error'); return; }
+
+        try {
+            const body = { action: 'grant', telegram_id: parseInt(tgId), feature, days };
+            const resp = await fetch(`${API_BASE}admin-subscriptions.php?token=${state.token}`, {
+                method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+            });
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            toast(data.message || 'Подписка назначена', 'success');
+            closeModal();
+            loadSubscriptions();
+        } catch(e) { toast(e.message, 'error'); }
+    }
 
     async function loadSubscriptionDetail(tgId) {
         try {
@@ -2337,10 +2499,11 @@
         loadGameControl, gcSetRole, gcSetAction, gcUpdateField,
         // Notifications
         loadNotifications, createNotification, editNotification, saveNotification,
-        deleteNotification, toggleNotifPublish,
+        deleteNotification, toggleNotifPublish, broadcastNotification, sendBroadcast,
         // Subscriptions
         loadSubscriptions, loadSubscriptionDetail, subsAction, subsFilterChange,
         subsSearch: subsSearchFn, subsGoToPage,
+        showGrantSubModal, searchUsersForSub, selectUserForSub, grantSubToUser,
         // Promos
         loadPromos, loadPromoDetail, showCreatePromo, savePromo, togglePromo, deletePromo,
         promosFilterChange, promosGoToPage,

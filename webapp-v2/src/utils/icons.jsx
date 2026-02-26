@@ -196,6 +196,14 @@ export const IconMafBoard = ({ size = 24, color = 'currentColor' }) => (
   </svg>
 );
 
+export const IconMessageCircle = (p) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={s} className={p.className}><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+);
+
+export const IconSend = (p) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={s} className={p.className}><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+);
+
 export const IconGoMafia = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 152 116" fill="none" style={s}>
     <path d="M34.0683 85.8148C29.2116 85.7267 24.9366 84.5066 21.2434 82.1546C17.4063 79.6391 14.4064 76.0815 12.2437 71.4818C10.081 66.8821 8.99965 61.384 8.99965 54.9876C8.99965 48.5911 10.081 43.093 12.2437 38.4933C14.4762 33.8936 17.5807 30.3719 21.5573 27.9284C25.5339 25.4129 30.2081 24.1552 35.58 24.1552C36.4372 24.1552 37.2708 24.185 38.081 24.2447C39.8703 21.0743 41.3363 18.5381 42.6843 16.4192C40.4445 16.0425 38.0764 15.8541 35.58 15.8541C28.3245 15.8541 22.0108 17.5071 16.6389 20.8132C11.3368 24.1192 7.22065 28.7189 4.29053 34.6123C1.43018 40.5057 0 47.2974 0 54.9876C0 62.6777 1.43018 69.4695 4.29053 75.3628C7.15089 81.1843 11.1624 85.7481 16.325 89.0542C21.4875 92.2883 27.4873 93.9054 34.3243 93.9054C35.7836 93.9054 37.1766 93.8427 38.5033 93.7174C37.693 92.2867 36.816 90.7219 35.8518 89.0013C35.2206 87.8751 34.6269 86.8157 34.0683 85.8148Z" fill="#8977FE"/>

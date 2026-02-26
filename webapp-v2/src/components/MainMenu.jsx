@@ -13,6 +13,7 @@ import {
   IconTrophy, IconDice, IconChevronDown, IconTrash, IconStats, IconMafBoard,
   IconCheck, IconArrowRight, IconLock, IconArchive, IconX, IconList,
   IconGoMafia, IconSettings, IconCamera, IconLink, IconEdit, IconBell, IconTarget,
+  IconMessageCircle, IconSend,
 } from '../utils/icons';
 
 const formatTime = (ts) => {
@@ -441,6 +442,14 @@ export function MainMenu() {
   const [menuScreen, setMenuScreen] = useState('game');
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [eventsTab, setEventsTab] = useState('notifications');
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatSending, setChatSending] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
+  const chatEndRef = useRef(null);
+  const chatPollRef = useRef(null);
 
   const [newGameModal, setNewGameModal] = useState({
     visible: false, loading: false, error: '',
@@ -572,7 +581,7 @@ export function MainMenu() {
   }, [menuScreen, loadPlayerGames]);
 
   useEffect(() => {
-    if (menuScreen === 'notifications') {
+    if (menuScreen === 'notifications' && eventsTab === 'notifications') {
       setNotificationsLoading(true);
       fetch('/api/notifications.php')
         .then(r => r.json())
@@ -580,7 +589,74 @@ export function MainMenu() {
         .catch(() => setNotifications([]))
         .finally(() => setNotificationsLoading(false));
     }
-  }, [menuScreen]);
+  }, [menuScreen, eventsTab]);
+
+  const loadChatMessages = useCallback(async () => {
+    const token = authService.getStoredToken();
+    if (!token) return;
+    try {
+      const r = await fetch(`/api/user-messages.php?token=${encodeURIComponent(token)}`);
+      const data = await r.json();
+      if (data.messages) {
+        setChatMessages(data.messages);
+        setChatUnread(data.unread || 0);
+      }
+    } catch {}
+  }, []);
+
+  const sendChatMessage = useCallback(async () => {
+    const token = authService.getStoredToken();
+    if (!token || !chatInput.trim()) return;
+    setChatSending(true);
+    try {
+      const r = await fetch('/api/user-messages.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, action: 'send', text: chatInput.trim() }),
+      });
+      const data = await r.json();
+      if (data.ok) {
+        setChatInput('');
+        await loadChatMessages();
+      }
+    } catch {}
+    setChatSending(false);
+  }, [chatInput, loadChatMessages]);
+
+  useEffect(() => {
+    if (menuScreen === 'notifications' && eventsTab === 'chat') {
+      setChatLoading(true);
+      loadChatMessages().finally(() => setChatLoading(false));
+
+      const token = authService.getStoredToken();
+      if (token) {
+        fetch('/api/user-messages.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, action: 'mark_read' }),
+        }).then(() => setChatUnread(0)).catch(() => {});
+      }
+
+      chatPollRef.current = setInterval(loadChatMessages, 5000);
+      return () => clearInterval(chatPollRef.current);
+    }
+    return () => clearInterval(chatPollRef.current);
+  }, [menuScreen, eventsTab, loadChatMessages]);
+
+  useEffect(() => {
+    if (menuScreen === 'notifications' && eventsTab === 'chat') {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, menuScreen, eventsTab]);
+
+  useEffect(() => {
+    const token = authService.getStoredToken();
+    if (!token) return;
+    fetch(`/api/user-messages.php?token=${encodeURIComponent(token)}`)
+      .then(r => r.json())
+      .then(data => setChatUnread(data.unread || 0))
+      .catch(() => {});
+  }, []);
 
   const playerHasUpdates = useMemo(() => {
     if (!playerGames || playerGames.length === 0) return false;
@@ -870,6 +946,7 @@ export function MainMenu() {
     if (tableGroup) { setTableGroup(null); return; }
     if (menuScreen === 'profileSettings') { setMenuScreen('profile'); return; }
     if (menuScreen === 'playerDetail') { setMenuScreen('player'); return; }
+    if (menuScreen === 'notifications' && eventsTab === 'chat') { setEventsTab('notifications'); return; }
     if (menuScreen === 'profile' || menuScreen === 'themes' || menuScreen === 'notifications' || menuScreen === 'player') { setMenuScreen('game'); return; }
   }, [tableGroup, menuScreen]);
 
@@ -2113,47 +2190,145 @@ export function MainMenu() {
             </div>
           )}
 
-          {/* =================== NOTIFICATIONS SCREEN =================== */}
+          {/* =================== EVENTS SCREEN (NOTIFICATIONS + CHAT) =================== */}
           {menuScreen === 'notifications' && (
-            <div className="animate-fade-in w-full max-w-[400px] pb-[100px] flex flex-col gap-3">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-[1.3em] font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>Уведомления</h2>
-                {notifications.length > 0 && (
-                  <span className="text-[0.65em] font-bold tracking-wider px-2.5 py-1 rounded-full" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)', color: 'var(--accent-color)' }}>
-                    {notifications.length}
-                  </span>
-                )}
+            <div className="animate-fade-in w-full max-w-[400px] pb-[100px] flex flex-col gap-0">
+              <div className="flex items-center gap-1 p-1 rounded-2xl mb-3" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
+                <button
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.78em] font-bold transition-all duration-200 ${eventsTab === 'notifications' ? 'text-white shadow-md' : 'text-white/40'}`}
+                  style={eventsTab === 'notifications' ? { background: 'var(--accent-color)' } : {}}
+                  onClick={() => { setEventsTab('notifications'); triggerHaptic('selection'); }}
+                >
+                  <IconBell size={15} /> Уведомления
+                  {notifications.length > 0 && <span className="text-[0.8em] opacity-70">({notifications.length})</span>}
+                </button>
+                <button
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.78em] font-bold transition-all duration-200 relative ${eventsTab === 'chat' ? 'text-white shadow-md' : 'text-white/40'}`}
+                  style={eventsTab === 'chat' ? { background: 'var(--accent-color)' } : {}}
+                  onClick={() => { setEventsTab('chat'); triggerHaptic('selection'); }}
+                >
+                  <IconMessageCircle size={15} /> Чат
+                  {chatUnread > 0 && eventsTab !== 'chat' && (
+                    <span className="absolute -top-1 right-2 min-w-[18px] h-[18px] flex items-center justify-center text-[0.6em] font-black rounded-full px-1" style={{ background: 'var(--accent-color)', color: '#fff', boxShadow: '0 0 8px var(--accent-color)' }}>
+                      {chatUnread}
+                    </span>
+                  )}
+                </button>
               </div>
 
-              {notificationsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--accent-border)', borderTopColor: 'var(--accent-color)' }} />
-                </div>
-              ) : notifications.length > 0 ? (
-                <div className="flex flex-col gap-2.5">
-                  {notifications.map(n => (
-                    <NotificationCard
-                      key={n.id}
-                      icon={n.icon || '📢'}
-                      accentColor={n.accentColor || 'var(--accent-color)'}
-                      title={n.title}
-                      description={n.description}
-                      time={formatSessionDate(n.created_at)}
-                      isNew={n.pinned}
-                      link={n.link}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-3 mt-6 py-8">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
-                    <IconBell size={28} color="var(--accent-color)" />
-                  </div>
-                  <div className="text-center">
-                    <div className="text-[0.95em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Нет уведомлений</div>
-                    <div className="text-[0.8em] font-medium max-w-[280px]" style={{ color: 'var(--text-muted)' }}>
-                      Здесь будут появляться уведомления о турнирах, результатах игр и обновлениях.
+              {eventsTab === 'notifications' && (
+                <div className="flex flex-col gap-3">
+                  {notificationsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--accent-border)', borderTopColor: 'var(--accent-color)' }} />
                     </div>
+                  ) : notifications.length > 0 ? (
+                    <div className="flex flex-col gap-2.5">
+                      {notifications.map(n => (
+                        <NotificationCard
+                          key={n.id}
+                          icon={n.icon || '📢'}
+                          accentColor={n.accentColor || 'var(--accent-color)'}
+                          title={n.title}
+                          description={n.description}
+                          time={formatSessionDate(n.created_at)}
+                          isNew={n.pinned}
+                          link={n.link}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-3 mt-6 py-8">
+                      <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
+                        <IconBell size={28} color="var(--accent-color)" />
+                      </div>
+                      <div className="text-center">
+                        <div className="text-[0.95em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Нет уведомлений</div>
+                        <div className="text-[0.8em] font-medium max-w-[280px]" style={{ color: 'var(--text-muted)' }}>
+                          Здесь будут появляться уведомления о турнирах, результатах игр и обновлениях.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {eventsTab === 'chat' && (
+                <div className="flex flex-col" style={{ height: 'calc(100dvh - 200px)' }}>
+                  <div className="flex-1 overflow-y-auto flex flex-col gap-2 px-1 py-2 chat-messages-scroll">
+                    {chatLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--accent-border)', borderTopColor: 'var(--accent-color)' }} />
+                      </div>
+                    ) : chatMessages.length > 0 ? (
+                      <>
+                        {chatMessages.map(msg => (
+                          <div key={msg.id} className={`flex ${msg.direction === 'in' ? 'justify-end' : 'justify-start'}`}>
+                            <div
+                              className="max-w-[80%] px-3.5 py-2.5 rounded-2xl text-[0.82em] leading-relaxed"
+                              style={msg.direction === 'in' ? {
+                                background: 'var(--accent-color)',
+                                color: '#fff',
+                                borderBottomRightRadius: '6px',
+                              } : {
+                                background: 'var(--glass-bg)',
+                                border: '1px solid var(--glass-border)',
+                                color: 'var(--text-primary)',
+                                borderBottomLeftRadius: '6px',
+                              }}
+                            >
+                              {msg.direction === 'out' && (
+                                <div className="text-[0.7em] font-bold mb-1" style={{ color: 'var(--accent-color)' }}>Поддержка</div>
+                              )}
+                              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.message_text}</div>
+                              <div className="text-[0.65em] mt-1 opacity-50 text-right">
+                                {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div ref={chatEndRef} />
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center gap-3 mt-8 py-8">
+                        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
+                          <IconMessageCircle size={28} color="var(--accent-color)" />
+                        </div>
+                        <div className="text-center">
+                          <div className="text-[0.95em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Чат с поддержкой</div>
+                          <div className="text-[0.8em] font-medium max-w-[280px]" style={{ color: 'var(--text-muted)' }}>
+                            Напишите нам, и мы ответим как можно скорее.
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-end gap-2 pt-2 pb-1">
+                    <div className="flex-1 relative">
+                      <textarea
+                        className="w-full resize-none rounded-2xl px-4 py-3 text-[0.82em] font-medium outline-none transition-all"
+                        style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', maxHeight: '120px', minHeight: '44px' }}
+                        placeholder="Написать сообщение..."
+                        value={chatInput}
+                        onChange={e => setChatInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
+                        rows={1}
+                        maxLength={2000}
+                      />
+                    </div>
+                    <button
+                      className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all active:scale-90"
+                      style={{ background: chatInput.trim() ? 'var(--accent-color)' : 'var(--glass-bg)', border: `1px solid ${chatInput.trim() ? 'transparent' : 'var(--glass-border)'}` }}
+                      onClick={sendChatMessage}
+                      disabled={chatSending || !chatInput.trim()}
+                    >
+                      {chatSending ? (
+                        <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }} />
+                      ) : (
+                        <IconSend size={18} color={chatInput.trim() ? '#fff' : 'rgba(255,255,255,0.3)'} />
+                      )}
+                    </button>
                   </div>
                 </div>
               )}
@@ -2511,7 +2686,7 @@ export function MainMenu() {
             icon={<IconPlus size={22} />} label="Новая" />
           <NavItem active={!tableGroup && menuScreen === 'notifications'}
             onClick={() => { setTableGroup(null); setMenuScreen('notifications'); triggerHaptic('light'); }}
-            icon={<IconBell size={20} />} label="События" />
+            icon={<IconBell size={20} />} label="События" badge={chatUnread > 0} />
           <NavItem active={!tableGroup && (menuScreen === 'profile' || menuScreen === 'profileSettings')}
             onClick={() => { setTableGroup(null); setMenuScreen('profile'); triggerHaptic('light'); }}
             icon={<IconUser size={20} />} label="Профиль" />

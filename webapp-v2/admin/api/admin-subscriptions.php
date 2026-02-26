@@ -55,6 +55,32 @@ if (isset($_GET['telegram_id'])) {
         'can_trial' => canActivateTrial($database, $tgId), 'history' => $subs]);
 }
 
+if (isset($_GET['search_users'])) {
+    $q = trim($_GET['search_users']);
+    if (mb_strlen($q) < 2) jsonError('Минимум 2 символа для поиска');
+    $like = "%{$q}%";
+    $stmt = $database->pdo->prepare("
+        SELECT u.id, u.telegram_id, u.telegram_username, u.telegram_first_name,
+               u.telegram_last_name, u.display_name, u.created_at
+        FROM users u
+        WHERE u.telegram_id IS NOT NULL AND u.telegram_id > 0
+          AND (u.telegram_username LIKE :q1
+               OR u.telegram_first_name LIKE :q2
+               OR u.telegram_last_name LIKE :q3
+               OR u.display_name LIKE :q4
+               OR CAST(u.telegram_id AS CHAR) LIKE :q5)
+        ORDER BY u.updated_at DESC
+        LIMIT 20
+    ");
+    $stmt->execute([':q1' => $like, ':q2' => $like, ':q3' => $like, ':q4' => $like, ':q5' => $like]);
+    $users = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    foreach ($users as &$u) {
+        $u['active_features'] = getActiveSubscriptions($database, (int)$u['telegram_id']);
+    }
+    unset($u);
+    jsonResponse(['users' => $users]);
+}
+
 try {
     $search = isset($_GET['search']) ? trim($_GET['search']) : '';
     $filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
