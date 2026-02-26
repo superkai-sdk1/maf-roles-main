@@ -60,7 +60,6 @@ export function InertiaSlider({ label, baseColor, glowColor, onComplete, icon, c
 
   const coast = useCallback(() => {
     const max = getMax();
-    const now = performance.now();
     const samples = velocitySamples.current;
 
     let vel = 0;
@@ -95,16 +94,6 @@ export function InertiaSlider({ label, baseColor, glowColor, onComplete, icon, c
     }
   }, [getMax, setPos, snapTo]);
 
-  const handleStart = useCallback((clientX) => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    draggingRef.current = true;
-    setIsDragging(true);
-    startTouchX.current = clientX;
-    startPos.current = posRef.current;
-    velocitySamples.current = [{ x: clientX, t: performance.now() }];
-    triggerHaptic('selection');
-  }, []);
-
   const handleMove = useCallback((clientX) => {
     if (!draggingRef.current) return;
     const max = getMax();
@@ -115,46 +104,62 @@ export function InertiaSlider({ label, baseColor, glowColor, onComplete, icon, c
     if (velocitySamples.current.length > 10) velocitySamples.current.shift();
   }, [getMax, setPos]);
 
+  const removeDocListeners = useRef(() => {});
+
   const handleEnd = useCallback(() => {
     if (!draggingRef.current) return;
     draggingRef.current = false;
     setIsDragging(false);
+    removeDocListeners.current();
     coast();
   }, [coast]);
 
-  useEffect(() => {
-    const knob = knobRef.current;
-    if (!knob) return;
-
-    const onTouchStart = (e) => {
-      e.preventDefault();
-      handleStart(e.touches[0].clientX);
-    };
-    const onTouchMove = (e) => {
+  const attachDocListeners = useCallback(() => {
+    const onMove = (e) => {
       e.preventDefault();
       handleMove(e.touches[0].clientX);
     };
-    const onTouchEnd = (e) => {
-      e.preventDefault();
+    const onEnd = () => {
       handleEnd();
     };
 
-    knob.addEventListener('touchstart', onTouchStart, { passive: false });
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-    document.addEventListener('touchend', onTouchEnd, { passive: false });
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+    document.addEventListener('touchcancel', onEnd);
 
-    return () => {
-      knob.removeEventListener('touchstart', onTouchStart);
-      document.removeEventListener('touchmove', onTouchMove);
-      document.removeEventListener('touchend', onTouchEnd);
+    removeDocListeners.current = () => {
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+      document.removeEventListener('touchcancel', onEnd);
+      removeDocListeners.current = () => {};
     };
-  }, [handleStart, handleMove, handleEnd]);
+  }, [handleMove, handleEnd]);
+
+  const handleStart = useCallback((clientX) => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    draggingRef.current = true;
+    setIsDragging(true);
+    startTouchX.current = clientX;
+    startPos.current = posRef.current;
+    velocitySamples.current = [{ x: clientX, t: performance.now() }];
+    triggerHaptic('selection');
+  }, []);
+
+  const handleTouchStart = useCallback((e) => {
+    e.stopPropagation();
+    handleStart(e.touches[0].clientX);
+    attachDocListeners();
+  }, [handleStart, attachDocListeners]);
+
+  useEffect(() => {
+    return () => removeDocListeners.current();
+  }, []);
 
   return (
     <div
       ref={containerRef}
-      className={`relative w-full ${HEIGHT} bg-black/40 rounded-2xl flex items-center overflow-hidden border border-white/5 shadow-inner touch-none`}
-      style={{ padding: PAD }}
+      className={`relative w-full ${HEIGHT} bg-black/40 rounded-2xl flex items-center overflow-hidden border border-white/5 shadow-inner`}
+      style={{ padding: PAD, touchAction: 'pan-y' }}
       onMouseMove={(e) => handleMove(e.clientX)}
       onMouseUp={handleEnd}
       onMouseLeave={() => draggingRef.current && handleEnd()}
@@ -173,10 +178,12 @@ export function InertiaSlider({ label, baseColor, glowColor, onComplete, icon, c
       <div
         ref={knobRef}
         onMouseDown={(e) => handleStart(e.clientX)}
+        onTouchStart={handleTouchStart}
         style={{
           transform: `translateX(${position}px)`,
           width: KNOB_SIZE,
           height: KNOB_SIZE,
+          touchAction: 'none',
         }}
         className={`relative z-10 rounded-[14px] flex items-center justify-center cursor-grab active:cursor-grabbing shadow-xl shrink-0 ${
           isDragging ? 'scale-95' : 'scale-100'
