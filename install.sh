@@ -169,11 +169,150 @@ content = re.sub(
     \"const CONFIRM_API_URL = process.env.CONFIRM_API_URL || 'https://${DOMAIN}/login/code-confirm.php';\",
     content
 )
+content = re.sub(
+    r\"const API_BASE_URL = process\\.env\\.API_BASE_URL \\|\\| '[^']*';\",
+    \"const API_BASE_URL = process.env.API_BASE_URL || 'https://${DOMAIN}/api';\",
+    content
+)
+content = re.sub(
+    r\"const PAYMENT_PHONE = process\\.env\\.PAYMENT_PHONE \\|\\| '[^']*';\",
+    \"const PAYMENT_PHONE = process.env.PAYMENT_PHONE || '${PAYMENT_PHONE:-+7 (XXX) XXX-XX-XX}';\",
+    content
+)
 with open('$BOT_JS', 'w') as f:
     f.write(content)
 "
         log_info "bot.js configured for domain $DOMAIN"
     fi
+
+    # Database migration for --update (create new tables if missing)
+    log_step "Step 2.5/8: Running database migrations"
+    mysql "$DB_NAME" -e "
+CREATE TABLE IF NOT EXISTS \`users\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`telegram_id\` bigint(20) DEFAULT NULL,
+  \`telegram_username\` varchar(255) DEFAULT NULL,
+  \`telegram_first_name\` varchar(255) DEFAULT NULL,
+  \`telegram_last_name\` varchar(255) DEFAULT NULL,
+  \`gomafia_id\` varchar(100) DEFAULT NULL,
+  \`gomafia_nickname\` varchar(255) DEFAULT NULL,
+  \`display_name\` varchar(255) DEFAULT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`updated_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (\`id\`),
+  UNIQUE KEY \`telegram_id\` (\`telegram_id\`),
+  UNIQUE KEY \`gomafia_id\` (\`gomafia_id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`user_passkeys\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`user_id\` int(11) NOT NULL,
+  \`credential_id\` varchar(512) NOT NULL,
+  \`public_key\` text NOT NULL,
+  \`algorithm\` int(11) NOT NULL DEFAULT -7,
+  \`counter\` int(10) unsigned NOT NULL DEFAULT 0,
+  \`transports\` text DEFAULT NULL,
+  \`device_name\` varchar(255) DEFAULT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`last_used_at\` datetime DEFAULT NULL,
+  PRIMARY KEY (\`id\`),
+  UNIQUE KEY \`credential_id\` (\`credential_id\`),
+  KEY \`user_id\` (\`user_id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`auth_challenges\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`challenge\` varchar(255) NOT NULL,
+  \`user_id\` int(11) DEFAULT NULL,
+  \`type\` varchar(20) NOT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`expires_at\` datetime NOT NULL,
+  PRIMARY KEY (\`id\`),
+  KEY \`challenge\` (\`challenge\`),
+  KEY \`expires_at\` (\`expires_at\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`user_subscriptions\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`user_id\` int(11) DEFAULT NULL,
+  \`telegram_id\` bigint(20) DEFAULT NULL,
+  \`feature\` varchar(50) NOT NULL,
+  \`status\` varchar(20) NOT NULL DEFAULT 'active',
+  \`started_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`expires_at\` datetime NOT NULL,
+  \`is_trial\` tinyint(1) NOT NULL DEFAULT 0,
+  \`created_by\` varchar(100) DEFAULT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (\`id\`),
+  KEY \`user_id\` (\`user_id\`),
+  KEY \`telegram_id\` (\`telegram_id\`),
+  KEY \`feature\` (\`feature\`),
+  KEY \`status\` (\`status\`),
+  KEY \`expires_at\` (\`expires_at\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`promo_codes\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`code\` varchar(50) NOT NULL,
+  \`features\` text NOT NULL,
+  \`duration_days\` int(11) NOT NULL DEFAULT 30,
+  \`max_uses\` int(11) NOT NULL DEFAULT 1,
+  \`current_uses\` int(11) NOT NULL DEFAULT 0,
+  \`is_active\` tinyint(1) NOT NULL DEFAULT 1,
+  \`created_by\` varchar(100) DEFAULT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`expires_at\` datetime DEFAULT NULL,
+  PRIMARY KEY (\`id\`),
+  UNIQUE KEY \`code\` (\`code\`),
+  KEY \`is_active\` (\`is_active\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`promo_activations\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`promo_id\` int(11) NOT NULL,
+  \`user_id\` int(11) DEFAULT NULL,
+  \`telegram_id\` bigint(20) DEFAULT NULL,
+  \`activated_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (\`id\`),
+  KEY \`promo_id\` (\`promo_id\`),
+  KEY \`user_id\` (\`user_id\`),
+  KEY \`telegram_id\` (\`telegram_id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`bot_messages\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`telegram_id\` bigint(20) NOT NULL,
+  \`direction\` varchar(10) NOT NULL DEFAULT 'in',
+  \`message_text\` text NOT NULL,
+  \`message_type\` varchar(30) NOT NULL DEFAULT 'text',
+  \`admin_id\` bigint(20) DEFAULT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`is_read\` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (\`id\`),
+  KEY \`telegram_id\` (\`telegram_id\`),
+  KEY \`direction\` (\`direction\`),
+  KEY \`is_read\` (\`is_read\`),
+  KEY \`created_at\` (\`created_at\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`payment_requests\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`user_id\` int(11) DEFAULT NULL,
+  \`telegram_id\` bigint(20) NOT NULL,
+  \`features\` text NOT NULL,
+  \`amount\` int(11) NOT NULL DEFAULT 0,
+  \`status\` varchar(20) NOT NULL DEFAULT 'pending',
+  \`admin_note\` text DEFAULT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`confirmed_at\` datetime DEFAULT NULL,
+  \`confirmed_by\` bigint(20) DEFAULT NULL,
+  PRIMARY KEY (\`id\`),
+  KEY \`user_id\` (\`user_id\`),
+  KEY \`telegram_id\` (\`telegram_id\`),
+  KEY \`status\` (\`status\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+" 2>/dev/null || log_warn "Some migrations may have been skipped (tables may already exist)"
+    log_info "Database migrations complete"
 
     # Update Nginx config — ensure all paths point to webapp-v2/
     log_step "Step 3/8: Updating Nginx configuration"
@@ -317,6 +456,12 @@ read -p "Admin Telegram ID: " ADMIN_TELEGRAM_ID
 ADMIN_TELEGRAM_ID=${ADMIN_TELEGRAM_ID:-0}
 echo ""
 
+# --- Payment ---
+echo -e "${YELLOW}${BOLD}=== Payment Configuration ===${NC}"
+read -p "Phone number for payments [+7 (XXX) XXX-XX-XX]: " PAYMENT_PHONE
+PAYMENT_PHONE=${PAYMENT_PHONE:-"+7 (XXX) XXX-XX-XX"}
+echo ""
+
 # --- SSL Email ---
 read -p "Email for SSL certificate [$DOMAIN admin]: " LETSENCRYPT_EMAIL
 LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL:-admin@$DOMAIN}
@@ -333,6 +478,7 @@ echo -e "  Git repo:        ${GREEN}${GIT_REPO_URL:-local copy}${NC}"
 echo -e "  Database:        ${GREEN}$DB_NAME${NC} (user: ${GREEN}$DB_USER${NC})"
 echo -e "  Bot:             ${GREEN}@$BOT_USERNAME${NC}"
 echo -e "  Admin TG ID:     ${GREEN}$ADMIN_TELEGRAM_ID${NC}"
+echo -e "  Payment phone:   ${GREEN}$PAYMENT_PHONE${NC}"
 echo -e "  SSL email:       ${GREEN}$LETSENCRYPT_EMAIL${NC}"
 echo -e "${CYAN}============================================================${NC}"
 read -p "Everything correct? Start installation? (y/n): " CONFIRM
@@ -388,25 +534,48 @@ CREATE TABLE IF NOT EXISTS \`players\` (
   UNIQUE KEY \`idx_login\` (\`login\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS \`auth_sessions\` (
+CREATE TABLE IF NOT EXISTS \`users\` (
   \`id\` int(11) NOT NULL AUTO_INCREMENT,
-  \`token\` varchar(128) NOT NULL,
-  \`telegram_id\` bigint(20) NOT NULL,
+  \`telegram_id\` bigint(20) DEFAULT NULL,
   \`telegram_username\` varchar(255) DEFAULT NULL,
   \`telegram_first_name\` varchar(255) DEFAULT NULL,
   \`telegram_last_name\` varchar(255) DEFAULT NULL,
+  \`gomafia_id\` varchar(100) DEFAULT NULL,
+  \`gomafia_nickname\` varchar(255) DEFAULT NULL,
+  \`display_name\` varchar(255) DEFAULT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`updated_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (\`id\`),
+  UNIQUE KEY \`telegram_id\` (\`telegram_id\`),
+  UNIQUE KEY \`gomafia_id\` (\`gomafia_id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`auth_sessions\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`token\` varchar(128) NOT NULL,
+  \`user_id\` int(11) DEFAULT NULL,
+  \`auth_method\` varchar(20) NOT NULL DEFAULT 'telegram',
+  \`telegram_id\` bigint(20) DEFAULT NULL,
+  \`telegram_username\` varchar(255) DEFAULT NULL,
+  \`telegram_first_name\` varchar(255) DEFAULT NULL,
+  \`telegram_last_name\` varchar(255) DEFAULT NULL,
+  \`user_agent\` text DEFAULT NULL,
+  \`ip_address\` varchar(45) DEFAULT NULL,
+  \`device_name\` varchar(255) DEFAULT NULL,
   \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   \`expires_at\` datetime NOT NULL,
   \`last_active\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (\`id\`),
   UNIQUE KEY \`token\` (\`token\`),
   KEY \`telegram_id\` (\`telegram_id\`),
+  KEY \`user_id\` (\`user_id\`),
   KEY \`expires_at\` (\`expires_at\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS \`auth_codes\` (
   \`id\` int(11) NOT NULL AUTO_INCREMENT,
   \`code\` varchar(4) NOT NULL,
+  \`user_id\` int(11) DEFAULT NULL,
   \`telegram_id\` bigint(20) DEFAULT NULL,
   \`token\` varchar(128) DEFAULT NULL,
   \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -414,6 +583,34 @@ CREATE TABLE IF NOT EXISTS \`auth_codes\` (
   \`confirmed_at\` datetime DEFAULT NULL,
   PRIMARY KEY (\`id\`),
   KEY \`code\` (\`code\`),
+  KEY \`expires_at\` (\`expires_at\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`user_passkeys\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`user_id\` int(11) NOT NULL,
+  \`credential_id\` varchar(512) NOT NULL,
+  \`public_key\` text NOT NULL,
+  \`algorithm\` int(11) NOT NULL DEFAULT -7,
+  \`counter\` int(10) unsigned NOT NULL DEFAULT 0,
+  \`transports\` text DEFAULT NULL,
+  \`device_name\` varchar(255) DEFAULT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`last_used_at\` datetime DEFAULT NULL,
+  PRIMARY KEY (\`id\`),
+  UNIQUE KEY \`credential_id\` (\`credential_id\`),
+  KEY \`user_id\` (\`user_id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS \`auth_challenges\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`challenge\` varchar(255) NOT NULL,
+  \`user_id\` int(11) DEFAULT NULL,
+  \`type\` varchar(20) NOT NULL,
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`expires_at\` datetime NOT NULL,
+  PRIMARY KEY (\`id\`),
+  KEY \`challenge\` (\`challenge\`),
   KEY \`expires_at\` (\`expires_at\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -624,6 +821,16 @@ content = re.sub(
 content = re.sub(
     r\"const CONFIRM_API_URL = process\\.env\\.CONFIRM_API_URL \\|\\| '[^']*';\",
     \"const CONFIRM_API_URL = process.env.CONFIRM_API_URL || 'https://${DOMAIN}/login/code-confirm.php';\",
+    content
+)
+content = re.sub(
+    r\"const API_BASE_URL = process\\.env\\.API_BASE_URL \\|\\| '[^']*';\",
+    \"const API_BASE_URL = process.env.API_BASE_URL || 'https://${DOMAIN}/api';\",
+    content
+)
+content = re.sub(
+    r\"const PAYMENT_PHONE = process\\.env\\.PAYMENT_PHONE \\|\\| '[^']*';\",
+    \"const PAYMENT_PHONE = process.env.PAYMENT_PHONE || '${PAYMENT_PHONE}';\",
     content
 )
 with open('$BOT_JS', 'w') as f:
@@ -857,6 +1064,7 @@ DB_PORT="$DB_PORT"
 BOT_TOKEN="$BOT_TOKEN"
 BOT_USERNAME="$BOT_USERNAME"
 ADMIN_TELEGRAM_ID="$ADMIN_TELEGRAM_ID"
+PAYMENT_PHONE="$PAYMENT_PHONE"
 LETSENCRYPT_EMAIL="$LETSENCRYPT_EMAIL"
 GIT_REPO_URL="$GIT_REPO_URL"
 CFGEOF
