@@ -123,7 +123,8 @@ export const NightPanel = () => {
           ) : (
             <NightGrid
               players={allPlayers}
-              isDisabled={(p) => !isPlayerActive(p.roleKey)}
+              isDisabled={() => false}
+              isInactive={(p) => !isPlayerActive(p.roleKey)}
               onSelect={(num) => { performNightCheck(donKey, num); triggerHaptic('medium'); }}
               onAction={() => { advanceNightPhase(); triggerHaptic('light'); }}
               config={PHASE_CONFIG.don}
@@ -143,7 +144,8 @@ export const NightPanel = () => {
           ) : (
             <NightGrid
               players={allPlayers}
-              isDisabled={(p) => !isPlayerActive(p.roleKey)}
+              isDisabled={() => false}
+              isInactive={(p) => !isPlayerActive(p.roleKey)}
               onSelect={(num) => { performNightCheck(sheriffKey, num); triggerHaptic('medium'); }}
               onAction={() => { advanceNightPhase(); triggerHaptic('light'); }}
               config={PHASE_CONFIG.sheriff}
@@ -168,7 +170,8 @@ export const NightPanel = () => {
               )}
               <NightGrid
                 players={allPlayers}
-                isDisabled={(p) => !isPlayerActive(p.roleKey) || !canDoctorHealTarget(p.num)}
+                isDisabled={(p) => !canDoctorHealTarget(p.num)}
+                isInactive={(p) => !isPlayerActive(p.roleKey)}
                 onSelect={handleDoctorHeal}
                 onAction={() => { advanceNightPhase(); triggerHaptic('light'); }}
                 config={PHASE_CONFIG.doctor}
@@ -359,12 +362,13 @@ function PhaseTimer({ duration, textColorClass }) {
 
 /* =================== Night Grid =================== */
 
-function NightGrid({ players, isDisabled, onSelect, onAction, config }) {
+function NightGrid({ players, isDisabled, isInactive, onSelect, onAction, config }) {
   const first9 = players.slice(0, 9);
   const player10 = players.length >= 10 ? players[9] : null;
 
   const renderBtn = (p) => {
     const disabled = isDisabled(p);
+    const inactive = isInactive ? isInactive(p) : false;
     return (
       <button
         key={p.num}
@@ -373,7 +377,9 @@ function NightGrid({ players, isDisabled, onSelect, onAction, config }) {
         className={`h-14 rounded-xl flex items-center justify-center text-lg font-bold transition-all duration-200 border ${
           disabled
             ? 'bg-slate-800/10 border-white/5 text-white/15 opacity-30 pointer-events-none'
-            : 'bg-slate-800/30 border-white/5 text-slate-400 hover:border-white/20 hover:text-white active:scale-95'
+            : inactive
+              ? 'bg-slate-800/20 border-white/5 text-white/25 hover:border-white/15 hover:text-white/40 active:scale-95'
+              : 'bg-slate-800/30 border-white/5 text-slate-400 hover:border-white/20 hover:text-white active:scale-95'
         }`}
       >
         {p.num}

@@ -23,8 +23,10 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
     protocolAccepted, setProtocolAccepted,
     advanceNightPhase,
     bestMove, toggleBestMove, acceptBestMove, bestMoveAccepted, canShowBestMove,
+    startDaySpeakerFlow,
   } = useGame();
 
+  const cardRef = useRef(null);
   const rk = player.roleKey;
   const action = player.action;
   const isKilledForTimer = action === 'killed';
@@ -60,6 +62,18 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
     }
   }, [killedCardPhase, rk, isKilledForTimer, expanded, setExpandedCardRK]);
 
+  useEffect(() => {
+    if (!isNextSpeaker || expandedCardRK === rk) return;
+    if (expandedCardRK) return;
+    const timer = setTimeout(() => {
+      setExpandedCardRK(rk);
+      setTimeout(() => {
+        cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [isNextSpeaker, rk, expandedCardRK, setExpandedCardRK]);
+
   const active = isPlayerActive(rk);
   const role = player.role;
   const foulCount = player.fouls || 0;
@@ -87,10 +101,13 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
   const canAddTime = foulCount < 2;
 
   const handleTimerClick = useCallback(() => {
+    if (isNextSpeaker && !isRunning) {
+      startDaySpeakerFlow();
+    }
     if (!isRunning) { start(); triggerHaptic('light'); }
     else if (isPaused) { resume(); triggerHaptic('light'); }
     else { pause(); triggerHaptic('light'); }
-  }, [isRunning, isPaused, start, pause, resume]);
+  }, [isRunning, isPaused, start, pause, resume, isNextSpeaker, startDaySpeakerFlow]);
 
   const handleTimerHoldStart = useCallback((e) => {
     if (e.type === 'mousedown' && Date.now() - lastTouchRef.current < 500) return;
@@ -225,6 +242,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
 
   return (
     <div
+      ref={cardRef}
       className={`glass-card rounded-2xl relative overflow-hidden transition-all duration-300 ease-spring
         ${isHighlighted && !isDead ? 'border-accent-soft !bg-accent-soft shadow-[0_0_20px_rgba(var(--accent-rgb),0.18),inset_0_1px_0_rgba(255,255,255,0.1)] scale-[1.01]' : ''}
         ${isSpeaking && !isDead ? 'border-accent-soft !bg-accent-soft shadow-[0_0_24px_rgba(var(--accent-rgb),0.22),inset_0_1px_0_rgba(255,255,255,0.1)] scale-[1.01]' : ''}

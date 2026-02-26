@@ -298,15 +298,7 @@ export function GameScreen() {
                     </div>
                     <button className="px-4 py-2.5 rounded-xl bg-accent text-white border border-white/[0.08] text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring" onClick={nextDaySpeaker}>Далее</button>
                   </div>
-                ) : currentDaySpeakerIndex === -1 && (
-                  <button
-                    className="w-full flex items-center justify-between px-4 py-3 rounded-2xl glass-card mb-3 animate-fade-in active:scale-[0.98] transition-transform duration-150 ease-spring"
-                    onClick={() => { startDaySpeakerFlow(); triggerHaptic('light'); }}
-                  >
-                    <span className="text-sm font-bold text-accent">Начать круг с #{daySpeakerStartNum}</span>
-                    <span className="text-xs font-bold text-accent/60 uppercase tracking-wider">Старт</span>
-                  </button>
-                )}
+                ) : null}
               </>
             )}
 

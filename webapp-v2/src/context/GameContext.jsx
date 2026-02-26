@@ -937,14 +937,9 @@ export const GameProvider = ({ children }) => {
   }, [nightNumber]);
 
   const canDoctorHealTarget = useCallback((num) => {
-    const p = tableOut[num - 1];
-    if (!p) return false;
-    const doctorKey = findRoleKey('doctor');
-    if (p.roleKey === doctorKey) return false;
-    if (!isPlayerActive(p.roleKey)) return false;
     if (num === doctorLastHealTarget) return false;
     return true;
-  }, [tableOut, findRoleKey, isPlayerActive, doctorLastHealTarget]);
+  }, [doctorLastHealTarget]);
 
   // =================== Check Protocol/Opinion ===================
   const checkProtocol = useCallback((rk) => {
