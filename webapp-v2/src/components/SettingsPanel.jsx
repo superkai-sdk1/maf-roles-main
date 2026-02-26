@@ -5,7 +5,7 @@ import { triggerHaptic } from '../utils/haptics';
 
 export function SettingsPanel() {
   const {
-    roomId, roomInput, setRoomInput, joinRoom, syncState,
+    roomId, setRoomId, roomInput, setRoomInput, joinRoom, syncState, disconnectRoom,
     selectedColorScheme, setSelectedColorScheme,
     darkMode, setDarkMode,
     mainInfoText, setMainInfoText,
@@ -49,8 +49,17 @@ export function SettingsPanel() {
           {roomId ? '\uD83D\uDCE1' : '\uD83D\uDCF4'} Комната трансляции
         </h3>
         {roomId ? (
-          <div className="text-[0.85em] font-bold text-status-success py-1.5 px-3.5 rounded-[10px] inline-flex items-center gap-1.5 bg-status-success/10 border border-status-success/20">
-            Подключена: {roomId}
+          <div className="flex items-center gap-2.5">
+            <div className="text-[0.85em] font-bold text-status-success py-1.5 px-3.5 rounded-[10px] inline-flex items-center gap-1.5 bg-status-success/10 border border-status-success/20">
+              Подключена: {roomId}
+            </div>
+            <button
+              onClick={() => { disconnectRoom(); triggerHaptic('medium'); }}
+              className="text-[0.75em] font-bold py-1.5 px-3 rounded-[10px] border active:scale-[0.97] transition-transform duration-150"
+              style={{ color: 'var(--text-muted)', borderColor: 'var(--surface-border)', background: 'var(--surface-primary)' }}
+            >
+              Отключить
+            </button>
           </div>
         ) : (
           <div>

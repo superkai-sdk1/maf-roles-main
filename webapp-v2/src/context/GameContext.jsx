@@ -289,6 +289,13 @@ export const GameProvider = ({ children }) => {
     socketRef.current = conn;
   }, []);
 
+  const disconnectRoom = useCallback(() => {
+    if (socketRef.current) socketRef.current.close();
+    socketRef.current = null;
+    setRoomId(null);
+    setRoomInput('');
+  }, []);
+
   useEffect(() => () => { if (socketRef.current) socketRef.current.close(); }, []);
 
   // =================== Roles ===================
@@ -1751,7 +1758,7 @@ export const GameProvider = ({ children }) => {
     autoStartTimerRK, setAutoStartTimerRK,
     expandedCardRK, setExpandedCardRK,
     // Room/WS
-    roomId, setRoomId, joinRoom, syncState, roomInput, setRoomInput,
+    roomId, setRoomId, joinRoom, disconnectRoom, syncState, roomInput, setRoomInput,
     // Day Speaker
     currentDaySpeakerIndex, setCurrentDaySpeakerIndex,
     daySpeakerStartNum,
