@@ -8,8 +8,10 @@ import { SettingsPanel } from './SettingsPanel';
 import { RolesPhase } from './RolesPhase';
 import { NightPanel } from './NightPanel';
 import { SlideConfirm } from './SlideConfirm';
+import { InertiaSlider } from './InertiaSlider';
 import { triggerHaptic } from '../utils/haptics';
 import { useSwipeBack } from '../hooks/useSwipeBack';
+import { Gavel, Moon, Sun, X, MonitorPlay, LogOut, Trophy } from 'lucide-react';
 
 export function GameScreen() {
   const {
@@ -347,57 +349,108 @@ export function GameScreen() {
               </div>
             )}
 
-            {/* Voting button (day only) */}
-            {gamePhase === 'day' && rolesDistributed && !winnerTeam && (
-              <div className="mt-3">
-                <button className="px-4 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-base font-bold active:scale-[0.97] transition-transform duration-150 ease-spring w-full" onClick={() => {
-                  const cands = getNominatedCandidates();
-                  if (cands.length > 0) { startVoting(); setVotingScreenTab('voting'); }
-                  else { setVotingScreenTab('history'); }
-                  setShowVotingScreen(true); triggerHaptic('medium');
-                }}>
-                  ⚖ Голосование
-                </button>
-              </div>
-            )}
+            {/* Control panel */}
+            {rolesDistributed && (gamePhase === 'day' || gamePhase === 'night') && (
+              <div className="relative mt-6 group">
+                <div className="absolute -inset-1 bg-gradient-to-b from-indigo-500/10 to-transparent rounded-[2.5rem] blur-xl opacity-50" />
+                <div className="relative bg-[#16102b]/80 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-6 shadow-2xl space-y-6">
 
-            {/* Inline slider: Day → Night */}
-            {gamePhase === 'day' && rolesDistributed && !winnerTeam && (
-              <div className="mt-3 animate-fade-in">
-                <SlideConfirm
-                  label={`Перейти в ночь ${(nightNumber || 0) + 1}`}
-                  onConfirm={() => { handleGoToNight(); triggerHaptic('medium'); }}
-                  color={dayButtonBlink ? 'amber' : 'night'}
-                  compact
-                />
-              </div>
-            )}
+                  {/* Voting (day only) */}
+                  {gamePhase === 'day' && !winnerTeam && (
+                    <button
+                      className="w-full flex items-center justify-center gap-3 p-4 rounded-2xl border transition-all active:scale-95 border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/20 group/btn shadow-lg"
+                      onClick={() => {
+                        const cands = getNominatedCandidates();
+                        if (cands.length > 0) { startVoting(); setVotingScreenTab('voting'); }
+                        else { setVotingScreenTab('history'); }
+                        setShowVotingScreen(true); triggerHaptic('medium');
+                      }}
+                    >
+                      <div className="text-white/50 group-hover/btn:text-white transition-colors">
+                        <Gavel size={20} />
+                      </div>
+                      <span className="text-sm font-bold tracking-wide text-white/80">Открыть голосование</span>
+                    </button>
+                  )}
 
-            {/* Game action buttons */}
-            {rolesDistributed && (gamePhase === 'day' || gamePhase === 'night') && !viewOnly && (
-              <div className="flex flex-col gap-3 mt-6 pt-4 border-t border-white/[0.06]">
-                {!gameFinished && (
-                  <SlideConfirm
-                    label="Закончить игру"
-                    onConfirm={() => { setGameFinished(true); setShowResultsScreen(true); triggerHaptic('heavy'); }}
-                    color="red"
-                    compact
-                  />
-                )}
-                <button className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring w-full" onClick={() => { setShowSettingsScreen(true); triggerHaptic('light'); }}>
-                  ⚙ Настройки трансляции
-                </button>
-                {(winnerTeam || gameFinished) && (
-                  <button className="px-4 py-2.5 rounded-xl bg-[rgba(255,214,10,0.08)] border border-[rgba(255,214,10,0.2)] text-[#ffd60a] text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring w-full" onClick={() => { setShowResultsScreen(true); triggerHaptic('light'); }}>
-                    🏆 Итоги
+                  {/* Phase transition slider */}
+                  {!winnerTeam && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between px-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">
+                        <span>Текущая фаза: {gamePhase === 'day' ? `День ${dayNumber || 1}` : `Ночь ${nightNumber || 1}`}</span>
+                      </div>
+                      {gamePhase === 'day' && (
+                        <InertiaSlider
+                          label={`Перейти в ночь ${(nightNumber || 0) + 1}`}
+                          baseColor="bg-gradient-to-br from-indigo-500 to-purple-600"
+                          glowColor="shadow-indigo-500/50"
+                          onComplete={() => { handleGoToNight(); triggerHaptic('medium'); }}
+                          icon={<Moon size={22} fill="white" />}
+                        />
+                      )}
+                      {gamePhase === 'night' && dayButtonBlink && (
+                        <InertiaSlider
+                          label={`Вернуться в день ${(dayNumber || 0) + 1}`}
+                          baseColor="bg-gradient-to-br from-amber-400 to-orange-600"
+                          glowColor="shadow-orange-500/50"
+                          onComplete={() => { setMode('day'); triggerHaptic('medium'); }}
+                          icon={<Sun size={22} fill="white" />}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {/* End game + Stream settings */}
+                  {!viewOnly && (
+                    <div className="flex items-center gap-3">
+                      {!gameFinished && (
+                        <div className="flex-1">
+                          <InertiaSlider
+                            compact
+                            label="Завершить игру"
+                            baseColor="bg-gradient-to-r from-red-500/80 to-red-800/80"
+                            glowColor="shadow-red-500/20"
+                            onComplete={() => { setGameFinished(true); setShowResultsScreen(true); triggerHaptic('heavy'); }}
+                            icon={<X size={16} strokeWidth={3} />}
+                          />
+                        </div>
+                      )}
+                      <button
+                        className="flex items-center gap-2 h-[52px] px-5 rounded-2xl bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 transition-all active:scale-95 whitespace-nowrap"
+                        onClick={() => { setShowSettingsScreen(true); triggerHaptic('light'); }}
+                      >
+                        <MonitorPlay size={18} />
+                        <span className="text-xs font-bold">Стрим</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Results */}
+                  {(winnerTeam || gameFinished) && (
+                    <button
+                      className="w-full flex items-center justify-center gap-3 p-4 rounded-2xl border transition-all active:scale-95 border-[rgba(255,214,10,0.3)] bg-[rgba(255,214,10,0.08)] hover:bg-[rgba(255,214,10,0.15)] group/btn shadow-lg"
+                      onClick={() => { setShowResultsScreen(true); triggerHaptic('light'); }}
+                    >
+                      <div className="text-[#ffd60a]/60 group-hover/btn:text-[#ffd60a] transition-colors">
+                        <Trophy size={20} />
+                      </div>
+                      <span className="text-sm font-bold tracking-wide text-[#ffd60a]/80">Итоги</span>
+                    </button>
+                  )}
+
+                  {/* Exit */}
+                  <button
+                    className="w-full flex items-center justify-center gap-2 py-2 mt-2 rounded-xl text-red-500/40 hover:text-red-500 hover:bg-red-500/5 transition-all text-[10px] font-black uppercase tracking-[0.3em]"
+                    onClick={() => {
+                      if (gameFinished) returnToMainMenu();
+                      else { setShowExitConfirm(true); triggerHaptic('warning'); }
+                    }}
+                  >
+                    <LogOut size={14} />
+                    {gameFinished ? 'В меню' : 'Выйти'}
                   </button>
-                )}
-                <button className="px-4 py-2.5 rounded-xl bg-[rgba(255,69,58,0.08)] border border-[rgba(255,69,58,0.2)] text-[#ff453a] text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring w-full" onClick={() => {
-                  if (gameFinished) returnToMainMenu();
-                  else { setShowExitConfirm(true); triggerHaptic('warning'); }
-                }}>
-                  ← {gameFinished ? 'В меню' : 'Выход'}
-                </button>
+
+                </div>
               </div>
             )}
 
