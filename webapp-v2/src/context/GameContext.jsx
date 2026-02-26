@@ -241,71 +241,19 @@ export const GameProvider = ({ children }) => {
     if (socketRef.current) socketRef.current.sendUpdateDebounced(partialState);
   }, []);
 
-  const joinRoom = useCallback((code, { skipInitialState = false } = {}) => {
+  const joinRoom = useCallback((code) => {
     if (socketRef.current) socketRef.current.close();
     setRoomError(null);
-
-    let ignoreFirstState = skipInitialState;
-    let pendingSendFullState = true;
 
     const conn = createPanelConnection(code, {
       onJoined: (data) => {
         setRoomId(data.code);
         setRoomError(null);
-        if (data.state && !ignoreFirstState) {
-          const s = data.state;
-          if (s.players) setPlayers(s.players);
-          if (s.roles) setRoles(s.roles);
-          if (s.gamePhase) setGamePhase(s.gamePhase);
-          if (s.dayNumber !== undefined) setDayNumber(s.dayNumber);
-          if (s.nightNumber !== undefined) setNightNumber(s.nightNumber);
-          if (s.playersActions) setPlayersActions(s.playersActions);
-          if (s.fouls) setFouls(s.fouls);
-          if (s.techFouls) setTechFouls(s.techFouls);
-          if (s.removed) setRemoved(s.removed);
-          if (s.nightCheckHistory) setNightCheckHistory(s.nightCheckHistory);
-          if (s.votingHistory) setVotingHistory(s.votingHistory);
-          if (s.bestMove) setBestMove(s.bestMove);
-          if (s.firstKilledPlayer !== undefined) setFirstKilledPlayer(s.firstKilledPlayer);
-          if (s.highlightedPlayer !== undefined) setHighlightedPlayer(s.highlightedPlayer);
-          if (s.nightPhase !== undefined) setNightPhase(s.nightPhase);
-          if (s.nominations) setNominations(s.nominations);
-          if (s.winnerTeam) setWinnerTeam(s.winnerTeam);
-          if (s.playerScores) setPlayerScores(s.playerScores);
-          if (s.mainInfoText !== undefined) setMainInfoText(s.mainInfoText);
-          if (s.additionalInfoText !== undefined) setAdditionalInfoText(s.additionalInfoText);
-        }
-        if (data.state?.avatars) setAvatars(prev => ({ ...prev, ...data.state.avatars }));
-        ignoreFirstState = false;
-
-        if (pendingSendFullState) {
-          pendingSendFullState = false;
-          setTimeout(() => {
-            if (conn.connected) conn.sendFull(gameStateSnapshotRef.current());
-          }, 200);
-        }
+        setTimeout(() => {
+          if (conn.connected) conn.sendFull(gameStateSnapshotRef.current());
+        }, 100);
       },
-      onStateUpdate: (data) => {
-        if (data.players) setPlayers(data.players);
-        if (data.roles) setRoles(data.roles);
-        if (data.playersActions) setPlayersActions(data.playersActions);
-        if (data.fouls) setFouls(data.fouls);
-        if (data.techFouls) setTechFouls(data.techFouls);
-        if (data.removed) setRemoved(data.removed);
-        if (data.gamePhase) setGamePhase(data.gamePhase);
-        if (data.dayNumber !== undefined) setDayNumber(data.dayNumber);
-        if (data.nightNumber !== undefined) setNightNumber(data.nightNumber);
-        if (data.avatars) setAvatars(prev => ({ ...prev, ...data.avatars }));
-        if (data.highlightedPlayer !== undefined) setHighlightedPlayer(data.highlightedPlayer);
-        if (data.nightPhase !== undefined) setNightPhase(data.nightPhase);
-        if (data.bestMove) setBestMove(data.bestMove);
-        if (data.firstKilledPlayer !== undefined) setFirstKilledPlayer(data.firstKilledPlayer);
-        if (data.nominations) setNominations(data.nominations);
-        if (data.winnerTeam) setWinnerTeam(data.winnerTeam);
-        if (data.playerScores) setPlayerScores(data.playerScores);
-        if (data.mainInfoText !== undefined) setMainInfoText(data.mainInfoText);
-        if (data.additionalInfoText !== undefined) setAdditionalInfoText(data.additionalInfoText);
-      },
+      onStateUpdate: () => {},
       onError: (msg) => {
         setRoomError(msg);
         conn.close();
