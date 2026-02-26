@@ -253,33 +253,6 @@ export function GameScreen() {
               </div>
             )}
 
-            {/* Inline timer card (discussion / free seating) */}
-            {rolesDistributed && isTimerPhase && !winnerTeam && (
-              <div className={`relative rounded-2xl overflow-hidden glass-card-md mb-3 ${timerTimeLeft <= 10 && timerRunning ? '!border-red-500/20 !shadow-[0_0_20px_rgba(255,69,58,0.08)]' : ''}`}>
-                <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-[var(--accent-color)] to-indigo-500/80 transition-[width] duration-500 ease-linear opacity-30" style={{ width: `${timerProgress * 100}%` }} />
-                <div className="relative z-[1] flex items-center justify-between px-4 py-3">
-                  <div className={`text-2xl font-extrabold tabular-nums text-white/70 ${timerTimeLeft <= 10 && timerRunning ? 'text-red-400 animate-timer-pulse' : ''}`}>
-                    {formatTimer(timerTimeLeft)}
-                  </div>
-                  <div>
-                    {!timerRunning ? (
-                      <button className="px-4 py-2 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-gradient-to-r from-[rgba(168,85,247,0.5)] to-[rgba(99,102,241,0.5)] text-white border border-[rgba(168,85,247,0.3)] shadow-[0_0_12px_rgba(168,85,247,0.25)]" onClick={() => {
-                        if (gamePhase === 'discussion') startDiscussionTimer();
-                        else startFreeSeatingTimer();
-                        triggerHaptic('light');
-                      }}>Старт</button>
-                    ) : (
-                      <button className="px-4 py-2 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-amber-500/15 text-amber-400 border border-amber-500/25" onClick={() => {
-                        if (gamePhase === 'discussion') stopDiscussionTimer();
-                        else stopFreeSeatingTimer();
-                        triggerHaptic('light');
-                      }}>Пауза</button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Day speaker indicator */}
             {gamePhase === 'day' && rolesDistributed && !winnerTeam && (
               <>
@@ -330,7 +303,7 @@ export function GameScreen() {
 
             {/* Discussion/FreeSeating — inline skip slider + back button */}
             {rolesDistributed && isTimerPhase && !winnerTeam && (
-              <div className="flex flex-col gap-3 mt-3 animate-fade-in">
+              <div className="flex flex-col gap-3 mt-3 pb-16 animate-fade-in">
                 <div className="mt-3">
                   <InertiaSlider
                     label={
@@ -476,6 +449,45 @@ export function GameScreen() {
 
           </div>
         </>
+      )}
+
+      {/* Fixed bottom timer bar (discussion / free seating) */}
+      {rolesDistributed && isTimerPhase && !winnerTeam && createPortal(
+        <div
+          className="fixed z-30 left-0 right-0 max-w-[480px] mx-auto px-4 animate-nav-slide-in"
+          style={{ bottom: 'calc(12px + var(--safe-bottom, 0px))' }}
+        >
+          <div className={`relative rounded-2xl overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-300 ${timerTimeLeft <= 10 && timerRunning ? '!border-red-500/25 !shadow-[0_0_24px_rgba(255,69,58,0.15)]' : ''}`}
+            style={{ background: 'rgba(22,16,43,0.9)' }}>
+            <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-[var(--accent-color)] to-indigo-500/80 transition-[width] duration-500 ease-linear opacity-25 rounded-2xl" style={{ width: `${timerProgress * 100}%` }} />
+            <div className="relative z-[1] flex items-center justify-between px-5 py-3.5">
+              <div className="flex items-center gap-3">
+                <div className={`text-3xl font-extrabold tabular-nums ${timerTimeLeft <= 10 && timerRunning ? 'text-red-400 animate-timer-pulse' : 'text-white/80'}`}>
+                  {formatTimer(timerTimeLeft)}
+                </div>
+                <div className="text-[0.6rem] font-bold uppercase tracking-widest text-white/30">
+                  {phaseTitle}
+                </div>
+              </div>
+              <div>
+                {!timerRunning ? (
+                  <button className="px-5 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-gradient-to-r from-[rgba(168,85,247,0.5)] to-[rgba(99,102,241,0.5)] text-white border border-[rgba(168,85,247,0.3)] shadow-[0_0_12px_rgba(168,85,247,0.25)]" onClick={() => {
+                    if (gamePhase === 'discussion') startDiscussionTimer();
+                    else startFreeSeatingTimer();
+                    triggerHaptic('light');
+                  }}>Старт</button>
+                ) : (
+                  <button className="px-5 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-amber-500/15 text-amber-400 border border-amber-500/25" onClick={() => {
+                    if (gamePhase === 'discussion') stopDiscussionTimer();
+                    else stopFreeSeatingTimer();
+                    triggerHaptic('light');
+                  }}>Пауза</button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
