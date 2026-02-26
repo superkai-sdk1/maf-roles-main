@@ -5,7 +5,7 @@ import { getRoleLabel, getCityBestMoveMax } from '../constants/roles';
 import { triggerHaptic } from '../utils/haptics';
 import { NightTimerBar } from './NightTimerBar';
 import { DialerPad, RowPad, dialerBtn } from './DialerPad';
-import { Mic2, ChevronDown, RotateCcw } from 'lucide-react';
+import { Mic2, RotateCcw } from 'lucide-react';
 
 const PLAYER_COLORS = [
   'from-indigo-500 to-blue-600',
@@ -735,11 +735,6 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
               Убить
             </button>
           ) : null}
-
-          {/* Collapse indicator */}
-          {!isDead && gamePhase !== 'night' && (
-            <ChevronDown size={14} className="text-white/[0.06]" />
-          )}
         </div>
       </div>
     </div>
