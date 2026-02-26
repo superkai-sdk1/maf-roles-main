@@ -131,6 +131,7 @@ export const GameProvider = ({ children }) => {
   const [hideBestMove, setHideBestMove] = useState(false);
   const [highlightedPlayer, setHighlightedPlayer] = useState(null);
   const [autoExpandPlayer, setAutoExpandPlayer] = useState(null);
+  const [autoStartTimerRK, setAutoStartTimerRK] = useState(null);
   const [expandedCardRK, setExpandedCardRK] = useState(null);
 
   // === Room / WS ===
@@ -1490,6 +1491,11 @@ export const GameProvider = ({ children }) => {
       triggerHaptic('medium');
     } else {
       setCurrentDaySpeakerIndex(wrappedIdx);
+      const nextPlayer = activePlayers[wrappedIdx];
+      if (nextPlayer) {
+        setAutoExpandPlayer(nextPlayer.roleKey);
+        setAutoStartTimerRK(nextPlayer.roleKey);
+      }
       triggerHaptic('selection');
     }
   }, [currentDaySpeakerIndex, activePlayers, daySpeakerStartNum]);
@@ -1712,6 +1718,7 @@ export const GameProvider = ({ children }) => {
     hideRolesStatus, setHideRolesStatus, hideBestMove, setHideBestMove,
     highlightedPlayer, setHighlightedPlayer,
     autoExpandPlayer, setAutoExpandPlayer,
+    autoStartTimerRK, setAutoStartTimerRK,
     expandedCardRK, setExpandedCardRK,
     // Room/WS
     roomId, setRoomId, joinRoom, syncState, roomInput, setRoomInput,

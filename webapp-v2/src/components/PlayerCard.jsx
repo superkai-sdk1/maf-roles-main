@@ -13,6 +13,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
     nominations, toggleNomination, nominationsLocked,
     highlightedPlayer, setHighlightedPlayer,
     autoExpandPlayer, setAutoExpandPlayer,
+    autoStartTimerRK, setAutoStartTimerRK,
     expandedCardRK, setExpandedCardRK,
     playersActions, roles, tableOut,
     killedCardPhase, setKilledCardPhase, firstKilledPlayer,
@@ -24,6 +25,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
     advanceNightPhase,
     bestMove, toggleBestMove, acceptBestMove, bestMoveAccepted, canShowBestMove,
     startDaySpeakerFlow, nextDaySpeaker,
+    activePlayers, currentDaySpeakerIndex, setCurrentDaySpeakerIndex,
   } = useGame();
 
   const cardRef = useRef(null);
@@ -76,6 +78,13 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
     }, 400);
     return () => clearTimeout(timer);
   }, [isNextSpeaker, rk, expandedCardRK, setExpandedCardRK]);
+
+  useEffect(() => {
+    if (autoStartTimerRK === rk) {
+      setAutoStartTimerRK(null);
+      setTimeout(() => { start(); }, 350);
+    }
+  }, [autoStartTimerRK, rk, setAutoStartTimerRK, start]);
 
   const active = isPlayerActive(rk);
   const role = player.role;
@@ -548,10 +557,25 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
                 )}
               </div>
               <div className="text-[0.65rem] text-white/25 text-center mt-2">Клик: Старт/Пауза | Удержание: Сброс</div>
-              {isSpeaking && (
+              {(isRunning || isPaused) && (
                 <button
                   className="w-full mt-3 px-4 py-3 rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring"
-                  onClick={() => { nextDaySpeaker(); triggerHaptic('light'); }}
+                  onClick={() => {
+                    stop();
+                    if (currentDaySpeakerIndex >= 0) {
+                      nextDaySpeaker();
+                    } else {
+                      const myIdx = activePlayers.findIndex(p => p.roleKey === rk);
+                      const nextIdx = myIdx >= 0 ? (myIdx + 1) % activePlayers.length : 0;
+                      const nextPlayer = activePlayers[nextIdx];
+                      if (nextPlayer) {
+                        setCurrentDaySpeakerIndex(nextIdx);
+                        setAutoExpandPlayer(nextPlayer.roleKey);
+                        setAutoStartTimerRK(nextPlayer.roleKey);
+                      }
+                    }
+                    triggerHaptic('light');
+                  }}
                 >
                   Далее →
                 </button>
