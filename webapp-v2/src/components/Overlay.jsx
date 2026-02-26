@@ -37,8 +37,12 @@ export function Overlay() {
     return <OverlayLoading />;
   }
 
-  if (!hostConnected || !gameState.players?.length) {
-    return <OverlayWaiting code={roomCode} />;
+  if (!hostConnected) {
+    return <OverlayWaiting code={roomCode} status="waiting" />;
+  }
+
+  if (!gameState.players?.length) {
+    return <OverlayWaiting code={roomCode} status="connected" />;
   }
 
   return <OverlayGame state={gameState} />;
@@ -58,7 +62,7 @@ function OverlayLoading() {
 
 // ─── Waiting for host (shows code) ──────────────────────────────────────────
 
-function OverlayWaiting({ code }) {
+function OverlayWaiting({ code, status }) {
   return (
     <div style={styles.center}>
       <div style={styles.codeCard}>
@@ -68,7 +72,11 @@ function OverlayWaiting({ code }) {
             <span key={i} style={{ ...styles.codeDigit, animationDelay: `${i * 0.1}s` }}>{d}</span>
           ))}
         </div>
-        <div style={styles.codeHint}>Введите этот код в настройках панели</div>
+        {status === 'connected' ? (
+          <div style={{ ...styles.codeHint, color: 'rgba(52,211,153,0.8)' }}>Панель подключена, ожидание данных...</div>
+        ) : (
+          <div style={styles.codeHint}>Введите этот код в настройках панели</div>
+        )}
       </div>
     </div>
   );

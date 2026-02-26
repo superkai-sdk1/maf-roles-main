@@ -137,6 +137,7 @@ export const GameProvider = ({ children }) => {
   // === Room / WS ===
   const [roomId, setRoomId] = useState(null);
   const [roomInput, setRoomInput] = useState('');
+  const [roomError, setRoomError] = useState(null);
 
   // === Discussion / FreeSeating ===
   const [discussionTimeLeft, setDiscussionTimeLeft] = useState(60);
@@ -223,18 +224,34 @@ export const GameProvider = ({ children }) => {
   }, [playersActions, killedOnNight, nightNumber]);
 
   // =================== Real-time sync (Socket.IO) ===================
+  const gameStateSnapshotRef = useRef(null);
+  gameStateSnapshotRef.current = () => ({
+    players, roles, playersActions, fouls, techFouls, removed, avatars,
+    gamePhase, dayNumber, nightNumber, nightPhase,
+    highlightedPlayer, firstKilledPlayer, bestMove, bestMoveAccepted,
+    nominations, votingOrder, votingCurrentIndex, votingResults,
+    votingFinished, votingWinners, votingStage,
+    winnerTeam, playerScores, gameFinished,
+    mainInfoText, additionalInfoText, judgeNickname, judgeAvatar,
+    hideSeating, hideLeaveOrder, hideRolesStatus, hideBestMove,
+    cityMode, gameMode,
+  });
+
   const syncState = useCallback((partialState) => {
     if (socketRef.current) socketRef.current.sendUpdateDebounced(partialState);
   }, []);
 
   const joinRoom = useCallback((code, { skipInitialState = false } = {}) => {
     if (socketRef.current) socketRef.current.close();
+    setRoomError(null);
 
     let ignoreFirstState = skipInitialState;
+    let pendingSendFullState = true;
 
     const conn = createPanelConnection(code, {
       onJoined: (data) => {
         setRoomId(data.code);
+        setRoomError(null);
         if (data.state && !ignoreFirstState) {
           const s = data.state;
           if (s.players) setPlayers(s.players);
@@ -260,6 +277,13 @@ export const GameProvider = ({ children }) => {
         }
         if (data.state?.avatars) setAvatars(prev => ({ ...prev, ...data.state.avatars }));
         ignoreFirstState = false;
+
+        if (pendingSendFullState) {
+          pendingSendFullState = false;
+          setTimeout(() => {
+            if (conn.connected) conn.sendFull(gameStateSnapshotRef.current());
+          }, 200);
+        }
       },
       onStateUpdate: (data) => {
         if (data.players) setPlayers(data.players);
@@ -282,7 +306,11 @@ export const GameProvider = ({ children }) => {
         if (data.mainInfoText !== undefined) setMainInfoText(data.mainInfoText);
         if (data.additionalInfoText !== undefined) setAdditionalInfoText(data.additionalInfoText);
       },
-      onError: (msg) => { console.error('Socket.IO error:', msg); },
+      onError: (msg) => {
+        setRoomError(msg);
+        conn.close();
+        socketRef.current = null;
+      },
       onDisconnect: () => {},
     });
 
@@ -1758,7 +1786,7 @@ export const GameProvider = ({ children }) => {
     autoStartTimerRK, setAutoStartTimerRK,
     expandedCardRK, setExpandedCardRK,
     // Room/WS
-    roomId, setRoomId, joinRoom, disconnectRoom, syncState, roomInput, setRoomInput,
+    roomId, setRoomId, joinRoom, disconnectRoom, syncState, roomInput, setRoomInput, roomError, setRoomError,
     // Day Speaker
     currentDaySpeakerIndex, setCurrentDaySpeakerIndex,
     daySpeakerStartNum,

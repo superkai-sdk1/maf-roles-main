@@ -5,7 +5,7 @@ import { triggerHaptic } from '../utils/haptics';
 
 export function SettingsPanel() {
   const {
-    roomId, setRoomId, roomInput, setRoomInput, joinRoom, syncState, disconnectRoom,
+    roomId, setRoomId, roomInput, setRoomInput, joinRoom, syncState, disconnectRoom, roomError, setRoomError,
     selectedColorScheme, setSelectedColorScheme,
     darkMode, setDarkMode,
     mainInfoText, setMainInfoText,
@@ -23,8 +23,10 @@ export function SettingsPanel() {
   } = useGame();
 
   const handleJoinRoom = () => {
-    if (!roomInput?.trim()) return;
-    joinRoom(roomInput.trim());
+    const code = (roomInput || '').trim();
+    if (!code || code.length !== 4) return;
+    setRoomError(null);
+    joinRoom(code);
     triggerHaptic('success');
   };
 
@@ -69,10 +71,11 @@ export function SettingsPanel() {
             <div className="flex gap-2">
               <input
                 type="text"
+                inputMode="numeric"
                 placeholder="4-значный код"
                 maxLength={4}
                 value={roomInput || ''}
-                onChange={e => setRoomInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onChange={e => { setRoomInput(e.target.value.replace(/\D/g, '').slice(0, 4)); setRoomError(null); }}
                 onKeyDown={e => e.key === 'Enter' && handleJoinRoom()}
                 className="flex-1 input-field text-center text-lg tracking-[0.3em] font-bold"
               />
@@ -83,6 +86,11 @@ export function SettingsPanel() {
                 Подключить
               </button>
             </div>
+            {roomError && (
+              <div className="text-[0.75em] font-bold mt-2 py-1.5 px-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                {roomError === 'Invalid room code' ? 'Неверный код комнаты' : roomError}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -25,6 +25,10 @@ export function createPanelConnection(roomCode, { onJoined, onStateUpdate, onErr
     socket.emit('panel:join', { code: roomCode });
   });
 
+  socket.on('connect_error', (err) => {
+    onError?.('Не удалось подключиться к серверу');
+  });
+
   socket.on('panel:joined', (data) => {
     onJoined?.(data);
   });
