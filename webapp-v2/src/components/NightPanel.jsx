@@ -1,9 +1,52 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { SlideConfirm } from './SlideConfirm';
 import { triggerHaptic } from '../utils/haptics';
-import { NightTimerBar } from './NightTimerBar';
 import { DialerPad, dialerBtn } from './DialerPad';
+import { Crosshair, Search, Star, SkipForward, XCircle, Heart } from 'lucide-react';
+
+const PHASE_CONFIG = {
+  kill: {
+    subtitle: 'Мафия убивает',
+    hint: 'Выберите жертву',
+    accent: 'from-red-600/15 to-red-900/30',
+    textColor: 'text-red-400',
+    iconColor: 'text-red-500',
+    Icon: Crosshair,
+    actionText: 'Промах',
+    ActionIcon: XCircle,
+  },
+  don: {
+    subtitle: 'Проверка Дона',
+    hint: 'Ищет Шерифа',
+    accent: 'from-purple-600/15 to-purple-900/30',
+    textColor: 'text-purple-400',
+    iconColor: 'text-purple-500',
+    Icon: Search,
+    actionText: 'Пропуск',
+    ActionIcon: SkipForward,
+  },
+  sheriff: {
+    subtitle: 'Проверка Шерифа',
+    hint: 'Ищет Мафию',
+    accent: 'from-yellow-600/15 to-yellow-900/30',
+    textColor: 'text-yellow-400',
+    iconColor: 'text-yellow-500',
+    Icon: Star,
+    actionText: 'Пропуск',
+    ActionIcon: SkipForward,
+  },
+  doctor: {
+    subtitle: 'Доктор лечит',
+    hint: 'Выберите пациента',
+    accent: 'from-green-600/15 to-green-900/30',
+    textColor: 'text-green-400',
+    iconColor: 'text-green-500',
+    Icon: Heart,
+    actionText: 'Пропуск',
+    ActionIcon: SkipForward,
+  },
+};
 
 export const NightPanel = () => {
   const {
@@ -58,135 +101,156 @@ export const NightPanel = () => {
 
   return (
     <div className="flex flex-col gap-3.5 animate-fade-in">
-      {/* Step 1: Mafia Kill */}
+      {/* Mafia Kill */}
       {(!nightPhase || nightPhase === 'kill') && (
-        <div className="relative z-[1] p-4 rounded-2xl glass-card-md !border-red-500/20 animate-glass-reveal">
-          {showTimer && <NightTimerBar duration={15} />}
-          <h3 className="text-base font-extrabold text-red-400 text-center mb-1">
-            Мафия убивает
-          </h3>
-          <p className="text-xs text-white/35 text-center mb-3.5">
-            Выберите жертву
-          </p>
-          <DialerGrid allPlayers={allPlayers} isPlayerActive={isPlayerActive} onSelect={handleKill} borderColor="rgba(255,69,58,0.15)" />
-          <button onClick={handleMiss}
-            className="w-full mt-3 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08]
-              text-white/40 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring">
-            ✕ Промах
-          </button>
-        </div>
+        <PhaseCard phase="kill" timerDuration={showTimer ? 15 : 0}>
+          <NightGrid
+            players={allPlayers}
+            isDisabled={(p) => !isPlayerActive(p.roleKey)}
+            onSelect={handleKill}
+            onAction={handleMiss}
+            config={PHASE_CONFIG.kill}
+          />
+        </PhaseCard>
       )}
 
-      {/* Step 2: Don Check */}
+      {/* Don Check */}
       {nightPhase === 'don' && (
-        <NightCheckStep
-          title="Проверка Дона" subtitle="Ищет Шерифа" icon="🔍"
-          accentColor="rgba(155,89,182,0.8)" borderColor="rgba(155,89,182,0.3)" bgColor="rgba(155,89,182,0.05)"
-          result={checkerResult} allPlayers={allPlayers}
-          onCheck={(num) => { performNightCheck(donKey, num); triggerHaptic('medium'); }}
-          onSkip={() => { advanceNightPhase(); triggerHaptic('light'); }}
-          timerDuration={showTimer ? 10 : 0}
-        />
+        <PhaseCard phase="don" timerDuration={showTimer ? 10 : 0}>
+          {checkerResult ? (
+            <div className="text-center py-5 animate-scale-in">
+              <div className="text-xl font-extrabold">{checkerResult.result}</div>
+              <div className="text-sm text-white/40 mt-1">Игрок #{checkerResult.target}</div>
+            </div>
+          ) : (
+            <NightGrid
+              players={allPlayers}
+              isDisabled={(p) => !isPlayerActive(p.roleKey)}
+              onSelect={(num) => { performNightCheck(donKey, num); triggerHaptic('medium'); }}
+              onAction={() => { advanceNightPhase(); triggerHaptic('light'); }}
+              config={PHASE_CONFIG.don}
+            />
+          )}
+        </PhaseCard>
       )}
 
-      {/* Step 3: Sheriff Check */}
+      {/* Sheriff Check */}
       {nightPhase === 'sheriff' && (
-        <NightCheckStep
-          title="Проверка Шерифа" subtitle="Ищет Мафию" icon="⭐"
-          accentColor="rgba(255,213,79,0.8)" borderColor="rgba(255,213,79,0.3)" bgColor="rgba(255,213,79,0.05)"
-          result={checkerResult} allPlayers={allPlayers}
-          onCheck={(num) => { performNightCheck(sheriffKey, num); triggerHaptic('medium'); }}
-          onSkip={() => { advanceNightPhase(); triggerHaptic('light'); }}
-          timerDuration={showTimer ? 10 : 0}
-        />
+        <PhaseCard phase="sheriff" timerDuration={showTimer ? 10 : 0}>
+          {checkerResult ? (
+            <div className="text-center py-5 animate-scale-in">
+              <div className="text-xl font-extrabold">{checkerResult.result}</div>
+              <div className="text-sm text-white/40 mt-1">Игрок #{checkerResult.target}</div>
+            </div>
+          ) : (
+            <NightGrid
+              players={allPlayers}
+              isDisabled={(p) => !isPlayerActive(p.roleKey)}
+              onSelect={(num) => { performNightCheck(sheriffKey, num); triggerHaptic('medium'); }}
+              onAction={() => { advanceNightPhase(); triggerHaptic('light'); }}
+              config={PHASE_CONFIG.sheriff}
+            />
+          )}
+        </PhaseCard>
       )}
 
-      {/* Doctor heal (City mode) */}
+      {/* Doctor Heal (City mode) */}
       {nightPhase === 'doctor' && cityMode && doctorKey && (
-        <div className="relative z-[1] p-4 rounded-2xl glass-card-md animate-glass-reveal"
-          style={{ borderColor: 'rgba(76,175,80,0.3)' }}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[0.9em] font-bold text-green-400 flex items-center gap-2">
-              💊 Доктор лечит
-            </h3>
-            <button onClick={() => { advanceNightPhase(); triggerHaptic('light'); }}
-              className="px-3.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]
-                text-white/50 text-xs font-bold active:scale-95 transition-transform duration-150 ease-spring">
-              Пропустить
-            </button>
-          </div>
+        <PhaseCard phase="doctor" timerDuration={0}>
           {doctorHeal ? (
-            <div className="text-center py-5">
+            <div className="text-center py-5 animate-scale-in">
               <div className="text-lg font-bold text-green-400">Лечит #{doctorHeal.target}</div>
             </div>
           ) : (
             <>
               {doctorLastHealTarget && (
-                <p className="text-[0.7em] text-white/40 mb-2">Нельзя лечить #{doctorLastHealTarget} (лечил прошлой ночью)</p>
+                <p className="text-[0.7em] text-white/40 mb-3 text-center">
+                  Нельзя лечить #{doctorLastHealTarget} (лечил прошлой ночью)
+                </p>
               )}
-              <DialerGrid allPlayers={allPlayers.filter(p => isPlayerActive(p.roleKey) && canDoctorHealTarget(p.num))}
-                isPlayerActive={() => true} onSelect={handleDoctorHeal} borderColor="rgba(76,175,80,0.2)" />
+              <NightGrid
+                players={allPlayers}
+                isDisabled={(p) => !isPlayerActive(p.roleKey) || !canDoctorHealTarget(p.num)}
+                onSelect={handleDoctorHeal}
+                onAction={() => { advanceNightPhase(); triggerHaptic('light'); }}
+                config={PHASE_CONFIG.doctor}
+              />
             </>
           )}
-        </div>
+        </PhaseCard>
       )}
 
-      {/* Step 4: Night Done */}
+      {/* Night Done */}
       {nightPhase === 'done' && (
         <div className="flex flex-col gap-3.5 animate-fade-in">
-          <div className="relative z-[1] p-5 rounded-2xl glass-card-md text-center"
+          {/* Kill summary */}
+          <div
+            className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl"
             style={{
-              borderColor: killedThisNight.length > 0 ? 'rgba(255,69,58,0.3)' : 'rgba(255,255,255,0.1)',
-              background: killedThisNight.length > 0 ? 'rgba(255,69,58,0.05)' : 'rgba(255,255,255,0.02)',
-            }}>
-            {killedThisNight.length > 0 ? (
-              <>
-                <div className="text-[0.7em] text-white/35 uppercase tracking-wider mb-1.5">Убили</div>
-                <div className="text-[2em] font-extrabold text-red-400">
-                  {killedThisNight.map(num => `#${num}`).join(', ')}
-                </div>
-                {killedThisNight.map(num => {
-                  const p = tableOut[num - 1];
-                  return p?.login ? (
-                    <div key={num} className="text-sm text-white/40 mt-1">{p.login}</div>
-                  ) : null;
-                })}
-              </>
-            ) : (
-              <>
-                <div className="text-[0.7em] text-white/35 uppercase tracking-wider mb-1.5">Промах</div>
-                <div className="text-xl font-bold text-white/30">Никто не убит</div>
-              </>
-            )}
+              borderColor: killedThisNight.length > 0 ? 'rgba(255,69,58,0.3)' : undefined,
+            }}
+          >
+            <div className={`absolute inset-0 bg-gradient-to-b ${
+              killedThisNight.length > 0 ? 'from-red-600/15 to-red-900/30' : 'from-white/5 to-transparent'
+            } opacity-30`} />
+            <div className="relative p-6 text-center">
+              {killedThisNight.length > 0 ? (
+                <>
+                  <div className="text-[0.7em] text-white/35 uppercase tracking-wider mb-1.5">Убили</div>
+                  <div className="text-[2em] font-extrabold text-red-400">
+                    {killedThisNight.map(num => `#${num}`).join(', ')}
+                  </div>
+                  {killedThisNight.map(num => {
+                    const p = tableOut[num - 1];
+                    return p?.login ? (
+                      <div key={num} className="text-sm text-white/40 mt-1">{p.login}</div>
+                    ) : null;
+                  })}
+                </>
+              ) : (
+                <>
+                  <div className="text-[0.7em] text-white/35 uppercase tracking-wider mb-1.5">Промах</div>
+                  <div className="text-xl font-bold text-white/30">Никто не убит</div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Best Move */}
           {firstKilledPlayer && !bestMoveAccepted && killedThisNight.length > 0 && (
-            <div className="relative z-[1] p-4 rounded-2xl glass-card-md animate-fade-in"
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl animate-fade-in"
               style={{ borderColor: 'rgba(255,214,10,0.3)' }}>
-              {showTimer && <NightTimerBar duration={15} />}
-              <h3 className="text-base font-extrabold text-yellow-400 text-center mb-1">Лучший ход</h3>
-              <p className="text-xs text-white/35 text-center mb-3.5">Убитый называет 3 подозреваемых</p>
-              <DialerPad items={allPlayers} className="mb-3" renderButton={(p) => {
-                const selected = bestMove.includes(p.num);
-                return (
-                  <button
-                    onClick={() => { toggleBestMove(p.num); triggerHaptic('selection'); }}
-                    className={`${dialerBtn.base} ${selected ? dialerBtn.selected : dialerBtn.normal}`}>
-                    {p.num}
-                  </button>
-                );
-              }} />
-              {bestMove.length > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-yellow-400">ЛХ: {bestMove.join(', ')}</span>
-                  <button onClick={() => { acceptBestMove(firstKilledPlayer); triggerHaptic('success'); }}
-                    className="px-4 py-2 rounded-xl bg-accent text-white text-sm font-bold
-                      active:scale-95 transition-transform duration-150 ease-spring">
-                    ✓ Принять
-                  </button>
+              <div className="absolute inset-0 bg-gradient-to-b from-yellow-600/15 to-yellow-900/30 opacity-30" />
+              <div className="relative p-6">
+                {showTimer && <PhaseTimer duration={15} textColorClass="text-yellow-400" />}
+                <div className="flex items-center gap-2 mb-0.5">
+                  <Star className="w-4 h-4 text-yellow-500" />
+                  <h2 className="text-xl font-bold tracking-tight text-yellow-400">Лучший ход</h2>
                 </div>
-              )}
+                <p className="text-slate-400 text-[12px] font-medium ml-6 mb-4">
+                  Убитый называет 3 подозреваемых
+                </p>
+                <DialerPad items={allPlayers} className="mb-3" renderButton={(p) => {
+                  const selected = bestMove.includes(p.num);
+                  return (
+                    <button
+                      onClick={() => { toggleBestMove(p.num); triggerHaptic('selection'); }}
+                      className={`${dialerBtn.base} ${selected ? dialerBtn.selected : dialerBtn.normal}`}>
+                      {p.num}
+                    </button>
+                  );
+                }} />
+                {bestMove.length > 0 && (
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-sm font-bold text-yellow-400">ЛХ: {bestMove.join(', ')}</span>
+                    <button onClick={() => { acceptBestMove(firstKilledPlayer); triggerHaptic('success'); }}
+                      className="px-4 py-2 rounded-xl bg-accent text-white text-sm font-bold
+                        active:scale-95 transition-transform duration-150 ease-spring">
+                      ✓ Принять
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -206,29 +270,33 @@ export const NightPanel = () => {
 
       {/* Check history */}
       {nightCheckHistory.length > 0 && nightPhase === 'done' && (
-        <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
-          <h4 className="text-[0.7em] font-bold text-white/40 uppercase tracking-wider mb-2.5">История проверок</h4>
-          <div className="flex flex-col gap-1.5">
-            {nightCheckHistory.map((h, i) => (
-              <div key={i} className="flex justify-between text-[0.8em]">
-                <span style={{ color: h.checkerRole === 'sheriff' ? '#ffd54f' : '#ce93d8' }}>
-                  Н{h.night} {h.checkerRole === 'sheriff' ? '★' : '◆'} → #{h.target} {h.targetLogin}
-                </span>
-                <span className="font-bold" style={{ color: h.found ? '#30d158' : 'rgba(255,255,255,0.35)' }}>{h.result}</span>
-              </div>
-            ))}
+        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl">
+          <div className="relative p-6">
+            <h4 className="text-[0.7em] font-bold text-white/40 uppercase tracking-wider mb-2.5">История проверок</h4>
+            <div className="flex flex-col gap-1.5">
+              {nightCheckHistory.map((h, i) => (
+                <div key={i} className="flex justify-between text-[0.8em]">
+                  <span style={{ color: h.checkerRole === 'sheriff' ? '#ffd54f' : '#ce93d8' }}>
+                    Н{h.night} {h.checkerRole === 'sheriff' ? '★' : '◆'} → #{h.target} {h.targetLogin}
+                  </span>
+                  <span className="font-bold" style={{ color: h.found ? '#30d158' : 'rgba(255,255,255,0.35)' }}>{h.result}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       {/* Doctor heal history */}
       {cityMode && doctorHealHistory.length > 0 && nightPhase === 'done' && (
-        <div className="relative z-[1] p-4 rounded-2xl glass-card-md">
-          <h4 className="text-[0.7em] font-bold text-white/40 uppercase tracking-wider mb-2.5">История лечения</h4>
-          <div className="flex flex-col gap-1">
-            {doctorHealHistory.map((h, i) => (
-              <div key={i} className="text-[0.8em] text-green-400">Н{h.night} → #{h.target}</div>
-            ))}
+        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl">
+          <div className="relative p-6">
+            <h4 className="text-[0.7em] font-bold text-white/40 uppercase tracking-wider mb-2.5">История лечения</h4>
+            <div className="flex flex-col gap-1">
+              {doctorHealHistory.map((h, i) => (
+                <div key={i} className="text-[0.8em] text-green-400">Н{h.night} → #{h.target}</div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -236,55 +304,111 @@ export const NightPanel = () => {
   );
 };
 
-function DialerGrid({ allPlayers, isPlayerActive, onSelect, borderColor }) {
+/* =================== Phase Card =================== */
+
+function PhaseCard({ phase, timerDuration, children }) {
+  const cfg = PHASE_CONFIG[phase];
+  const PhaseIcon = cfg.Icon;
+
   return (
-    <DialerPad items={allPlayers} renderButton={(p) => {
-      const alive = isPlayerActive(p.roleKey);
-      return (
-        <button
-          onClick={() => alive && onSelect(p.num)}
-          disabled={!alive}
-          className={`${dialerBtn.base} ${!alive ? dialerBtn.disabled : dialerBtn.normal}`}
-          style={{ borderColor: alive ? borderColor : undefined }}>
-          {p.num}
-        </button>
-      );
-    }} />
+    <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl animate-fade-in">
+      <div className={`absolute inset-0 bg-gradient-to-b ${cfg.accent} opacity-30`} />
+      <div className="relative p-6 flex flex-col items-center">
+        {timerDuration > 0 && <PhaseTimer duration={timerDuration} textColorClass={cfg.textColor} />}
+        <div className="w-full mb-6">
+          <div className="flex items-center gap-2 mb-0.5">
+            <PhaseIcon className={`w-4 h-4 ${cfg.iconColor}`} />
+            <h2 className={`text-xl font-bold tracking-tight ${cfg.textColor}`}>{cfg.subtitle}</h2>
+          </div>
+          <p className="text-slate-400 text-[12px] font-medium ml-6">{cfg.hint}</p>
+        </div>
+        {children}
+      </div>
+    </div>
   );
 }
 
-function NightCheckStep({ title, subtitle, icon, accentColor, borderColor, bgColor, result, allPlayers, onCheck, onSkip, timerDuration }) {
+/* =================== Phase Timer =================== */
+
+function PhaseTimer({ duration, textColorClass }) {
+  const startRef = useRef(Date.now());
+  const rafRef = useRef(null);
+  const [timeLeft, setTimeLeft] = useState(duration);
+
+  useEffect(() => {
+    startRef.current = Date.now();
+    setTimeLeft(duration);
+    const tick = () => {
+      const elapsed = (Date.now() - startRef.current) / 1000;
+      const remaining = Math.max(0, duration - elapsed);
+      setTimeLeft(remaining);
+      if (remaining > 0) rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [duration]);
+
+  const progress = duration > 0 ? (timeLeft / duration) * 100 : 0;
+  const secs = Math.ceil(timeLeft);
+
   return (
-    <div className="relative z-[1] p-4 rounded-2xl glass-card-md animate-glass-reveal"
-      style={{ borderColor }}>
-      {timerDuration > 0 && <NightTimerBar duration={timerDuration} />}
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h3 className="text-base font-extrabold flex items-center gap-2" style={{ color: accentColor }}>
-            {icon} {title}
-          </h3>
-          {subtitle && <p className="text-[0.7em] text-white/40 mt-0.5">{subtitle}</p>}
-        </div>
-        <button onClick={onSkip}
-          className="px-3.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]
-            text-white/50 text-xs font-bold active:scale-95 transition-transform duration-150 ease-spring">
-          Пропустить
-        </button>
+    <div className="w-full mb-6 mt-1">
+      <div className="flex justify-between items-end mb-1.5 px-1">
+        <span className={`text-[10px] font-bold uppercase tracking-widest opacity-40 ${textColorClass}`}>Таймер</span>
+        <span className={`text-[11px] font-mono font-bold ${textColorClass} opacity-80`}>
+          00:{secs < 10 ? `0${secs}` : secs}
+        </span>
       </div>
-      {result ? (
-        <div className="text-center py-5 animate-scale-in">
-          <div className="text-xl font-extrabold">{result.result}</div>
-          <div className="text-sm text-white/40 mt-1">Игрок #{result.target}</div>
+      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full ${textColorClass} bg-current shadow-[0_0_8px_rgba(255,255,255,0.2)]`}
+          style={{ width: `${progress}%`, transition: 'none' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* =================== Night Grid =================== */
+
+function NightGrid({ players, isDisabled, onSelect, onAction, config }) {
+  const first9 = players.slice(0, 9);
+  const player10 = players.length >= 10 ? players[9] : null;
+
+  const renderBtn = (p) => {
+    const disabled = isDisabled(p);
+    return (
+      <button
+        key={p.num}
+        onClick={() => !disabled && onSelect(p.num)}
+        disabled={disabled}
+        className={`h-14 rounded-xl flex items-center justify-center text-lg font-bold transition-all duration-200 border ${
+          disabled
+            ? 'bg-slate-800/10 border-white/5 text-white/15 opacity-30 pointer-events-none'
+            : 'bg-slate-800/30 border-white/5 text-slate-400 hover:border-white/20 hover:text-white active:scale-95'
+        }`}
+      >
+        {p.num}
+      </button>
+    );
+  };
+
+  return (
+    <div className="grid grid-cols-3 gap-3 w-full">
+      {first9.map(renderBtn)}
+      {player10 && <div className="h-14" />}
+      {player10 && renderBtn(player10)}
+      <button
+        onClick={onAction}
+        className="h-14 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-slate-300 hover:bg-white/10 transition-colors group active:scale-95"
+      >
+        <div className="mb-0.5 opacity-70 group-hover:scale-110 transition-transform">
+          <config.ActionIcon className="w-4 h-4" />
         </div>
-      ) : (
-        <DialerPad items={allPlayers} renderButton={(p) => (
-          <button onClick={() => onCheck(p.num)}
-            className={`${dialerBtn.base} ${dialerBtn.normal}`}
-            style={{ borderColor }}>
-            {p.num}
-          </button>
-        )} />
-      )}
+        <span className="text-[9px] font-bold uppercase tracking-tighter opacity-60">
+          {config.actionText}
+        </span>
+      </button>
     </div>
   );
 }
