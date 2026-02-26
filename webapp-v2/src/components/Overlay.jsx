@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createOverlayConnection } from '../services/socket';
+import { COLOR_SCHEMES } from '../constants/themes';
+import { getRoleLabel, isBlackRole } from '../constants/roles';
 
 const INACTIVE = ['killed', 'voted', 'removed', 'tech_fall_removed', 'fall_removed'];
 
@@ -13,6 +15,10 @@ function mergeState(prev, update) {
     }
   }
   return next;
+}
+
+function getTheme(key) {
+  return COLOR_SCHEMES.find(c => c.key === key) || COLOR_SCHEMES[0];
 }
 
 export function Overlay() {
@@ -33,49 +39,51 @@ export function Overlay() {
     return () => conn.close();
   }, []);
 
-  if (!roomCode) {
-    return <OverlayLoading />;
-  }
+  const theme = getTheme(gameState.selectedColorScheme);
 
-  if (!hostConnected) {
-    return <OverlayWaiting code={roomCode} status="waiting" />;
-  }
+  if (!roomCode) return <OverlayLoading theme={theme} />;
+  if (!hostConnected) return <OverlayWaiting code={roomCode} status="waiting" theme={theme} />;
+  if (!gameState.players?.length) return <OverlayWaiting code={roomCode} status="connected" theme={theme} />;
 
-  if (!gameState.players?.length) {
-    return <OverlayWaiting code={roomCode} status="connected" />;
-  }
-
-  return <OverlayGame state={gameState} />;
+  return <OverlayGame state={gameState} theme={theme} />;
 }
 
-// ─── Loading screen ──────────────────────────────────────────────────────────
+// ─── Loading ─────────────────────────────────────────────────────────────────
 
-function OverlayLoading() {
+function OverlayLoading({ theme }) {
   return (
-    <div style={styles.center}>
-      <div style={{ ...styles.pulse, fontSize: 18, color: 'rgba(255,255,255,0.4)' }}>
+    <div className="ov-center">
+      <div className="ov-pulse" style={{ fontSize: 18, color: 'rgba(255,255,255,0.4)' }}>
         Подключение...
       </div>
     </div>
   );
 }
 
-// ─── Waiting for host (shows code) ──────────────────────────────────────────
+// ─── Waiting (code screen) ───────────────────────────────────────────────────
 
-function OverlayWaiting({ code, status }) {
+function OverlayWaiting({ code, status, theme }) {
   return (
-    <div style={styles.center}>
-      <div style={styles.codeCard}>
-        <div style={styles.codeLabel}>Код комнаты</div>
-        <div style={styles.codeDigits}>
+    <div className="ov-center">
+      <div className="ov-code-card">
+        <div className="ov-code-label">Код комнаты</div>
+        <div className="ov-code-digits">
           {code.split('').map((d, i) => (
-            <span key={i} style={{ ...styles.codeDigit, animationDelay: `${i * 0.1}s` }}>{d}</span>
+            <span
+              key={i}
+              className="ov-code-digit"
+              style={{ animationDelay: `${i * 0.1}s`, borderColor: `${theme.accent}30` }}
+            >
+              {d}
+            </span>
           ))}
         </div>
         {status === 'connected' ? (
-          <div style={{ ...styles.codeHint, color: 'rgba(52,211,153,0.8)' }}>Панель подключена, ожидание данных...</div>
+          <div className="ov-code-hint" style={{ color: 'rgba(52,211,153,0.8)' }}>
+            Панель подключена, ожидание данных...
+          </div>
         ) : (
-          <div style={styles.codeHint}>Введите этот код в настройках панели</div>
+          <div className="ov-code-hint">Введите этот код в настройках панели</div>
         )}
       </div>
     </div>
@@ -84,7 +92,7 @@ function OverlayWaiting({ code, status }) {
 
 // ─── Game overlay ────────────────────────────────────────────────────────────
 
-function OverlayGame({ state }) {
+function OverlayGame({ state, theme }) {
   const {
     players = [], roles = {}, playersActions = {}, fouls = {}, techFouls = {},
     removed = {}, avatars = {},
@@ -100,16 +108,25 @@ function OverlayGame({ state }) {
     cityMode, gameMode,
   } = state;
 
+  const accent = theme.accent;
+  const grad0 = theme.gradient[0];
+  const grad1 = theme.gradient[1];
+
   const phaseLabel = getPhaseLabel(gamePhase, dayNumber, nightNumber, cityMode);
   const nightLabel = nightPhase ? getNightPhaseLabel(nightPhase) : null;
 
   const tableOut = players.map((p, i) => {
     const rk = p.roleKey || `1-1-${i + 1}`;
     const action = playersActions[rk] || null;
+    const role = roles[rk] || null;
     const isActive = !action || !INACTIVE.includes(action);
     const isHighlighted = highlightedPlayer === rk;
     const isFirstKilled = firstKilledPlayer === rk;
-    return { ...p, num: i + 1, rk, action, isActive, isHighlighted, isFirstKilled, fouls: fouls[rk] || 0, techFouls: techFouls[rk] || 0, avatar: avatars[p.login] || p.avatar_link };
+    return {
+      ...p, num: i + 1, rk, action, role, isActive, isHighlighted, isFirstKilled,
+      fouls: fouls[rk] || 0, techFouls: techFouls[rk] || 0,
+      avatar: avatars[p.login] || p.avatar_link,
+    };
   });
 
   const aliveCount = tableOut.filter(p => p.isActive).length;
@@ -117,73 +134,99 @@ function OverlayGame({ state }) {
   const showBestMove = !hideBestMove && bestMove.length > 0 && firstKilledPlayer;
 
   return (
-    <div style={styles.overlayRoot}>
-      {/* Phase banner */}
-      <div style={styles.phaseBanner}>
-        <div style={styles.phaseText}>{phaseLabel}</div>
-        {nightLabel && <div style={styles.nightPhaseText}>{nightLabel}</div>}
-        <div style={styles.aliveText}>{aliveCount} / {players.length}</div>
+    <div className="ov-root">
+      {/* Top area: phase + info + voting + best move */}
+      <div className="ov-top">
+        {/* Phase banner */}
+        <div className="ov-phase" style={{ borderColor: `${accent}20` }}>
+          <div className="ov-phase-dot" style={{ background: accent }} />
+          <div className="ov-phase-text">{phaseLabel}</div>
+          {nightLabel && <div className="ov-phase-sub">{nightLabel}</div>}
+          <div className="ov-phase-alive">{aliveCount}/{players.length}</div>
+        </div>
+
+        {mainInfoText && (
+          <div className="ov-info" style={{ borderColor: `${accent}15` }}>{mainInfoText}</div>
+        )}
+        {additionalInfoText && (
+          <div className="ov-info-sm">{additionalInfoText}</div>
+        )}
+
+        {/* Voting */}
+        {showVoting && (
+          <div className="ov-voting">
+            <div className="ov-section-title">
+              {votingFinished ? 'Итоги голосования' : `Голосование${votingStage === 'tie' ? ' (ничья)' : votingStage === 'lift' ? ' (подъём)' : ''}`}
+            </div>
+            <div className="ov-voting-list">
+              {votingOrder.map(num => {
+                const p = tableOut[num - 1];
+                if (!p) return null;
+                const votes = votingResults[String(num)];
+                const voteCount = Array.isArray(votes) ? votes.length : (typeof votes === 'number' ? votes : 0);
+                const isWinner = votingWinners.includes(num);
+                return (
+                  <div
+                    key={num}
+                    className="ov-voting-row"
+                    style={isWinner ? { background: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.3)' } : {}}
+                  >
+                    <span className="ov-voting-num" style={{ color: accent }}>{num}</span>
+                    <span className="ov-voting-name">{p.login || `Игрок ${num}`}</span>
+                    <span className="ov-voting-votes">{voteCount}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Best move */}
+        {showBestMove && (
+          <div className="ov-bestmove">
+            <div className="ov-section-title">Лучший ход{bestMoveAccepted ? ' (принят)' : ''}</div>
+            <div className="ov-bestmove-nums">
+              {bestMove.map(n => (
+                <span key={n} className="ov-bestmove-num" style={{ borderColor: `${accent}30` }}>{n}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Winner */}
+        {winnerTeam && (
+          <div
+            className="ov-winner"
+            style={{ background: winnerTeam === 'mafia' ? 'rgba(220,38,38,0.85)' : 'rgba(34,197,94,0.85)' }}
+          >
+            {winnerTeam === 'mafia' ? 'Победа мафии' : 'Победа мирных'}
+          </div>
+        )}
       </div>
 
-      {/* Main info text */}
-      {mainInfoText && <div style={styles.infoText}>{mainInfoText}</div>}
-      {additionalInfoText && <div style={styles.infoTextSm}>{additionalInfoText}</div>}
-
-      {/* Player table */}
+      {/* Bottom: player cards */}
       {!hideSeating && (
-        <div style={styles.playersGrid}>
+        <div className="ov-players">
           {tableOut.map(p => (
-            <PlayerCard key={p.rk} player={p} showScore={gameFinished} score={playerScores[p.rk]} />
+            <PlayerCard
+              key={p.rk}
+              player={p}
+              accent={accent}
+              grad0={grad0}
+              grad1={grad1}
+              showScore={gameFinished}
+              score={playerScores[p.rk]}
+            />
           ))}
-        </div>
-      )}
-
-      {/* Voting */}
-      {showVoting && (
-        <div style={styles.votingSection}>
-          <div style={styles.sectionTitle}>
-            {votingFinished ? 'Итоги голосования' : `Голосование${votingStage === 'tie' ? ' (ничья)' : votingStage === 'lift' ? ' (подъём)' : ''}`}
-          </div>
-          <div style={styles.votingCandidates}>
-            {votingOrder.map(num => {
-              const p = tableOut[num - 1];
-              if (!p) return null;
-              const votes = votingResults[String(num)];
-              const voteCount = Array.isArray(votes) ? votes.length : (typeof votes === 'number' ? votes : 0);
-              const isWinner = votingWinners.includes(num);
-              return (
-                <div key={num} style={{ ...styles.votingCandidate, ...(isWinner ? styles.votingWinner : {}) }}>
-                  <span style={styles.votingNum}>{num}</span>
-                  <span style={styles.votingName}>{p.login || `Игрок ${num}`}</span>
-                  <span style={styles.votingVotes}>{voteCount}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Best move */}
-      {showBestMove && (
-        <div style={styles.bestMoveSection}>
-          <div style={styles.sectionTitle}>Лучший ход{bestMoveAccepted ? ' (принят)' : ''}</div>
-          <div style={styles.bestMoveNums}>
-            {bestMove.map(n => <span key={n} style={styles.bestMoveNum}>{n}</span>)}
-          </div>
-        </div>
-      )}
-
-      {/* Winner */}
-      {winnerTeam && (
-        <div style={{ ...styles.winnerBanner, background: winnerTeam === 'mafia' ? 'rgba(220,38,38,0.85)' : 'rgba(34,197,94,0.85)' }}>
-          {winnerTeam === 'mafia' ? 'Победа мафии' : 'Победа мирных'}
         </div>
       )}
 
       {/* Judge */}
       {judgeNickname && (
-        <div style={styles.judgeBar}>
-          {judgeAvatar && <img src={judgeAvatar} alt="" style={styles.judgeAvatar} onError={e => { e.target.style.display = 'none'; }} />}
+        <div className="ov-judge">
+          {judgeAvatar && (
+            <img src={judgeAvatar} alt="" className="ov-judge-avatar" onError={e => { e.target.style.display = 'none'; }} />
+          )}
           <span>{judgeNickname}</span>
         </div>
       )}
@@ -191,45 +234,145 @@ function OverlayGame({ state }) {
   );
 }
 
-// ─── Player card ─────────────────────────────────────────────────────────────
+// ─── Player card (based on user's design) ────────────────────────────────────
 
-function PlayerCard({ player, showScore, score }) {
-  const { num, login, avatar, action, isActive, isHighlighted, isFirstKilled, fouls: f } = player;
-  const bg = isHighlighted
-    ? 'rgba(139,92,246,0.5)'
-    : !isActive
-      ? 'rgba(255,255,255,0.03)'
-      : 'rgba(255,255,255,0.08)';
-  const opacity = isActive ? 1 : 0.4;
+function PlayerCard({ player, accent, grad0, grad1, showScore, score }) {
+  const { num, login, avatar, action, role, isActive, isHighlighted, isFirstKilled, fouls: f, techFouls: tf } = player;
+  const isOut = !isActive;
+  const isBlack = role && isBlackRole(role);
+  const isSheriff = role === 'sheriff' || role === 'detective';
+  const roleColor = isSheriff ? '#3b82f6' : isBlack ? '#dc2626' : null;
+  const roleName = role ? getRoleLabel(role) : null;
 
   return (
-    <div style={{ ...styles.playerCard, background: bg, opacity, border: isHighlighted ? '1px solid rgba(139,92,246,0.6)' : '1px solid rgba(255,255,255,0.08)' }}>
-      <div style={styles.playerNum}>{num}</div>
-      {avatar
-        ? <img src={avatar} alt="" style={styles.playerAvatar} onError={e => { e.target.style.display = 'none'; }} />
-        : <div style={styles.playerAvatarPlaceholder} />
-      }
-      <div style={styles.playerInfo}>
-        <div style={styles.playerName}>{login || `Игрок ${num}`}</div>
-        {action && <div style={styles.playerAction}>{actionLabel(action)}</div>}
-        {f > 0 && isActive && <div style={styles.playerFouls}>{'!'.repeat(f)}</div>}
-      </div>
-      {showScore && score && (
-        <div style={styles.playerScore}>
-          {((score.bonus || 0) - (score.penalty || 0)).toFixed(1)}
-        </div>
+    <div
+      className={`ov-card ${isHighlighted && !isOut ? 'ov-card-active' : ''} ${isOut ? 'ov-card-out' : ''}`}
+      style={isHighlighted && !isOut ? { '--ov-accent': accent } : {}}
+    >
+      {/* Glow for highlighted */}
+      {isHighlighted && !isOut && (
+        <div className="ov-card-glow" style={{ background: `${accent}40` }} />
       )}
-      {isFirstKilled && isActive && <div style={styles.firstKilledBadge}>1</div>}
+
+      {/* Card body */}
+      <div className="ov-card-body">
+        {/* Role indicator strip */}
+        {!isOut && roleColor && (
+          <div className="ov-card-role-strip" style={{ background: roleColor }} />
+        )}
+
+        {/* Avatar area */}
+        <div className="ov-card-avatar-area">
+          {avatar ? (
+            <img src={avatar} alt="" className="ov-card-avatar-img" onError={e => { e.target.style.display = 'none'; }} />
+          ) : (
+            <svg className="ov-card-avatar-placeholder" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+            </svg>
+          )}
+        </div>
+
+        {/* Top indicators */}
+        <div className="ov-card-top">
+          <div className="ov-card-top-left">
+            <span
+              className="ov-card-num"
+              style={isHighlighted && !isOut ? { color: accent } : {}}
+            >
+              {num}
+            </span>
+            {tf > 0 && !isOut && (
+              <div className="ov-card-tf">
+                {[...Array(tf)].map((_, i) => <div key={i} className="ov-card-tf-dot" />)}
+              </div>
+            )}
+          </div>
+          <div className="ov-card-top-right">
+            {isOut && (
+              <div className="ov-card-status-icon">
+                {action === 'killed' && <SkullIcon />}
+                {action === 'voted' && <BanIcon />}
+                {(action === 'removed' || action === 'tech_fall_removed' || action === 'fall_removed') && <LogOutIcon />}
+              </div>
+            )}
+            {!isOut && roleName && (
+              <span className="ov-card-role-letter">{roleName[0]}</span>
+            )}
+          </div>
+        </div>
+
+        {/* Score badge */}
+        {showScore && score && (
+          <div className="ov-card-score" style={{ background: `${accent}cc` }}>
+            {((score.bonus || 0) - (score.penalty || 0)).toFixed(1)}
+          </div>
+        )}
+
+        {/* First killed badge */}
+        {isFirstKilled && !isOut && (
+          <div className="ov-card-fk">1</div>
+        )}
+
+        {/* Bottom: name + fouls */}
+        <div className="ov-card-bottom">
+          <div
+            className="ov-card-name"
+            style={isHighlighted && !isOut ? { color: accent } : {}}
+          >
+            {login || `Игрок ${num}`}
+          </div>
+          <div className="ov-card-fouls">
+            {[1, 2, 3, 4].map(i => (
+              <div
+                key={i}
+                className={`ov-card-foul-dot ${
+                  i <= f
+                    ? (i === 4 ? 'ov-card-foul-crit' : 'ov-card-foul-active')
+                    : 'ov-card-foul-empty'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Active player pulse */}
+        {isHighlighted && !isOut && (
+          <div className="ov-card-pulse" style={{ background: accent }} />
+        )}
+      </div>
     </div>
   );
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Inline SVG icons ────────────────────────────────────────────────────────
 
-function actionLabel(a) {
-  const map = { killed: 'Убит', voted: 'Выведен', removed: 'Удалён', tech_fall_removed: 'Тех. удалён', fall_removed: 'Удалён (фолы)' };
-  return map[a] || a;
+function SkullIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/>
+      <path d="M8 20v2h8v-2"/><path d="M12.5 17l-.5-1-.5 1"/>
+      <path d="M6 9a6 6 0 1 1 12 0c0 3.5-2 5-2 8H8c0-3-2-4.5-2-8z"/>
+    </svg>
+  );
 }
+
+function BanIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+    </svg>
+  );
+}
+
+function LogOutIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  );
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getPhaseLabel(phase, day, night, city) {
   if (phase === 'roles') return 'Раздача ролей';
@@ -246,139 +389,7 @@ function getNightPhaseLabel(np) {
   return map[np] || '';
 }
 
-// ─── Styles (inline for OBS browser source compatibility) ────────────────────
-
-const styles = {
-  center: {
-    position: 'fixed', inset: 0,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'transparent', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-  },
-  codeCard: {
-    textAlign: 'center', padding: '48px 64px',
-    background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(20px)',
-    borderRadius: 24, border: '1px solid rgba(255,255,255,0.1)',
-  },
-  codeLabel: {
-    fontSize: 16, fontWeight: 600, color: 'rgba(255,255,255,0.5)',
-    textTransform: 'uppercase', letterSpacing: 3, marginBottom: 16,
-  },
-  codeDigits: { display: 'flex', gap: 16, justifyContent: 'center' },
-  codeDigit: {
-    fontSize: 72, fontWeight: 800, color: '#fff',
-    width: 80, height: 96, lineHeight: '96px', textAlign: 'center',
-    background: 'rgba(255,255,255,0.08)', borderRadius: 16,
-    border: '1px solid rgba(255,255,255,0.15)',
-    animation: 'overlayFadeIn 0.5s ease both',
-  },
-  codeHint: {
-    fontSize: 14, color: 'rgba(255,255,255,0.35)', marginTop: 20,
-  },
-  pulse: { animation: 'overlayPulse 2s ease-in-out infinite' },
-
-  overlayRoot: {
-    position: 'fixed', inset: 0, padding: 24,
-    background: 'transparent',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    color: '#fff', display: 'flex', flexDirection: 'column', gap: 12,
-    overflow: 'hidden',
-  },
-
-  phaseBanner: {
-    display: 'flex', alignItems: 'center', gap: 16,
-    padding: '12px 20px', borderRadius: 16,
-    background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    alignSelf: 'flex-start',
-  },
-  phaseText: { fontSize: 22, fontWeight: 800 },
-  nightPhaseText: { fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.5)' },
-  aliveText: { fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto' },
-
-  infoText: {
-    fontSize: 18, fontWeight: 700,
-    padding: '10px 16px', borderRadius: 12,
-    background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)',
-    border: '1px solid rgba(255,255,255,0.06)', alignSelf: 'flex-start',
-  },
-  infoTextSm: {
-    fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.6)',
-    padding: '6px 14px', borderRadius: 10,
-    background: 'rgba(0,0,0,0.4)', alignSelf: 'flex-start',
-  },
-
-  playersGrid: {
-    display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, flex: 1,
-    alignContent: 'start',
-  },
-  playerCard: {
-    display: 'flex', alignItems: 'center', gap: 8,
-    padding: '8px 12px', borderRadius: 12,
-    backdropFilter: 'blur(8px)', position: 'relative', transition: 'all 0.3s',
-  },
-  playerNum: { fontSize: 16, fontWeight: 800, minWidth: 22, textAlign: 'center', color: 'rgba(255,255,255,0.5)' },
-  playerAvatar: { width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 },
-  playerAvatarPlaceholder: { width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', flexShrink: 0 },
-  playerInfo: { flex: 1, minWidth: 0 },
-  playerName: { fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  playerAction: { fontSize: 10, fontWeight: 600, color: 'rgba(239,68,68,0.9)', marginTop: 1 },
-  playerFouls: { fontSize: 10, color: '#f59e0b', fontWeight: 700, marginTop: 1 },
-  playerScore: { fontSize: 14, fontWeight: 800, color: 'rgba(255,255,255,0.7)' },
-  firstKilledBadge: {
-    position: 'absolute', top: -4, right: -4,
-    width: 18, height: 18, borderRadius: '50%', fontSize: 10, fontWeight: 800,
-    background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
-
-  sectionTitle: {
-    fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.5,
-    color: 'rgba(255,255,255,0.5)', marginBottom: 8,
-  },
-
-  votingSection: {
-    padding: '12px 16px', borderRadius: 14,
-    background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255,255,255,0.06)',
-  },
-  votingCandidates: { display: 'flex', flexDirection: 'column', gap: 4 },
-  votingCandidate: {
-    display: 'flex', alignItems: 'center', gap: 10,
-    padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.05)',
-  },
-  votingWinner: { background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)' },
-  votingNum: { fontSize: 16, fontWeight: 800, minWidth: 24, textAlign: 'center' },
-  votingName: { flex: 1, fontSize: 14, fontWeight: 600 },
-  votingVotes: { fontSize: 18, fontWeight: 800, color: 'rgba(255,255,255,0.7)' },
-
-  bestMoveSection: {
-    padding: '10px 16px', borderRadius: 14,
-    background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)',
-    border: '1px solid rgba(255,255,255,0.06)', alignSelf: 'flex-start',
-  },
-  bestMoveNums: { display: 'flex', gap: 8 },
-  bestMoveNum: {
-    width: 36, height: 36, borderRadius: 10, fontSize: 16, fontWeight: 800,
-    background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
-
-  winnerBanner: {
-    padding: '16px 24px', borderRadius: 16,
-    fontSize: 28, fontWeight: 800, textAlign: 'center',
-    textTransform: 'uppercase', letterSpacing: 2,
-  },
-
-  judgeBar: {
-    display: 'flex', alignItems: 'center', gap: 8,
-    padding: '8px 14px', borderRadius: 12,
-    background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)',
-    fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.6)',
-    alignSelf: 'flex-end', marginTop: 'auto',
-  },
-  judgeAvatar: { width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' },
-};
-
-// ─── CSS animations (injected once) ─────────────────────────────────────────
+// ─── CSS (injected once) ─────────────────────────────────────────────────────
 
 const OVERLAY_CSS = `
 @keyframes overlayFadeIn {
@@ -389,15 +400,270 @@ const OVERLAY_CSS = `
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.8; }
 }
-body { background: transparent !important; margin: 0; overflow: hidden; }
+@keyframes ovCardPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+html, body { background: transparent !important; margin: 0; overflow: hidden; }
+*, *::before, *::after { box-sizing: border-box; }
+
+.ov-center {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #fff;
+}
+.ov-pulse { animation: overlayPulse 2s ease-in-out infinite; }
+
+/* Code screen */
+.ov-code-card {
+  text-align: center; padding: 48px 64px;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(20px);
+  border-radius: 24px; border: 1px solid rgba(255,255,255,0.1);
+}
+.ov-code-label {
+  font-size: 16px; font-weight: 600; color: rgba(255,255,255,0.5);
+  text-transform: uppercase; letter-spacing: 3px; margin-bottom: 16px;
+}
+.ov-code-digits { display: flex; gap: 16px; justify-content: center; }
+.ov-code-digit {
+  font-size: 72px; font-weight: 800; color: #fff;
+  width: 80px; height: 96px; line-height: 96px; text-align: center;
+  background: rgba(255,255,255,0.08); border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.15);
+  animation: overlayFadeIn 0.5s ease both;
+}
+.ov-code-hint { font-size: 14px; color: rgba(255,255,255,0.35); margin-top: 20px; }
+
+/* Game layout */
+.ov-root {
+  position: fixed; inset: 0; padding: 24px;
+  background: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #fff;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.ov-top {
+  flex: 1; display: flex; flex-direction: column; gap: 10px;
+  min-height: 0;
+}
+
+/* Phase banner */
+.ov-phase {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 18px; border-radius: 14px;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+  align-self: flex-start;
+}
+.ov-phase-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.ov-phase-text { font-size: 20px; font-weight: 800; }
+.ov-phase-sub { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.5); }
+.ov-phase-alive { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.4); margin-left: auto; }
+
+/* Info texts */
+.ov-info {
+  font-size: 16px; font-weight: 700;
+  padding: 8px 14px; border-radius: 12px;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.06); align-self: flex-start;
+}
+.ov-info-sm {
+  font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.6);
+  padding: 5px 12px; border-radius: 10px;
+  background: rgba(0,0,0,0.4); align-self: flex-start;
+}
+
+/* Section title */
+.ov-section-title {
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.5px; color: rgba(255,255,255,0.5); margin-bottom: 8px;
+}
+
+/* Voting */
+.ov-voting {
+  padding: 10px 14px; border-radius: 14px;
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.06); align-self: flex-start;
+}
+.ov-voting-list { display: flex; flex-direction: column; gap: 4px; }
+.ov-voting-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 5px 10px; border-radius: 8px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05);
+}
+.ov-voting-num { font-size: 15px; font-weight: 800; min-width: 22px; text-align: center; }
+.ov-voting-name { flex: 1; font-size: 13px; font-weight: 600; }
+.ov-voting-votes { font-size: 16px; font-weight: 800; color: rgba(255,255,255,0.7); }
+
+/* Best move */
+.ov-bestmove {
+  padding: 8px 14px; border-radius: 14px;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.06); align-self: flex-start;
+}
+.ov-bestmove-nums { display: flex; gap: 6px; }
+.ov-bestmove-num {
+  width: 32px; height: 32px; border-radius: 8px; font-size: 14px; font-weight: 800;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Winner */
+.ov-winner {
+  padding: 14px 24px; border-radius: 16px;
+  font-size: 26px; font-weight: 800; text-align: center;
+  text-transform: uppercase; letter-spacing: 2px;
+  align-self: flex-start;
+}
+
+/* Judge */
+.ov-judge {
+  position: absolute; top: 24px; right: 24px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 10px;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+  font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.6);
+}
+.ov-judge-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+
+/* ─── Player cards bottom bar ─── */
+.ov-players {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 6px; padding-top: 12px; flex-shrink: 0;
+}
+
+/* Card wrapper */
+.ov-card {
+  position: relative; flex: 1; transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  min-width: 0;
+}
+.ov-card-active {
+  transform: scale(1.08) translateY(-8px);
+  z-index: 10;
+}
+.ov-card-out {
+  opacity: 0.3; filter: grayscale(1);
+}
+
+/* Glow */
+.ov-card-glow {
+  position: absolute; inset: -2px; border-radius: 10px;
+  filter: blur(8px); pointer-events: none;
+}
+
+/* Card body */
+.ov-card-body {
+  position: relative; aspect-ratio: 3/4; width: 100%;
+  background: rgba(20,20,25,0.85); backdrop-filter: blur(8px);
+  border-radius: 8px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.ov-card-active .ov-card-body {
+  border-color: var(--ov-accent, rgba(255,255,255,0.15));
+}
+
+/* Role strip */
+.ov-card-role-strip {
+  position: absolute; top: 0; left: 0; right: 0; height: 2px; z-index: 30;
+}
+
+/* Avatar */
+.ov-card-avatar-area {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.ov-card-avatar-img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.ov-card-avatar-placeholder {
+  width: 28px; height: 28px; opacity: 0.06;
+}
+
+/* Top indicators */
+.ov-card-top {
+  position: absolute; top: 4px; left: 5px; right: 5px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  z-index: 30;
+}
+.ov-card-top-left { display: flex; flex-direction: column; gap: 3px; }
+.ov-card-top-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+
+.ov-card-num {
+  font-size: 10px; font-weight: 900; line-height: 1;
+  color: rgba(255,255,255,0.4);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+.ov-card-tf { display: flex; gap: 2px; }
+.ov-card-tf-dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: #eab308; box-shadow: 0 0 4px rgba(234,179,8,0.5);
+}
+
+.ov-card-status-icon { opacity: 0.5; color: #fff; }
+.ov-card-role-letter {
+  font-size: 7px; font-weight: 900; opacity: 0.4; text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+
+/* Score */
+.ov-card-score {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  font-size: 14px; font-weight: 800; padding: 3px 8px; border-radius: 6px;
+  z-index: 35; color: #fff;
+}
+
+/* First killed */
+.ov-card-fk {
+  position: absolute; top: -3px; right: -3px;
+  width: 16px; height: 16px; border-radius: 50%;
+  font-size: 9px; font-weight: 900;
+  background: #ef4444; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 35; box-shadow: 0 2px 6px rgba(239,68,68,0.5);
+}
+
+/* Bottom: name + fouls */
+.ov-card-bottom {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 4px 5px 5px;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, transparent 100%);
+  z-index: 30;
+}
+.ov-card-name {
+  font-size: 7px; font-weight: 700; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: rgba(255,255,255,0.65); margin-bottom: 3px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+.ov-card-fouls {
+  display: flex; justify-content: center; gap: 2px;
+}
+.ov-card-foul-dot { width: 3px; height: 3px; border-radius: 50%; }
+.ov-card-foul-active { background: rgba(234,179,8,0.8); }
+.ov-card-foul-crit { background: #dc2626; box-shadow: 0 0 4px red; }
+.ov-card-foul-empty { background: rgba(255,255,255,0.1); }
+
+/* Active pulse */
+.ov-card-pulse {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 2px; z-index: 40;
+  animation: ovCardPulse 1.5s ease-in-out infinite;
+}
 `;
 
 if (typeof document !== 'undefined') {
   const id = 'mafboard-overlay-css';
   if (!document.getElementById(id)) {
-    const style = document.createElement('style');
-    style.id = id;
-    style.textContent = OVERLAY_CSS;
-    document.head.appendChild(style);
+    const el = document.createElement('style');
+    el.id = id;
+    el.textContent = OVERLAY_CSS;
+    document.head.appendChild(el);
   }
 }

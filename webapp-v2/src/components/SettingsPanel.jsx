@@ -33,6 +33,7 @@ export function SettingsPanel() {
   const selectColor = (key) => {
     setSelectedColorScheme(key);
     applyTheme(key);
+    syncState({ selectedColorScheme: key });
     triggerHaptic('selection');
   };
 

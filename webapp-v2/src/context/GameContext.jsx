@@ -234,7 +234,7 @@ export const GameProvider = ({ children }) => {
     winnerTeam, playerScores, gameFinished,
     mainInfoText, additionalInfoText, judgeNickname, judgeAvatar,
     hideSeating, hideLeaveOrder, hideRolesStatus, hideBestMove,
-    cityMode, gameMode,
+    cityMode, gameMode, selectedColorScheme,
   });
 
   const syncState = useCallback((partialState) => {
