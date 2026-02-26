@@ -371,6 +371,11 @@ body {
 .animate-nt-wave { animation: ntWaveShimmer 3s ease-in-out infinite; }
 .animate-nt-blink { animation: ntExpiredBlink 0.8s ease-in-out infinite; }
 .animate-role-dot { animation: roleDotPulse 1.5s ease-in-out infinite; }
+@keyframes nextSpeakerPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.15); }
+  50% { box-shadow: 0 0 18px 4px rgba(var(--accent-rgb), 0.3); }
+}
+.animate-next-speaker { animation: nextSpeakerPulse 2s ease-in-out infinite; }
 .animate-profile-glow { animation: profileAvatarGlow 3s ease-in-out infinite; }
 .animate-profile-ring { animation: profileRingRotate 8s linear infinite; }
 .animate-spin { animation: spin 1s linear infinite; }

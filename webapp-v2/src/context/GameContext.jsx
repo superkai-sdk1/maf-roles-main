@@ -145,6 +145,7 @@ export const GameProvider = ({ children }) => {
 
   // === Day Speaker ===
   const [currentDaySpeakerIndex, setCurrentDaySpeakerIndex] = useState(-1);
+  const [daySpeakerStartNum, setDaySpeakerStartNum] = useState(1);
   const [showGoToNightPrompt, setShowGoToNightPrompt] = useState(false);
   const [showNoVotingAlert, setShowNoVotingAlert] = useState(false);
 
@@ -494,6 +495,8 @@ export const GameProvider = ({ children }) => {
   const advanceFromFreeSeating = useCallback(() => {
     stopFreeSeatingTimer();
     setGamePhase('day'); setDayNumber(1);
+    setDaySpeakerStartNum(1);
+    setCurrentDaySpeakerIndex(-1);
     syncState({ gamePhase: 'day', dayNumber: 1 });
   }, [stopFreeSeatingTimer, syncState]);
 
@@ -512,9 +515,24 @@ export const GameProvider = ({ children }) => {
       setGamePhase('day'); setDayNumber(d => d + 1);
       setDayButtonBlink(false); setNightPhase(null); setNightChecks({});
       setHighlightedPlayer(null); setCurrentDaySpeakerIndex(-1);
+
+      const totalPlayers = tableOut.length;
+      if (totalPlayers > 0) {
+        let nextStart = daySpeakerStartNum;
+        for (let i = 0; i < totalPlayers; i++) {
+          const candidateNum = ((nextStart - 1 + 1 + i) % totalPlayers) + 1;
+          const p = tableOut[candidateNum - 1];
+          if (p && isPlayerActive(p.roleKey)) {
+            nextStart = candidateNum;
+            break;
+          }
+        }
+        setDaySpeakerStartNum(nextStart);
+      }
+
       syncState({ gamePhase: 'day' });
     }
-  }, [doctorHeal, killedOnNight, nightNumber, syncState]);
+  }, [doctorHeal, killedOnNight, nightNumber, syncState, tableOut, daySpeakerStartNum, isPlayerActive]);
 
   const handleGoToNight = useCallback((skipVotingCheck = false) => {
     if (!skipVotingCheck) {
@@ -1074,6 +1092,7 @@ export const GameProvider = ({ children }) => {
     setGameFinished(false);
     setHighlightedPlayer(null);
     setCurrentDaySpeakerIndex(-1);
+    setDaySpeakerStartNum(1);
     setDoctorHeal(null);
     setDoctorHealHistory([]);
     setDoctorLastHealTarget(null);
@@ -1107,10 +1126,10 @@ export const GameProvider = ({ children }) => {
       nightPhase, nightChecks, dayVoteOuts,
       nominations, nominationOrder, nominationsLocked,
       discussionTimeLeft, freeSeatingTimeLeft,
-      currentDaySpeakerIndex, totalGamesInTournament, totalGamesForTable,
+      currentDaySpeakerIndex, daySpeakerStartNum, totalGamesInTournament, totalGamesForTable,
       gamesHistory,
     });
-  }, [currentSessionId, tournamentId, tournamentName, gameMode, gameSelected, tableSelected, roles, playersActions, fouls, techFouls, removed, gamePhase, dayNumber, nightNumber, rolesDistributed, nightCheckHistory, votingHistory, bestMove, bestMoveAccepted, firstKilledPlayer, firstKilledEver, bestMoveSelected, winnerTeam, playerScores, gameFinished, protocolData, opinionData, opinionText, roomId, cityMode, funkyMode, manualMode, players, avatars, doctorHealHistory, nightMisses, killedOnNight, judgeNickname, judgeAvatar, killedCardPhase, protocolAccepted, killedPlayerBlink, nightPhase, nightChecks, dayVoteOuts, nominations, nominationOrder, nominationsLocked, discussionTimeLeft, freeSeatingTimeLeft, currentDaySpeakerIndex, tournament, gamesHistory]);
+  }, [currentSessionId, tournamentId, tournamentName, gameMode, gameSelected, tableSelected, roles, playersActions, fouls, techFouls, removed, gamePhase, dayNumber, nightNumber, rolesDistributed, nightCheckHistory, votingHistory, bestMove, bestMoveAccepted, firstKilledPlayer, firstKilledEver, bestMoveSelected, winnerTeam, playerScores, gameFinished, protocolData, opinionData, opinionText, roomId, cityMode, funkyMode, manualMode, players, avatars, doctorHealHistory, nightMisses, killedOnNight, judgeNickname, judgeAvatar, killedCardPhase, protocolAccepted, killedPlayerBlink, nightPhase, nightChecks, dayVoteOuts, nominations, nominationOrder, nominationsLocked, discussionTimeLeft, freeSeatingTimeLeft, currentDaySpeakerIndex, daySpeakerStartNum, tournament, gamesHistory]);
 
   const loadSession = useCallback((sid, options) => {
     const s = sessionManager.getSession(sid);
@@ -1152,6 +1171,7 @@ export const GameProvider = ({ children }) => {
     if (s.discussionTimeLeft != null) setDiscussionTimeLeft(s.discussionTimeLeft);
     if (s.freeSeatingTimeLeft != null) setFreeSeatingTimeLeft(s.freeSeatingTimeLeft);
     if (s.currentDaySpeakerIndex != null) setCurrentDaySpeakerIndex(s.currentDaySpeakerIndex);
+    if (s.daySpeakerStartNum != null) setDaySpeakerStartNum(s.daySpeakerStartNum);
     setGamesHistory(s.gamesHistory || []);
     setScreen('game');
     if (s.roomId) joinRoom(s.roomId);
@@ -1175,7 +1195,7 @@ export const GameProvider = ({ children }) => {
     setVotingFinished(false); setVotingWinners([]); setVotingHistory([]);
     setShowVotingModal(false); setDayVoteOuts({});
     setWinnerTeam(null); setPlayerScores({}); setGameFinished(false); setViewOnly(false);
-    setHighlightedPlayer(null); setCurrentDaySpeakerIndex(-1);
+    setHighlightedPlayer(null); setCurrentDaySpeakerIndex(-1); setDaySpeakerStartNum(1);
     setMainInfoText(''); setAdditionalInfoText('');
     setGamesHistory([]);
     timerModule.clearAllTimers();
@@ -1458,21 +1478,26 @@ export const GameProvider = ({ children }) => {
 
   const startDaySpeakerFlow = useCallback(() => {
     if (activePlayers.length === 0) return;
-    setCurrentDaySpeakerIndex(0);
+    const startIdx = activePlayers.findIndex(p => p.num === daySpeakerStartNum);
+    setCurrentDaySpeakerIndex(startIdx >= 0 ? startIdx : 0);
     triggerHaptic('light');
-  }, [activePlayers]);
+  }, [activePlayers, daySpeakerStartNum]);
 
   const nextDaySpeaker = useCallback(() => {
+    const startIdx = activePlayers.findIndex(p => p.num === daySpeakerStartNum);
+    const actualStart = startIdx >= 0 ? startIdx : 0;
     const nextIdx = currentDaySpeakerIndex + 1;
-    if (nextIdx >= activePlayers.length) {
+    const wrappedIdx = nextIdx % activePlayers.length;
+
+    if (wrappedIdx === actualStart && nextIdx > 0) {
       setCurrentDaySpeakerIndex(-1);
       setShowGoToNightPrompt(true);
       triggerHaptic('medium');
     } else {
-      setCurrentDaySpeakerIndex(nextIdx);
+      setCurrentDaySpeakerIndex(wrappedIdx);
       triggerHaptic('selection');
     }
-  }, [currentDaySpeakerIndex, activePlayers]);
+  }, [currentDaySpeakerIndex, activePlayers, daySpeakerStartNum]);
 
   const currentSpeaker = useMemo(() => {
     if (currentDaySpeakerIndex < 0 || currentDaySpeakerIndex >= activePlayers.length) return null;
@@ -1697,6 +1722,7 @@ export const GameProvider = ({ children }) => {
     roomId, setRoomId, joinRoom, syncState, roomInput, setRoomInput,
     // Day Speaker
     currentDaySpeakerIndex, setCurrentDaySpeakerIndex,
+    daySpeakerStartNum,
     showGoToNightPrompt, setShowGoToNightPrompt,
     showNoVotingAlert, setShowNoVotingAlert,
     // Funky

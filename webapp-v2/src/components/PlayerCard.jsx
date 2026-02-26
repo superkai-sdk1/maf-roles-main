@@ -6,7 +6,7 @@ import { triggerHaptic } from '../utils/haptics';
 import { NightTimerBar } from './NightTimerBar';
 import { DialerPad, RowPad, dialerBtn } from './DialerPad';
 
-export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mode = 'day' }) => {
+export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isNextSpeaker = false, mode = 'day' }) => {
   const {
     addFoul, removeFoul, addTechFoul, removeTechFoul,
     gamePhase, isPlayerActive, roleSet, editRoles, rolesDistributed,
@@ -235,7 +235,8 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, mod
         ${isNightDon ? 'animate-don-pulse' : ''}
         ${isNightSheriff ? 'animate-sheriff-pulse' : ''}
         ${isNightDoctor ? 'animate-doctor-pulse' : ''}
-        ${!isDead && !isHighlighted && !isSpeaking ? 'hover:border-white/[0.18] hover:shadow-glass-md' : ''}
+        ${isNextSpeaker && !isDead ? 'animate-next-speaker border-accent-soft !bg-accent-soft/50' : ''}
+        ${!isDead && !isHighlighted && !isSpeaking && !isNextSpeaker ? 'hover:border-white/[0.18] hover:shadow-glass-md' : ''}
         ${expanded ? 'shadow-glass-md !border-white/[0.16]' : ''}`}
       style={{
         '--i': player.num - 1,
