@@ -371,7 +371,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
                   {isSpeaking && !isDead && (
                     <div className="flex items-center gap-1.5 text-indigo-400">
                       <Mic2 size={12} />
-                      <span className="text-[9px] font-black uppercase tracking-[0.2em]">Выступает</span>
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em]">Говорит</span>
                     </div>
                   )}
                   {statusLabel && (
