@@ -386,7 +386,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
 
             {/* Foul controls (day alive) */}
             {isDayAlive && (
-              <div className="flex items-center gap-3 bg-black/40 rounded-2xl p-2.5 border border-white/5 shadow-inner shrink-0" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-3 shrink-0 ml-auto" onClick={e => e.stopPropagation()}>
                 <FoulSegmentControl label="Ф" count={foulCount} max={4} onAdd={() => addFoul(rk)} onRemove={() => removeFoul(rk)} />
                 <div className="w-[1px] h-6 bg-white/10" />
                 <FoulSegmentControl label="Т" count={techFoulCount} max={2} onAdd={() => addTechFoul(rk)} onRemove={() => removeTechFoul(rk)} />
@@ -719,7 +719,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
               ❤
             </button>
           ) : mode === 'day' && gamePhase === 'day' ? (
-            <div className="flex items-center gap-3 bg-black/30 backdrop-blur-md rounded-xl px-3 py-1.5 border border-white/5 shadow-inner">
+            <div className="flex items-center gap-3">
               <FoulSegmentControl label="Ф" count={foulCount} max={4} onAdd={() => addFoul(rk)} onRemove={() => removeFoul(rk)} />
               <div className="w-[1px] h-6 bg-white/10" />
               <FoulSegmentControl label="Т" count={techFoulCount} max={2} onAdd={() => addTechFoul(rk)} onRemove={() => removeTechFoul(rk)} />
