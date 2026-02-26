@@ -168,7 +168,7 @@ export function GameScreen() {
             <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowRolesAlert(false); }}>
               <div className="w-full max-w-[320px] glass-card-md rounded-3xl p-6 !shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
                 <div className="text-4xl relative z-[1]">🎭</div>
-                <div className="text-sm text-white/60 font-medium leading-relaxed">Невозможно начать договорку — проверьте роли</div>
+                <div className="text-sm text-white/60 font-medium leading-relaxed">Невозможно начать {cityMode ? 'знакомство' : 'договорку'} — проверьте роли</div>
                 <div className="flex gap-3 w-full mt-2">
                   <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setShowRolesAlert(false); triggerHaptic('light'); }}>Понятно</button>
                 </div>
@@ -239,7 +239,7 @@ export function GameScreen() {
             {gamePhase === 'roles' && !rolesDistributed && (
               <div className="mt-3 animate-fade-in">
                 <InertiaSlider
-                  label="Начать договорку"
+                  label={cityMode ? 'Начать знакомство' : 'Начать договорку'}
                   baseColor="bg-gradient-to-br from-violet-500 to-indigo-600"
                   glowColor="shadow-violet-500/50"
                   onComplete={() => {

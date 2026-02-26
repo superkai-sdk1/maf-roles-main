@@ -510,7 +510,6 @@ export function ModeSelector() {
     setTournamentId('city_' + Date.now());
     setTournamentName('Городская мафия ' + new Date().toLocaleDateString('ru-RU'));
     setCurrentSessionId(sessionManager.generateSessionId());
-    setRolesDistributed(true);
     setScreen('game');
     triggerHaptic('success');
   };
