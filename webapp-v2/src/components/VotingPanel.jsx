@@ -3,7 +3,7 @@ import { useGame } from '../context/GameContext';
 import { useTimer } from '../hooks/useTimer';
 import { SlideConfirm } from './SlideConfirm';
 import { triggerHaptic } from '../utils/haptics';
-import { DialerPad, dialerBtn } from './DialerPad';
+import { ChevronRight, Users, RotateCcw } from 'lucide-react';
 
 export function VotingPanel() {
   const {
@@ -72,16 +72,6 @@ export function VotingPanel() {
     tieHoldActiveRef.current = true;
   }, []);
 
-  const tieTimerStatusText = tieTimer.isRunning
-    ? (tieTimer.isPaused ? 'Пауза' : 'Идёт')
-    : (tieTimer.timeLeft === 0 ? 'Время вышло' : 'Готов');
-  const tieTimerStatusClass = tieTimer.isRunning
-    ? (tieTimer.isPaused ? '' : 'status-running')
-    : (tieTimer.timeLeft === 0 ? 'status-finished' : '');
-  const tieTimerDisplayClass = (tieTimer.timeLeft <= 10 && tieTimer.isRunning && !tieTimer.isPaused) ? 'warning'
-    : tieTimer.isRunning ? 'running'
-    : tieTimer.timeLeft === 0 ? 'finished' : '';
-
   // === Controllable last speech timer (60s, +30s foul up to 2x) ===
   const lastSpeechTimer = useTimer(60, null);
   const lastSpeechHoldRef = useRef(null);
@@ -128,17 +118,6 @@ export function VotingPanel() {
     lastSpeechHoldActiveRef.current = true;
   }, []);
 
-  const lastSpeechStatusText = lastSpeechTimer.isRunning
-    ? (lastSpeechTimer.isPaused ? 'Пауза' : 'Идёт')
-    : (lastSpeechTimer.timeLeft === 0 ? 'Время вышло' : 'Готов');
-  const lastSpeechStatusClass = lastSpeechTimer.isRunning
-    ? (lastSpeechTimer.isPaused ? '' : 'status-running')
-    : (lastSpeechTimer.timeLeft === 0 ? 'status-finished' : '');
-  const lastSpeechDisplayClass = (lastSpeechTimer.timeLeft <= 10 && lastSpeechTimer.isRunning && !lastSpeechTimer.isPaused) ? 'warning'
-    : lastSpeechTimer.isRunning && lastSpeechTimer.isPaused ? 'paused'
-    : lastSpeechTimer.isRunning ? 'running'
-    : lastSpeechTimer.timeLeft === 0 ? 'finished' : '';
-
   const candidates = getNominatedCandidates();
   const currentCandidate = votingOrder[votingCurrentIndex];
   const currentVotes = votingResults[String(currentCandidate)] || [];
@@ -156,165 +135,230 @@ export function VotingPanel() {
 
   const formatTime = (t) => String(t).padStart(2, '0');
 
-  const getTimerStatusPillClasses = (statusClass) => {
-    const base = 'px-3 py-1 rounded-full text-[0.65rem] font-bold tracking-wider uppercase w-fit mx-auto mb-1';
-    if (statusClass === 'status-running') return `${base} bg-emerald-500/15 text-emerald-400`;
-    if (statusClass === 'status-finished') return `${base} bg-red-500/15 text-red-400`;
-    return `${base} bg-white/[0.06] text-white/40`;
-  };
+  const timerIsLow = (timer) => timer.timeLeft <= 10 && timer.isRunning && !timer.isPaused;
 
-  const getTimerDisplayClasses = (displayClass) => {
-    const base = 'text-center text-5xl font-extrabold tracking-tight tabular-nums cursor-pointer select-none my-2';
-    if (displayClass === 'warning') return `${base} text-red-400 animate-timer-pulse`;
-    if (displayClass === 'running') return `${base} text-white`;
-    if (displayClass === 'paused') return `${base} text-amber-400/70`;
-    if (displayClass === 'finished') return `${base} text-red-400/60 animate-timer-blink`;
-    return `${base} text-white/70`;
-  };
+  /* ── Voting grid button renderer ── */
+  const renderVotingGrid = ({ players, isSelected, isDisabled, isPrefilled, onToggle }) => {
+    const first9 = players.slice(0, 9);
+    const player10 = players.length >= 10 ? players[9] : null;
 
-  const getDialerBtnClasses = ({ voted, votedElsewhere, prefilled }) => {
-    if (voted) return `${dialerBtn.base} ${dialerBtn.selected}`;
-    if (votedElsewhere) return `${dialerBtn.base} ${dialerBtn.disabled}`;
-    if (prefilled) return `${dialerBtn.base} ${dialerBtn.prefilled}`;
-    return `${dialerBtn.base} ${dialerBtn.normal}`;
-  };
+    const renderBtn = (p) => {
+      const selected = isSelected(p);
+      const disabled = isDisabled(p);
+      const prefilled = isPrefilled ? isPrefilled(p) : false;
+      return (
+        <button
+          key={p.num}
+          disabled={disabled}
+          onClick={() => { if (!disabled) { onToggle(p.num); triggerHaptic('selection'); } }}
+          className={`h-16 rounded-[1.5rem] flex items-center justify-center text-2xl font-black transition-all duration-200 ${
+            disabled
+              ? 'bg-black/20 text-slate-800 border border-transparent opacity-30 cursor-not-allowed'
+              : selected
+                ? 'bg-purple-600 text-white shadow-[0_0_35px_rgba(168,85,247,0.5)] border border-purple-400 scale-105 ring-2 ring-purple-300/20'
+                : prefilled
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
+                  : 'bg-white/5 text-slate-400 border border-white/5 hover:bg-white/10'
+          }`}
+        >
+          {p.num}
+        </button>
+      );
+    };
 
-  return (
-    <div className="animate-fade-in flex flex-col gap-[14px]">
-      {/* Header */}
-      <div className="text-center pt-2">
-        <h2 className="text-white text-[1.4em] font-extrabold tracking-[0.3px]">Голосование</h2>
-        {candidates.length > 0 && votingScreenTab === 'voting' && (
-          <div className="flex items-center gap-2 flex-wrap mt-2">
-            <span className="text-xs text-white/40 font-medium">Выставлены:</span>
-            {candidates.map(num => (
-              <span key={num} className="w-8 h-8 rounded-lg bg-[rgba(255,214,10,0.12)] border border-[rgba(255,214,10,0.30)] text-[#ffd60a] flex items-center justify-center text-sm font-bold">{num}</span>
-            ))}
+    return (
+      <div className="flex flex-col items-center gap-3 w-full">
+        <div className="grid grid-cols-3 gap-3 w-full">
+          {first9.map(renderBtn)}
+        </div>
+        {player10 && (
+          <div className="grid grid-cols-3 gap-3 w-full">
+            <div className="col-start-2">{renderBtn(player10)}</div>
           </div>
         )}
       </div>
+    );
+  };
+
+  /* ── Shared timer component ── */
+  const VotingTimer = ({ timer, holdStart, holdEnd, holdCancel, label, extra }) => {
+    const low = timerIsLow(timer);
+    return (
+      <div className="flex flex-col items-center py-2">
+        {label && <div className="text-[0.7rem] font-bold tracking-wider uppercase text-white/40 mb-2">{label}</div>}
+        <div
+          className={`text-[64px] font-black leading-none tracking-tighter tabular-nums mb-2 select-none cursor-pointer transition-all ${
+            low ? 'text-rose-500 animate-pulse'
+              : timer.isRunning && !timer.isPaused ? 'text-white'
+              : timer.isPaused ? 'text-amber-400/70'
+              : timer.timeLeft === 0 ? 'text-red-400/60' : 'text-white/60'
+          }`}
+          onMouseDown={holdStart} onMouseUp={holdEnd} onMouseLeave={holdCancel}
+          onTouchStart={holdStart} onTouchEnd={holdEnd}
+          onTouchMove={holdCancel} onTouchCancel={holdCancel}
+        >
+          {timer.timeLeft}
+        </div>
+        <div className="w-full max-w-[180px] h-1 bg-white/5 rounded-full overflow-hidden mb-4">
+          <div
+            className={`h-full rounded-full transition-all duration-1000 ease-linear ${
+              low ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]'
+                : timer.isRunning && !timer.isPaused ? 'bg-indigo-500 shadow-[0_0_8px_#6366f1]'
+                : timer.isPaused ? 'bg-amber-400/60' : 'bg-white/10'
+            }`}
+            style={{ width: `${(timer.timeLeft / (timer === lastSpeechTimer ? 60 : 30)) * 100}%` }}
+          />
+        </div>
+        {extra}
+        <div className="text-[0.55rem] text-white/15 text-center mt-2">Клик: Старт/Пауза | Удержание: Сброс</div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="animate-fade-in flex flex-col gap-4">
+
+      {/* ══════════ HEADER ══════════ */}
+      {votingScreenTab === 'voting' && candidates.length > 0 && (
+        <div className="w-full bg-white/5 border border-white/10 p-3 rounded-2xl shadow-xl">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 shrink-0">
+              <Users size={12} className="text-slate-500" />
+              <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest">Выставлены:</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 justify-end">
+              {votingOrder.map((num, idx) => (
+                <div
+                  key={num}
+                  className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-black transition-all duration-300 border ${
+                    idx === votingCurrentIndex && !votingFinished
+                      ? 'bg-yellow-400 border-yellow-300 text-black shadow-[0_0_12px_rgba(250,204,21,0.5)] scale-110 z-10'
+                      : idx < votingCurrentIndex
+                        ? 'bg-purple-900/30 border-purple-500/30 text-purple-400 opacity-60'
+                        : 'bg-white/5 border-white/5 text-slate-500'
+                  }`}
+                >
+                  {num}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {votingScreenTab === 'voting' && (
         <>
-          {/* No candidates nominated */}
+          {/* No candidates */}
           {!showVotingModal && candidates.length === 0 && (
-            <div className="relative z-[1] rounded-2xl glass-card-md animate-fade-in p-8 text-center">
-              <div className="text-[2.5em] mb-3 opacity-30 relative z-[1]">⚖️</div>
-              <h3 className="text-base font-bold mb-1.5 relative z-[1]">Нет выставленных игроков</h3>
+            <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 text-center animate-fade-in">
+              <div className="text-[2.5em] mb-3 opacity-30">⚖️</div>
+              <h3 className="text-base font-bold mb-1.5">Нет выставленных игроков</h3>
               <p className="text-[0.85em] text-white/35">
                 Выставите кандидатов в карточках игроков, чтобы начать голосование
               </p>
             </div>
           )}
 
-          {/* Active voting modal */}
           {showVotingModal && (
-            <div className="flex flex-col gap-[14px]">
-              {/* Day 0: single candidate — no voting */}
+            <div className="flex flex-col gap-4">
+
+              {/* Day 0: single candidate */}
               {votingDay0SingleCandidate && (
-                <div className="relative z-[1] rounded-2xl glass-card-md animate-fade-in p-6 text-center">
-                  <div className="text-[2.5em] mb-3 opacity-40 relative z-[1]">☝️</div>
+                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 text-center animate-fade-in">
+                  <div className="text-[2.5em] mb-3 opacity-40">☝️</div>
                   <h3 className="text-base font-bold mb-2">
                     Выставлен 1 кандидат — #{votingDay0SingleCandidate}
                   </h3>
-                  <p className="text-[0.85em] text-white/40 mb-4">
+                  <p className="text-[0.85em] text-white/40 mb-5">
                     На нулевом голосовании выставлен только один игрок. Голосование не проводится.
                   </p>
                   <button onClick={() => { dismissDay0VotingAndGoToNight(); triggerHaptic('medium'); }}
-                    className="rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-3 px-6 text-[0.9em]">
+                    className="bg-white text-black h-14 px-10 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
                     Перейти в ночь
                   </button>
                 </div>
               )}
 
-              {/* Day 0: triple tie — no re-vote possible */}
+              {/* Day 0: triple tie */}
               {votingDay0TripleTie && (
-                <div className="relative z-[1] rounded-2xl glass-card-md animate-fade-in p-6 text-center">
-                  <div className="text-[2.5em] mb-3 opacity-40 relative z-[1]">⚖️</div>
+                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 text-center animate-fade-in">
+                  <div className="text-[2.5em] mb-3 opacity-40">⚖️</div>
                   <h3 className="text-base font-bold mb-2">
                     Ничья {votingDay0TripleTiePlayers.length} игроков
                   </h3>
                   <div className="flex flex-wrap gap-2 justify-center mb-3">
                     {votingDay0TripleTiePlayers.map(num => (
-                      <span key={num} className="py-1.5 px-3.5 rounded-[10px] bg-[rgba(255,214,10,0.15)] text-[0.9em] font-bold text-[#ffd60a]">
+                      <span key={num} className="py-1.5 px-3.5 rounded-xl bg-yellow-400/15 text-[0.9em] font-black text-yellow-400 border border-yellow-400/25">
                         #{num}
                       </span>
                     ))}
                   </div>
-                  <p className="text-[0.85em] text-white/40 mb-4">
+                  <p className="text-[0.85em] text-white/40 mb-5">
                     На нулевом голосовании невозможно деление {votingDay0TripleTiePlayers.length} игроков.
                   </p>
                   <button onClick={() => { dismissDay0VotingAndGoToNight(); triggerHaptic('medium'); }}
-                    className="rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-3 px-6 text-[0.9em]">
+                    className="bg-white text-black h-14 px-10 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
                     Перейти в ночь
                   </button>
                 </div>
               )}
 
-              {/* Tie — split players with controllable timer */}
+              {/* ── Tie split timer ── */}
               {votingTieTimerActive && (
-                <div className="relative z-[1] rounded-2xl glass-card-md animate-fade-in p-4 text-center !border-[rgba(255,214,10,0.3)]">
-                  <h3 className="text-base font-extrabold text-[#ffd60a] mb-2.5">Деление игроков</h3>
-                  <div className="flex items-center gap-2 flex-wrap mb-3.5 justify-center">
+                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-yellow-400/20 rounded-[2.5rem] p-6 text-center animate-fade-in">
+                  <h3 className="text-base font-black text-yellow-400 mb-4">Деление игроков</h3>
+                  <div className="flex items-center gap-2 flex-wrap mb-5 justify-center">
                     {votingTiePlayers.map((num, i) => {
                       const isCurrent = !votingTieAllDone && i === votingTieSpeakerIdx;
                       const isDone = i < votingTieSpeakerIdx || votingTieAllDone;
                       return (
-                        <span key={num} className="w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-sm font-bold transition-all duration-300 ease-out"
-                          style={{
-                            ...(isCurrent ? { boxShadow: '0 0 12px rgba(255,214,10,0.5)', border: '2px solid #ffd60a', transform: 'scale(1.15)' } : {}),
-                            ...(isDone ? { opacity: 0.4 } : {}),
-                          }}>{num}</span>
+                        <div key={num} className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black transition-all duration-300 border ${
+                          isCurrent
+                            ? 'bg-yellow-400 border-yellow-300 text-black shadow-[0_0_12px_rgba(250,204,21,0.5)] scale-110'
+                            : isDone
+                              ? 'bg-white/5 border-white/5 text-white/25'
+                              : 'bg-white/5 border-white/10 text-white/60'
+                        }`}>{num}</div>
                       );
                     })}
                   </div>
 
                   {!votingTieAllDone && (
-                    <div className="mx-auto mb-3.5 max-w-[260px]">
-                      <div className="text-[0.7rem] font-semibold tracking-wider uppercase text-white/40 mb-1.5">
-                        Речь игрока #{votingTiePlayers[votingTieSpeakerIdx]}
-                        <span className="ml-1.5 opacity-50">({votingTieSpeakerIdx + 1}/{votingTiePlayers.length})</span>
-                      </div>
-                      <div className={getTimerStatusPillClasses(tieTimerStatusClass)}>{tieTimerStatusText}</div>
-                      <div className={getTimerDisplayClasses(tieTimerDisplayClass)}
-                        onMouseDown={handleTieHoldStart}
-                        onMouseUp={handleTieHoldEnd}
-                        onMouseLeave={handleTieHoldCancel}
-                        onTouchStart={handleTieHoldStart}
-                        onTouchEnd={handleTieHoldEnd}
-                        onTouchMove={handleTieHoldCancel}
-                        onTouchCancel={handleTieHoldCancel}>
-                        {formatTime(tieTimer.timeLeft)}
-                      </div>
-                      <div className="flex items-center justify-center gap-2">
-                        {tieTimer.timeLeft === 0 && !tieTimer.isRunning ? (
-                          <button className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm font-bold active:scale-90 transition-transform duration-150 ease-spring"
-                            style={{ background: 'linear-gradient(135deg, rgba(255,214,10,0.2), rgba(255,160,10,0.2))', border: '1px solid rgba(255,214,10,0.3)', color: '#ffd60a' }}
-                            onClick={() => { advanceTieSpeaker(); triggerHaptic('light'); }}>
-                            {votingTieSpeakerIdx >= votingTiePlayers.length - 1 ? '✓ Завершить' : '▶ Дальше'}
-                          </button>
-                        ) : (
-                          <button className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm font-bold active:scale-90 transition-transform duration-150 ease-spring text-white/50"
-                            onClick={() => { tieTimer.stop(); advanceTieSpeaker(); triggerHaptic('light'); }}>
-                            {votingTieSpeakerIdx >= votingTiePlayers.length - 1 ? '⏭ Завершить' : '⏭ Пропустить'}
-                          </button>
-                        )}
-                      </div>
-                      <div className="text-[0.65rem] text-white/25 text-center mt-2">Клик: Старт/Пауза | Удержание: Сброс</div>
-                    </div>
+                    <VotingTimer
+                      timer={tieTimer}
+                      holdStart={handleTieHoldStart}
+                      holdEnd={handleTieHoldEnd}
+                      holdCancel={handleTieHoldCancel}
+                      label={`Речь игрока #${votingTiePlayers[votingTieSpeakerIdx]} (${votingTieSpeakerIdx + 1}/${votingTiePlayers.length})`}
+                      extra={
+                        <div className="flex gap-3">
+                          {tieTimer.timeLeft === 0 && !tieTimer.isRunning ? (
+                            <button className="px-7 py-3 bg-yellow-400 text-black rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all shadow-xl"
+                              onClick={() => { advanceTieSpeaker(); triggerHaptic('light'); }}>
+                              {votingTieSpeakerIdx >= votingTiePlayers.length - 1 ? 'Завершить' : 'Дальше'}
+                            </button>
+                          ) : (
+                            <button className="px-7 py-3 bg-white/5 rounded-2xl border border-white/10 text-white/50 font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all"
+                              onClick={() => { tieTimer.stop(); advanceTieSpeaker(); triggerHaptic('light'); }}>
+                              {votingTieSpeakerIdx >= votingTiePlayers.length - 1 ? 'Завершить' : 'Пропустить'}
+                            </button>
+                          )}
+                        </div>
+                      }
+                    />
                   )}
 
                   {votingTieAllDone && (
-                    <div className="mt-3.5 pt-3.5 border-t border-[rgba(255,214,10,0.15)]">
-                      <p className="text-[0.85em] text-white/40 mb-3">Все кандидаты высказались</p>
+                    <div className="mt-4 pt-4 border-t border-yellow-400/15">
+                      <p className="text-[0.85em] text-white/40 mb-4">Все кандидаты высказались</p>
                       {votingStage === 'tie' ? (
                         <button onClick={() => { startLiftVoting(); triggerHaptic('medium'); }}
-                          className="w-full rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-3.5 px-6 text-[0.9em]">
+                          className="w-full bg-white text-black h-14 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
                           Голосование за подъём
                         </button>
                       ) : (
                         <button onClick={() => { startTieVoting(); triggerHaptic('medium'); }}
-                          className="w-full rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-3.5 px-6 text-[0.9em]">
+                          className="w-full bg-white text-black h-14 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
                           Повторное голосование
                         </button>
                       )}
@@ -323,37 +367,35 @@ export function VotingPanel() {
                 </div>
               )}
 
-              {/* Last speech with controllable timer + slide to night */}
+              {/* ── Last speech ── */}
               {votingLastSpeechActive && votingWinners.length > 0 && (
-                <div className="relative z-[1] rounded-2xl glass-card-md animate-fade-in p-4 text-center !border-[rgba(255,69,58,0.3)]">
-                  <h3 className="text-base font-extrabold text-[#ff453a] mb-2.5">Крайняя речь</h3>
+                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-red-500/20 rounded-[2.5rem] p-6 text-center animate-fade-in">
+                  <h3 className="text-base font-black text-red-400 mb-3">Крайняя речь</h3>
                   {votingWinners.map(num => {
                     const p = tableOut[num - 1];
-                    return <div key={num} className="text-[1.4em] font-extrabold">#{num} {p?.login}</div>;
+                    return <div key={num} className="text-3xl font-black mb-2"><span className="text-yellow-400">#{num}</span> {p?.login}</div>;
                   })}
 
-                  <div className="mt-3.5 mx-auto max-w-[260px]">
-                    <div className={getTimerStatusPillClasses(lastSpeechStatusClass)}>{lastSpeechStatusText}</div>
-                    <div className={getTimerDisplayClasses(lastSpeechDisplayClass)}
-                      onMouseDown={handleLastSpeechHoldStart}
-                      onMouseUp={handleLastSpeechHoldEnd}
-                      onMouseLeave={handleLastSpeechHoldCancel}
-                      onTouchStart={handleLastSpeechHoldStart}
-                      onTouchEnd={handleLastSpeechHoldEnd}
-                      onTouchMove={handleLastSpeechHoldCancel}
-                      onTouchCancel={handleLastSpeechHoldCancel}>
-                      {formatTime(lastSpeechTimer.timeLeft)}
-                    </div>
-                    <div className="flex items-center justify-center gap-2">
-                      {lastSpeechTimer.timeLeft > 0 && lastSpeechFoulCount < 2 && (
-                        <button className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm font-bold active:scale-90 transition-transform duration-150 ease-spring text-[#ff9f0a]"
-                          onClick={() => { lastSpeechTimer.addTime(30); setLastSpeechFoulCount(c => c + 1); triggerHaptic('warning'); }}>
-                          +30с (+Ф)
+                  <VotingTimer
+                    timer={lastSpeechTimer}
+                    holdStart={handleLastSpeechHoldStart}
+                    holdEnd={handleLastSpeechHoldEnd}
+                    holdCancel={handleLastSpeechHoldCancel}
+                    extra={
+                      <div className="flex gap-3">
+                        {lastSpeechTimer.timeLeft > 0 && lastSpeechFoulCount < 2 && (
+                          <button className="px-7 py-3 bg-white text-black rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all shadow-xl"
+                            onClick={() => { lastSpeechTimer.addTime(30); setLastSpeechFoulCount(c => c + 1); triggerHaptic('warning'); }}>
+                            +30 сек (+Ф)
+                          </button>
+                        )}
+                        <button className="p-3 bg-white/5 rounded-2xl border border-white/10 active:scale-95 transition-all"
+                          onClick={() => { lastSpeechTimer.stop(); setLastSpeechFoulCount(0); triggerHaptic('light'); }}>
+                          <RotateCcw size={18} className="text-white/50" />
                         </button>
-                      )}
-                    </div>
-                    <div className="text-[0.65rem] text-white/25 text-center mt-2">Клик: Старт/Пауза | Удержание: Сброс</div>
-                  </div>
+                      </div>
+                    }
+                  />
 
                   <div className="mt-4">
                     <SlideConfirm
@@ -366,158 +408,158 @@ export function VotingPanel() {
                 </div>
               )}
 
-              {/* Lift voting */}
+              {/* ── Lift voting ── */}
               {votingStage === 'lift' && !votingFinished && (
-                <div className="relative z-[1] rounded-2xl glass-card-md animate-glass-reveal p-4">
-                  <div className="flex items-center justify-between mb-3 relative z-[1]">
-                    <h3 className="text-[0.9em] font-bold">Голосование за подъём</h3>
-                    <span className="text-[0.75em] text-white/40 font-bold">
+                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-6 animate-fade-in">
+                  <div className="flex justify-between items-center mb-5">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                      Голосование за подъём
+                    </span>
+                    <span className="text-[10px] font-black text-slate-400 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
                       {votingLiftResults.length} / {Math.ceil(alivePlayers.length / 2 + 0.1)} нужно
                     </span>
                   </div>
 
-                  <div className="text-center mb-3">
-                    <span className="text-[0.7em] text-white/40 uppercase tracking-wider">Поднять:</span>
-                    <div className="flex items-center gap-2 flex-wrap mt-1.5 justify-center">
+                  <div className="text-center mb-6">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-yellow-400/80 mb-3 font-black">Поднять игроков:</p>
+                    <div className="flex items-center gap-2 flex-wrap justify-center">
                       {votingTiePlayers.map(num => (
-                        <span key={num} className="w-8 h-8 rounded-lg bg-[rgba(255,214,10,0.12)] border border-[rgba(255,214,10,0.30)] text-[#ffd60a] flex items-center justify-center text-sm font-bold">{num}</span>
+                        <span key={num} className="w-8 h-8 rounded-lg bg-yellow-400/15 border border-yellow-400/30 text-yellow-400 flex items-center justify-center text-sm font-black">{num}</span>
                       ))}
                     </div>
                   </div>
 
-                  <div className="text-[0.7em] text-white/30 uppercase tracking-wider mb-2 text-center">
-                    Кто за подъём?
-                  </div>
+                  {renderVotingGrid({
+                    players: tableOut,
+                    isSelected: (p) => votingLiftResults.includes(p.num),
+                    isDisabled: (p) => !isPlayerActive(p.roleKey),
+                    onToggle: (num) => toggleLiftVote(num),
+                  })}
 
-                  <DialerPad items={tableOut} className="mb-3" renderButton={(p) => {
-                    const alive = isPlayerActive(p.roleKey);
-                    const voted = votingLiftResults.includes(p.num);
-                    return (
-                      <button
-                        onClick={() => { if (alive) { toggleLiftVote(p.num); triggerHaptic('selection'); } }}
-                        className={getDialerBtnClasses({ voted, votedElsewhere: !alive, prefilled: false })}
-                        disabled={!alive}>
-                        {p.num}
-                      </button>
-                    );
-                  }} />
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-[0.85em] text-white/40">
-                      Голосов: {votingLiftResults.length}
-                    </span>
+                  <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">Голосов ЗА:</span>
+                      <span className="text-4xl font-black text-white leading-none tracking-tighter">{votingLiftResults.length}</span>
+                    </div>
                     <button onClick={() => { finishLiftVoting(); triggerHaptic('medium'); }}
-                      className="rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-2 px-4 text-[0.85em]">
-                      Завершить ›
+                      className="bg-white text-black h-14 px-10 rounded-[1.5rem] font-black flex items-center gap-3 active:scale-95 transition-all shadow-xl text-[10px] uppercase tracking-[0.2em]">
+                      Завершить
+                      <ChevronRight size={18} strokeWidth={3} />
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Main/Tie voting */}
+              {/* ══════════ MAIN / TIE VOTING ══════════ */}
               {(votingStage === 'main' || votingStage === 'tie') && !votingFinished && !votingTieTimerActive && (
-                <div className="relative z-[1] rounded-2xl glass-card-md animate-glass-reveal p-4">
-                  <div className="flex items-center justify-between mb-3 relative z-[1]">
-                    <h3 className="text-[0.9em] font-bold">
-                      {votingStage === 'tie' ? 'Повторное голосование' : 'Голосование'}
-                    </h3>
-                    <span className="text-[0.75em] text-white/40 font-bold">
-                      {votingCurrentIndex + 1} / {votingOrder.length}
+                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-6 shadow-2xl flex flex-col animate-fade-in">
+
+                  <div className="flex justify-between items-center mb-6">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                      {votingStage === 'tie' ? 'Повторное' : 'Активная фаза'}
+                    </span>
+                    <span className="text-[10px] font-black text-slate-400 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
+                      ЭТАП {votingCurrentIndex + 1} / {votingOrder.length}
                     </span>
                   </div>
 
-                  <div className="text-center mb-3">
-                    <span className="text-[0.7em] text-white/40 uppercase tracking-wider">Голосуем за:</span>
-                    <div className="text-[1.5em] font-extrabold text-[#ffd60a] mt-1">
-                      #{currentCandidate} {tableOut[currentCandidate - 1]?.login || ''}
-                    </div>
+                  <div className="text-center mb-8">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-purple-400/80 mb-3 font-black">Голосуем за игрока:</p>
+                    <h2 className="text-4xl font-black text-white tracking-tight">
+                      <span className="text-yellow-400">#{currentCandidate}</span> {tableOut[currentCandidate - 1]?.login || ''}
+                    </h2>
                   </div>
 
-                  {/* City mode: counter instead of per-voter */}
+                  {/* City mode: counter */}
                   {cityMode ? (
-                    <div className="flex items-center justify-center gap-6 mb-3">
+                    <div className="flex items-center justify-center gap-6 mb-8">
                       <button onClick={() => setCityVoteCounts(prev => ({ ...prev, [currentCandidate]: Math.max(0, (prev[currentCandidate] || 0) - 1) }))}
-                        className="w-[52px] h-[52px] rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring text-[1.5em] p-0 flex items-center justify-center">−</button>
-                      <span style={{ fontSize: '2.5em', fontWeight: 800, color: 'var(--accent-color)', minWidth: 64, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
+                        className="w-16 h-16 rounded-[1.5rem] bg-white/5 border border-white/10 text-white/70 text-2xl font-black flex items-center justify-center active:scale-95 transition-all">−</button>
+                      <span className="text-5xl font-black tabular-nums min-w-[64px] text-center" style={{ color: 'var(--accent-color)' }}>
                         {cityVoteCounts[currentCandidate] || 0}
                       </span>
                       <button onClick={() => setCityVoteCounts(prev => ({ ...prev, [currentCandidate]: (prev[currentCandidate] || 0) + 1 }))}
-                        className="w-[52px] h-[52px] rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring text-[1.5em] p-0 flex items-center justify-center">+</button>
+                        className="w-16 h-16 rounded-[1.5rem] bg-white/5 border border-white/10 text-white/70 text-2xl font-black flex items-center justify-center active:scale-95 transition-all">+</button>
                     </div>
                   ) : (
-                    <DialerPad items={tableOut} className="mb-3" renderButton={(p) => {
-                      const alive = isPlayerActive(p.roleKey);
-                      const voted = currentVotes.includes(p.num);
-                      const votedElsewhere = alreadyVotedElsewhere.has(p.num);
-                      const prefilled = alive && isLastCandidate && !voted && !votedElsewhere;
-                      const isDisabled = !alive || votedElsewhere;
-                      return (
-                        <button
-                          onClick={() => { if (!isDisabled) { toggleVotingSelection(p.num); triggerHaptic('selection'); } }}
-                          className={getDialerBtnClasses({ voted, votedElsewhere: isDisabled, prefilled })}
-                          disabled={isDisabled}>
-                          {p.num}
-                        </button>
-                      );
-                    }} />
+                    <div className="mb-8">
+                      {renderVotingGrid({
+                        players: tableOut,
+                        isSelected: (p) => currentVotes.includes(p.num),
+                        isDisabled: (p) => !isPlayerActive(p.roleKey) || alreadyVotedElsewhere.has(p.num),
+                        isPrefilled: (p) => isPlayerActive(p.roleKey) && isLastCandidate && !currentVotes.includes(p.num) && !alreadyVotedElsewhere.has(p.num),
+                        onToggle: (num) => toggleVotingSelection(num),
+                      })}
+                    </div>
                   )}
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {votingCurrentIndex > 0 && (
-                        <button onClick={() => { setVotingCurrentIndex(i => i - 1); triggerHaptic('light'); }}
-                          className="rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-2 px-3.5 text-[0.85em]">
-                          ‹ Назад
-                        </button>
-                      )}
-                      <span className="text-[0.85em] text-white/40">
-                        Голосов: {cityMode ? (cityVoteCounts[currentCandidate] || 0) : (currentVotes.length + (isLastCandidate ? remainingVoters.length : 0))}
-                      </span>
-                    </div>
-                    <button onClick={() => { acceptCurrentCandidateVotes(); triggerHaptic('light'); }}
-                      className="rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-2 px-4 text-[0.85em]">
-                      {votingCurrentIndex >= votingOrder.length - 1 ? 'Завершить' : 'Принять'} ›
-                    </button>
-                  </div>
+                  {/* Bottom confirmation */}
+                  <div className="mt-auto pt-6 border-t border-white/5 space-y-5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">Голосов ЗА:</span>
+                        <span className="text-5xl font-black text-white leading-none tracking-tighter">
+                          {cityMode ? (cityVoteCounts[currentCandidate] || 0) : (currentVotes.length + (isLastCandidate ? remainingVoters.length : 0))}
+                        </span>
+                      </div>
 
-                  {/* Results so far */}
-                  {Object.keys(votingResults).length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-white/[0.06]">
-                      <div className="flex flex-col gap-1">
-                        {votingOrder.slice(0, votingCurrentIndex + 1).map(c => (
-                          <div key={c} className="flex justify-between text-[0.8em]">
-                            <span className="text-white/40">#{c} {tableOut[c - 1]?.login || ''}</span>
-                            <span className="font-bold" style={{ color: 'var(--accent-color)' }}>{(votingResults[String(c)] || []).length} голосов</span>
-                          </div>
-                        ))}
+                      <div className="flex items-center gap-2">
+                        {votingCurrentIndex > 0 && (
+                          <button onClick={() => { setVotingCurrentIndex(i => i - 1); triggerHaptic('light'); }}
+                            className="h-14 px-5 rounded-[1.5rem] bg-white/5 border border-white/10 text-white/50 font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
+                            Назад
+                          </button>
+                        )}
+                        <button onClick={() => { acceptCurrentCandidateVotes(); triggerHaptic('light'); }}
+                          className="bg-white text-black h-14 px-10 rounded-[1.5rem] font-black flex items-center gap-3 active:scale-95 transition-all shadow-xl text-[10px] uppercase tracking-[0.2em]">
+                          {votingCurrentIndex >= votingOrder.length - 1 ? 'Завершить' : 'Принять'}
+                          <ChevronRight size={18} strokeWidth={3} />
+                        </button>
                       </div>
                     </div>
-                  )}
+
+                    {/* Results so far */}
+                    {Object.keys(votingResults).length > 0 && (
+                      <div className="bg-white/[0.03] p-4 rounded-2xl border border-white/5">
+                        <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-2 block">Текущий результат</span>
+                        <div className="flex flex-col gap-1.5">
+                          {votingOrder.slice(0, votingCurrentIndex + 1).map(c => (
+                            <div key={c} className="flex justify-between items-center">
+                              <span className="text-xs font-bold text-white/40">#{c} {tableOut[c - 1]?.login || ''}</span>
+                              <span className="text-xs font-black text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20">
+                                {(votingResults[String(c)] || []).length} голосов
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* No winners */}
+              {/* No winners / finished */}
               {votingFinished && votingWinners.length === 0 && !votingTieTimerActive && (
-                <div className="relative z-[1] rounded-2xl glass-card-md animate-fade-in p-4 text-center">
+                <div className="bg-[#0d0d1f]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-8 text-center animate-fade-in">
                   {votingStage === 'lift' ? (
                     <>
-                      <h3 className="text-[0.9em] font-bold mb-2">Голосов за подъём недостаточно</h3>
-                      <p className="text-[0.85em] text-white/40 mb-4">Никто не выбывает</p>
-                      <div className="mb-2.5">
-                        <SlideConfirm
-                          label={`Перейти в ночь`}
-                          onConfirm={() => { closeVotingAndApply(); handleGoToNight(true); triggerHaptic('medium'); }}
-                          color="night"
-                          compact
-                        />
-                      </div>
+                      <h3 className="text-base font-bold mb-2">Голосов за подъём недостаточно</h3>
+                      <p className="text-[0.85em] text-white/40 mb-5">Никто не выбывает</p>
+                      <SlideConfirm
+                        label="Перейти в ночь"
+                        onConfirm={() => { closeVotingAndApply(); handleGoToNight(true); triggerHaptic('medium'); }}
+                        color="night"
+                        compact
+                      />
                     </>
                   ) : (
                     <>
-                      <h3 className="text-[0.9em] font-bold mb-2">Голосование завершено</h3>
-                      <p className="text-[0.85em] text-white/40 mb-3">Никто не выбыл</p>
+                      <h3 className="text-base font-bold mb-2">Голосование завершено</h3>
+                      <p className="text-[0.85em] text-white/40 mb-5">Никто не выбыл</p>
                       <button onClick={() => { closeVotingAndApply(); triggerHaptic('light'); }}
-                        className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/70 text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring py-2.5 px-6 text-[0.85em]">
+                        className="bg-white text-black h-14 px-10 rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl">
                         Закрыть
                       </button>
                     </>
@@ -529,9 +571,9 @@ export function VotingPanel() {
         </>
       )}
 
-      {/* History tab */}
+      {/* ══════════ HISTORY ══════════ */}
       {votingScreenTab === 'history' && (
-        <div className="animate-fade-in flex flex-col gap-2.5">
+        <div className="animate-fade-in flex flex-col gap-3">
           {votingHistory.length === 0 ? (
             <div className="py-10 text-center text-white/25">
               <div className="text-[2em] mb-2 opacity-30">📋</div>
@@ -539,27 +581,24 @@ export function VotingPanel() {
             </div>
           ) : (
             [...votingHistory].reverse().map((v, i) => (
-              <div key={i} className="relative z-[1] rounded-2xl glass-card-md p-4">
-                {/* Header */}
+              <div key={i} className="bg-[#0d0d1f]/60 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[0.7em] font-bold text-white/40 uppercase tracking-wider">
+                  <span className="text-[0.7em] font-black text-white/40 uppercase tracking-wider">
                     Голосование #{v.votingNumber} (День {v.dayNumber})
                   </span>
                 </div>
 
-                {/* Result */}
                 {v.finalWinners?.length > 0 ? (
-                  <div className="text-[0.85em] font-semibold mb-2.5 py-1.5 px-2.5 rounded-[10px] bg-red-500/10 border border-red-500/20">
+                  <div className="text-[0.85em] font-bold mb-2.5 py-2 px-3 rounded-xl bg-red-500/10 border border-red-500/20">
                     Заголосован: {v.finalWinners.map(num => `#${num} ${tableOut[num - 1]?.login || ''}`).join(', ')}
                   </div>
                 ) : (
                   <div className="text-[0.85em] text-white/40 mb-2.5">Никто не выбыл</div>
                 )}
 
-                {/* Stages */}
                 {v.stages?.map((s, si) => (
                   <div key={si} className={si > 0 ? 'mt-2.5 pt-2.5 border-t border-white/[0.06]' : ''}>
-                    <div className="text-[0.7em] font-bold text-white/30 uppercase tracking-wider mb-1.5">
+                    <div className="text-[0.7em] font-black text-white/30 uppercase tracking-wider mb-1.5">
                       {s.type === 'main' ? 'Основное' : s.type === 'tie' ? 'Повторное' : 'За подъём'}
                     </div>
 
@@ -585,19 +624,19 @@ export function VotingPanel() {
                           const voters = Array.isArray(s.results?.[cNum]) ? s.results[cNum] : [];
                           const voteCount = voters.length;
                           return (
-                            <div key={cNum} className="bg-white/[0.03] rounded-[10px] py-2 px-2.5">
+                            <div key={cNum} className="bg-white/[0.03] rounded-xl py-2 px-2.5">
                               <div className={`flex items-center justify-between ${voters.length > 0 ? 'mb-1' : ''}`}>
-                                <span className="text-[0.85em] font-bold text-[#ffd60a]">
+                                <span className="text-[0.85em] font-black text-yellow-400">
                                   #{cNum} {tableOut[Number(cNum) - 1]?.login || ''}
                                 </span>
-                                <span className="text-[0.8em] font-bold" style={{ color: 'var(--accent-color)' }}>
+                                <span className="text-[0.8em] font-black text-purple-400">
                                   {voteCount} {voteCount === 1 ? 'голос' : voteCount >= 2 && voteCount <= 4 ? 'голоса' : 'голосов'}
                                 </span>
                               </div>
                               {voters.length > 0 && (
                                 <div className="flex flex-wrap gap-1">
                                   {voters.map(voterNum => (
-                                    <span key={voterNum} className="text-[0.7em] font-semibold text-white/50 bg-white/[0.06] py-0.5 px-1.5 rounded-md">
+                                    <span key={voterNum} className="text-[0.7em] font-bold text-white/50 bg-white/[0.06] py-0.5 px-1.5 rounded-md">
                                       #{voterNum}
                                     </span>
                                   ))}
