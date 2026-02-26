@@ -5,6 +5,91 @@ import { getRoleLabel, getCityBestMoveMax } from '../constants/roles';
 import { triggerHaptic } from '../utils/haptics';
 import { NightTimerBar } from './NightTimerBar';
 import { DialerPad, RowPad, dialerBtn } from './DialerPad';
+import { Mic2, ChevronDown, RotateCcw } from 'lucide-react';
+
+const PLAYER_COLORS = [
+  'from-indigo-500 to-blue-600',
+  'from-amber-500 to-orange-600',
+  'from-rose-500 to-pink-600',
+  'from-emerald-500 to-teal-600',
+  'from-purple-500 to-indigo-600',
+  'from-gray-500 to-slate-600',
+  'from-red-500 to-rose-600',
+  'from-cyan-500 to-blue-600',
+  'from-violet-500 to-purple-600',
+  'from-blue-500 to-cyan-600',
+];
+
+function FoulSegmentControl({ label, count, max, onAdd, onRemove }) {
+  const holdRef = useRef(null);
+  const holdActiveRef = useRef(false);
+  const lastTouchRef = useRef(0);
+
+  const handleStart = useCallback((e) => {
+    if (e?.type === 'mousedown' && Date.now() - lastTouchRef.current < 500) return;
+    if (e?.type === 'touchstart') lastTouchRef.current = Date.now();
+    e.stopPropagation();
+    holdActiveRef.current = false;
+    holdRef.current = setTimeout(() => {
+      holdActiveRef.current = true;
+      onRemove();
+      triggerHaptic('light');
+    }, 500);
+  }, [onRemove]);
+
+  const handleEnd = useCallback((e) => {
+    if (e?.type === 'touchend') lastTouchRef.current = Date.now();
+    if (e?.type === 'mouseup' && Date.now() - lastTouchRef.current < 500) return;
+    e.stopPropagation();
+    clearTimeout(holdRef.current);
+    if (!holdActiveRef.current) {
+      onAdd();
+      triggerHaptic('warning');
+    }
+  }, [onAdd]);
+
+  const handleCancel = useCallback(() => {
+    clearTimeout(holdRef.current);
+    holdActiveRef.current = true;
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center gap-1" onClick={e => e.stopPropagation()}>
+      <button
+        className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center border transition-all active:scale-90 backdrop-blur-md ${
+          count >= max
+            ? 'bg-red-500/30 border-red-500/50 text-white shadow-[0_0_10px_rgba(239,68,68,0.3)]'
+            : count > 0
+              ? 'bg-white/10 border-white/15 text-white/70'
+              : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+        }`}
+        onTouchStart={handleStart}
+        onTouchEnd={handleEnd}
+        onTouchMove={handleCancel}
+        onTouchCancel={handleCancel}
+        onMouseDown={handleStart}
+        onMouseUp={handleEnd}
+        onMouseLeave={handleCancel}
+      >
+        <span className="text-[7px] font-black uppercase tracking-widest leading-none mb-0.5 opacity-60">{label}</span>
+        <span className="text-xs font-black leading-none">{count}</span>
+      </button>
+      <div className="flex gap-0.5 w-full justify-center">
+        {[...Array(max)].map((_, i) => (
+          <div key={i} className={`h-0.5 rounded-full transition-all duration-300 ${
+            i < count
+              ? max === 2
+                ? 'w-3 bg-cyan-400 shadow-[0_0_5px_#22d3ee]'
+                : i >= 3
+                  ? 'w-1.5 bg-rose-500 shadow-[0_0_5px_#f43f5e]'
+                  : 'w-1.5 bg-indigo-400 shadow-[0_0_5px_#818cf8]'
+              : 'w-1 bg-white/10'
+          }`} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isNextSpeaker = false, mode = 'day' }) => {
   const {
@@ -32,6 +117,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
   const rk = player.roleKey;
   const action = player.action;
   const isKilledForTimer = action === 'killed';
+  const playerColor = PLAYER_COLORS[(player.num - 1) % PLAYER_COLORS.length];
 
   const handleTimerComplete = useCallback(() => {
     if (isKilledForTimer && cityMode && killedCardPhase?.[rk] === 'timer') {
@@ -144,36 +230,6 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
     holdActiveRef.current = true;
   }, []);
 
-  const foulHoldRef = useRef(null);
-  const foulHoldActiveRef = useRef(false);
-  const foulLastTouchRef = useRef(0);
-
-  const handleFoulStart = useCallback((type, e) => {
-    if (e?.type === 'mousedown' && Date.now() - foulLastTouchRef.current < 500) return;
-    if (e?.type === 'touchstart') foulLastTouchRef.current = Date.now();
-    foulHoldActiveRef.current = false;
-    foulHoldRef.current = setTimeout(() => {
-      foulHoldActiveRef.current = true;
-      if (type === 'foul') { removeFoul(rk); triggerHaptic('light'); }
-      else { removeTechFoul(rk); triggerHaptic('light'); }
-    }, 500);
-  }, [rk, removeFoul, removeTechFoul]);
-
-  const handleFoulEnd = useCallback((type, e) => {
-    if (e?.type === 'touchend') foulLastTouchRef.current = Date.now();
-    if (e?.type === 'mouseup' && Date.now() - foulLastTouchRef.current < 500) return;
-    clearTimeout(foulHoldRef.current);
-    if (!foulHoldActiveRef.current) {
-      if (type === 'foul') { addFoul(rk); triggerHaptic('warning'); }
-      else { addTechFoul(rk); triggerHaptic('warning'); }
-    }
-  }, [rk, addFoul, addTechFoul]);
-
-  const handleFoulMoveCancel = useCallback(() => {
-    clearTimeout(foulHoldRef.current);
-    foulHoldActiveRef.current = true;
-  }, []);
-
   const removeHoldRef = useRef(null);
   const removeLastTouchRef = useRef(0);
   const removeHoldActiveRef = useRef(false);
@@ -235,14 +291,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
   const isNightSheriff = mode === 'night' && nightPhase === 'sheriff' && roles[rk] === 'sheriff';
   const isNightDoctor = mode === 'night' && nightPhase === 'doctor' && roles[rk] === 'doctor';
 
-  const timerStatusText = isRunning && !isPaused ? 'Речь идет' : isPaused ? 'Пауза' : timeLeft === 0 ? 'Время вышло' : 'Готов';
   const isLow = timeLeft <= 10 && isRunning && !isPaused;
-  const showTimerWave = expanded && (isRunning || isPaused || timeLeft > 0) && (
-    (isKilled && (cardPhase === 'timer' || (!cardPhase && !isFirstKilled))) ||
-    (gamePhase === 'day' && active && !isDead)
-  );
-
-  const formatTime = (t) => String(t).padStart(2, '0');
 
   const roleTagColors = {
     don: 'bg-purple-300/15 text-purple-300 border-purple-300/25',
@@ -252,144 +301,121 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
     peace: 'bg-blue-300/15 text-blue-300 border-blue-300/25',
   };
 
-  return (
-    <div
-      ref={cardRef}
-      className={`glass-card rounded-2xl relative overflow-hidden transition-all duration-300 ease-spring
-        ${isHighlighted && !isDead ? 'border-accent-soft !bg-accent-soft shadow-[0_0_20px_rgba(var(--accent-rgb),0.18),inset_0_1px_0_rgba(255,255,255,0.1)] scale-[1.01]' : ''}
-        ${isSpeaking && !isDead ? 'border-accent-soft !bg-accent-soft shadow-[0_0_24px_rgba(var(--accent-rgb),0.22),inset_0_1px_0_rgba(255,255,255,0.1)] scale-[1.01]' : ''}
-        ${(isKilled && cardPhase === 'done') || isVoted ? 'opacity-[0.18] saturate-[0.25] brightness-[0.7] !border-red-500/20 !bg-red-500/[0.03]' : ''}
-        ${isKilled && cardPhase !== 'done' ? '!border-red-500/25' : ''}
-        ${isRemoved ? 'opacity-[0.15] saturate-[0.2] brightness-[0.65] !border-white/[0.06] !bg-white/[0.02]' : ''}
-        ${isBlinking ? 'animate-killed-blink' : ''}
-        ${isNightDon ? 'animate-don-pulse' : ''}
-        ${isNightSheriff ? 'animate-sheriff-pulse' : ''}
-        ${isNightDoctor ? 'animate-doctor-pulse' : ''}
-        ${isNextSpeaker && !isDead ? 'animate-next-speaker border-accent-soft !bg-accent-soft/50' : ''}
-        ${!isDead && !isHighlighted && !isSpeaking && !isNextSpeaker ? 'hover:border-white/[0.18] hover:shadow-glass-md' : ''}
-        ${expanded ? 'shadow-glass-md !border-white/[0.16]' : ''}`}
-      style={{
-        '--i': player.num - 1,
-        ...(showTimerWave ? { '--wave-progress': `${timerProgress * 100}%` } : {}),
-      }}
-    >
-      {showTimerWave && (
-        <div className={`card-timer-wave ${isLow ? 'wave-low' : ''} ${isPaused ? 'wave-paused' : ''}`} />
-      )}
-      {/* Main row */}
-      <div className="relative z-[1] flex items-center gap-3 px-3.5 py-2.5 cursor-pointer min-h-[64px]" onClick={handleToggle}>
-        {/* Avatar */}
-        <div className="relative shrink-0">
-          <div className="w-11 h-11 rounded-full bg-white/[0.06] border border-white/[0.08]
-            flex items-center justify-center text-white/60 text-sm font-bold overflow-hidden"
-            style={player.avatar_link ? { backgroundImage: `url(${player.avatar_link})`, backgroundSize: 'cover', color: 'transparent' } : {}}>
-            {!player.avatar_link && (player.login?.[0]?.toUpperCase() || player.num)}
-          </div>
-          <span className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] rounded-md
-            bg-[rgba(168,85,247,0.85)] border-[1.5px] border-[rgba(10,8,20,0.7)] shadow-[0_1px_6px_rgba(0,0,0,0.4),0_0_8px_rgba(168,85,247,0.25)] flex items-center justify-center
-            text-[0.6rem] font-bold text-white px-0.5">{player.num}</span>
-        </div>
+  const isDayAlive = mode === 'day' && gamePhase === 'day' && !isDead && active;
 
-        {/* Name + meta */}
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold text-white truncate tracking-[0.2px]">{player.login || `Игрок ${player.num}`}</div>
-          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            {role && gamePhase !== 'discussion' && gamePhase !== 'freeSeating' && gamePhase !== 'day' && (
-              <span className={`px-1.5 py-0.5 rounded-md text-[0.6rem] font-bold border ${roleTagColors[role] || 'bg-white/5 text-white/40 border-white/10'}`}>
-                {getRoleLabel(role)}
-              </span>
+  const stateClasses = `
+    ${isHighlighted && !isDead ? 'border-accent-soft !bg-accent-soft shadow-[0_0_20px_rgba(var(--accent-rgb),0.18)]' : ''}
+    ${isSpeaking && !isDead ? '!border-indigo-500/40 !bg-indigo-500/[0.08] shadow-[0_0_24px_rgba(99,102,241,0.2)]' : ''}
+    ${(isKilled && cardPhase === 'done') || isVoted ? 'opacity-[0.18] saturate-[0.25] brightness-[0.7] !border-red-500/20' : ''}
+    ${isKilled && cardPhase !== 'done' ? '!border-red-500/25' : ''}
+    ${isRemoved ? 'opacity-[0.15] saturate-[0.2] brightness-[0.65] !border-white/[0.06]' : ''}
+    ${isBlinking ? 'animate-killed-blink' : ''}
+    ${isNightDon ? 'animate-don-pulse' : ''}
+    ${isNightSheriff ? 'animate-sheriff-pulse' : ''}
+    ${isNightDoctor ? 'animate-doctor-pulse' : ''}
+    ${isNextSpeaker && !isDead ? 'animate-next-speaker !border-indigo-500/30 !bg-indigo-500/[0.06]' : ''}
+  `;
+
+  const handleAdvanceNext = useCallback(() => {
+    stop();
+    if (currentDaySpeakerIndex >= 0) {
+      nextDaySpeaker();
+    } else {
+      const myIdx = activePlayers.findIndex(p => p.roleKey === rk);
+      const nextIdx = myIdx >= 0 ? (myIdx + 1) % activePlayers.length : 0;
+      const nextPlayer = activePlayers[nextIdx];
+      if (nextPlayer) {
+        setCurrentDaySpeakerIndex(nextIdx);
+        setAutoExpandPlayer(nextPlayer.roleKey);
+        setAutoStartTimerRK(nextPlayer.roleKey);
+      }
+    }
+    triggerHaptic('light');
+  }, [stop, currentDaySpeakerIndex, nextDaySpeaker, activePlayers, rk, setCurrentDaySpeakerIndex, setAutoExpandPlayer, setAutoStartTimerRK]);
+
+  /* ============================== RENDER ============================== */
+
+  if (expanded) {
+    return (
+      <div
+        ref={cardRef}
+        className={`relative bg-white/[0.08] rounded-[28px] p-5 shadow-2xl border border-white/20 backdrop-blur-3xl ring-1 ring-white/10
+          transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden ${stateClasses}`}
+        style={{ '--i': player.num - 1 }}
+      >
+        <div className="space-y-5">
+          {/* ── Header: Player info + Fouls ── */}
+          <div className="flex justify-between items-start cursor-pointer" onClick={handleToggle}>
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="relative shrink-0">
+                <div
+                  className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${playerColor} flex items-center justify-center text-xl font-black text-white/90 border border-white/20 shadow-lg overflow-hidden`}
+                  style={player.avatar_link ? { backgroundImage: `url(${player.avatar_link})`, backgroundSize: 'cover', color: 'transparent' } : {}}
+                >
+                  {!player.avatar_link && (player.login?.[0]?.toUpperCase() || player.num)}
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-black rounded-lg border border-white/10 flex items-center justify-center text-[8px] font-bold text-white/60">
+                  {player.num}
+                </div>
+              </div>
+              <div className="min-w-0">
+                <h2 className={`text-xl font-black tracking-tight truncate ${isDead ? 'text-white/30' : ''}`}>
+                  {player.login || `Игрок ${player.num}`}
+                </h2>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  {role && gamePhase !== 'discussion' && gamePhase !== 'freeSeating' && gamePhase !== 'day' && (
+                    <span className={`px-1.5 py-0.5 rounded-md text-[0.6rem] font-bold border ${roleTagColors[role] || 'bg-white/5 text-white/40 border-white/10'}`}>
+                      {getRoleLabel(role)}
+                    </span>
+                  )}
+                  {isSpeaking && !isDead && (
+                    <div className="flex items-center gap-1.5 text-indigo-400">
+                      <Mic2 size={12} />
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em]">Выступает</span>
+                    </div>
+                  )}
+                  {statusLabel && (
+                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">{statusLabel}</span>
+                  )}
+                  {isFirstKilled && (
+                    <span className="px-1.5 py-0.5 rounded-md text-[0.55rem] font-bold bg-red-500/15 text-red-400 border border-red-500/25">ПУ</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Foul controls (day alive) */}
+            {isDayAlive && (
+              <div className="flex items-center gap-3 bg-black/40 rounded-2xl p-2.5 border border-white/5 shadow-inner shrink-0" onClick={e => e.stopPropagation()}>
+                <FoulSegmentControl label="Ф" count={foulCount} max={4} onAdd={() => addFoul(rk)} onRemove={() => removeFoul(rk)} />
+                <div className="w-[1px] h-6 bg-white/10" />
+                <FoulSegmentControl label="Т" count={techFoulCount} max={2} onAdd={() => addTechFoul(rk)} onRemove={() => removeTechFoul(rk)} />
+              </div>
             )}
-            {isFirstKilled && (
-              <span className="px-1.5 py-0.5 rounded-md text-[0.6rem] font-bold bg-red-500/15 text-red-400 border border-red-500/25">ПУ</span>
+
+            {/* Dead: return button */}
+            {isDead && (
+              <div className="shrink-0" onClick={e => e.stopPropagation()}>
+                <button className="w-10 h-10 rounded-xl bg-[rgba(48,209,88,0.1)] border border-[rgba(48,209,88,0.25)] text-[#30d158]
+                  flex items-center justify-center active:scale-90 transition-transform text-lg"
+                  onTouchStart={(e) => { e.stopPropagation(); handleReturnStart(e); }}
+                  onTouchEnd={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
+                  onTouchMove={handleRemoveMoveCancel}
+                  onTouchCancel={handleRemoveMoveCancel}
+                  onMouseDown={(e) => { e.stopPropagation(); handleReturnStart(e); }}
+                  onMouseUp={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
+                  onMouseLeave={handleRemoveMoveCancel}>
+                  ❤
+                </button>
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {isDead ? (
-            <>
-              <span className="text-[0.6em] font-bold text-white/30 uppercase tracking-[1px] mr-1.5">{statusLabel}</span>
-              <button className="w-8 h-8 rounded-lg bg-[rgba(48,209,88,0.08)] border border-[rgba(48,209,88,0.20)] text-[#30d158]
-                flex items-center justify-center active:scale-90 transition-transform duration-150 ease-spring"
-                onTouchStart={(e) => { e.stopPropagation(); handleReturnStart(e); }}
-                onTouchEnd={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
-                onTouchMove={handleRemoveMoveCancel}
-                onTouchCancel={handleRemoveMoveCancel}
-                onMouseDown={(e) => { e.stopPropagation(); handleReturnStart(e); }}
-                onMouseUp={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
-                onMouseLeave={handleRemoveMoveCancel}
-                onClick={(e) => e.stopPropagation()}>
-                ❤
-              </button>
-            </>
-          ) : mode === 'day' && gamePhase === 'day' ? (
-            <>
-              <button className={`flex items-center gap-0.5 px-2 py-1.5 rounded-lg border text-xs font-bold
-                active:scale-90 transition-all duration-150 ease-spring touch-manipulation
-                ${foulCount >= 3 ? 'border-red-500/30 bg-red-500/10 text-red-400 animate-foul-warn' :
-                  foulCount >= 2 ? 'border-amber-500/25 bg-amber-500/10 text-amber-400' :
-                  'border-white/[0.08] bg-white/[0.04] text-white/50'}`}
-                onClick={(e) => e.stopPropagation()}
-                onTouchStart={(e) => { e.stopPropagation(); handleFoulStart('foul', e); }}
-                onTouchEnd={(e) => { e.stopPropagation(); handleFoulEnd('foul', e); }}
-                onTouchMove={handleFoulMoveCancel}
-                onTouchCancel={handleFoulMoveCancel}
-                onMouseDown={(e) => { e.stopPropagation(); handleFoulStart('foul', e); }}
-                onMouseUp={(e) => { e.stopPropagation(); handleFoulEnd('foul', e); }}
-                onMouseLeave={handleFoulMoveCancel}>
-                <span className="opacity-60">Ф</span>
-                <span>{foulCount}</span>
-              </button>
-              <button className={`flex items-center gap-0.5 px-2 py-1.5 rounded-lg border text-xs font-bold
-                active:scale-90 transition-all duration-150 ease-spring touch-manipulation
-                ${techFoulCount >= 1 ? 'border-amber-500/25 bg-amber-500/10 text-amber-400' :
-                  'border-white/[0.08] bg-white/[0.04] text-white/50'}`}
-                onClick={(e) => e.stopPropagation()}
-                onTouchStart={(e) => { e.stopPropagation(); handleFoulStart('tf', e); }}
-                onTouchEnd={(e) => { e.stopPropagation(); handleFoulEnd('tf', e); }}
-                onTouchMove={handleFoulMoveCancel}
-                onTouchCancel={handleFoulMoveCancel}
-                onMouseDown={(e) => { e.stopPropagation(); handleFoulStart('tf', e); }}
-                onMouseUp={(e) => { e.stopPropagation(); handleFoulEnd('tf', e); }}
-                onMouseLeave={handleFoulMoveCancel}>
-                <span className="opacity-60">ТФ</span>
-                <span>{techFoulCount}</span>
-              </button>
-              <button className="w-8 h-8 rounded-lg bg-[rgba(255,69,58,0.05)] border border-[rgba(255,69,58,0.12)] text-[rgba(255,69,58,0.45)]
-                flex items-center justify-center text-sm font-bold
-                active:scale-90 transition-all duration-150 ease-spring touch-manipulation"
-                onClick={(e) => e.stopPropagation()}
-                onTouchStart={(e) => { e.stopPropagation(); handleRemoveStart(e); }}
-                onTouchEnd={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
-                onTouchMove={handleRemoveMoveCancel}
-                onTouchCancel={handleRemoveMoveCancel}
-                onMouseDown={(e) => { e.stopPropagation(); handleRemoveStart(e); }}
-                onMouseUp={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
-                onMouseLeave={handleRemoveMoveCancel}>
-                ✕
-              </button>
-            </>
-          ) : mode === 'night' ? (
-            <button
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold
-                active:scale-90 transition-all duration-150 ease-spring
-                ${action === 'killed'
-                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                  : 'bg-white/[0.04] border border-white/[0.08] text-white/50 hover:bg-red-500/10 hover:text-red-400'}`}
-              onClick={(e) => { e.stopPropagation(); actionSet(rk, 'killed', { nightKill: true }); triggerHaptic('heavy'); }}>
-              Убить
-            </button>
-          ) : null}
-        </div>
-      </div>
+          {/* ── Content sections ── */}
 
-      {/* Expanded panel */}
-      {expanded && (
-        <div className="relative z-[1] px-3 pb-3 pt-1 border-t border-white/[0.06] animate-expand">
           {/* Role assignment */}
           {editRoles && !rolesDistributed && (
-            <div className="flex gap-1.5 flex-wrap mb-3">
+            <div className="flex gap-1.5 flex-wrap">
               <span className="text-[0.7em] text-white/40 font-bold w-full">Роль:</span>
               {(cityMode ? ['don', 'black', 'sheriff', 'doctor'] : ['don', 'black', 'sheriff']).map(r => (
                 <button key={r} onClick={() => { roleSet(rk, r); triggerHaptic('selection'); }}
@@ -403,7 +429,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
 
           {/* KILLED: Best Move */}
           {isKilled && cardPhase === 'bm' && isFirstKilled && canShowBestMove() && (
-            <div className="mt-3">
+            <div>
               <div className="text-[0.8em] font-bold text-red-400 mb-2">
                 Лучший ход (ЛХ) — выберите до {cityMode ? (getCityBestMoveMax(tableOut.length) || 3) : 3} игроков
               </div>
@@ -437,56 +463,35 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
 
           {/* KILLED: Timer */}
           {isKilled && (cardPhase === 'timer' || (!cardPhase && !isFirstKilled)) && (
-            <div className="mt-3">
+            <div>
               {isFirstKilled && bestMoveAccepted && (
-                <button className="mb-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]
+                <button className="mb-3 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08]
                   text-white/40 text-xs font-bold active:scale-95 transition-transform duration-150 ease-spring"
                   onClick={() => { setKilledCardPhase(prev => ({ ...prev, [rk]: 'bm' })); triggerHaptic('light'); }}>
                   Изменить ЛХ ({bestMove.join(', ')})
                 </button>
               )}
-              <div className={`px-3 py-1 rounded-full text-[0.65rem] font-bold tracking-wider uppercase w-fit mx-auto mb-1
-                ${isRunning && !isPaused ? 'bg-emerald-500/15 text-emerald-400' :
-                  isPaused ? 'bg-amber-500/15 text-amber-400' :
-                  timeLeft === 0 ? 'bg-red-500/15 text-red-400' : 'bg-white/[0.06] text-white/40'}`}>
-                {timerStatusText}
-              </div>
-              <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden mb-1">
-                <div className={`h-full rounded-full transition-[width] duration-500 linear
-                  ${isLow ? 'bg-red-500' : isRunning && !isPaused ? 'bg-accent' : isPaused ? 'bg-amber-400/60' : 'bg-white/20'}`}
-                  style={{ width: `${timerProgress * 100}%` }} />
-              </div>
-              <div className={`text-center text-5xl font-extrabold tracking-tight tabular-nums cursor-pointer select-none my-2
-                ${isLow ? 'text-red-400 animate-timer-pulse' :
-                  isRunning && !isPaused ? 'text-white' :
-                  isPaused ? 'text-amber-400/70' :
-                  timeLeft === 0 ? 'text-red-400/60 animate-timer-blink' : 'text-white/70'}`}
-                onMouseDown={handleTimerHoldStart} onMouseUp={handleTimerHoldEnd} onMouseLeave={handleTimerHoldCancel}
-                onTouchStart={handleTimerHoldStart} onTouchEnd={handleTimerHoldEnd}
-                onTouchMove={handleTimerHoldCancel} onTouchCancel={handleTimerHoldCancel}>
-                {formatTime(timeLeft)}
-              </div>
-              <div className="flex items-center justify-center gap-2">
-                {canAddTime && (
-                  <button className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20
-                    text-amber-400 text-xs font-bold active:scale-90 transition-transform duration-150 ease-spring"
-                    onClick={() => { addTime(30); addFoul(rk); addFoul(rk); triggerHaptic('warning'); }}>
-                    +30с (+2Ф)
-                  </button>
-                )}
-                <button className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08]
-                  text-white/50 text-xs font-bold active:scale-90 transition-transform duration-150 ease-spring"
+              <TimerSection
+                timeLeft={timeLeft} timerProgress={timerProgress} isLow={isLow}
+                isRunning={isRunning} isPaused={isPaused}
+                onTimerHoldStart={handleTimerHoldStart} onTimerHoldEnd={handleTimerHoldEnd} onTimerHoldCancel={handleTimerHoldCancel}
+                canAddTime={canAddTime}
+                onAddTime={() => { addTime(30); addFoul(rk); addFoul(rk); triggerHaptic('warning'); }}
+                onReset={() => { stop(); triggerHaptic('light'); }}
+              />
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <button className="px-6 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.08]
+                  text-white/50 text-xs font-bold active:scale-95 transition-transform duration-150 ease-spring"
                   onClick={advanceKilledPhase}>
                   {cityMode ? 'Готово ➜' : 'Протокол / Мнение ➜'}
                 </button>
               </div>
-              <div className="text-[0.65rem] text-white/25 text-center mt-2">Клик: Старт/Пауза | Удержание: Сброс</div>
             </div>
           )}
 
           {/* KILLED: Protocol (not city mode) */}
           {isKilled && cardPhase === 'protocol' && !cityMode && (
-            <div className="mt-3 relative">
+            <div className="relative">
               {(gameMode === 'gomafia' || gameMode === 'funky') && <NightTimerBar duration={20} />}
               <div className="relative z-[1]">
                 <ProtocolSection rk={rk} tableOut={tableOut} />
@@ -524,58 +529,20 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
           )}
 
           {/* ALIVE: Timer (Day mode) */}
-          {gamePhase === 'day' && active && !isDead && (
-            <div className="mt-3">
-              <div className={`px-3 py-1 rounded-full text-[0.65rem] font-bold tracking-wider uppercase w-fit mx-auto mb-1
-                ${isRunning && !isPaused ? 'bg-emerald-500/15 text-emerald-400' :
-                  isPaused ? 'bg-amber-500/15 text-amber-400' :
-                  timeLeft === 0 ? 'bg-red-500/15 text-red-400' : 'bg-white/[0.06] text-white/40'}`}>
-                {timerStatusText}
-              </div>
-              <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden mb-1">
-                <div className={`h-full rounded-full transition-[width] duration-500 linear
-                  ${isLow ? 'bg-red-500' : isRunning && !isPaused ? 'bg-accent' : isPaused ? 'bg-amber-400/60' : 'bg-white/20'}`}
-                  style={{ width: `${timerProgress * 100}%` }} />
-              </div>
-              <div className={`text-center text-5xl font-extrabold tracking-tight tabular-nums cursor-pointer select-none my-2
-                ${isLow ? 'text-red-400 animate-timer-pulse' :
-                  isRunning && !isPaused ? 'text-white' :
-                  isPaused ? 'text-amber-400/70' :
-                  timeLeft === 0 ? 'text-red-400/60 animate-timer-blink' : 'text-white/70'}`}
-                onMouseDown={handleTimerHoldStart} onMouseUp={handleTimerHoldEnd} onMouseLeave={handleTimerHoldCancel}
-                onTouchStart={handleTimerHoldStart} onTouchEnd={handleTimerHoldEnd}
-                onTouchMove={handleTimerHoldCancel} onTouchCancel={handleTimerHoldCancel}>
-                {formatTime(timeLeft)}
-              </div>
-              <div className="flex items-center justify-center gap-2">
-                {canAddTime && (
-                  <button className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20
-                    text-amber-400 text-xs font-bold active:scale-90 transition-transform duration-150 ease-spring"
-                    onClick={() => { addTime(30); addFoul(rk); addFoul(rk); triggerHaptic('warning'); }}>
-                    +30с (+2Ф)
-                  </button>
-                )}
-              </div>
-              <div className="text-[0.65rem] text-white/25 text-center mt-2">Клик: Старт/Пауза | Удержание: Сброс</div>
+          {isDayAlive && (
+            <div>
+              <TimerSection
+                timeLeft={timeLeft} timerProgress={timerProgress} isLow={isLow}
+                isRunning={isRunning} isPaused={isPaused}
+                onTimerHoldStart={handleTimerHoldStart} onTimerHoldEnd={handleTimerHoldEnd} onTimerHoldCancel={handleTimerHoldCancel}
+                canAddTime={canAddTime}
+                onAddTime={() => { addTime(30); addFoul(rk); addFoul(rk); triggerHaptic('warning'); }}
+                onReset={() => { stop(); triggerHaptic('light'); }}
+              />
               {(isRunning || isPaused) && (
                 <button
-                  className="w-full mt-3 px-4 py-3 rounded-xl bg-accent text-white text-sm font-bold active:scale-[0.97] transition-transform duration-150 ease-spring"
-                  onClick={() => {
-                    stop();
-                    if (currentDaySpeakerIndex >= 0) {
-                      nextDaySpeaker();
-                    } else {
-                      const myIdx = activePlayers.findIndex(p => p.roleKey === rk);
-                      const nextIdx = myIdx >= 0 ? (myIdx + 1) % activePlayers.length : 0;
-                      const nextPlayer = activePlayers[nextIdx];
-                      if (nextPlayer) {
-                        setCurrentDaySpeakerIndex(nextIdx);
-                        setAutoExpandPlayer(nextPlayer.roleKey);
-                        setAutoStartTimerRK(nextPlayer.roleKey);
-                      }
-                    }
-                    triggerHaptic('light');
-                  }}
+                  className="w-full mt-4 px-4 py-3.5 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-xl"
+                  onClick={handleAdvanceNext}
                 >
                   Далее →
                 </button>
@@ -585,28 +552,59 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
 
           {/* ALIVE: Nominations (Day, not locked, classic only) */}
           {gamePhase === 'day' && !nominationsLocked && active && !isDead && !cityMode && (
-            <div className="mt-3">
-              <div className="text-[0.7em] font-bold text-white/40 mb-2">Выставить:</div>
-              <RowPad items={tableOut} renderButton={(t) => {
-                const tActive = isPlayerActive(t.roleKey);
-                const isMyNomination = nominations?.[rk]?.includes(t.num);
-                const nominatedByOther = !isMyNomination && Object.entries(nominations || {}).some(([fromRK, targets]) => fromRK !== rk && targets?.includes(t.num));
-                const isDisabled = !tActive || nominatedByOther;
-                return (
-                  <button
-                    disabled={isDisabled}
-                    className={`${dialerBtn.compact} ${isMyNomination ? dialerBtn.selected : isDisabled ? dialerBtn.disabled : dialerBtn.normal}`}
-                    onClick={() => { if (!isDisabled) { toggleNomination(rk, t.num); triggerHaptic('selection'); } }}>
-                    {t.num}
-                  </button>
-                );
-              }} />
+            <div className="space-y-3">
+              <div className="flex justify-between items-center px-1">
+                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Выставить на голосование</span>
+                {isNominated && <span className="text-[9px] font-black text-indigo-400">ВЫСТАВЛЕН</span>}
+              </div>
+              <div className="grid grid-cols-5 gap-2">
+                {tableOut.map(t => {
+                  const tActive = isPlayerActive(t.roleKey);
+                  const isMyNomination = nominations?.[rk]?.includes(t.num);
+                  const nominatedByOther = !isMyNomination && Object.entries(nominations || {}).some(([fromRK, targets]) => fromRK !== rk && targets?.includes(t.num));
+                  const isDisabled = !tActive || nominatedByOther;
+                  return (
+                    <button
+                      key={t.num}
+                      disabled={isDisabled}
+                      onClick={() => { if (!isDisabled) { toggleNomination(rk, t.num); triggerHaptic('selection'); } }}
+                      className={`h-10 rounded-xl font-black text-xs transition-all duration-300 ${
+                        isMyNomination
+                          ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] border border-indigo-400 scale-105'
+                          : isDisabled
+                            ? 'bg-white/[0.02] text-white/10 border border-white/[0.03]'
+                            : 'bg-white/5 text-white/30 border border-white/5 hover:border-white/10'
+                      }`}
+                    >
+                      {t.num}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Remove player button (day alive) */}
+          {isDayAlive && (
+            <div className="flex justify-center pt-1">
+              <button className="px-4 py-2 rounded-xl bg-red-500/[0.04] border border-red-500/10 text-red-500/30
+                text-[8px] font-black uppercase tracking-[0.2em] active:scale-95 transition-all"
+                onClick={(e) => e.stopPropagation()}
+                onTouchStart={(e) => { e.stopPropagation(); handleRemoveStart(e); }}
+                onTouchEnd={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
+                onTouchMove={handleRemoveMoveCancel}
+                onTouchCancel={handleRemoveMoveCancel}
+                onMouseDown={(e) => { e.stopPropagation(); handleRemoveStart(e); }}
+                onMouseUp={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
+                onMouseLeave={handleRemoveMoveCancel}>
+                Удалить (удержать)
+              </button>
             </div>
           )}
 
           {/* Night: Don/Sheriff checks */}
           {mode === 'night' && (roles[rk] === 'don' || roles[rk] === 'sheriff') && (
-            <div className="mt-3">
+            <div>
               <div className="text-sm font-bold mb-2">
                 {roles[rk] === 'don' ? 'Проверка Дона' : 'Проверка Шерифа'}
               </div>
@@ -639,7 +637,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
 
           {/* Night: Doctor heal (city mode) */}
           {mode === 'night' && cityMode && roles[rk] === 'doctor' && nightPhase === 'doctor' && (
-            <div className="mt-3">
+            <div>
               <div className="text-sm font-bold mb-2">Лечение Доктора</div>
               {!doctorHeal ? (
                 <RowPad items={tableOut} renderButton={(t) => (
@@ -659,10 +657,144 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
             </div>
           )}
         </div>
-      )}
+      </div>
+    );
+  }
+
+  /* ── Collapsed card ── */
+  return (
+    <div
+      ref={cardRef}
+      className={`relative bg-white/[0.03] rounded-2xl p-2.5 border border-white/[0.05] backdrop-blur-md cursor-pointer
+        transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-white/[0.06] overflow-hidden ${stateClasses}`}
+      style={{ '--i': player.num - 1 }}
+      onClick={handleToggle}
+    >
+      <div className="flex items-center justify-between h-12 px-1">
+        {/* Left: Avatar + Name */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="relative shrink-0">
+            <div
+              className={`w-9 h-9 rounded-xl bg-gradient-to-br ${playerColor} flex items-center justify-center font-black text-[10px] text-white/90 border border-white/10 shadow-lg overflow-hidden`}
+              style={player.avatar_link ? { backgroundImage: `url(${player.avatar_link})`, backgroundSize: 'cover', color: 'transparent' } : {}}
+            >
+              {!player.avatar_link && (player.login?.[0]?.toUpperCase() || player.num)}
+            </div>
+            <div className="absolute -top-1 -left-1 w-4 h-4 bg-black/60 backdrop-blur-md rounded-md flex items-center justify-center text-[7px] font-bold text-white/50 border border-white/5">
+              {player.num}
+            </div>
+          </div>
+          <div className="min-w-0 flex flex-col">
+            <span className={`font-black text-[12px] uppercase tracking-tight truncate ${
+              foulCount >= 3 ? 'text-rose-400' : isDead ? 'text-white/30' : 'text-white/80'
+            }`}>
+              {player.login || `Игрок ${player.num}`}
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {role && gamePhase !== 'discussion' && gamePhase !== 'freeSeating' && gamePhase !== 'day' && (
+                <span className={`px-1 py-0.5 rounded text-[0.5rem] font-bold border ${roleTagColors[role] || 'bg-white/5 text-white/40 border-white/10'}`}>
+                  {getRoleLabel(role)}
+                </span>
+              )}
+              {isNominated && <span className="text-[6px] font-black text-indigo-400 uppercase tracking-widest animate-pulse">ВЫСТАВЛЕН</span>}
+              {isFirstKilled && <span className="text-[6px] font-black text-red-400 uppercase tracking-widest">ПУ</span>}
+              {statusLabel && <span className="text-[6px] font-black text-white/25 uppercase tracking-widest">{statusLabel}</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Controls */}
+        <div className="flex items-center gap-2 shrink-0">
+          {isDead ? (
+            <button className="w-9 h-9 rounded-xl bg-[rgba(48,209,88,0.08)] border border-[rgba(48,209,88,0.20)] text-[#30d158]
+              flex items-center justify-center active:scale-90 transition-transform text-base"
+              onTouchStart={(e) => { e.stopPropagation(); handleReturnStart(e); }}
+              onTouchEnd={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
+              onTouchMove={handleRemoveMoveCancel}
+              onTouchCancel={handleRemoveMoveCancel}
+              onMouseDown={(e) => { e.stopPropagation(); handleReturnStart(e); }}
+              onMouseUp={(e) => { e.stopPropagation(); handleRemoveEnd(e); }}
+              onMouseLeave={handleRemoveMoveCancel}
+              onClick={(e) => e.stopPropagation()}>
+              ❤
+            </button>
+          ) : mode === 'day' && gamePhase === 'day' ? (
+            <div className="flex items-center gap-3 bg-black/30 backdrop-blur-md rounded-xl px-3 py-1.5 border border-white/5 shadow-inner">
+              <FoulSegmentControl label="Ф" count={foulCount} max={4} onAdd={() => addFoul(rk)} onRemove={() => removeFoul(rk)} />
+              <div className="w-[1px] h-6 bg-white/10" />
+              <FoulSegmentControl label="Т" count={techFoulCount} max={2} onAdd={() => addTechFoul(rk)} onRemove={() => removeTechFoul(rk)} />
+            </div>
+          ) : mode === 'night' ? (
+            <button
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold active:scale-90 transition-all duration-150 ease-spring ${
+                action === 'killed'
+                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  : 'bg-white/[0.04] border border-white/[0.08] text-white/50 hover:bg-red-500/10 hover:text-red-400'
+              }`}
+              onClick={(e) => { e.stopPropagation(); actionSet(rk, 'killed', { nightKill: true }); triggerHaptic('heavy'); }}>
+              Убить
+            </button>
+          ) : null}
+
+          {/* Collapse indicator */}
+          {!isDead && gamePhase !== 'night' && (
+            <ChevronDown size={14} className="text-white/[0.06]" />
+          )}
+        </div>
+      </div>
     </div>
   );
 };
+
+/* ── Shared timer section ── */
+function TimerSection({ timeLeft, timerProgress, isLow, isRunning, isPaused, onTimerHoldStart, onTimerHoldEnd, onTimerHoldCancel, canAddTime, onAddTime, onReset }) {
+  return (
+    <div className="flex flex-col items-center py-2">
+      <div
+        className={`text-[80px] font-black leading-none tracking-tighter tabular-nums mb-2 transition-all duration-300 select-none cursor-pointer ${
+          isLow ? 'text-rose-500 animate-pulse'
+            : isRunning && !isPaused ? 'text-white'
+            : isPaused ? 'text-amber-400/70'
+            : timeLeft === 0 ? 'text-red-400/60 animate-timer-blink' : 'text-white/60'
+        }`}
+        onMouseDown={onTimerHoldStart} onMouseUp={onTimerHoldEnd} onMouseLeave={onTimerHoldCancel}
+        onTouchStart={onTimerHoldStart} onTouchEnd={onTimerHoldEnd}
+        onTouchMove={onTimerHoldCancel} onTouchCancel={onTimerHoldCancel}
+      >
+        {timeLeft}
+      </div>
+
+      <div className="w-full max-w-[200px] h-1 bg-white/5 rounded-full overflow-hidden mb-5">
+        <div
+          className={`h-full rounded-full transition-all duration-1000 ease-linear ${
+            isLow ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]' : isRunning && !isPaused ? 'bg-indigo-500 shadow-[0_0_8px_#6366f1]' : isPaused ? 'bg-amber-400/60' : 'bg-white/10'
+          }`}
+          style={{ width: `${timerProgress * 100}%` }}
+        />
+      </div>
+
+      <div className="flex gap-3">
+        {canAddTime && (
+          <button
+            className="px-7 py-3 bg-white text-black rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all shadow-xl"
+            onClick={onAddTime}
+          >
+            +30 сек
+          </button>
+        )}
+        <button
+          className="p-3 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition active:scale-95"
+          onClick={onReset}
+        >
+          <RotateCcw size={18} className="text-white/50" />
+        </button>
+      </div>
+      <div className="text-[0.6rem] text-white/20 text-center mt-3">Клик: Старт/Пауза | Удержание: Сброс</div>
+    </div>
+  );
+}
+
+/* ── Helper components ── */
 
 const ROLE_STYLES = {
   '':       { label: '-',       color: 'rgba(255,255,255,0.25)', bg: 'transparent',              border: 'rgba(255,255,255,0.08)' },
