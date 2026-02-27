@@ -531,7 +531,6 @@ export function MainMenu() {
   const [menuScreen, setMenuScreen] = useState('game');
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const [eventsTab, setEventsTab] = useState('notifications');
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -539,8 +538,6 @@ export function MainMenu() {
   const [chatUnread, setChatUnread] = useState(0);
   const chatEndRef = useRef(null);
   const chatPollRef = useRef(null);
-  const chatTabBarRef = useRef(null);
-  const [chatAreaTop, setChatAreaTop] = useState(0);
 
   const [newGameModal, setNewGameModal] = useState({
     visible: false, loading: false, error: '',
@@ -672,7 +669,7 @@ export function MainMenu() {
   }, [menuScreen, loadPlayerGames]);
 
   useEffect(() => {
-    if (menuScreen === 'notifications' && eventsTab === 'notifications') {
+    if (menuScreen === 'notifications') {
       setNotificationsLoading(true);
       fetch('/api/notifications.php')
         .then(r => r.json())
@@ -680,7 +677,7 @@ export function MainMenu() {
         .catch(() => setNotifications([]))
         .finally(() => setNotificationsLoading(false));
     }
-  }, [menuScreen, eventsTab]);
+  }, [menuScreen]);
 
   const loadChatMessages = useCallback(async () => {
     const token = authService.getStoredToken();
@@ -715,7 +712,7 @@ export function MainMenu() {
   }, [chatInput, loadChatMessages]);
 
   useEffect(() => {
-    if (menuScreen === 'notifications' && eventsTab === 'chat') {
+    if (menuScreen === 'support') {
       setChatLoading(true);
       loadChatMessages().finally(() => setChatLoading(false));
 
@@ -732,40 +729,15 @@ export function MainMenu() {
       return () => clearInterval(chatPollRef.current);
     }
     return () => clearInterval(chatPollRef.current);
-  }, [menuScreen, eventsTab, loadChatMessages]);
+  }, [menuScreen, loadChatMessages]);
 
   useEffect(() => {
-    if (menuScreen === 'notifications' && eventsTab === 'chat') {
+    if (menuScreen === 'support') {
       requestAnimationFrame(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       });
     }
-  }, [chatMessages, menuScreen, eventsTab]);
-
-  useEffect(() => {
-    if (menuScreen === 'notifications' && eventsTab === 'chat' && chatTabBarRef.current) {
-      const scrollParent = chatTabBarRef.current.closest('.native-scroll');
-      if (scrollParent) scrollParent.scrollTop = 0;
-
-      requestAnimationFrame(() => {
-        const rect = chatTabBarRef.current?.getBoundingClientRect();
-        if (rect) setChatAreaTop(rect.bottom);
-      });
-
-      const measure = () => {
-        const rect = chatTabBarRef.current?.getBoundingClientRect();
-        if (rect) setChatAreaTop(rect.bottom);
-      };
-
-      if (scrollParent) scrollParent.style.overflow = 'hidden';
-      window.addEventListener('resize', measure);
-      return () => {
-        window.removeEventListener('resize', measure);
-        if (scrollParent) scrollParent.style.overflow = '';
-      };
-    }
-    setChatAreaTop(0);
-  }, [menuScreen, eventsTab]);
+  }, [chatMessages, menuScreen]);
 
   useEffect(() => {
     const token = authService.getStoredToken();
@@ -1064,7 +1036,7 @@ export function MainMenu() {
     if (tableGroup) { setTableGroup(null); return; }
     if (menuScreen === 'profileSettings') { setMenuScreen('profile'); return; }
     if (menuScreen === 'playerDetail') { setMenuScreen('player'); return; }
-    if (menuScreen === 'notifications' && eventsTab === 'chat') { setEventsTab('notifications'); return; }
+    if (menuScreen === 'support') { setMenuScreen('profile'); return; }
     if (menuScreen === 'profile' || menuScreen === 'themes' || menuScreen === 'notifications' || menuScreen === 'player') { setMenuScreen('game'); return; }
   }, [tableGroup, menuScreen]);
 
@@ -1715,6 +1687,20 @@ export function MainMenu() {
                     </button>
                   </div>
 
+                  {/* Support */}
+                  <button
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl glass-card active:scale-[0.97] transition-all duration-200 group relative"
+                    onClick={() => { setMenuScreen('support'); triggerHaptic('light'); }}
+                  >
+                    <IconMessageCircle size={16} color="var(--accent-color, #a855f7)" />
+                    <span className="text-[0.8em] font-bold text-white/70">Поддержка</span>
+                    {chatUnread > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center text-[0.6em] font-black rounded-full px-1" style={{ background: 'var(--accent-color)', color: '#fff', boxShadow: '0 0 8px var(--accent-color)' }}>
+                        {chatUnread}
+                      </span>
+                    )}
+                  </button>
+
                 </div>
               </div>
             );
@@ -2313,131 +2299,130 @@ export function MainMenu() {
             </div>
           )}
 
-          {/* =================== EVENTS SCREEN (NOTIFICATIONS + CHAT) =================== */}
+          {/* =================== EVENTS SCREEN (NOTIFICATIONS) =================== */}
           {menuScreen === 'notifications' && (
-            <div className={`animate-fade-in w-full max-w-[400px] flex flex-col gap-0 ${eventsTab === 'notifications' ? 'pb-[100px]' : 'pb-2'}`}>
-              <div ref={chatTabBarRef} className="flex items-center gap-1 p-1 rounded-2xl mb-3" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}>
-                <button
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.78em] font-bold transition-all duration-200 ${eventsTab === 'notifications' ? 'text-white shadow-md' : 'text-white/40'}`}
-                  style={eventsTab === 'notifications' ? { background: 'var(--accent-color)' } : {}}
-                  onClick={() => { setEventsTab('notifications'); triggerHaptic('selection'); }}
-                >
-                  <IconBell size={15} /> Уведомления
-                  {notifications.length > 0 && <span className="text-[0.8em] opacity-70">({notifications.length})</span>}
-                </button>
-                <button
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[0.78em] font-bold transition-all duration-200 relative ${eventsTab === 'chat' ? 'text-white shadow-md' : 'text-white/40'}`}
-                  style={eventsTab === 'chat' ? { background: 'var(--accent-color)' } : {}}
-                  onClick={() => { setEventsTab('chat'); triggerHaptic('selection'); }}
-                >
-                  <IconMessageCircle size={15} /> Чат
-                  {chatUnread > 0 && eventsTab !== 'chat' && (
-                    <span className="absolute -top-1 right-2 min-w-[18px] h-[18px] flex items-center justify-center text-[0.6em] font-black rounded-full px-1" style={{ background: 'var(--accent-color)', color: '#fff', boxShadow: '0 0 8px var(--accent-color)' }}>
-                      {chatUnread}
-                    </span>
-                  )}
-                </button>
+            <div className="animate-fade-in w-full max-w-[400px] flex flex-col gap-0 pb-[100px]">
+              <div className="flex flex-col gap-3">
+                {notificationsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--accent-border)', borderTopColor: 'var(--accent-color)' }} />
+                  </div>
+                ) : notifications.length > 0 ? (
+                  <div className="flex flex-col gap-2.5">
+                    {notifications.map(n => (
+                      <NotificationCard
+                        key={n.id}
+                        icon={n.icon || '📢'}
+                        accentColor={n.accentColor || 'var(--accent-color)'}
+                        title={n.title}
+                        description={n.description}
+                        time={formatSessionDate(n.created_at)}
+                        isNew={n.pinned}
+                        link={n.link}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-3 mt-6 py-8">
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
+                      <IconBell size={28} color="var(--accent-color)" />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[0.95em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Нет уведомлений</div>
+                      <div className="text-[0.8em] font-medium max-w-[280px]" style={{ color: 'var(--text-muted)' }}>
+                        Здесь будут появляться уведомления о турнирах, результатах игр и обновлениях.
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {eventsTab === 'notifications' && (
-                <div className="flex flex-col gap-3">
-                  {notificationsLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--accent-border)', borderTopColor: 'var(--accent-color)' }} />
-                    </div>
-                  ) : notifications.length > 0 ? (
-                    <div className="flex flex-col gap-2.5">
-                      {notifications.map(n => (
-                        <NotificationCard
-                          key={n.id}
-                          icon={n.icon || '📢'}
-                          accentColor={n.accentColor || 'var(--accent-color)'}
-                          title={n.title}
-                          description={n.description}
-                          time={formatSessionDate(n.created_at)}
-                          isNew={n.pinned}
-                          link={n.link}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-3 mt-6 py-8">
-                      <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
-                        <IconBell size={28} color="var(--accent-color)" />
-                      </div>
-                      <div className="text-center">
-                        <div className="text-[0.95em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Нет уведомлений</div>
-                        <div className="text-[0.8em] font-medium max-w-[280px]" style={{ color: 'var(--text-muted)' }}>
-                          Здесь будут появляться уведомления о турнирах, результатах игр и обновлениях.
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
-          {menuScreen === 'notifications' && eventsTab === 'chat' && chatAreaTop > 0 && createPortal(
+          {/* =================== SUPPORT CHAT SCREEN =================== */}
+          {menuScreen === 'support' && createPortal(
             <div
-              className="chat-overlay"
+              className="chat-overlay animate-fade-in"
               style={{
                 position: 'fixed',
-                top: chatAreaTop + 4,
+                top: 0,
                 left: 0,
                 right: 0,
-                bottom: `calc(80px + var(--safe-bottom, env(safe-area-inset-bottom, 0px)))`,
-                zIndex: 40,
+                bottom: 0,
+                zIndex: 60,
                 display: 'flex',
                 flexDirection: 'column',
-                pointerEvents: 'auto',
+                background: 'var(--maf-bg-main, #0c0a1a)',
               }}
             >
-              <div className="flex flex-col flex-1 min-h-0 w-full max-w-[400px] mx-auto" style={{ padding: '0 20px' }}>
-                <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 py-2 chat-messages-scroll">
-                  {chatLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--accent-border)', borderTopColor: 'var(--accent-color)' }} />
-                    </div>
-                  ) : chatMessages.length > 0 ? (
-                    <>
-                      <div className="flex-1" />
-                      {chatMessages.map(msg => (
-                        <div key={msg.id} className={`flex ${msg.direction === 'in' ? 'justify-end' : 'justify-start'}`}>
-                          <div
-                            className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-[0.82em] leading-relaxed ${msg.direction === 'in' ? 'chat-bubble-out' : 'chat-bubble-in'}`}
-                          >
-                            {msg.direction === 'out' && (
-                              <div className="text-[0.7em] font-bold mb-1" style={{ color: 'var(--accent-color)' }}>Поддержка</div>
-                            )}
-                            <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.message_text}</div>
-                            <div className="text-[0.65em] mt-1 opacity-50 text-right">
-                              {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                            </div>
+              {/* Header */}
+              <div className="shrink-0 flex items-center gap-3 px-4 py-3" style={{ background: 'var(--glass-bg)', borderBottom: '1px solid var(--glass-border)' }}>
+                <button
+                  className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/[0.04] border border-white/[0.08] active:scale-90 transition-transform"
+                  onClick={() => { setMenuScreen('profile'); triggerHaptic('light'); }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}>
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
+                </button>
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
+                    <IconMessageCircle size={18} color="var(--accent-color)" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[0.9em] font-bold truncate" style={{ color: 'var(--text-primary)' }}>Поддержка</div>
+                    <div className="text-[0.65em] font-medium" style={{ color: 'var(--text-muted)' }}>Ответим как можно скорее</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 px-4 py-3 chat-messages-scroll">
+                {chatLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--accent-border)', borderTopColor: 'var(--accent-color)' }} />
+                  </div>
+                ) : chatMessages.length > 0 ? (
+                  <>
+                    <div className="flex-1" />
+                    {chatMessages.map(msg => (
+                      <div key={msg.id} className={`flex ${msg.direction === 'in' ? 'justify-end' : 'justify-start'}`}>
+                        <div
+                          className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-[0.82em] leading-relaxed ${msg.direction === 'in' ? 'chat-bubble-out' : 'chat-bubble-in'}`}
+                        >
+                          {msg.direction === 'out' && (
+                            <div className="text-[0.7em] font-bold mb-1" style={{ color: 'var(--accent-color)' }}>Поддержка</div>
+                          )}
+                          <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.message_text}</div>
+                          <div className="text-[0.65em] mt-1 opacity-50 text-right">
+                            {new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </div>
-                      ))}
-                      <div ref={chatEndRef} />
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center flex-1 gap-3">
-                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
-                        <IconMessageCircle size={26} color="var(--accent-color)" />
                       </div>
-                      <div className="text-center">
-                        <div className="text-[0.9em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Чат с поддержкой</div>
-                        <div className="text-[0.75em] font-medium max-w-[260px]" style={{ color: 'var(--text-muted)' }}>
-                          Напишите нам, и мы ответим как можно скорее.
-                        </div>
+                    ))}
+                    <div ref={chatEndRef} />
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center flex-1 gap-3">
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--accent-surface)', border: '1px solid var(--accent-border)' }}>
+                      <IconMessageCircle size={28} color="var(--accent-color)" />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[0.95em] font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Чат с поддержкой</div>
+                      <div className="text-[0.75em] font-medium max-w-[260px]" style={{ color: 'var(--text-muted)' }}>
+                        Напишите нам, и мы ответим как можно скорее.
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
 
-                <div className="flex items-end gap-2 py-2 shrink-0">
+              {/* Input */}
+              <div className="shrink-0 px-4 pb-[calc(12px+var(--safe-bottom,env(safe-area-inset-bottom,0px)))] pt-2" style={{ background: 'var(--glass-bg)', borderTop: '1px solid var(--glass-border)' }}>
+                <div className="flex items-end gap-2 w-full max-w-[400px] mx-auto">
                   <textarea
                     className="flex-1 resize-none rounded-2xl px-4 py-3 text-[0.82em] font-medium outline-none transition-all chat-input"
-                    style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)', maxHeight: '100px' }}
+                    style={{ background: 'var(--surface-primary, rgba(255,255,255,0.04))', border: '1px solid var(--surface-border, rgba(255,255,255,0.08))', color: 'var(--text-primary)', maxHeight: '100px' }}
                     placeholder="Написать сообщение..."
                     value={chatInput}
                     onChange={e => setChatInput(e.target.value)}
@@ -2447,7 +2432,7 @@ export function MainMenu() {
                   />
                   <button
                     className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all active:scale-90"
-                    style={{ background: chatInput.trim() ? 'var(--accent-color)' : 'var(--glass-bg)', border: `1px solid ${chatInput.trim() ? 'transparent' : 'var(--glass-border)'}` }}
+                    style={{ background: chatInput.trim() ? 'var(--accent-color)' : 'var(--surface-primary, rgba(255,255,255,0.04))', border: `1px solid ${chatInput.trim() ? 'transparent' : 'var(--surface-border, rgba(255,255,255,0.08))'}` }}
                     onClick={sendChatMessage}
                     disabled={chatSending || !chatInput.trim()}
                   >
@@ -2814,10 +2799,10 @@ export function MainMenu() {
             icon={<IconPlus size={22} />} label="Новая" />
           <NavItem active={!tableGroup && menuScreen === 'notifications'}
             onClick={() => { setTableGroup(null); setMenuScreen('notifications'); triggerHaptic('light'); }}
-            icon={<IconBell size={20} />} label="События" badge={chatUnread > 0} />
-          <NavItem active={!tableGroup && (menuScreen === 'profile' || menuScreen === 'profileSettings')}
+            icon={<IconBell size={20} />} label="События" />
+          <NavItem active={!tableGroup && (menuScreen === 'profile' || menuScreen === 'profileSettings' || menuScreen === 'support')}
             onClick={() => { setTableGroup(null); setMenuScreen('profile'); triggerHaptic('light'); }}
-            icon={<IconUser size={20} />} label="Профиль" />
+            icon={<IconUser size={20} />} label="Профиль" badge={chatUnread > 0} />
         </nav>,
         document.body
       )}
