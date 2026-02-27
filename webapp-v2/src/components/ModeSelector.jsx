@@ -72,6 +72,8 @@ export function ModeSelector() {
   // Drag state for city
   const [cityDragIndex, setCityDragIndex] = useState(null);
   const [cityDragOverIndex, setCityDragOverIndex] = useState(null);
+  const cityListRef = useRef(null);
+  const cityTouchDragRef = useRef({ startY: 0, idx: null });
 
   useEffect(() => {
     if (funkyEditSessionId) {
@@ -396,12 +398,48 @@ export function ModeSelector() {
     triggerHaptic('medium');
   };
 
-  // City drag & drop
-  const handleCityDragStart = useCallback((idx) => {
+  // City drag & drop (touch + desktop)
+  const handleCityDragStart = useCallback((idx, e) => {
     if (!cityPlayers[idx]) return;
     setCityDragIndex(idx);
+    if (e?.type === 'touchstart') {
+      e.stopPropagation();
+      cityTouchDragRef.current = { startY: e.touches[0].clientY, idx };
+    }
     triggerHaptic('light');
   }, [cityPlayers]);
+
+  const handleCityTouchMove = useCallback((e) => {
+    if (cityDragIndex === null || !cityListRef.current) return;
+    e.stopPropagation();
+    const y = e.touches[0].clientY;
+    const slots = cityListRef.current.children;
+    for (let i = 0; i < slots.length; i++) {
+      const rect = slots[i].getBoundingClientRect();
+      if (y >= rect.top && y <= rect.bottom && i !== cityDragIndex) {
+        setCityDragOverIndex(i);
+        return;
+      }
+    }
+    setCityDragOverIndex(null);
+  }, [cityDragIndex]);
+
+  const handleCityTouchEnd = useCallback(() => {
+    if (cityDragIndex === null) return;
+    if (cityDragOverIndex !== null && cityDragOverIndex !== cityDragIndex) {
+      const newPlayers = [...cityPlayers];
+      const newInputs = [...cityPlayerInputs];
+      const [movedP] = newPlayers.splice(cityDragIndex, 1);
+      const [movedI] = newInputs.splice(cityDragIndex, 1);
+      newPlayers.splice(cityDragOverIndex, 0, movedP);
+      newInputs.splice(cityDragOverIndex, 0, movedI);
+      const reIdx = newPlayers.map((p, i) => p ? { ...p, num: i + 1, roleKey: `1-1-${i + 1}` } : null);
+      setCityPlayers(reIdx);
+      setCityPlayerInputs(newInputs);
+      triggerHaptic('medium');
+    }
+    setCityDragIndex(null); setCityDragOverIndex(null);
+  }, [cityDragIndex, cityDragOverIndex, cityPlayers, cityPlayerInputs]);
 
   const handleCityDragOver = useCallback((idx) => {
     if (cityDragIndex === null || cityDragIndex === idx) return;
@@ -999,7 +1037,7 @@ export function ModeSelector() {
               <span>{cityPlayers.length} игроков</span>
               <span className="text-white/40 font-medium">от 8 до 30 · свайп влево для удаления</span>
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div ref={cityListRef} className="flex flex-col gap-1.5">
               {cityPlayers.map((player, i) => {
                 const swipeOffset = citySwipeOffsets[i] || 0;
                 const isDeleting = citySwipeDeleting === i;
@@ -1023,10 +1061,13 @@ export function ModeSelector() {
                       {player ? (
                         <div className="flex-1 flex items-center gap-2 py-2 px-2.5 rounded-xl bg-accent-soft border border-accent-soft">
                           <div
-                            className="flex items-center justify-center w-7 h-7 rounded-lg cursor-grab touch-none shrink-0 active:cursor-grabbing active:bg-white/[0.08] transition-colors"
+                            className="flex items-center justify-center w-7 h-7 rounded-lg cursor-grab shrink-0 active:cursor-grabbing active:bg-white/[0.08] transition-colors"
                             draggable
-                            onDragStart={() => handleCityDragStart(i)}
+                            onDragStart={(e) => handleCityDragStart(i, e)}
                             onDragEnd={handleCityDragEnd}
+                            onTouchStart={(e) => handleCityDragStart(i, e)}
+                            onTouchMove={handleCityTouchMove}
+                            onTouchEnd={handleCityTouchEnd}
                           >
                             <IconGripVertical size={16} color="rgba(255,255,255,0.25)" />
                           </div>
