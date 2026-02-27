@@ -25,10 +25,10 @@ export const ResultsPanel = () => {
     roles, nightCheckHistory, votingHistory,
     bestMove, bestMoveAccepted, firstKilledPlayer,
     protocolData, opinionData, checkProtocol, checkOpinion,
-    saveCurrentSession, returnToMainMenu,
+    saveCurrentSession, returnToMainMenu, endSession,
     startNextTournamentGame, saveSummaryToServer,
     startNextGameInSession, saveGameToHistory,
-    highlightedPlayer, setHighlightedPlayer,
+    highlightedPlayer, setHighlightedPlayer, loadHistoryGame,
     tournamentId, gameMode, getGames, gameSelected,
     nightMisses, doctorHealHistory, cityMode,
     killedOnNight, dayNumber, nightNumber, dayVoteOuts,
@@ -572,7 +572,10 @@ export const ResultsPanel = () => {
                     const winColor = g.winnerTeam === 'civilians' ? '#ff5252' : g.winnerTeam === 'mafia' ? '#4fc3f7' : 'rgba(255,255,255,0.5)';
                     const totalRounds = Math.max(g.nightNumber || 0, g.dayNumber || 0);
                     return (
-                      <div key={idx} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                      <div key={idx}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] cursor-pointer active:bg-white/[0.06] transition-colors"
+                        onClick={() => loadHistoryGame(idx)}
+                      >
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-extrabold shrink-0 bg-purple-500/10 border border-purple-500/20" style={{ color: 'var(--accent-color, #a855f7)' }}>
                           {g.gameNumber}
                         </div>
@@ -580,13 +583,18 @@ export const ResultsPanel = () => {
                           <div className="text-sm font-bold">Игра {g.gameNumber}</div>
                           <div className="text-xs text-white/30">{totalRounds} {totalRounds === 1 ? 'раунд' : totalRounds < 5 ? 'раунда' : 'раундов'}</div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm font-bold" style={{ color: winColor }}>{winLabel}</div>
-                          {g.completedAt && (
-                            <div className="text-[0.6rem] text-white/20">
-                              {new Date(g.completedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                          )}
+                        <div className="text-right flex items-center gap-2">
+                          <div>
+                            <div className="text-sm font-bold" style={{ color: winColor }}>{winLabel}</div>
+                            {g.completedAt && (
+                              <div className="text-[0.6rem] text-white/20">
+                                {new Date(g.completedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            )}
+                          </div>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
                         </div>
                       </div>
                     );
@@ -606,6 +614,20 @@ export const ResultsPanel = () => {
                 ← Изменить победителя
               </button>
 
+              {winnerTeam && (
+                <button
+                  className="w-full px-4 py-3 rounded-xl font-bold text-sm active:scale-[0.97] transition-all duration-150 bg-accent/15 border border-accent/25 text-accent"
+                  onClick={async () => {
+                    triggerHaptic('success');
+                    try { await saveSummaryToServer(); } catch {}
+                    if (gameMode === 'gomafia') startNextTournamentGame();
+                    else startNextGameInSession();
+                  }}
+                >
+                  Следующая игра →
+                </button>
+              )}
+
               <SlideConfirm
                 label="Сохранить и выйти"
                 color="emerald"
@@ -619,6 +641,18 @@ export const ResultsPanel = () => {
                   returnToMainMenu();
                 }}
               />
+
+              {winnerTeam && (
+                <SlideConfirm
+                  label="Завершить сессию"
+                  color="red"
+                  onConfirm={async () => {
+                    triggerHaptic('success');
+                    try { await saveSummaryToServer(); } catch {}
+                    endSession();
+                  }}
+                />
+              )}
             </div>
           )}
         </>

@@ -191,36 +191,40 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
       {expanded && (
         <div className="px-4 pb-4 border-t border-white/[0.06] bg-black/20 relative z-[1] animate-expand">
               <div className="py-1.5 px-2 pt-0">
-                {group.sessions.map((s, idx) => (
-                  <div
-                    key={s.sessionId}
-                    className={`flex items-center py-2.5 px-3 cursor-pointer rounded-xl gap-2 transition-colors duration-150 active:bg-white/[0.05] ${s.seriesArchived ? 'opacity-60 cursor-default' : ''}`}
-                    onClick={() => handleGameRowClick(s)}
-                  >
-                    <div className="flex flex-col gap-0.5 min-w-[80px]">
-                      <span className="text-[0.85em] font-bold text-white/75 whitespace-nowrap">
-                        Игра {s.gameSelected || idx + 1}
-                      </span>
-                      {s.tableSelected && (
-                        <span className="text-[0.7em] text-white/30 whitespace-nowrap font-semibold">Стол {s.tableSelected}</span>
-                      )}
+                {group.sessions.map((s, idx) => {
+                  const gh = s.gamesHistory || [];
+                  const totalGamesInSession = gh.length + (s.players?.length > 0 ? 1 : 0);
+                  return (
+                    <div
+                      key={s.sessionId}
+                      className={`flex items-center py-2.5 px-3 cursor-pointer rounded-xl gap-2 transition-colors duration-150 active:bg-white/[0.05] ${s.seriesArchived ? 'opacity-60 cursor-default' : ''}`}
+                      onClick={() => handleGameRowClick(s)}
+                    >
+                      <div className="flex flex-col gap-0.5 min-w-[80px]">
+                        {s.tableSelected && (
+                          <span className="text-[0.85em] font-bold text-white/75 whitespace-nowrap">Стол {s.tableSelected}</span>
+                        )}
+                        <span className="text-[0.7em] text-white/30 whitespace-nowrap font-semibold">
+                          {totalGamesInSession > 1 ? `${totalGamesInSession} игр` : `Игра ${s.gameSelected || idx + 1}`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-1 justify-end">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={getResultDotStyle(s)} />
+                        <span className="text-[0.78em] text-white/50 font-medium">{getResultText(s)}</span>
+                        <span className="text-[0.7em] text-white/20 whitespace-nowrap font-semibold">{formatTime(s.timestamp || s.updatedAt)}</span>
+                        {!s.seriesArchived && !isGameComplete(s) && (
+                          <button
+                            className="bg-transparent border-none cursor-pointer p-1.5 opacity-40 transition-opacity duration-150 rounded-lg flex items-center justify-center active:opacity-100 active:bg-status-error/15"
+                            onClick={(e) => { e.stopPropagation(); onDeleteSession(s.sessionId); triggerHaptic('warning'); }}
+                          >
+                            <IconTrash size={13} color="rgba(255,255,255,0.4)" />
+                          </button>
+                        )}
+                        <IconArrowRight size={14} color="rgba(255,255,255,0.15)" />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-1 justify-end">
-                      <span className="w-2 h-2 rounded-full shrink-0" style={getResultDotStyle(s)} />
-                      <span className="text-[0.78em] text-white/50 font-medium">{getResultText(s)}</span>
-                      <span className="text-[0.7em] text-white/20 whitespace-nowrap font-semibold">{formatTime(s.timestamp || s.updatedAt)}</span>
-                      {!s.seriesArchived && !isGameComplete(s) && (
-                        <button
-                          className="bg-transparent border-none cursor-pointer p-1.5 opacity-40 transition-opacity duration-150 rounded-lg flex items-center justify-center active:opacity-100 active:bg-status-error/15"
-                          onClick={(e) => { e.stopPropagation(); onDeleteSession(s.sessionId); triggerHaptic('warning'); }}
-                        >
-                          <IconTrash size={13} color="rgba(255,255,255,0.4)" />
-                        </button>
-                      )}
-                      <IconArrowRight size={14} color="rgba(255,255,255,0.15)" />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="flex gap-2 py-2.5 px-3 pb-3.5 flex-wrap">
@@ -259,20 +263,20 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                     </button>
                   )
                 )}
-                {!group.archived && group.allGamesFinished && (
+                {!group.archived && (
                   confirmAction === 'save' ? (
                     <div className="flex-1 flex items-center gap-2 animate-fade-in">
-                      <span className="text-[0.8em] font-bold text-white/60 whitespace-nowrap">Сохранить серию в историю?</span>
+                      <span className="text-[0.8em] font-bold text-white/60 whitespace-nowrap">Завершить серию?</span>
                       <button className="flex-1 py-2.5 px-3.5 rounded-[10px] font-bold text-[0.8em] cursor-pointer border border-accent/30 bg-accent/15 text-accent active:scale-95 active:bg-accent/25" onClick={handleSaveSeriesClick}>Да</button>
                       <button className="flex-1 py-2.5 px-3.5 rounded-[10px] font-bold text-[0.8em] cursor-pointer border border-white/10 bg-white/5 text-white/50 active:scale-95" onClick={handleCancelConfirm}>Нет</button>
                     </div>
                   ) : (
                     <button
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all duration-150 border border-accent/22 bg-accent/10 text-accent active:scale-[0.97]"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all duration-150 border border-white/[0.08] bg-white/[0.04] text-white/50 active:scale-[0.97]"
                       onClick={handleSaveSeriesClick}
                     >
                       <IconCheck size={15} />
-                      <span>Сохранить серию</span>
+                      <span>Завершить серию</span>
                     </button>
                   )
                 )}
@@ -289,8 +293,9 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
   );
 }
 
-function StandaloneCard({ session, onLoad, onDelete }) {
+function StandaloneCard({ session, onLoad, onDelete, onArchive, onLoadGame }) {
   const [expanded, setExpanded] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const getSessionName = (s) =>
     s.tournamentName || s.tournamentId ||
     (s.gameMode === 'funky' ? 'Фанки' : s.gameMode === 'city' ? 'Городская' : s.gameMode === 'gomafia' ? 'GoMafia' : 'Ручной');
@@ -367,23 +372,63 @@ function StandaloneCard({ session, onLoad, onDelete }) {
               const winLabel = g.winnerTeam === 'civilians' ? 'Мирные' : g.winnerTeam === 'mafia' ? 'Мафия' : g.winnerTeam === 'draw' ? 'Ничья' : 'В процессе';
               const winColor = g.winnerTeam === 'civilians' ? '#ff5252' : g.winnerTeam === 'mafia' ? '#4fc3f7' : g.winnerTeam === 'draw' ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.3)';
               const rounds = Math.max(g.nightNumber || 0, g.dayNumber || 0);
+              const isCompleted = !!g.winnerTeam;
               return (
-                <div key={idx} className="flex items-center gap-2 py-2 px-2 rounded-xl hover:bg-white/[0.04] transition-colors">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-extrabold bg-white/[0.06] shrink-0">{g.gameNumber}</div>
+                <div key={idx}
+                  className={`flex items-center gap-2 py-2 px-2 rounded-xl transition-colors ${isCompleted ? 'cursor-pointer active:bg-white/[0.06]' : ''} hover:bg-white/[0.04]`}
+                  onClick={() => {
+                    if (!isCompleted) return;
+                    if (g.isCurrent) {
+                      onLoad(session.sessionId, { viewOnly: true });
+                    } else if (onLoadGame) {
+                      onLoadGame(session.sessionId, idx);
+                    }
+                    triggerHaptic('light');
+                  }}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-extrabold shrink-0 ${g.isCurrent ? 'bg-accent/15 border border-accent/25' : 'bg-white/[0.06]'}`}
+                    style={g.isCurrent ? { color: 'var(--accent-color, #a855f7)' } : {}}>
+                    {g.gameNumber}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <span className="text-xs font-semibold">Игра {g.gameNumber}</span>
                     {rounds > 0 && <span className="text-[0.6rem] text-white/20 ml-1.5">{rounds}р</span>}
+                    {g.isCurrent && !g.winnerTeam && <span className="text-[0.6rem] text-accent/60 ml-1.5">активная</span>}
                   </div>
-                  <span className="text-xs font-bold" style={{ color: winColor }}>{winLabel}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold" style={{ color: winColor }}>{winLabel}</span>
+                    {isCompleted && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    )}
+                  </div>
                 </div>
               );
             })}
-            <button
-              className="w-full py-2.5 px-4 rounded-xl font-bold text-sm bg-accent/15 border border-accent/25 text-accent mt-2 active:scale-[0.98] transition-transform duration-150"
-              onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}
-            >
-              Открыть сессию
-            </button>
+            <div className="flex gap-2 mt-2">
+              <button
+                className="flex-1 py-2.5 px-4 rounded-xl font-bold text-sm bg-accent/15 border border-accent/25 text-accent active:scale-[0.98] transition-transform duration-150"
+                onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}
+              >
+                Открыть сессию
+              </button>
+              {onArchive && !session.seriesArchived && (
+                confirmArchive ? (
+                  <div className="flex items-center gap-1.5 animate-fade-in">
+                    <button className="py-2.5 px-3.5 rounded-xl font-bold text-[0.8em] border border-status-error/30 bg-status-error/15 text-status-error active:scale-95" onClick={() => { onArchive(session.sessionId); setConfirmArchive(false); }}>Да</button>
+                    <button className="py-2.5 px-3.5 rounded-xl font-bold text-[0.8em] border border-white/10 bg-white/5 text-white/50 active:scale-95" onClick={() => setConfirmArchive(false)}>Нет</button>
+                  </div>
+                ) : (
+                  <button
+                    className="py-2.5 px-3 rounded-xl font-bold text-[0.78em] border border-white/[0.08] bg-white/[0.04] text-white/50 active:scale-[0.98] transition-transform duration-150"
+                    onClick={() => { setConfirmArchive(true); triggerHaptic('warning'); }}
+                  >
+                    Завершить
+                  </button>
+                )
+              )}
+            </div>
           </div>
         )}
 
@@ -431,7 +476,7 @@ function StandaloneCard({ session, onLoad, onDelete }) {
 
 export function MainMenu() {
   const {
-    sessionsList, startNewGame, loadSession, deleteSession, archiveSeries, deleteSeries,
+    sessionsList, startNewGame, loadSession, loadSessionGame, deleteSession, archiveSeries, archiveSessionById, deleteSeries,
     startTournamentGameFromMenu, startNewFunkyFromMenu,
     selectedColorScheme, setSelectedColorScheme,
     darkMode, setDarkMode,
@@ -1496,6 +1541,8 @@ export function MainMenu() {
                         session={s}
                         onLoad={loadSession}
                         onDelete={deleteSession}
+                        onArchive={archiveSessionById}
+                        onLoadGame={loadSessionGame}
                       />
                     ))}
                   </>

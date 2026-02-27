@@ -1123,6 +1123,52 @@ export const GameProvider = ({ children }) => {
 
   const currentGameNumber = useMemo(() => gamesHistory.length + 1, [gamesHistory.length]);
 
+  const applyHistoryGame = useCallback((g) => {
+    setPlayers(g.players || []);
+    setRoles(g.roles || {});
+    setPlayersActions(g.playersActions || {});
+    setFouls(g.fouls || {});
+    setTechFouls(g.techFouls || {});
+    setRemoved(g.removed || {});
+    setAvatars(prev => ({ ...prev, ...(g.avatars || {}) }));
+    setDayNumber(g.dayNumber || 0);
+    setNightNumber(g.nightNumber || 0);
+    setNightCheckHistory(g.nightCheckHistory || []);
+    setVotingHistory(g.votingHistory || []);
+    setBestMove(g.bestMove || []);
+    setBestMoveAccepted(g.bestMoveAccepted || false);
+    setFirstKilledPlayer(g.firstKilledPlayer || null);
+    setWinnerTeam(g.winnerTeam || null);
+    setPlayerScores(g.playerScores || {});
+    setGameFinished(true);
+    setViewOnly(true);
+    setProtocolData(g.protocolData || {});
+    setOpinionData(g.opinionData || {});
+    setOpinionText(g.opinionText || {});
+    setDoctorHealHistory(g.doctorHealHistory || []);
+    setNightMisses(g.nightMisses || {});
+    setKilledOnNight(g.killedOnNight || {});
+    setDayVoteOuts(g.dayVoteOuts || {});
+    setGamePhase('results');
+    setActiveTab('results');
+    pushFullStateToOverlay();
+    triggerHaptic('light');
+  }, [pushFullStateToOverlay]);
+
+  const loadHistoryGame = useCallback((gameIndex) => {
+    if (gameIndex < 0 || gameIndex >= gamesHistory.length) return;
+    applyHistoryGame(gamesHistory[gameIndex]);
+  }, [gamesHistory, applyHistoryGame]);
+
+  const loadSessionGame = useCallback((sessionId, gameIndex) => {
+    const s = sessionManager.getSession(sessionId);
+    if (!s) return;
+    const gh = s.gamesHistory || [];
+    if (gameIndex < 0 || gameIndex >= gh.length) return;
+    loadSession(sessionId, { viewOnly: true });
+    setTimeout(() => applyHistoryGame(gh[gameIndex]), 50);
+  }, [loadSession, applyHistoryGame]);
+
   // =================== Session Management ===================
   const saveCurrentSession = useCallback(() => {
     if (!currentSessionId) return;
@@ -1239,6 +1285,28 @@ export const GameProvider = ({ children }) => {
     setScreen('menu');
   }, [saveCurrentSession, resetGameState]);
 
+  const endSession = useCallback(() => {
+    if (winnerTeam) saveGameToHistory();
+    saveCurrentSession();
+    if (currentSessionId) {
+      const existing = sessionManager.getSession(currentSessionId);
+      if (existing) {
+        sessionManager.saveSession({
+          ...existing,
+          gameFinished: true,
+          seriesArchived: true,
+        });
+      }
+    }
+    if (socketRef.current) socketRef.current.close();
+    socketRef.current = null;
+    setRoomId(null); setRoomInput(''); setRoomError(null);
+    resetGameState();
+    setCurrentSessionId(null);
+    setSessionsList(sessionManager.getSessions());
+    setScreen('menu');
+  }, [winnerTeam, saveGameToHistory, saveCurrentSession, currentSessionId, resetGameState]);
+
   const startNewFunkyFromMenu = useCallback((sessionId) => {
     const s = sessionManager.getSession(sessionId);
     if (!s) return;
@@ -1315,6 +1383,15 @@ export const GameProvider = ({ children }) => {
 
   const archiveSeries = useCallback((tournamentId) => {
     sessionManager.archiveSeries(tournamentId);
+    setSessionsList(sessionManager.getSessions());
+    triggerHaptic('medium');
+  }, []);
+
+  const archiveSessionById = useCallback((sessionId) => {
+    const s = sessionManager.getSession(sessionId);
+    if (s) {
+      sessionManager.saveSession({ ...s, gameFinished: true, seriesArchived: true });
+    }
     setSessionsList(sessionManager.getSessions());
     triggerHaptic('medium');
   }, []);
@@ -1465,9 +1542,14 @@ export const GameProvider = ({ children }) => {
     const nextGameNum = (prevGame || 0) + 1;
     const nextGame = games.find(g => g.gameNum === nextGameNum);
     if (nextGame) {
-      const table = nextGame.game?.find(t => t.tableNum === prevTable) || nextGame.game?.[0];
+      const sameTable = nextGame.game?.find(t => t.tableNum === prevTable);
+      const table = sameTable || nextGame.game?.[0];
       if (table) {
         const tn = table.tableNum;
+        if (!sameTable) {
+          setGamesHistory([]);
+          setCurrentSessionId(sessionManager.generateSessionId());
+        }
         setGameSelected(nextGameNum);
         setTableSelected(tn);
         const newPlayers = (table.table || []).map((p, i) => ({
@@ -1479,7 +1561,6 @@ export const GameProvider = ({ children }) => {
         if (logins.length > 0) loadAvatars(logins);
       }
     }
-    setCurrentSessionId(sessionManager.generateSessionId());
     setActiveTab('table');
     pushFullStateToOverlay();
   }, [saveGameToHistory, saveCurrentSession, gameSelected, tableSelected, getGames, loadAvatars, pushFullStateToOverlay]);
@@ -1769,10 +1850,10 @@ export const GameProvider = ({ children }) => {
     tournamentsFilters, setTournamentsFilters, tournamentsHasMore, setTournamentsHasMore,
     tournamentsPage, setTournamentsPage,
     // Session
-    saveCurrentSession, loadSession, resetGameState, startNewGame, returnToMainMenu, deleteSession, archiveSeries, deleteSeries,
+    saveCurrentSession, loadSession, resetGameState, startNewGame, returnToMainMenu, endSession, deleteSession, archiveSeries, archiveSessionById, deleteSeries,
     startNextTournamentGame, startTournamentGameFromMenu, saveSummaryToServer,
     // Games History
-    gamesHistory, currentGameNumber, saveGameToHistory, startNextGameInSession,
+    gamesHistory, currentGameNumber, saveGameToHistory, startNextGameInSession, loadHistoryGame, loadSessionGame,
     // Avatars
     loadAvatars,
     // Multi-Game/Table

@@ -273,7 +273,8 @@ class SessionManager {
         }
         const g = groups[s.tournamentId];
         g.sessions.push(s);
-        if (s.gameFinished) g.finishedGamesCount++;
+        const gh = s.gamesHistory || [];
+        g.finishedGamesCount += gh.length + (s.gameFinished ? 1 : 0);
         if (s.seriesArchived) g.archived = true;
         if (s.tableSelected && !g.tableSelected) g.tableSelected = s.tableSelected;
         if ((s.gameSelected || 0) > g.lastStartedGameNumber) {

@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { COLOR_SCHEMES, applyTheme, applyDarkMode } from '../constants/themes';
 import { triggerHaptic } from '../utils/haptics';
 
 export function SettingsPanel() {
   const {
-    roomId, setRoomId, roomInput, setRoomInput, joinRoom, syncState, disconnectRoom, roomError, setRoomError,
+    roomId, setRoomId, roomInput, setRoomInput, joinRoom, syncState, disconnectRoom, roomError, setRoomError, endSession,
     selectedColorScheme, setSelectedColorScheme,
     darkMode, setDarkMode,
     mainInfoText, setMainInfoText,
@@ -246,7 +246,39 @@ export function SettingsPanel() {
           {roomId && <div>Комната: {roomId}</div>}
         </div>
       </div>
+
+      {/* End session */}
+      <EndSessionButton onConfirm={() => { endSession(); triggerHaptic('success'); }} />
     </div>
+  );
+}
+
+function EndSessionButton({ onConfirm }) {
+  const [confirm, setConfirm] = useState(false);
+
+  if (confirm) {
+    return (
+      <div className="relative z-[1] p-4 rounded-2xl glass-card-md flex items-center gap-2.5 animate-fade-in">
+        <span className="text-[0.85em] font-bold text-white/60 flex-1">Завершить сессию?</span>
+        <button
+          className="py-2 px-4 rounded-xl font-bold text-[0.8em] border border-status-error/30 bg-status-error/15 text-status-error active:scale-95 transition-transform"
+          onClick={onConfirm}
+        >Да</button>
+        <button
+          className="py-2 px-4 rounded-xl font-bold text-[0.8em] border border-white/10 bg-white/5 text-white/50 active:scale-95 transition-transform"
+          onClick={() => setConfirm(false)}
+        >Нет</button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      className="relative z-[1] w-full py-3 px-4 rounded-2xl font-bold text-[0.85em] border border-status-error/15 bg-status-error/5 text-status-error/70 active:scale-[0.98] transition-all duration-150 active:bg-status-error/10"
+      onClick={() => { setConfirm(true); triggerHaptic('warning'); }}
+    >
+      Завершить сессию
+    </button>
   );
 }
 
