@@ -363,9 +363,6 @@ function PhaseTimer({ duration, textColorClass }) {
 /* =================== Night Grid =================== */
 
 function NightGrid({ players, isDisabled, isInactive, onSelect, onAction, config }) {
-  const first9 = players.slice(0, 9);
-  const player10 = players.length >= 10 ? players[9] : null;
-
   const renderBtn = (p) => {
     const disabled = isDisabled(p);
     const inactive = isInactive ? isInactive(p) : false;
@@ -387,22 +384,44 @@ function NightGrid({ players, isDisabled, isInactive, onSelect, onAction, config
     );
   };
 
+  const actionBtn = (
+    <button
+      key="action"
+      onClick={onAction}
+      className="h-14 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-slate-300 hover:bg-white/10 transition-colors group active:scale-95"
+    >
+      <div className="mb-0.5 opacity-70 group-hover:scale-110 transition-transform">
+        <config.ActionIcon className="w-4 h-4" />
+      </div>
+      <span className="text-[9px] font-bold uppercase tracking-tighter opacity-60">
+        {config.actionText}
+      </span>
+    </button>
+  );
+
+  const total = players.length;
+  const cells = players.map(renderBtn);
+
+  if (total <= 10) {
+    const filled = total % 3 === 0 ? 0 : 3 - (total % 3);
+    const empties = [];
+    for (let i = 0; i < filled - 1; i++) empties.push(<div key={`e${i}`} className="h-14" />);
+    return (
+      <div className="grid grid-cols-3 gap-3 w-full">
+        {cells}
+        {empties}
+        {actionBtn}
+      </div>
+    );
+  }
+
+  const remainder = (total + 1) % 3;
+  const empties = remainder === 0 ? 0 : 3 - remainder;
   return (
     <div className="grid grid-cols-3 gap-3 w-full">
-      {first9.map(renderBtn)}
-      {player10 && <div className="h-14" />}
-      {player10 && renderBtn(player10)}
-      <button
-        onClick={onAction}
-        className="h-14 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-slate-300 hover:bg-white/10 transition-colors group active:scale-95"
-      >
-        <div className="mb-0.5 opacity-70 group-hover:scale-110 transition-transform">
-          <config.ActionIcon className="w-4 h-4" />
-        </div>
-        <span className="text-[9px] font-bold uppercase tracking-tighter opacity-60">
-          {config.actionText}
-        </span>
-      </button>
+      {cells}
+      {Array.from({ length: empties }, (_, i) => <div key={`e${i}`} className="h-14" />)}
+      {actionBtn}
     </div>
   );
 }

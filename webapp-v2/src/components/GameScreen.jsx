@@ -224,7 +224,19 @@ export function GameScreen() {
                     </div>
                     <div className="flex gap-3 w-full mt-2">
                       <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => { setDiscussionEndPrompt(null); triggerHaptic('light'); }}>Отмена</button>
-                      <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setDiscussionEndPrompt(null); startVoting(); setVotingScreenTab('voting'); setShowVotingScreen(true); triggerHaptic('medium'); }}>Начать голосование</button>
+                      <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setDiscussionEndPrompt(null); startVoting(discussionEndPrompt.candidates); setVotingScreenTab('voting'); setShowVotingScreen(true); triggerHaptic('medium'); }}>Начать голосование</button>
+                    </div>
+                  </>
+                )}
+                {discussionEndPrompt.type === 'city-day1-no-vote' && (
+                  <>
+                    <div className="text-4xl relative z-[1]">🏛️</div>
+                    <div className="text-sm text-white/60 font-medium leading-relaxed">
+                      В первый день голосование не проводится. Город засыпает.
+                    </div>
+                    <div className="flex gap-3 w-full mt-2">
+                      <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => { setDiscussionEndPrompt(null); triggerHaptic('light'); }}>Отмена</button>
+                      <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setDiscussionEndPrompt(null); skipVotingAndGoToNight([]); triggerHaptic('medium'); }}>Начать ночь</button>
                     </div>
                   </>
                 )}
@@ -232,7 +244,7 @@ export function GameScreen() {
                   <>
                     <div className="text-4xl relative z-[1]">🛡️</div>
                     <div className="text-sm text-white/60 font-medium leading-relaxed">
-                      Выставлен только игрок №{discussionEndPrompt.candidates[0]}. Согласно правилам {gameMode === 'funky' ? 'Фанки' : 'GoMafia'}, в 1-й день голосование за одного не проводится.
+                      Выставлен только игрок №{discussionEndPrompt.candidates[0]}. Согласно правилам в режиме {gameMode === 'funky' ? 'Фанки' : 'GoMafia'}, в 1-й день голосование за одного не проводится.
                     </div>
                     <div className="flex gap-3 w-full mt-2">
                       <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => { setDiscussionEndPrompt(null); triggerHaptic('light'); }}>Отмена</button>

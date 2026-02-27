@@ -151,6 +151,7 @@ export const GameProvider = ({ children }) => {
   const [daySpeakerStartNum, setDaySpeakerStartNum] = useState(1);
   const [discussionEndPrompt, setDiscussionEndPrompt] = useState(null);
   const [showNoVotingAlert, setShowNoVotingAlert] = useState(false);
+  const [speakerBonusTime, setSpeakerBonusTime] = useState(0);
 
   // === Funky Mode ===
   const [funkyPlayers, setFunkyPlayers] = useState([]);
@@ -608,8 +609,8 @@ export const GameProvider = ({ children }) => {
     return ordered;
   }, [nominations, nominationOrder]);
 
-  const startVoting = useCallback(() => {
-    const cands = getNominatedCandidates();
+  const startVoting = useCallback((overrideCandidates) => {
+    const cands = overrideCandidates || getNominatedCandidates();
     if (cands.length === 0) return;
     setVotingDay0SingleCandidate(null);
     setVotingDay0TripleTie(false);
@@ -1608,8 +1609,9 @@ export const GameProvider = ({ children }) => {
     if (activePlayers.length === 0) return;
     const startIdx = activePlayers.findIndex(p => p.num === daySpeakerStartNum);
     setCurrentDaySpeakerIndex(startIdx >= 0 ? startIdx : 0);
+    setSpeakerBonusTime(cityMode && dayNumber === 1 ? 30 : 0);
     triggerHaptic('light');
-  }, [activePlayers, daySpeakerStartNum]);
+  }, [activePlayers, daySpeakerStartNum, cityMode, dayNumber]);
 
   const nextDaySpeaker = useCallback(() => {
     const startIdx = activePlayers.findIndex(p => p.num === daySpeakerStartNum);
@@ -1619,20 +1621,31 @@ export const GameProvider = ({ children }) => {
 
     if (wrappedIdx === actualStart && nextIdx > 0) {
       setCurrentDaySpeakerIndex(-1);
-      const candidates = getNominatedCandidates();
-      const isFunkyOrGoMafia = gameMode === 'gomafia' || gameMode === 'funky';
       const isDay1 = dayNumber === 1;
 
-      if (candidates.length === 0) {
-        setDiscussionEndPrompt({ type: 'no-candidates', candidates: [] });
-      } else if (isDay1 && isFunkyOrGoMafia && candidates.length === 1) {
-        setDiscussionEndPrompt({ type: 'day1-single', candidates });
+      if (cityMode) {
+        if (isDay1) {
+          setDiscussionEndPrompt({ type: 'city-day1-no-vote', candidates: [] });
+        } else {
+          const allAlive = activePlayers.map(p => p.num);
+          setDiscussionEndPrompt({ type: 'vote', candidates: allAlive });
+        }
       } else {
-        setDiscussionEndPrompt({ type: 'vote', candidates });
+        const candidates = getNominatedCandidates();
+        const isFunkyOrGoMafia = gameMode === 'gomafia' || gameMode === 'funky';
+
+        if (candidates.length === 0) {
+          setDiscussionEndPrompt({ type: 'no-candidates', candidates: [] });
+        } else if (isDay1 && isFunkyOrGoMafia && candidates.length === 1) {
+          setDiscussionEndPrompt({ type: 'day1-single', candidates });
+        } else {
+          setDiscussionEndPrompt({ type: 'vote', candidates });
+        }
       }
       triggerHaptic('medium');
     } else {
       setCurrentDaySpeakerIndex(wrappedIdx);
+      setSpeakerBonusTime(0);
       const nextPlayer = activePlayers[wrappedIdx];
       if (nextPlayer) {
         setAutoExpandPlayer(nextPlayer.roleKey);
@@ -1640,7 +1653,7 @@ export const GameProvider = ({ children }) => {
       }
       triggerHaptic('selection');
     }
-  }, [currentDaySpeakerIndex, activePlayers, daySpeakerStartNum, getNominatedCandidates, gameMode, dayNumber]);
+  }, [currentDaySpeakerIndex, activePlayers, daySpeakerStartNum, getNominatedCandidates, gameMode, dayNumber, cityMode]);
 
   const currentSpeaker = useMemo(() => {
     if (currentDaySpeakerIndex < 0 || currentDaySpeakerIndex >= activePlayers.length) return null;
@@ -1866,7 +1879,7 @@ export const GameProvider = ({ children }) => {
     roomId, setRoomId, joinRoom, disconnectRoom, syncState, pushFullStateToOverlay, roomInput, setRoomInput, roomError, setRoomError,
     // Day Speaker
     currentDaySpeakerIndex, setCurrentDaySpeakerIndex,
-    daySpeakerStartNum,
+    daySpeakerStartNum, speakerBonusTime,
     discussionEndPrompt, setDiscussionEndPrompt, skipVotingAndGoToNight,
     showNoVotingAlert, setShowNoVotingAlert,
     // Funky
