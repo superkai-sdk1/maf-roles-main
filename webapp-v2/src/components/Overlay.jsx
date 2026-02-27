@@ -520,7 +520,7 @@ html, body { background: transparent !important; margin: 0; overflow: hidden; }
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 2px;
+  gap: 8px;
 }
 
 /* Card wrapper */
@@ -583,26 +583,26 @@ html, body { background: transparent !important; margin: 0; overflow: hidden; }
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.9));
 }
 .ov-card-num {
-  font-size: 14px; font-weight: 900; line-height: 1;
+  font-size: 18px; font-weight: 900; line-height: 1;
   color: rgba(255,255,255,0.7);
 }
 .ov-card-dots {
-  display: flex; flex-direction: column; gap: 2px;
+  display: flex; flex-direction: column; gap: 4px;
 }
 .ov-card-dot {
-  width: 5px; height: 5px; border-radius: 50%;
+  width: 8px; height: 8px; border-radius: 50%;
   transition: background 0.2s;
 }
 .ov-card-dot-foul {
   background: #dc2626;
-  box-shadow: 0 0 4px rgba(220,38,38,0.7);
+  box-shadow: 0 0 6px rgba(220,38,38,0.8);
 }
 .ov-card-dot-tech {
   background: #eab308;
-  box-shadow: 0 0 4px rgba(234,179,8,0.5);
+  box-shadow: 0 0 6px rgba(234,179,8,0.6);
 }
 .ov-card-dot-empty {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.15);
 }
 
 /* RIGHT PANEL: status / role */
@@ -619,22 +619,22 @@ html, body { background: transparent !important; margin: 0; overflow: hidden; }
   transform-origin: right;
 }
 .ov-card-role-letter {
-  font-size: 10px; font-weight: 900;
+  font-size: 13px; font-weight: 900;
   text-transform: uppercase; line-height: 1;
 }
 
 /* Score */
 .ov-card-score {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  font-size: 14px; font-weight: 800; padding: 3px 8px; border-radius: 6px;
+  font-size: 16px; font-weight: 800; padding: 4px 10px; border-radius: 6px;
   z-index: 35; color: #fff;
 }
 
 /* First killed */
 .ov-card-fk {
   position: absolute; top: -3px; right: -3px;
-  width: 16px; height: 16px; border-radius: 50%;
-  font-size: 9px; font-weight: 900;
+  width: 18px; height: 18px; border-radius: 50%;
+  font-size: 10px; font-weight: 900;
   background: #ef4444; color: #fff;
   display: flex; align-items: center; justify-content: center;
   z-index: 35; box-shadow: 0 2px 6px rgba(239,68,68,0.5);
@@ -649,7 +649,7 @@ html, body { background: transparent !important; margin: 0; overflow: hidden; }
   z-index: 30;
 }
 .ov-card-name {
-  font-size: 9px; font-weight: 900;
+  font-size: 12px; font-weight: 900;
   text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   text-transform: uppercase;
