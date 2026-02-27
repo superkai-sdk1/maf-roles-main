@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { COLOR_SCHEMES, applyTheme, applyDarkMode } from '../constants/themes';
 import { triggerHaptic } from '../utils/haptics';
+import { useToast } from './Toast';
+import { useModal } from './Modal';
 
 export function SettingsPanel() {
   const {
@@ -20,7 +22,10 @@ export function SettingsPanel() {
     tableOut,
     judgeNickname, setJudgeNickname,
     judgeAvatar, setJudgeAvatar,
+    winnerTeam, gameFinished, viewOnly,
   } = useGame();
+  const { showToast } = useToast();
+  const { showModal } = useModal();
 
   const handleJoinRoom = () => {
     const code = (roomInput || '').trim();
@@ -248,37 +253,30 @@ export function SettingsPanel() {
       </div>
 
       {/* End session */}
-      <EndSessionButton onConfirm={() => { endSession(); triggerHaptic('success'); }} />
+      {!viewOnly && (
+        <button
+          className={`relative z-[1] w-full py-3 px-4 rounded-2xl font-bold text-[0.85em] border border-status-error/15 bg-status-error/5 text-status-error/70 active:scale-[0.98] transition-all duration-150 active:bg-status-error/10 ${!(winnerTeam && gameFinished) ? 'opacity-40' : ''}`}
+          onClick={() => {
+            if (!(winnerTeam && gameFinished)) {
+              showToast('В сессии остались незавершенные игры. Доиграйте текущую партию, чтобы завершить сессию', { type: 'error', title: 'Нельзя завершить сессию' });
+              triggerHaptic('warning');
+              return;
+            }
+            showModal({
+              icon: '⚠️',
+              title: 'Завершить сессию?',
+              message: 'После завершения серия будет перенесена в Историю, и её игры станут недоступны для редактирования. Оверлей будет отключен.',
+              buttons: [
+                { label: 'Отмена' },
+                { label: 'Да, завершить', primary: true, danger: true, action: () => { endSession(); triggerHaptic('success'); } },
+              ],
+            });
+          }}
+        >
+          Завершить сессию
+        </button>
+      )}
     </div>
-  );
-}
-
-function EndSessionButton({ onConfirm }) {
-  const [confirm, setConfirm] = useState(false);
-
-  if (confirm) {
-    return (
-      <div className="relative z-[1] p-4 rounded-2xl glass-card-md flex items-center gap-2.5 animate-fade-in">
-        <span className="text-[0.85em] font-bold text-white/60 flex-1">Завершить сессию?</span>
-        <button
-          className="py-2 px-4 rounded-xl font-bold text-[0.8em] border border-status-error/30 bg-status-error/15 text-status-error active:scale-95 transition-transform"
-          onClick={onConfirm}
-        >Да</button>
-        <button
-          className="py-2 px-4 rounded-xl font-bold text-[0.8em] border border-white/10 bg-white/5 text-white/50 active:scale-95 transition-transform"
-          onClick={() => setConfirm(false)}
-        >Нет</button>
-      </div>
-    );
-  }
-
-  return (
-    <button
-      className="relative z-[1] w-full py-3 px-4 rounded-2xl font-bold text-[0.85em] border border-status-error/15 bg-status-error/5 text-status-error/70 active:scale-[0.98] transition-all duration-150 active:bg-status-error/10"
-      onClick={() => { setConfirm(true); triggerHaptic('warning'); }}
-    >
-      Завершить сессию
-    </button>
   );
 }
 

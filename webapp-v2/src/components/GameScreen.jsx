@@ -11,6 +11,7 @@ import { InertiaSlider } from './InertiaSlider';
 import { triggerHaptic } from '../utils/haptics';
 import { useSwipeBack } from '../hooks/useSwipeBack';
 import { Gavel, Moon, Sun, X, MonitorPlay, LogOut, Trophy, Play, SkipForward } from 'lucide-react';
+import { useToast } from './Toast';
 
 export function GameScreen() {
   const {
@@ -30,13 +31,14 @@ export function GameScreen() {
     currentSpeaker, currentDaySpeakerIndex, startDaySpeakerFlow, nextDaySpeaker,
     activePlayers, isPlayerActive, daySpeakerStartNum,
     killedPlayerBlink,
-    gameFinished, setGameFinished, viewOnly, setViewOnly, cityMode,
+    gameFinished, setGameFinished, viewOnly, setViewOnly, isArchived, cityMode,
     nominations, getNominatedCandidates,
     votingScreenTab, setVotingScreenTab,
     startVoting,
     currentGameNumber, gamesHistory,
   } = useGame();
 
+  const { showToast } = useToast();
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showVotingScreen, setShowVotingScreen] = useState(false);
   const [showSettingsScreen, setShowSettingsScreen] = useState(false);
@@ -148,11 +150,17 @@ export function GameScreen() {
                 ← {viewOnly ? 'В меню' : 'Назад'}
               </button>
               <span className="text-accent text-xs font-bold tracking-[0.15em] uppercase">Итоги</span>
-              {viewOnly && (
+              {viewOnly && !isArchived && (
                 <button className="text-accent text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring" style={{ marginLeft: 'auto' }}
                   onClick={() => { setViewOnly(false); setShowResultsScreen(false); triggerHaptic('medium'); }}>
                   Редактировать
                 </button>
+              )}
+              {viewOnly && isArchived && (
+                <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.06] border border-white/[0.08] text-[0.65em] font-bold text-white/35 tracking-wider uppercase">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  только чтение
+                </span>
               )}
             </div>
             <ResultsPanel />
@@ -215,6 +223,16 @@ export function GameScreen() {
                   <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setShowGoToNightPrompt(false); handleGoToNight(); triggerHaptic('medium'); }}>Да</button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Archive badge */}
+          {viewOnly && isArchived && (
+            <div className="text-center mb-2 animate-fade-in">
+              <span className="inline-flex items-center gap-1.5 text-[0.7em] font-bold uppercase tracking-wider px-3 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/30">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Только чтение — История
+              </span>
             </div>
           )}
 

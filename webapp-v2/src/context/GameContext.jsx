@@ -116,6 +116,7 @@ export const GameProvider = ({ children }) => {
   const [playerScores, setPlayerScores] = useState({});
   const [gameFinished, setGameFinished] = useState(false);
   const [viewOnly, setViewOnly] = useState(false);
+  const [isArchived, setIsArchived] = useState(false);
 
   // === Games History (multiple games per session) ===
   const [gamesHistory, setGamesHistory] = useState([]);
@@ -1215,7 +1216,9 @@ export const GameProvider = ({ children }) => {
     setBestMoveSelected(s.bestMoveSelected || false);
     setWinnerTeam(s.winnerTeam || null); setPlayerScores(s.playerScores || {});
     setGameFinished(s.gameFinished || false);
-    setViewOnly(options?.viewOnly || false);
+    const archived = !!(s.seriesArchived);
+    setViewOnly(options?.viewOnly || archived);
+    setIsArchived(archived);
     setProtocolData(s.protocolData || {}); setOpinionData(s.opinionData || {}); setOpinionText(s.opinionText || {});
     setRoomId(s.roomId || null); setCityMode(s.cityMode || false);
     setFunkyMode(s.funkyMode || false); setManualMode(s.manualMode || false);
@@ -1260,7 +1263,7 @@ export const GameProvider = ({ children }) => {
     setVotingOrder([]); setVotingCurrentIndex(0); setVotingResults({});
     setVotingFinished(false); setVotingWinners([]); setVotingHistory([]);
     setShowVotingModal(false); setDayVoteOuts({});
-    setWinnerTeam(null); setPlayerScores({}); setGameFinished(false); setViewOnly(false);
+    setWinnerTeam(null); setPlayerScores({}); setGameFinished(false); setViewOnly(false); setIsArchived(false);
     setHighlightedPlayer(null); setCurrentDaySpeakerIndex(-1); setDaySpeakerStartNum(1);
     setMainInfoText(''); setAdditionalInfoText('');
     setGamesHistory([]);
@@ -1819,7 +1822,7 @@ export const GameProvider = ({ children }) => {
     votingLastSpeechPlayerIdx, setVotingLastSpeechPlayerIdx,
     // Scores
     winnerTeam, setWinnerTeam, playerScores, setPlayerScores,
-    gameFinished, setGameFinished, viewOnly, setViewOnly,
+    gameFinished, setGameFinished, viewOnly, setViewOnly, isArchived,
     calculatePlayerScore, adjustScore, toggleReveal, computeAutoScores,
     // Broadcast
     mainInfoText, setMainInfoText, additionalInfoText, setAdditionalInfoText,

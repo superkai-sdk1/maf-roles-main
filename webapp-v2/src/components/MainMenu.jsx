@@ -8,6 +8,8 @@ import { COLOR_SCHEMES, applyTheme, applyDarkMode } from '../constants/themes';
 import { triggerHaptic } from '../utils/haptics';
 import { useSwipeBack } from '../hooks/useSwipeBack';
 import { SubscriptionGate } from './SubscriptionGate';
+import { useToast } from './Toast';
+import { useModal } from './Modal';
 import {
   IconPlayCircle, IconHistory, IconPlus, IconPalette, IconUser,
   IconTrophy, IconDice, IconChevronDown, IconTrash, IconStats, IconMafBoard,
@@ -91,7 +93,7 @@ const getWinnerColorClass = (team) => {
   return '';
 };
 
-function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession, onArchive, onDeleteSeries, onNewGame, onShowTable }) {
+function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession, onArchive, onDeleteSeries, onNewGame, onShowTable, onToast, onShowModal }) {
   const [confirmAction, setConfirmAction] = useState(null);
 
   const modeLabel = group.isFunky ? 'Фанки' : getModeLabel(group.gameMode);
@@ -100,6 +102,8 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
   const progress = totalGames > 0 ? (completedGames / totalGames) * 100 : 0;
   const hasFinishedGames = completedGames > 0;
   const isGameComplete = (s) => s.winnerTeam && s.gameFinished;
+  const hasActiveGame = group.sessions.some(s => s.players?.length > 0 && !s.winnerTeam && !s.gameFinished);
+  const allGamesFinished = group.sessions.length > 0 && group.sessions.every(s => isGameComplete(s));
 
   const handleDeleteSeriesClick = useCallback((e) => {
     e.stopPropagation();
@@ -111,17 +115,6 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
     onDeleteSeries(group.tournamentId);
     setConfirmAction(null);
   }, [confirmAction, onDeleteSeries, group.tournamentId]);
-
-  const handleSaveSeriesClick = useCallback((e) => {
-    e.stopPropagation();
-    if (confirmAction !== 'save') {
-      setConfirmAction('save');
-      triggerHaptic('warning');
-      return;
-    }
-    onArchive(group.tournamentId);
-    setConfirmAction(null);
-  }, [confirmAction, onArchive, group.tournamentId]);
 
   const handleCancelConfirm = useCallback((e) => {
     e.stopPropagation();
@@ -230,8 +223,17 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
               <div className="flex gap-2 py-2.5 px-3 pb-3.5 flex-wrap">
                 {!group.archived && onNewGame && (
                   <button
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all duration-150 border border-accent/22 bg-accent/10 text-accent active:scale-[0.97]"
-                    onClick={(e) => { e.stopPropagation(); onNewGame(group); triggerHaptic('medium'); }}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all duration-150 border border-accent/22 bg-accent/10 text-accent active:scale-[0.97] ${hasActiveGame ? 'opacity-40' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (hasActiveGame) {
+                        onToast?.('Невозможно создать новую игру. Пожалуйста, завершите текущую партию в этой серии перед началом новой', { type: 'error', title: 'Ошибка создания' });
+                        triggerHaptic('warning');
+                        return;
+                      }
+                      onNewGame(group);
+                      triggerHaptic('medium');
+                    }}
                   >
                     <IconPlus size={15} />
                     <span>Новая игра</span>
@@ -264,21 +266,44 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
                   )
                 )}
                 {!group.archived && (
-                  confirmAction === 'save' ? (
-                    <div className="flex-1 flex items-center gap-2 animate-fade-in">
-                      <span className="text-[0.8em] font-bold text-white/60 whitespace-nowrap">Завершить серию?</span>
-                      <button className="flex-1 py-2.5 px-3.5 rounded-[10px] font-bold text-[0.8em] cursor-pointer border border-accent/30 bg-accent/15 text-accent active:scale-95 active:bg-accent/25" onClick={handleSaveSeriesClick}>Да</button>
-                      <button className="flex-1 py-2.5 px-3.5 rounded-[10px] font-bold text-[0.8em] cursor-pointer border border-white/10 bg-white/5 text-white/50 active:scale-95" onClick={handleCancelConfirm}>Нет</button>
-                    </div>
-                  ) : (
-                    <button
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all duration-150 border border-white/[0.08] bg-white/[0.04] text-white/50 active:scale-[0.97]"
-                      onClick={handleSaveSeriesClick}
-                    >
-                      <IconCheck size={15} />
-                      <span>Завершить серию</span>
-                    </button>
-                  )
+                  <button
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[0.78em] cursor-pointer transition-all duration-150 border border-white/[0.08] bg-white/[0.04] text-white/50 active:scale-[0.97] ${!allGamesFinished ? 'opacity-40' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!allGamesFinished) {
+                        if (hasActiveGame) {
+                          onShowModal?.({
+                            icon: '⚠️',
+                            title: 'Нельзя завершить серию',
+                            message: 'В данной серии обнаружена незавершенная игра. Чтобы перенести серию в Историю, вы должны либо доиграть текущую партию, либо удалить её.',
+                            buttons: [
+                              { label: 'Ок' },
+                              { label: 'Перейти к игре', primary: true, action: () => {
+                                const active = group.sessions.find(s => s.players?.length > 0 && !s.winnerTeam && !s.gameFinished);
+                                if (active) onLoadSession(active.sessionId);
+                              }},
+                            ],
+                          });
+                        } else {
+                          onToast?.('В серии остались незавершенные игры. Доиграйте их или удалите, чтобы перенести серию в историю', { type: 'error', title: 'Нельзя завершить серию' });
+                        }
+                        triggerHaptic('warning');
+                        return;
+                      }
+                      onShowModal?.({
+                        icon: '📦',
+                        title: 'Завершить серию?',
+                        message: 'После завершения серия будет перенесена в Историю, и её игры станут недоступны для редактирования. Оверлей будет отключен.',
+                        buttons: [
+                          { label: 'Отмена' },
+                          { label: 'Да, завершить', primary: true, danger: true, action: () => { onArchive(group.tournamentId); triggerHaptic('success'); } },
+                        ],
+                      });
+                    }}
+                  >
+                    <IconCheck size={15} />
+                    <span>Завершить серию</span>
+                  </button>
                 )}
                 {group.archived && (
                   <div className="flex items-center gap-1.5 text-[0.7em] font-bold text-white/40">
@@ -293,9 +318,10 @@ function SeriesCard({ group, expanded, onToggle, onLoadSession, onDeleteSession,
   );
 }
 
-function StandaloneCard({ session, onLoad, onDelete, onArchive, onLoadGame }) {
+function StandaloneCard({ session, onLoad, onDelete, onArchive, onLoadGame, onToast }) {
   const [expanded, setExpanded] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  const isCurrentGameFinished = !!(session.winnerTeam && session.gameFinished);
   const getSessionName = (s) =>
     s.tournamentName || s.tournamentId ||
     (s.gameMode === 'funky' ? 'Фанки' : s.gameMode === 'city' ? 'Городская' : s.gameMode === 'gomafia' ? 'GoMafia' : 'Ручной');
@@ -421,8 +447,16 @@ function StandaloneCard({ session, onLoad, onDelete, onArchive, onLoadGame }) {
                   </div>
                 ) : (
                   <button
-                    className="py-2.5 px-3 rounded-xl font-bold text-[0.78em] border border-white/[0.08] bg-white/[0.04] text-white/50 active:scale-[0.98] transition-transform duration-150"
-                    onClick={() => { setConfirmArchive(true); triggerHaptic('warning'); }}
+                    className={`py-2.5 px-3 rounded-xl font-bold text-[0.78em] border border-white/[0.08] bg-white/[0.04] text-white/50 active:scale-[0.98] transition-transform duration-150 ${!isCurrentGameFinished ? 'opacity-40' : ''}`}
+                    onClick={() => {
+                      if (!isCurrentGameFinished) {
+                        onToast?.('В сессии остались незавершенные игры. Доиграйте их, чтобы перенести сессию в историю', { type: 'error', title: 'Нельзя завершить сессию' });
+                        triggerHaptic('warning');
+                        return;
+                      }
+                      setConfirmArchive(true);
+                      triggerHaptic('warning');
+                    }}
                   >
                     Завершить
                   </button>
@@ -443,7 +477,7 @@ function StandaloneCard({ session, onLoad, onDelete, onArchive, onLoadGame }) {
   }
 
   return (
-    <div className="relative rounded-3xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] hover:border-white/[0.12] transition-all duration-200 overflow-hidden cursor-pointer" onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}>
+    <div className={`relative rounded-3xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] hover:border-white/[0.12] transition-all duration-200 overflow-hidden cursor-pointer ${session.seriesArchived ? 'opacity-75' : ''}`} onClick={() => { onLoad(session.sessionId); triggerHaptic('light'); }}>
       <div className="flex items-center justify-between gap-3 p-4">
         <div className="flex-1 min-w-0">
           <div className="text-sm font-bold text-white truncate">
@@ -462,7 +496,15 @@ function StandaloneCard({ session, onLoad, onDelete, onArchive, onLoadGame }) {
           <span className="w-2 h-2 rounded-full shrink-0" style={getResultDotStyle(session)} />
           {getResultText(session)}
         </span>
-        {modeLabel && <span className="text-[0.7em] font-bold px-1.5 py-0.5 rounded-md bg-accent/10 text-accent">{modeLabel}</span>}
+        <div className="flex items-center gap-1.5">
+          {session.seriesArchived && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.06] text-[0.6em] font-bold text-white/25 uppercase tracking-wider">
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              чтение
+            </span>
+          )}
+          {modeLabel && <span className="text-[0.7em] font-bold px-1.5 py-0.5 rounded-md bg-accent/10 text-accent">{modeLabel}</span>}
+        </div>
       </div>
       <button
         className="absolute top-3 right-3 w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.04] border border-white/[0.08] active:scale-95 transition-transform"
@@ -481,6 +523,8 @@ export function MainMenu() {
     selectedColorScheme, setSelectedColorScheme,
     darkMode, setDarkMode,
   } = useGame();
+  const { showToast } = useToast();
+  const { showModal } = useModal();
 
   const [activeTab, setActiveTab] = useState('active');
   const [expandedSeries, setExpandedSeries] = useState({});
@@ -1532,6 +1576,8 @@ export function MainMenu() {
                         onDeleteSeries={g.isFunky ? () => { deleteSession(g._originalSessionId); triggerHaptic('medium'); } : deleteSeries}
                         onNewGame={g.gameMode === 'gomafia' ? handleNewGameInTournament : g.isFunky ? () => startNewFunkyFromMenu(g._originalSessionId) : null}
                         onShowTable={(grp) => { setTableGroup(grp); triggerHaptic('light'); }}
+                        onToast={showToast}
+                        onShowModal={showModal}
                       />
                     ))}
 
@@ -1543,6 +1589,7 @@ export function MainMenu() {
                         onDelete={deleteSession}
                         onArchive={archiveSessionById}
                         onLoadGame={loadSessionGame}
+                        onToast={showToast}
                       />
                     ))}
                   </>

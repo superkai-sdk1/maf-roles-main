@@ -3,6 +3,7 @@ import { useGame } from '../context/GameContext';
 import { getRoleLabel, isBlackRole } from '../constants/roles';
 import { SlideConfirm } from './SlideConfirm';
 import { triggerHaptic } from '../utils/haptics';
+import { useModal } from './Modal';
 
 const getRoleTagClasses = (role) => {
   const base = 'px-1.5 py-0.5 rounded-md text-[0.65em] font-bold';
@@ -35,6 +36,7 @@ export const ResultsPanel = () => {
     gamesHistory, currentGameNumber,
     viewOnly,
   } = useGame();
+  const { showModal } = useModal();
 
   const [summaryTab, setSummaryTab] = useState('scores');
   const [showGamesHistory, setShowGamesHistory] = useState(false);
@@ -643,15 +645,27 @@ export const ResultsPanel = () => {
               />
 
               {winnerTeam && (
-                <SlideConfirm
-                  label="Завершить сессию"
-                  color="red"
-                  onConfirm={async () => {
-                    triggerHaptic('success');
-                    try { await saveSummaryToServer(); } catch {}
-                    endSession();
+                <button
+                  className="w-full py-3 px-4 rounded-2xl font-bold text-[0.85em] border border-status-error/15 bg-status-error/5 text-status-error/70 active:scale-[0.98] transition-all duration-150 active:bg-status-error/10"
+                  onClick={() => {
+                    showModal({
+                      icon: '⚠️',
+                      title: 'Завершить сессию?',
+                      message: 'После завершения серия будет перенесена в Историю, и её игры станут недоступны для редактирования. Оверлей будет отключен.',
+                      buttons: [
+                        { label: 'Отмена' },
+                        { label: 'Да, завершить', primary: true, danger: true, action: async () => {
+                          triggerHaptic('success');
+                          try { await saveSummaryToServer(); } catch {}
+                          endSession();
+                        }},
+                      ],
+                    });
+                    triggerHaptic('warning');
                   }}
-                />
+                >
+                  Завершить сессию
+                </button>
               )}
             </div>
           )}

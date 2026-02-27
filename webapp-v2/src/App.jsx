@@ -8,6 +8,8 @@ import { Header } from './components/Header';
 import { AuthModal } from './components/AuthModal';
 import { LandingPage } from './components/LandingPage';
 import { Overlay } from './components/Overlay';
+import { ToastProvider } from './components/Toast';
+import { ModalProvider } from './components/Modal';
 import { loadSavedTheme, applyTheme, loadSavedDarkMode, applyDarkMode } from './constants/themes';
 import { initTelegramApp } from './utils/telegram';
 import { useNativeScroll } from './hooks/useNativeScroll';
@@ -103,8 +105,12 @@ function AppShell() {
   if (page === 'panel' && isAuthenticated) {
     return (
       <GameProvider>
-        <GameRouter />
-        <AuthModal />
+        <ToastProvider>
+          <ModalProvider>
+            <GameRouter />
+            <AuthModal />
+          </ModalProvider>
+        </ToastProvider>
       </GameProvider>
     );
   }
