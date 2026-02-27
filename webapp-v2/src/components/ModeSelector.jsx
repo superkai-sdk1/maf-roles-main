@@ -1003,9 +1003,10 @@ export function ModeSelector() {
               {cityPlayers.map((player, i) => {
                 const swipeOffset = citySwipeOffsets[i] || 0;
                 const isDeleting = citySwipeDeleting === i;
+                const dropdownOpen = cityActiveInput === i && citySearchResults.length > 0;
                 return (
                   <div key={`city-slot-${i}`}
-                    className={`relative rounded-xl transition-all duration-300 ease-spring max-h-[70px] ${cityActiveInput === i ? 'z-40' : 'overflow-hidden'} ${cityDragIndex === i ? 'opacity-35 scale-[0.97]' : ''} ${cityDragOverIndex === i ? 'border-t-2 border-t-accent' : ''} ${isDeleting ? 'max-h-0 opacity-0 -mt-1.5 overflow-hidden' : ''}`}
+                    className={`relative rounded-xl transition-all duration-300 ease-spring max-h-[70px] ${dropdownOpen ? 'z-40' : 'overflow-hidden'} ${cityDragIndex === i ? 'opacity-35 scale-[0.97]' : ''} ${cityDragOverIndex === i ? 'border-t-2 border-t-accent' : ''} ${isDeleting ? 'max-h-0 opacity-0 -mt-1.5 overflow-hidden' : ''}`}
                     onDragOver={(e) => { e.preventDefault(); handleCityDragOver(i); }}
                     onDrop={() => handleCityDrop(i)}
                   >
@@ -1038,6 +1039,7 @@ export function ModeSelector() {
                           <input type="text" placeholder={`Игрок ${i + 1}`} value={cityPlayerInputs[i] || ''}
                             onChange={e => citySearchPlayer(i, e.target.value)}
                             onFocus={() => setCityActiveInput(i)}
+                            onBlur={() => setTimeout(() => setCityActiveInput(prev => prev === i ? -1 : prev), 150)}
                             onKeyDown={e => e.key === 'Enter' && citySetManualPlayer(i)}
                             className="input-field w-full" />
                           {cityActiveInput === i && citySearchResults.length > 0 && (
