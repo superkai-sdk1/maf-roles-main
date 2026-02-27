@@ -263,6 +263,26 @@ export const goMafiaApi = {
     } catch (e) { return null; }
   },
 
+  async saveShare(data) {
+    try {
+      const response = await fetch(`${API_BASE}share-save.php?za`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (e) { return null; }
+  },
+
+  async getShare(id) {
+    try {
+      const response = await fetch(`${API_BASE}share-get.php?za&id=${encodeURIComponent(id)}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (e) { return null; }
+  },
+
   async loginGoMafia(nickname, password) {
     const fd = new FormData();
     fd.set('nickname', nickname);

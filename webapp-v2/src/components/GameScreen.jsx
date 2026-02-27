@@ -10,8 +10,9 @@ import { NightPanel } from './NightPanel';
 import { InertiaSlider } from './InertiaSlider';
 import { triggerHaptic } from '../utils/haptics';
 import { useSwipeBack } from '../hooks/useSwipeBack';
-import { Gavel, Moon, Sun, X, MonitorPlay, LogOut, Trophy, Play, SkipForward } from 'lucide-react';
+import { Gavel, Moon, Sun, X, MonitorPlay, LogOut, Trophy, Play, SkipForward, Share2 } from 'lucide-react';
 import { useToast } from './Toast';
+import { goMafiaApi } from '../services/api';
 
 export function GameScreen() {
   const {
@@ -36,6 +37,11 @@ export function GameScreen() {
     votingScreenTab, setVotingScreenTab,
     startVoting,
     currentGameNumber, gamesHistory,
+    players, roles, playersActions, fouls, techFouls, removed, avatars,
+    nightCheckHistory, votingHistory, bestMove, bestMoveAccepted, firstKilledPlayer,
+    playerScores, protocolData, opinionData, opinionText,
+    doctorHealHistory, nightMisses, killedOnNight, dayVoteOuts,
+    tournamentName, gameSelected, tableSelected,
   } = useGame();
 
   const { showToast } = useToast();
@@ -44,6 +50,86 @@ export function GameScreen() {
   const [showSettingsScreen, setShowSettingsScreen] = useState(false);
   const [showResultsScreen, setShowResultsScreen] = useState(false);
   const [showRolesAlert, setShowRolesAlert] = useState(false);
+  const [sharing, setSharing] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      const currentGame = {
+        gameNumber: currentGameNumber,
+        gameSelected, tableSelected,
+        players: [...players],
+        roles: { ...roles },
+        playersActions: { ...playersActions },
+        fouls: { ...fouls },
+        techFouls: { ...techFouls },
+        removed: { ...removed },
+        avatars: { ...avatars },
+        dayNumber, nightNumber,
+        nightCheckHistory: [...nightCheckHistory],
+        votingHistory: [...votingHistory],
+        bestMove: [...bestMove],
+        bestMoveAccepted,
+        firstKilledPlayer,
+        winnerTeam,
+        playerScores: { ...playerScores },
+        protocolData: { ...protocolData },
+        opinionData: { ...opinionData },
+        opinionText: { ...(opinionText || {}) },
+        doctorHealHistory: [...doctorHealHistory],
+        nightMisses: { ...nightMisses },
+        killedOnNight: { ...killedOnNight },
+        dayVoteOuts: { ...dayVoteOuts },
+        cityMode,
+      };
+
+      const payload = {
+        tournamentName: tournamentName || '',
+        gameMode: gameMode || 'manual',
+        currentGame,
+        gamesHistory,
+      };
+
+      const result = await goMafiaApi.saveShare(payload);
+      if (!result?.id) {
+        showToast('Не удалось создать ссылку', { type: 'error' });
+        return;
+      }
+
+      const shareUrl = `${window.location.origin}/share/${result.id}`;
+      const tg = window.Telegram?.WebApp;
+      const shareText = `${tournamentName ? tournamentName + ' — ' : ''}Результаты серии MafBoard`;
+
+      if (tg && (tg.openTelegramLink || tg.shareUrl)) {
+        if (typeof tg.shareUrl === 'function') {
+          tg.shareUrl(shareUrl, shareText);
+        } else {
+          tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`);
+        }
+      } else {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          showToast('Ссылка скопирована!', { type: 'success' });
+        } catch {
+          const input = document.createElement('input');
+          input.value = shareUrl;
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand('copy');
+          document.body.removeChild(input);
+          showToast('Ссылка скопирована!', { type: 'success' });
+        }
+      }
+      triggerHaptic('success');
+    } catch (e) {
+      console.error('Share error:', e);
+      showToast('Ошибка при создании ссылки', { type: 'error' });
+      triggerHaptic('error');
+    } finally {
+      setSharing(false);
+    }
+  }, [sharing, currentGameNumber, gameSelected, tableSelected, players, roles, playersActions, fouls, techFouls, removed, avatars, dayNumber, nightNumber, nightCheckHistory, votingHistory, bestMove, bestMoveAccepted, firstKilledPlayer, winnerTeam, playerScores, protocolData, opinionData, opinionText, doctorHealHistory, nightMisses, killedOnNight, dayVoteOuts, cityMode, tournamentName, gameMode, gamesHistory, showToast]);
 
   const handleSwipeBack = useCallback(() => {
     if (viewOnly) { returnToMainMenu(); return; }
@@ -161,6 +247,20 @@ export function GameScreen() {
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                   только чтение
                 </span>
+              )}
+              {winnerTeam && (
+                <button
+                  className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${sharing ? 'bg-white/[0.04] border border-white/[0.06] text-white/30' : 'bg-accent/15 border border-accent/25 text-accent'}`}
+                  onClick={handleShare}
+                  disabled={sharing}
+                >
+                  {sharing ? (
+                    <div className="w-3.5 h-3.5 border-[1.5px] border-white/20 border-t-white/60 rounded-full animate-spin" />
+                  ) : (
+                    <Share2 size={14} />
+                  )}
+                  {sharing ? 'Создаём...' : 'Поделиться'}
+                </button>
               )}
             </div>
             <ResultsPanel />

@@ -8,6 +8,7 @@ import { Header } from './components/Header';
 import { AuthModal } from './components/AuthModal';
 import { LandingPage } from './components/LandingPage';
 import { Overlay } from './components/Overlay';
+import { SharedResults } from './components/SharedResults';
 import { ToastProvider } from './components/Toast';
 import { ModalProvider } from './components/Modal';
 import { loadSavedTheme, applyTheme, loadSavedDarkMode, applyDarkMode } from './constants/themes';
@@ -44,6 +45,7 @@ const ROUTES = { '/': 'landing', '/panel': 'panel', '/overlay': 'overlay' };
 const PATHS = { landing: '/', panel: '/panel', overlay: '/overlay' };
 
 function pageFromPath() {
+  if (window.location.pathname.startsWith('/share/')) return 'share';
   return ROUTES[window.location.pathname] || 'landing';
 }
 
@@ -66,10 +68,10 @@ function AppShell() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (isTelegramWebView && isAuthenticated) {
+    if (isTelegramWebView && isAuthenticated && page !== 'share') {
       setPage('panel');
     }
-  }, [isLoading, isTelegramWebView, isAuthenticated]);
+  }, [isLoading, isTelegramWebView, isAuthenticated, page]);
 
   useEffect(() => {
     if (!isLoading && page === 'panel' && !isAuthenticated) {
@@ -88,6 +90,7 @@ function AppShell() {
   }, [page, isAuthenticated]);
 
   useEffect(() => {
+    if (page === 'share') return;
     const target = PATHS[page] || '/';
     if (window.location.pathname !== target) {
       window.history.pushState(null, '', target);
@@ -113,6 +116,10 @@ function AppShell() {
         </ToastProvider>
       </GameProvider>
     );
+  }
+
+  if (page === 'share') {
+    return <SharedResults />;
   }
 
   if (page === 'overlay') {
