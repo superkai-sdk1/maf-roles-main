@@ -151,7 +151,7 @@ export const GameProvider = ({ children }) => {
   const [daySpeakerStartNum, setDaySpeakerStartNum] = useState(1);
   const [discussionEndPrompt, setDiscussionEndPrompt] = useState(null);
   const [showNoVotingAlert, setShowNoVotingAlert] = useState(false);
-  const [speakerBonusTime, setSpeakerBonusTime] = useState(0);
+  const [speakerBonusRound, setSpeakerBonusRound] = useState(false);
 
   // === Funky Mode ===
   const [funkyPlayers, setFunkyPlayers] = useState([]);
@@ -1609,9 +1609,9 @@ export const GameProvider = ({ children }) => {
     if (activePlayers.length === 0) return;
     const startIdx = activePlayers.findIndex(p => p.num === daySpeakerStartNum);
     setCurrentDaySpeakerIndex(startIdx >= 0 ? startIdx : 0);
-    setSpeakerBonusTime(cityMode && dayNumber === 1 ? 30 : 0);
+    setSpeakerBonusRound(false);
     triggerHaptic('light');
-  }, [activePlayers, daySpeakerStartNum, cityMode, dayNumber]);
+  }, [activePlayers, daySpeakerStartNum]);
 
   const nextDaySpeaker = useCallback(() => {
     const startIdx = activePlayers.findIndex(p => p.num === daySpeakerStartNum);
@@ -1619,33 +1619,44 @@ export const GameProvider = ({ children }) => {
     const nextIdx = currentDaySpeakerIndex + 1;
     const wrappedIdx = nextIdx % activePlayers.length;
 
-    if (wrappedIdx === actualStart && nextIdx > 0) {
+    if (speakerBonusRound) {
       setCurrentDaySpeakerIndex(-1);
+      setSpeakerBonusRound(false);
+      setDiscussionEndPrompt({ type: 'city-day1-no-vote', candidates: [] });
+      triggerHaptic('medium');
+    } else if (wrappedIdx === actualStart && nextIdx > 0) {
       const isDay1 = dayNumber === 1;
 
-      if (cityMode) {
-        if (isDay1) {
-          setDiscussionEndPrompt({ type: 'city-day1-no-vote', candidates: [] });
-        } else {
+      if (cityMode && isDay1) {
+        setSpeakerBonusRound(true);
+        setCurrentDaySpeakerIndex(actualStart);
+        const firstPlayer = activePlayers[actualStart];
+        if (firstPlayer) {
+          setAutoExpandPlayer(firstPlayer.roleKey);
+          setAutoStartTimerRK(firstPlayer.roleKey);
+        }
+        triggerHaptic('medium');
+      } else {
+        setCurrentDaySpeakerIndex(-1);
+        if (cityMode) {
           const allAlive = activePlayers.map(p => p.num);
           setDiscussionEndPrompt({ type: 'vote', candidates: allAlive });
-        }
-      } else {
-        const candidates = getNominatedCandidates();
-        const isFunkyOrGoMafia = gameMode === 'gomafia' || gameMode === 'funky';
-
-        if (candidates.length === 0) {
-          setDiscussionEndPrompt({ type: 'no-candidates', candidates: [] });
-        } else if (isDay1 && isFunkyOrGoMafia && candidates.length === 1) {
-          setDiscussionEndPrompt({ type: 'day1-single', candidates });
         } else {
-          setDiscussionEndPrompt({ type: 'vote', candidates });
+          const candidates = getNominatedCandidates();
+          const isFunkyOrGoMafia = gameMode === 'gomafia' || gameMode === 'funky';
+
+          if (candidates.length === 0) {
+            setDiscussionEndPrompt({ type: 'no-candidates', candidates: [] });
+          } else if (isDay1 && isFunkyOrGoMafia && candidates.length === 1) {
+            setDiscussionEndPrompt({ type: 'day1-single', candidates });
+          } else {
+            setDiscussionEndPrompt({ type: 'vote', candidates });
+          }
         }
+        triggerHaptic('medium');
       }
-      triggerHaptic('medium');
     } else {
       setCurrentDaySpeakerIndex(wrappedIdx);
-      setSpeakerBonusTime(0);
       const nextPlayer = activePlayers[wrappedIdx];
       if (nextPlayer) {
         setAutoExpandPlayer(nextPlayer.roleKey);
@@ -1653,7 +1664,7 @@ export const GameProvider = ({ children }) => {
       }
       triggerHaptic('selection');
     }
-  }, [currentDaySpeakerIndex, activePlayers, daySpeakerStartNum, getNominatedCandidates, gameMode, dayNumber, cityMode]);
+  }, [currentDaySpeakerIndex, activePlayers, daySpeakerStartNum, getNominatedCandidates, gameMode, dayNumber, cityMode, speakerBonusRound]);
 
   const currentSpeaker = useMemo(() => {
     if (currentDaySpeakerIndex < 0 || currentDaySpeakerIndex >= activePlayers.length) return null;
@@ -1879,7 +1890,7 @@ export const GameProvider = ({ children }) => {
     roomId, setRoomId, joinRoom, disconnectRoom, syncState, pushFullStateToOverlay, roomInput, setRoomInput, roomError, setRoomError,
     // Day Speaker
     currentDaySpeakerIndex, setCurrentDaySpeakerIndex,
-    daySpeakerStartNum, speakerBonusTime,
+    daySpeakerStartNum, speakerBonusRound,
     discussionEndPrompt, setDiscussionEndPrompt, skipVotingAndGoToNight,
     showNoVotingAlert, setShowNoVotingAlert,
     // Funky

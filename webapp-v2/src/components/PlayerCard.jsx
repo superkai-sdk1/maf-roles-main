@@ -98,7 +98,7 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
     nominations, toggleNomination, nominationsLocked,
     highlightedPlayer, setHighlightedPlayer,
     autoExpandPlayer, setAutoExpandPlayer,
-    autoStartTimerRK, setAutoStartTimerRK, speakerBonusTime,
+    autoStartTimerRK, setAutoStartTimerRK, speakerBonusRound,
     expandedCardRK, setExpandedCardRK,
     playersActions, roles, tableOut,
     killedCardPhase, setKilledCardPhase, firstKilledPlayer,
@@ -168,10 +168,10 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
   useEffect(() => {
     if (autoStartTimerRK === rk) {
       setAutoStartTimerRK(null);
-      const duration = speakerBonusTime > 0 ? 60 + speakerBonusTime : undefined;
+      const duration = speakerBonusRound ? 30 : undefined;
       setTimeout(() => { start(duration); }, 350);
     }
-  }, [autoStartTimerRK, rk, setAutoStartTimerRK, start, speakerBonusTime]);
+  }, [autoStartTimerRK, rk, setAutoStartTimerRK, start, speakerBonusRound]);
 
   const active = isPlayerActive(rk);
   const role = player.role;
