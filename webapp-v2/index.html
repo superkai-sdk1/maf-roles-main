@@ -25,8 +25,27 @@
     <meta name="mobile-web-app-capable" content="yes" />
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      :root {
+        --maf-bg-main: #040410;
+        --maf-bg-secondary: #0d0a2a;
+        --maf-gradient-bg: linear-gradient(135deg, #040410 0%, #0d0a2a 25%, #1a0f4a 50%, #0d0a2a 75%, #040410 100%);
+        --text-primary: #ffffff;
+        --text-secondary: rgba(255,255,255,0.6);
+        --accent-color: #a855f7;
+        --accent-rgb: 168, 85, 247;
+        --glass-surface: rgba(12, 10, 28, 0.68);
+        --glass-border: rgba(255, 255, 255, 0.12);
+      }
+      html, body {
+        background: var(--maf-gradient-bg) !important;
+        color: var(--text-primary);
+        margin: 0;
+        min-height: 100dvh;
+      }
+    </style>
   </head>
-  <body class="bg-slate-950 text-slate-50">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>

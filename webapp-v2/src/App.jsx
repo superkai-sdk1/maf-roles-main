@@ -135,13 +135,16 @@ function AppShell() {
   );
 }
 
+// Apply theme synchronously before first render to prevent FOUC
+try {
+  const _initDark = loadSavedDarkMode();
+  applyDarkMode(_initDark);
+  applyTheme(loadSavedTheme());
+} catch (e) { /* theme will use CSS defaults */ }
+
 export default function App() {
   useEffect(() => {
     initTelegramApp();
-    const isDark = loadSavedDarkMode();
-    applyDarkMode(isDark);
-    const color = loadSavedTheme();
-    applyTheme(color);
   }, []);
 
   return (
