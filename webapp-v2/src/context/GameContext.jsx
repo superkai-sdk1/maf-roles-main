@@ -1156,20 +1156,6 @@ export const GameProvider = ({ children }) => {
     triggerHaptic('light');
   }, [pushFullStateToOverlay]);
 
-  const loadHistoryGame = useCallback((gameIndex) => {
-    if (gameIndex < 0 || gameIndex >= gamesHistory.length) return;
-    applyHistoryGame(gamesHistory[gameIndex]);
-  }, [gamesHistory, applyHistoryGame]);
-
-  const loadSessionGame = useCallback((sessionId, gameIndex) => {
-    const s = sessionManager.getSession(sessionId);
-    if (!s) return;
-    const gh = s.gamesHistory || [];
-    if (gameIndex < 0 || gameIndex >= gh.length) return;
-    loadSession(sessionId, { viewOnly: true });
-    setTimeout(() => applyHistoryGame(gh[gameIndex]), 50);
-  }, [loadSession, applyHistoryGame]);
-
   // =================== Session Management ===================
   const saveCurrentSession = useCallback(() => {
     if (!currentSessionId) return;
@@ -1245,6 +1231,20 @@ export const GameProvider = ({ children }) => {
     setScreen('game');
     if (s.roomId) joinRoom(s.roomId);
   }, [joinRoom]);
+
+  const loadHistoryGame = useCallback((gameIndex) => {
+    if (gameIndex < 0 || gameIndex >= gamesHistory.length) return;
+    applyHistoryGame(gamesHistory[gameIndex]);
+  }, [gamesHistory, applyHistoryGame]);
+
+  const loadSessionGame = useCallback((sessionId, gameIndex) => {
+    const s = sessionManager.getSession(sessionId);
+    if (!s) return;
+    const gh = s.gamesHistory || [];
+    if (gameIndex < 0 || gameIndex >= gh.length) return;
+    loadSession(sessionId, { viewOnly: true });
+    setTimeout(() => applyHistoryGame(gh[gameIndex]), 50);
+  }, [loadSession, applyHistoryGame]);
 
   const resetGameState = useCallback(() => {
     setTournament(null); setTournamentId(''); setTournamentName('');
