@@ -409,38 +409,52 @@ export function ModeSelector() {
     triggerHaptic('light');
   }, [cityPlayers]);
 
-  const handleCityTouchMove = useCallback((e) => {
-    if (cityDragIndex === null || !cityListRef.current) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const y = e.touches[0].clientY;
-    const slots = cityListRef.current.children;
-    for (let i = 0; i < slots.length; i++) {
-      const rect = slots[i].getBoundingClientRect();
-      if (y >= rect.top && y <= rect.bottom && i !== cityDragIndex) {
-        setCityDragOverIndex(i);
-        return;
-      }
-    }
-    setCityDragOverIndex(null);
-  }, [cityDragIndex]);
+  const cityDragIndexRef = useRef(null);
+  useEffect(() => { cityDragIndexRef.current = cityDragIndex; }, [cityDragIndex]);
 
-  const handleCityTouchEnd = useCallback(() => {
+  useEffect(() => {
     if (cityDragIndex === null) return;
-    if (cityDragOverIndex !== null && cityDragOverIndex !== cityDragIndex) {
-      const newPlayers = [...cityPlayers];
-      const newInputs = [...cityPlayerInputs];
-      const [movedP] = newPlayers.splice(cityDragIndex, 1);
-      const [movedI] = newInputs.splice(cityDragIndex, 1);
-      newPlayers.splice(cityDragOverIndex, 0, movedP);
-      newInputs.splice(cityDragOverIndex, 0, movedI);
-      const reIdx = newPlayers.map((p, i) => p ? { ...p, num: i + 1, roleKey: `1-1-${i + 1}` } : null);
-      setCityPlayers(reIdx);
-      setCityPlayerInputs(newInputs);
-      triggerHaptic('medium');
-    }
-    setCityDragIndex(null); setCityDragOverIndex(null);
-  }, [cityDragIndex, cityDragOverIndex, cityPlayers, cityPlayerInputs]);
+    const onMove = (e) => {
+      if (cityDragIndexRef.current === null || !cityListRef.current) return;
+      e.preventDefault();
+      const y = e.touches[0].clientY;
+      const slots = cityListRef.current.children;
+      let found = null;
+      for (let i = 0; i < slots.length; i++) {
+        const rect = slots[i].getBoundingClientRect();
+        if (y >= rect.top && y <= rect.bottom && i !== cityDragIndexRef.current) {
+          found = i; break;
+        }
+      }
+      setCityDragOverIndex(found);
+    };
+    const onEnd = () => {
+      setCityDragIndex(prev => {
+        setCityDragOverIndex(overIdx => {
+          if (prev !== null && overIdx !== null && overIdx !== prev) {
+            const newPlayers = [...cityPlayers];
+            const newInputs = [...cityPlayerInputs];
+            const [movedP] = newPlayers.splice(prev, 1);
+            const [movedI] = newInputs.splice(prev, 1);
+            newPlayers.splice(overIdx, 0, movedP);
+            newInputs.splice(overIdx, 0, movedI);
+            const reIdx = newPlayers.map((p, i) => p ? { ...p, num: i + 1, roleKey: `1-1-${i + 1}` } : null);
+            setCityPlayers(reIdx);
+            setCityPlayerInputs(newInputs);
+            triggerHaptic('medium');
+          }
+          return null;
+        });
+        return null;
+      });
+    };
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+    return () => {
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+    };
+  }, [cityDragIndex, cityPlayers, cityPlayerInputs]);
 
   const handleCityDragOver = useCallback((idx) => {
     if (cityDragIndex === null || cityDragIndex === idx) return;
@@ -1067,8 +1081,6 @@ export function ModeSelector() {
                             onDragStart={(e) => handleCityDragStart(i, e)}
                             onDragEnd={handleCityDragEnd}
                             onTouchStart={(e) => handleCityDragStart(i, e)}
-                            onTouchMove={handleCityTouchMove}
-                            onTouchEnd={handleCityTouchEnd}
                           >
                             <IconGripVertical size={16} color="rgba(255,255,255,0.25)" />
                           </div>
