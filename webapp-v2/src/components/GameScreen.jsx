@@ -26,12 +26,12 @@ export function GameScreen() {
     freeSeatingTimeLeft, freeSeatingRunning, startFreeSeatingTimer, stopFreeSeatingTimer,
     nightPhase,
     showNoVotingAlert, setShowNoVotingAlert,
-    showGoToNightPrompt, setShowGoToNightPrompt,
+    discussionEndPrompt, setDiscussionEndPrompt, skipVotingAndGoToNight,
     winnerTeam,
     currentSpeaker, currentDaySpeakerIndex, startDaySpeakerFlow, nextDaySpeaker,
     activePlayers, isPlayerActive, daySpeakerStartNum,
     killedPlayerBlink,
-    gameFinished, setGameFinished, viewOnly, setViewOnly, isArchived, cityMode,
+    gameFinished, setGameFinished, viewOnly, setViewOnly, isArchived, cityMode, gameMode,
     nominations, getNominatedCandidates,
     votingScreenTab, setVotingScreenTab,
     startVoting,
@@ -212,16 +212,46 @@ export function GameScreen() {
             </div>
           )}
 
-          {/* Go to night after all speeches */}
-          {showGoToNightPrompt && (
-            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowGoToNightPrompt(false); }}>
-              <div className="w-full max-w-[320px] glass-card-md rounded-3xl p-6 !shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
-                <div className="text-4xl relative z-[1]">🌙</div>
-                <div className="text-sm text-white/60 font-medium leading-relaxed">Все игроки высказались. Перейти в ночь?</div>
-                <div className="flex gap-3 w-full mt-2">
-                  <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => { setShowGoToNightPrompt(false); triggerHaptic('light'); }}>Нет</button>
-                  <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setShowGoToNightPrompt(false); handleGoToNight(); triggerHaptic('medium'); }}>Да</button>
-                </div>
+          {/* Discussion end prompt */}
+          {discussionEndPrompt && (
+            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) setDiscussionEndPrompt(null); }}>
+              <div className="w-full max-w-[340px] glass-card-md rounded-3xl p-6 !shadow-glass-lg flex flex-col items-center text-center gap-3 animate-scale-in">
+                {discussionEndPrompt.type === 'vote' && (
+                  <>
+                    <div className="text-4xl relative z-[1]">⚖️</div>
+                    <div className="text-sm text-white/60 font-medium leading-relaxed">
+                      Обсуждение окончено. На голосовании: [{discussionEndPrompt.candidates.join(', ')}].
+                    </div>
+                    <div className="flex gap-3 w-full mt-2">
+                      <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => { setDiscussionEndPrompt(null); triggerHaptic('light'); }}>Отмена</button>
+                      <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setDiscussionEndPrompt(null); startVoting(); triggerHaptic('medium'); }}>Начать голосование</button>
+                    </div>
+                  </>
+                )}
+                {discussionEndPrompt.type === 'day1-single' && (
+                  <>
+                    <div className="text-4xl relative z-[1]">🛡️</div>
+                    <div className="text-sm text-white/60 font-medium leading-relaxed">
+                      Выставлен только игрок №{discussionEndPrompt.candidates[0]}. Согласно правилам {gameMode === 'funky' ? 'Фанки' : 'GoMafia'}, в 1-й день голосование за одного не проводится.
+                    </div>
+                    <div className="flex gap-3 w-full mt-2">
+                      <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => { setDiscussionEndPrompt(null); triggerHaptic('light'); }}>Отмена</button>
+                      <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setDiscussionEndPrompt(null); skipVotingAndGoToNight(discussionEndPrompt.candidates); triggerHaptic('medium'); }}>Начать ночь</button>
+                    </div>
+                  </>
+                )}
+                {discussionEndPrompt.type === 'no-candidates' && (
+                  <>
+                    <div className="text-4xl relative z-[1]">🌙</div>
+                    <div className="text-sm text-white/60 font-medium leading-relaxed">
+                      Кандидатуры не выдвинуты. Город засыпает.
+                    </div>
+                    <div className="flex gap-3 w-full mt-2">
+                      <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => { setDiscussionEndPrompt(null); triggerHaptic('light'); }}>Отмена</button>
+                      <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setDiscussionEndPrompt(null); skipVotingAndGoToNight([]); triggerHaptic('medium'); }}>Начать ночь</button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}

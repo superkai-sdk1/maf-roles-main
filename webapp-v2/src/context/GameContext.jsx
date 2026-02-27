@@ -149,7 +149,7 @@ export const GameProvider = ({ children }) => {
   // === Day Speaker ===
   const [currentDaySpeakerIndex, setCurrentDaySpeakerIndex] = useState(-1);
   const [daySpeakerStartNum, setDaySpeakerStartNum] = useState(1);
-  const [showGoToNightPrompt, setShowGoToNightPrompt] = useState(false);
+  const [discussionEndPrompt, setDiscussionEndPrompt] = useState(null);
   const [showNoVotingAlert, setShowNoVotingAlert] = useState(false);
 
   // === Funky Mode ===
@@ -523,7 +523,7 @@ export const GameProvider = ({ children }) => {
       setNightNumber(n => n + 1);
       setNightPhase('kill'); setNightChecks({}); setDayButtonBlink(false);
       if (doctorHeal?.target) setDoctorLastHealTarget(doctorHeal.target);
-      setDoctorHeal(null); setHighlightedPlayer(null); setShowGoToNightPrompt(false);
+      setDoctorHeal(null); setHighlightedPlayer(null); setDiscussionEndPrompt(null);
       setCurrentDaySpeakerIndex(-1);
       syncState({ gamePhase: 'night' });
     } else if (mode === 'day') {
@@ -556,6 +556,25 @@ export const GameProvider = ({ children }) => {
       const hasVoting = votingHistory.some(v => v.dayNumber === dayNumber);
       if (!hasVoting && dayNumber > 0) { setShowNoVotingAlert(true); return; }
     }
+    setMode('night');
+  }, [dayNumber, votingHistory, setMode]);
+
+  const skipVotingAndGoToNight = useCallback((candidates = []) => {
+    const entry = {
+      votingNumber: votingHistory.length + 1,
+      dayNumber,
+      nominees: [...candidates],
+      stages: [],
+      finalWinners: [],
+      skipped: true,
+      skipReason: candidates.length > 0
+        ? 'day1-single-candidate'
+        : 'no-candidates',
+    };
+    setVotingHistory(prev => [...prev, entry]);
+    setNominations({});
+    setNominationOrder([]);
+    setNominationsLocked(false);
     setMode('night');
   }, [dayNumber, votingHistory, setMode]);
 
@@ -1600,7 +1619,17 @@ export const GameProvider = ({ children }) => {
 
     if (wrappedIdx === actualStart && nextIdx > 0) {
       setCurrentDaySpeakerIndex(-1);
-      setShowGoToNightPrompt(true);
+      const candidates = getNominatedCandidates();
+      const isFunkyOrGoMafia = gameMode === 'gomafia' || gameMode === 'funky';
+      const isDay1 = dayNumber === 1;
+
+      if (candidates.length === 0) {
+        setDiscussionEndPrompt({ type: 'no-candidates', candidates: [] });
+      } else if (isDay1 && isFunkyOrGoMafia && candidates.length === 1) {
+        setDiscussionEndPrompt({ type: 'day1-single', candidates });
+      } else {
+        setDiscussionEndPrompt({ type: 'vote', candidates });
+      }
       triggerHaptic('medium');
     } else {
       setCurrentDaySpeakerIndex(wrappedIdx);
@@ -1611,7 +1640,7 @@ export const GameProvider = ({ children }) => {
       }
       triggerHaptic('selection');
     }
-  }, [currentDaySpeakerIndex, activePlayers, daySpeakerStartNum]);
+  }, [currentDaySpeakerIndex, activePlayers, daySpeakerStartNum, getNominatedCandidates, gameMode, dayNumber]);
 
   const currentSpeaker = useMemo(() => {
     if (currentDaySpeakerIndex < 0 || currentDaySpeakerIndex >= activePlayers.length) return null;
@@ -1838,7 +1867,7 @@ export const GameProvider = ({ children }) => {
     // Day Speaker
     currentDaySpeakerIndex, setCurrentDaySpeakerIndex,
     daySpeakerStartNum,
-    showGoToNightPrompt, setShowGoToNightPrompt,
+    discussionEndPrompt, setDiscussionEndPrompt, skipVotingAndGoToNight,
     showNoVotingAlert, setShowNoVotingAlert,
     // Funky
     funkyPlayers, setFunkyPlayers, funkyPlayerInputs, setFunkyPlayerInputs,

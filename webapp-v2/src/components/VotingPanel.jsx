@@ -849,11 +849,24 @@ export function VotingPanel() {
               <div key={i} className="bg-glass-surface backdrop-blur-xl border border-glass-border rounded-2xl p-4 shadow-glass-sm">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[0.7em] font-black text-white/40 uppercase tracking-wider">
-                    Голосование #{v.votingNumber} (День {v.dayNumber})
+                    {v.skipped ? `День ${v.dayNumber}` : `Голосование #${v.votingNumber} (День ${v.dayNumber})`}
                   </span>
+                  {v.skipped && (
+                    <span className="text-[0.6em] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-yellow-400">
+                      Без голосования
+                    </span>
+                  )}
                 </div>
 
-                {v.finalWinners?.length > 0 ? (
+                {v.skipped ? (
+                  <div className="text-[0.85em] text-white/50 mb-1">
+                    {v.nominees?.length > 0 ? (
+                      <>Выставлен: {v.nominees.map(num => `#${num} ${tableOut[num - 1]?.login || ''}`).join(', ')}. Голосование не проводилось.</>
+                    ) : (
+                      <>Кандидатуры не выдвинуты.</>
+                    )}
+                  </div>
+                ) : v.finalWinners?.length > 0 ? (
                   <div className="text-[0.85em] font-bold mb-2.5 py-2 px-3 rounded-xl bg-red-500/10 border border-red-500/20">
                     Заголосован: {v.finalWinners.map(num => `#${num} ${tableOut[num - 1]?.login || ''}`).join(', ')}
                   </div>
