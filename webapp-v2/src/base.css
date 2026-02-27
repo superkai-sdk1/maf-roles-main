@@ -173,16 +173,24 @@ body {
 .light-mode .text-white\/90 {
   color: var(--text-primary) !important;
 }
+.light-mode .text-white\/85 {
+  color: rgba(0,0,0,0.75) !important;
+}
 .light-mode .text-white\/80 {
   color: rgba(0,0,0,0.75) !important;
+}
+.light-mode .text-white\/75 {
+  color: rgba(0,0,0,0.65) !important;
 }
 .light-mode .text-white\/70 {
   color: rgba(0,0,0,0.65) !important;
 }
-.light-mode .text-white\/60 {
+.light-mode .text-white\/60,
+.light-mode .text-white\/55 {
   color: var(--text-secondary) !important;
 }
-.light-mode .text-white\/50 {
+.light-mode .text-white\/50,
+.light-mode .text-white\/45 {
   color: var(--text-secondary) !important;
 }
 .light-mode .text-white\/40,
@@ -194,14 +202,21 @@ body {
 .light-mode .text-white\/\[0\.3\] {
   color: var(--text-muted) !important;
 }
+.light-mode .text-white\/25 {
+  color: rgba(0,0,0,0.18) !important;
+}
 .light-mode .text-white\/20 {
   color: rgba(0,0,0,0.15) !important;
+}
+.light-mode .text-white\/15 {
+  color: rgba(0,0,0,0.10) !important;
 }
 .light-mode .text-white\/10 {
   color: rgba(0,0,0,0.08) !important;
 }
 
 /* Background overrides */
+.light-mode .bg-white\/5,
 .light-mode .bg-white\/\[0\.02\],
 .light-mode .bg-white\/\[0\.03\],
 .light-mode .bg-white\/\[0\.04\],
@@ -212,6 +227,7 @@ body {
 .light-mode .bg-white\/\[0\.08\] {
   background-color: var(--surface-secondary) !important;
 }
+.light-mode .bg-white\/10,
 .light-mode .bg-white\/\[0\.09\],
 .light-mode .bg-white\/\[0\.10\],
 .light-mode .bg-white\/\[0\.12\] {
@@ -219,15 +235,22 @@ body {
 }
 
 /* Border overrides */
+.light-mode .border-white\/5,
 .light-mode .border-white\/\[0\.04\],
+.light-mode .border-white\/\[0\.05\],
 .light-mode .border-white\/\[0\.06\],
 .light-mode .border-white\/\[0\.08\] {
   border-color: var(--surface-border) !important;
 }
+.light-mode .border-white\/10,
+.light-mode .border-white\/15,
 .light-mode .border-white\/\[0\.10\],
 .light-mode .border-white\/\[0\.12\],
 .light-mode .border-white\/\[0\.14\] {
   border-color: var(--surface-border-hover) !important;
+}
+.light-mode .border-white\/20 {
+  border-color: rgba(0,0,0,0.14) !important;
 }
 
 /* Hover overrides */

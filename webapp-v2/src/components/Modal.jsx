@@ -50,17 +50,15 @@ function ModalOverlay({ modal, onClose }) {
       onClick={handleClose}
     >
       <div
-        className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl"
+        className="w-full max-w-sm rounded-3xl overflow-hidden glass-card-md !shadow-glass-lg"
         style={{
-          background: 'linear-gradient(135deg, rgba(30,28,45,0.98) 0%, rgba(18,16,30,0.98) 100%)',
-          border: '1px solid rgba(255,255,255,0.1)',
           opacity: visible ? 1 : 0,
           transform: visible ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(12px)',
           transition: 'all 250ms cubic-bezier(0.34, 1.56, 0.64, 1)',
         }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="px-6 pt-6 pb-4">
+        <div className="relative z-[1] px-6 pt-6 pb-4">
           {modal.icon && (
             <div className="text-3xl text-center mb-3">{modal.icon}</div>
           )}
@@ -71,7 +69,7 @@ function ModalOverlay({ modal, onClose }) {
             {modal.message}
           </p>
         </div>
-        <div className="flex gap-2 px-5 pb-5">
+        <div className="relative z-[1] flex gap-2 px-5 pb-5">
           {modal.buttons?.map((btn, i) => (
             <button
               key={i}

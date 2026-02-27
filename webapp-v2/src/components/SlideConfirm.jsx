@@ -2,15 +2,23 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { triggerHaptic } from '../utils/haptics';
 import { IconChevronRight } from '../utils/icons';
 
+function getAccentColors() {
+  const style = getComputedStyle(document.documentElement);
+  const rgb = style.getPropertyValue('--accent-rgb').trim() || '168,85,247';
+  const accent = style.getPropertyValue('--accent-color').trim() || '#a855f7';
+  const g0 = style.getPropertyValue('--accent-gradient-rgb-0').trim() || rgb;
+  const g1 = style.getPropertyValue('--accent-gradient-rgb-1').trim() || rgb;
+  return {
+    track: `rgba(${rgb},0.08)`,
+    trackBorder: `rgba(${rgb},0.18)`,
+    fill: [`rgb(${g1})`, `rgb(${g0})`],
+    thumb: accent,
+    thumbGlow: `rgba(${rgb},0.5)`,
+    shimmer: `rgba(${rgb},0.12)`,
+  };
+}
+
 const colorMap = {
-  violet: {
-    track: 'rgba(168,85,247,0.08)',
-    trackBorder: 'rgba(168,85,247,0.18)',
-    fill: ['#7c3aed', '#6366f1'],
-    thumb: '#a855f7',
-    thumbGlow: 'rgba(168,85,247,0.5)',
-    shimmer: 'rgba(168,85,247,0.12)',
-  },
   red: {
     track: 'rgba(239,68,68,0.08)',
     trackBorder: 'rgba(239,68,68,0.18)',
@@ -156,7 +164,7 @@ export function SlideConfirm({ label, onConfirm, color = 'violet', compact = fal
 
   const max = getMaxOffset();
   const progress = max > 0 ? Math.min(offset / max, 1) : 0;
-  const c = colorMap[color] || colorMap.violet;
+  const c = colorMap[color] || getAccentColors();
   const thumbSize = compact ? 44 : 56;
   const trackH = compact ? 52 : 64;
 

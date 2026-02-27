@@ -169,8 +169,7 @@ export const ResultsPanel = () => {
           {/* Game number + Winner header */}
           {currentGameNumber > 1 && (
             <div className="text-center">
-              <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-lg"
-                style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)', color: 'var(--accent-color, #a855f7)' }}>
+              <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-lg bg-accent-soft border border-accent-soft text-accent">
                 Игра {currentGameNumber}
               </span>
             </div>
@@ -557,7 +556,7 @@ export const ResultsPanel = () => {
               >
                 <span className="text-white/50">Предыдущие игры</span>
                 <span className="flex items-center gap-2">
-                  <span className="text-xs font-extrabold px-2 py-0.5 rounded-md bg-purple-500/15" style={{ color: 'var(--accent-color, #a855f7)' }}>
+                  <span className="text-xs font-extrabold px-2 py-0.5 rounded-md bg-accent-soft text-accent">
                     {gamesHistory.length}
                   </span>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -578,7 +577,7 @@ export const ResultsPanel = () => {
                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] cursor-pointer active:bg-white/[0.06] transition-colors"
                         onClick={() => loadHistoryGame(idx)}
                       >
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-extrabold shrink-0 bg-purple-500/10 border border-purple-500/20" style={{ color: 'var(--accent-color, #a855f7)' }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-extrabold shrink-0 bg-accent/10 border border-accent/20 text-accent">
                           {g.gameNumber}
                         </div>
                         <div className="flex-1 min-w-0">
