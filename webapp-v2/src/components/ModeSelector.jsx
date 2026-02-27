@@ -1005,20 +1005,20 @@ export function ModeSelector() {
                 const isDeleting = citySwipeDeleting === i;
                 return (
                   <div key={`city-slot-${i}`}
-                    className={`relative overflow-hidden rounded-xl transition-all duration-300 ease-spring max-h-[70px] ${cityDragIndex === i ? 'opacity-35 scale-[0.97]' : ''} ${cityDragOverIndex === i ? 'border-t-2 border-t-accent' : ''} ${isDeleting ? 'max-h-0 opacity-0 -mt-1.5 overflow-hidden' : ''}`}
+                    className={`relative rounded-xl transition-all duration-300 ease-spring max-h-[70px] ${cityActiveInput === i ? '' : 'overflow-hidden'} ${cityDragIndex === i ? 'opacity-35 scale-[0.97]' : ''} ${cityDragOverIndex === i ? 'border-t-2 border-t-accent' : ''} ${isDeleting ? 'max-h-0 opacity-0 -mt-1.5 overflow-hidden' : ''}`}
                     onDragOver={(e) => { e.preventDefault(); handleCityDragOver(i); }}
                     onDrop={() => handleCityDrop(i)}
                   >
                     <div className="absolute right-0 top-0 bottom-0 w-[100px] flex items-center justify-center rounded-r-xl bg-gradient-to-l from-red-500/60 to-red-500/90">
                       <IconTrash size={16} color="#fff" />
                     </div>
-                    <div className="flex items-center gap-2 relative z-[1] bg-[var(--maf-bg-main,#040410)] will-change-transform"
+                    <div className="flex items-center gap-2 px-2 py-1 relative z-[1] bg-[var(--maf-bg-main,#040410)] will-change-transform"
                       style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.3s var(--ease-spring)' : 'none' }}
                       onTouchStart={(e) => handleCitySwipeStart(i, e)}
                       onTouchMove={(e) => handleCitySwipeMove(i, e)}
                       onTouchEnd={() => handleCitySwipeEnd(i)}
                     >
-                      <span className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] rounded-md bg-white/10 border border-white/[0.15] flex items-center justify-center text-[0.6rem] font-bold text-white/70 px-0.5">{i + 1}</span>
+                      <span className="shrink-0 w-[22px] h-[22px] rounded-md bg-white/10 border border-white/[0.15] flex items-center justify-center text-[0.6rem] font-bold text-white/70">{i + 1}</span>
                       {player ? (
                         <div className="flex-1 flex items-center gap-2 py-2 px-2.5 rounded-xl bg-accent-soft border border-accent-soft">
                           <div
