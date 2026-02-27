@@ -2353,6 +2353,7 @@ export function MainMenu() {
                 display: 'flex',
                 flexDirection: 'column',
                 background: 'var(--maf-bg-main, #0c0a1a)',
+                paddingTop: 'var(--safe-top, 0px)',
               }}
             >
               {/* Header */}
