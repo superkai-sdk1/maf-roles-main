@@ -48,9 +48,7 @@ export function Overlay() {
   return <OverlayGame state={gameState} theme={theme} />;
 }
 
-// ─── Loading ─────────────────────────────────────────────────────────────────
-
-function OverlayLoading({ theme }) {
+function OverlayLoading() {
   return (
     <div className="ov-center">
       <div className="ov-pulse" style={{ fontSize: 18, color: 'rgba(255,255,255,0.4)' }}>
@@ -59,8 +57,6 @@ function OverlayLoading({ theme }) {
     </div>
   );
 }
-
-// ─── Waiting (code screen) ───────────────────────────────────────────────────
 
 function OverlayWaiting({ code, status, theme }) {
   return (
@@ -90,8 +86,6 @@ function OverlayWaiting({ code, status, theme }) {
   );
 }
 
-// ─── Game overlay ────────────────────────────────────────────────────────────
-
 function OverlayGame({ state, theme }) {
   const {
     players = [], roles = {}, playersActions = {}, fouls = {}, techFouls = {},
@@ -109,8 +103,6 @@ function OverlayGame({ state, theme }) {
   } = state;
 
   const accent = theme.accent;
-  const grad0 = theme.gradient[0];
-  const grad1 = theme.gradient[1];
 
   const phaseLabel = getPhaseLabel(gamePhase, dayNumber, nightNumber, cityMode);
   const nightLabel = nightPhase ? getNightPhaseLabel(nightPhase) : null;
@@ -135,9 +127,8 @@ function OverlayGame({ state, theme }) {
 
   return (
     <div className="ov-root">
-      {/* Top area: phase + info + voting + best move */}
+      {/* Top area */}
       <div className="ov-top">
-        {/* Phase banner */}
         <div className="ov-phase" style={{ borderColor: `${accent}20` }}>
           <div className="ov-phase-dot" style={{ background: accent }} />
           <div className="ov-phase-text">{phaseLabel}</div>
@@ -152,7 +143,6 @@ function OverlayGame({ state, theme }) {
           <div className="ov-info-sm">{additionalInfoText}</div>
         )}
 
-        {/* Voting */}
         {showVoting && (
           <div className="ov-voting">
             <div className="ov-section-title">
@@ -181,7 +171,6 @@ function OverlayGame({ state, theme }) {
           </div>
         )}
 
-        {/* Best move */}
         {showBestMove && (
           <div className="ov-bestmove">
             <div className="ov-section-title">Лучший ход{bestMoveAccepted ? ' (принят)' : ''}</div>
@@ -193,7 +182,6 @@ function OverlayGame({ state, theme }) {
           </div>
         )}
 
-        {/* Winner */}
         {winnerTeam && (
           <div
             className="ov-winner"
@@ -212,8 +200,6 @@ function OverlayGame({ state, theme }) {
               key={p.rk}
               player={p}
               accent={accent}
-              grad0={grad0}
-              grad1={grad1}
               showScore={gameFinished}
               score={playerScores[p.rk]}
             />
@@ -221,7 +207,6 @@ function OverlayGame({ state, theme }) {
         </div>
       )}
 
-      {/* Judge */}
       {judgeNickname && (
         <div className="ov-judge">
           {judgeAvatar && (
@@ -234,34 +219,33 @@ function OverlayGame({ state, theme }) {
   );
 }
 
-// ─── Player card (based on user's design) ────────────────────────────────────
+// ─── Player card ──────────────────────────────────────────────────────────────
 
-function PlayerCard({ player, accent, grad0, grad1, showScore, score }) {
+function PlayerCard({ player, accent, showScore, score }) {
   const { num, login, avatar, action, role, isActive, isHighlighted, isFirstKilled, fouls: f, techFouls: tf } = player;
   const isOut = !isActive;
   const isBlack = role && isBlackRole(role);
   const isSheriff = role === 'sheriff' || role === 'detective';
   const roleColor = isSheriff ? '#3b82f6' : isBlack ? '#dc2626' : null;
-  const roleName = role ? getRoleLabel(role) : null;
+  const roleLabel = isSheriff ? 'Ш' : role === 'don' ? 'Д' : isBlack ? 'М' : null;
 
   return (
-    <div
-      className={`ov-card ${isHighlighted && !isOut ? 'ov-card-active' : ''} ${isOut ? 'ov-card-out' : ''}`}
-      style={isHighlighted && !isOut ? { '--ov-accent': accent } : {}}
-    >
-      {/* Glow for highlighted */}
+    <div className={`ov-card ${isOut ? 'ov-card-out' : ''}`}>
+      {/* Glow behind active card */}
       {isHighlighted && !isOut && (
         <div className="ov-card-glow" style={{ background: `${accent}40` }} />
       )}
 
-      {/* Card body */}
-      <div className="ov-card-body">
-        {/* Role indicator strip */}
+      <div
+        className="ov-card-body"
+        style={isHighlighted && !isOut ? { borderColor: accent, boxShadow: `0 0 0 2px ${accent}, 0 0 12px ${accent}50` } : {}}
+      >
+        {/* Role strip at top */}
         {!isOut && roleColor && (
           <div className="ov-card-role-strip" style={{ background: roleColor }} />
         )}
 
-        {/* Avatar area */}
+        {/* Avatar */}
         <div className="ov-card-avatar-area">
           {avatar ? (
             <img src={avatar} alt="" className="ov-card-avatar-img" onError={e => { e.target.style.display = 'none'; }} />
@@ -272,33 +256,42 @@ function PlayerCard({ player, accent, grad0, grad1, showScore, score }) {
           )}
         </div>
 
-        {/* Top indicators */}
-        <div className="ov-card-top">
-          <div className="ov-card-top-left">
-            <span
-              className="ov-card-num"
-              style={isHighlighted && !isOut ? { color: accent } : {}}
-            >
-              {num}
+        {/* LEFT: Number + foul dots (vertical) */}
+        <div className="ov-card-left-panel">
+          <span className="ov-card-num" style={isHighlighted && !isOut ? { color: accent } : {}}>
+            {num}
+          </span>
+          <div className="ov-card-dots">
+            {[1, 2, 3, 4].map(i => (
+              <div
+                key={`f${i}`}
+                className={`ov-card-dot ${i <= f ? 'ov-card-dot-foul' : 'ov-card-dot-empty'}`}
+              />
+            ))}
+            {[1, 2].map(i => (
+              <div
+                key={`t${i}`}
+                className={`ov-card-dot ${i <= tf ? 'ov-card-dot-tech' : 'ov-card-dot-empty'}`}
+                style={{ marginTop: i === 1 ? 3 : 0 }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* RIGHT: Status icon or role letter */}
+        <div className="ov-card-right-panel">
+          {isOut && (
+            <div className="ov-card-status-icon">
+              {action === 'killed' && <SkullIcon />}
+              {action === 'voted' && <BanIcon />}
+              {(action === 'removed' || action === 'tech_fall_removed' || action === 'fall_removed') && <LogOutIcon />}
+            </div>
+          )}
+          {!isOut && roleLabel && (
+            <span className="ov-card-role-letter" style={roleColor ? { color: roleColor } : {}}>
+              {roleLabel}
             </span>
-            {tf > 0 && !isOut && (
-              <div className="ov-card-tf">
-                {[...Array(tf)].map((_, i) => <div key={i} className="ov-card-tf-dot" />)}
-              </div>
-            )}
-          </div>
-          <div className="ov-card-top-right">
-            {isOut && (
-              <div className="ov-card-status-icon">
-                {action === 'killed' && <SkullIcon />}
-                {action === 'voted' && <BanIcon />}
-                {(action === 'removed' || action === 'tech_fall_removed' || action === 'fall_removed') && <LogOutIcon />}
-              </div>
-            )}
-            {!isOut && roleName && (
-              <span className="ov-card-role-letter">{roleName[0]}</span>
-            )}
-          </div>
+          )}
         </div>
 
         {/* Score badge */}
@@ -313,29 +306,14 @@ function PlayerCard({ player, accent, grad0, grad1, showScore, score }) {
           <div className="ov-card-fk">1</div>
         )}
 
-        {/* Bottom: name + fouls */}
+        {/* BOTTOM: nickname gradient */}
         <div className="ov-card-bottom">
-          <div
-            className="ov-card-name"
-            style={isHighlighted && !isOut ? { color: accent } : {}}
-          >
+          <div className="ov-card-name" style={isHighlighted && !isOut ? { color: accent } : {}}>
             {login || `Игрок ${num}`}
-          </div>
-          <div className="ov-card-fouls">
-            {[1, 2, 3, 4].map(i => (
-              <div
-                key={i}
-                className={`ov-card-foul-dot ${
-                  i <= f
-                    ? (i === 4 ? 'ov-card-foul-crit' : 'ov-card-foul-active')
-                    : 'ov-card-foul-empty'
-                }`}
-              />
-            ))}
           </div>
         </div>
 
-        {/* Active player pulse */}
+        {/* Active pulse bar */}
         {isHighlighted && !isOut && (
           <div className="ov-card-pulse" style={{ background: accent }} />
         )}
@@ -344,11 +322,11 @@ function PlayerCard({ player, accent, grad0, grad1, showScore, score }) {
   );
 }
 
-// ─── Inline SVG icons ────────────────────────────────────────────────────────
+// ─── Inline SVG icons ─────────────────────────────────────────────────────────
 
 function SkullIcon() {
   return (
-    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/>
       <path d="M8 20v2h8v-2"/><path d="M12.5 17l-.5-1-.5 1"/>
       <path d="M6 9a6 6 0 1 1 12 0c0 3.5-2 5-2 8H8c0-3-2-4.5-2-8z"/>
@@ -358,7 +336,7 @@ function SkullIcon() {
 
 function BanIcon() {
   return (
-    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
     </svg>
   );
@@ -366,13 +344,13 @@ function BanIcon() {
 
 function LogOutIcon() {
   return (
-    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
     </svg>
   );
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getPhaseLabel(phase, day, night, city) {
   if (phase === 'roles') return 'Раздача ролей';
@@ -389,7 +367,7 @@ function getNightPhaseLabel(np) {
   return map[np] || '';
 }
 
-// ─── CSS (injected once) ─────────────────────────────────────────────────────
+// ─── CSS ──────────────────────────────────────────────────────────────────────
 
 const OVERLAY_CSS = `
 @keyframes overlayFadeIn {
@@ -436,14 +414,17 @@ html, body { background: transparent !important; margin: 0; overflow: hidden; }
 }
 .ov-code-hint { font-size: 14px; color: rgba(255,255,255,0.35); margin-top: 20px; }
 
-/* Game layout */
+/* Game layout — fixed 1920x1080 canvas */
 .ov-root {
-  position: fixed; inset: 0; padding: 24px;
+  position: fixed; inset: 0;
+  width: 1920px; height: 1080px;
+  padding: 24px;
   background: transparent;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #fff;
   display: flex; flex-direction: column;
   overflow: hidden;
+  user-select: none;
 }
 
 .ov-top {
@@ -477,7 +458,6 @@ html, body { background: transparent !important; margin: 0; overflow: hidden; }
   background: rgba(0,0,0,0.4); align-self: flex-start;
 }
 
-/* Section title */
 .ov-section-title {
   font-size: 12px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 1.5px; color: rgba(255,255,255,0.5); margin-bottom: 8px;
@@ -530,46 +510,56 @@ html, body { background: transparent !important; margin: 0; overflow: hidden; }
 }
 .ov-judge-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
 
-/* ─── Player cards bottom bar ─── */
+/* ─── Player cards bar (centered, 1400px) ─── */
 .ov-players {
-  display: flex; justify-content: space-between; align-items: flex-end;
-  gap: 6px; padding-top: 12px; flex-shrink: 0;
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1400px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 2px;
 }
 
 /* Card wrapper */
 .ov-card {
-  position: relative; flex: 1; transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  flex: 1;
   min-width: 0;
-}
-.ov-card-active {
-  transform: scale(1.08) translateY(-8px);
-  z-index: 10;
+  transition: all 0.3s ease;
 }
 .ov-card-out {
-  opacity: 0.3; filter: grayscale(1);
+  opacity: 0.3;
+  filter: grayscale(1);
 }
 
 /* Glow */
 .ov-card-glow {
-  position: absolute; inset: -2px; border-radius: 10px;
-  filter: blur(8px); pointer-events: none;
+  position: absolute; inset: -1px;
+  border-radius: 8px;
+  filter: blur(8px);
+  pointer-events: none;
+  animation: overlayPulse 2s ease-in-out infinite;
 }
 
-/* Card body */
+/* Card body — 3:4 aspect ratio */
 .ov-card-body {
-  position: relative; aspect-ratio: 3/4; width: 100%;
-  background: rgba(20,20,25,0.85); backdrop-filter: blur(8px);
-  border-radius: 8px; overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-}
-.ov-card-active .ov-card-body {
-  border-color: var(--ov-accent, rgba(255,255,255,0.15));
+  position: relative;
+  aspect-ratio: 3/4;
+  width: 100%;
+  background: rgba(9,9,11,0.95);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 /* Role strip */
 .ov-card-role-strip {
-  position: absolute; top: 0; left: 0; right: 0; height: 2px; z-index: 30;
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; z-index: 30;
 }
 
 /* Avatar */
@@ -582,33 +572,55 @@ html, body { background: transparent !important; margin: 0; overflow: hidden; }
   width: 100%; height: 100%; object-fit: cover;
 }
 .ov-card-avatar-placeholder {
-  width: 28px; height: 28px; opacity: 0.06;
+  width: 24px; height: 24px; opacity: 0.05;
 }
 
-/* Top indicators */
-.ov-card-top {
-  position: absolute; top: 4px; left: 5px; right: 5px;
-  display: flex; justify-content: space-between; align-items: flex-start;
+/* LEFT PANEL: number + dots */
+.ov-card-left-panel {
+  position: absolute; top: 6px; left: 6px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
   z-index: 30;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.9));
 }
-.ov-card-top-left { display: flex; flex-direction: column; gap: 3px; }
-.ov-card-top-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-
 .ov-card-num {
-  font-size: 10px; font-weight: 900; line-height: 1;
-  color: rgba(255,255,255,0.4);
-  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  font-size: 14px; font-weight: 900; line-height: 1;
+  color: rgba(255,255,255,0.7);
 }
-.ov-card-tf { display: flex; gap: 2px; }
-.ov-card-tf-dot {
-  width: 4px; height: 4px; border-radius: 50%;
-  background: #eab308; box-shadow: 0 0 4px rgba(234,179,8,0.5);
+.ov-card-dots {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.ov-card-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  transition: background 0.2s;
+}
+.ov-card-dot-foul {
+  background: #dc2626;
+  box-shadow: 0 0 4px rgba(220,38,38,0.7);
+}
+.ov-card-dot-tech {
+  background: #eab308;
+  box-shadow: 0 0 4px rgba(234,179,8,0.5);
+}
+.ov-card-dot-empty {
+  background: rgba(255,255,255,0.1);
 }
 
-.ov-card-status-icon { opacity: 0.5; color: #fff; }
+/* RIGHT PANEL: status / role */
+.ov-card-right-panel {
+  position: absolute; top: 6px; right: 6px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+  z-index: 30;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.9));
+}
+.ov-card-status-icon {
+  opacity: 0.6;
+  color: #fff;
+  transform: scale(1.1);
+  transform-origin: right;
+}
 .ov-card-role-letter {
-  font-size: 7px; font-weight: 900; opacity: 0.4; text-transform: uppercase;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  font-size: 10px; font-weight: 900;
+  text-transform: uppercase; line-height: 1;
 }
 
 /* Score */
@@ -628,32 +640,29 @@ html, body { background: transparent !important; margin: 0; overflow: hidden; }
   z-index: 35; box-shadow: 0 2px 6px rgba(239,68,68,0.5);
 }
 
-/* Bottom: name + fouls */
+/* BOTTOM: nickname */
 .ov-card-bottom {
   position: absolute; bottom: 0; left: 0; right: 0;
-  padding: 4px 5px 5px;
-  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, transparent 100%);
+  padding: 6px 6px 8px;
+  padding-top: 20px;
+  background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 50%, transparent 100%);
   z-index: 30;
 }
 .ov-card-name {
-  font-size: 7px; font-weight: 700; text-align: center;
+  font-size: 9px; font-weight: 900;
+  text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  text-transform: uppercase; letter-spacing: 0.5px;
-  color: rgba(255,255,255,0.65); margin-bottom: 3px;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(255,255,255,0.9);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
 }
-.ov-card-fouls {
-  display: flex; justify-content: center; gap: 2px;
-}
-.ov-card-foul-dot { width: 3px; height: 3px; border-radius: 50%; }
-.ov-card-foul-active { background: rgba(234,179,8,0.8); }
-.ov-card-foul-crit { background: #dc2626; box-shadow: 0 0 4px red; }
-.ov-card-foul-empty { background: rgba(255,255,255,0.1); }
 
-/* Active pulse */
+/* Active pulse bar */
 .ov-card-pulse {
   position: absolute; bottom: 0; left: 0; right: 0;
-  height: 2px; z-index: 40;
+  height: 3px; z-index: 40;
+  box-shadow: 0 0 8px currentColor;
   animation: ovCardPulse 1.5s ease-in-out infinite;
 }
 `;
