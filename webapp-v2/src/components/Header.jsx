@@ -99,8 +99,8 @@ export function Header({ onNavigate }) {
   const displayName = user?.first_name || user?.username || 'U';
 
   return (
-    <header className="sticky top-0 z-50 w-full backdrop-blur-glass-heavy bg-maf-bg/80 border-b"
-      style={{ paddingTop: 'var(--safe-top, 0px)', borderColor: 'var(--surface-divider)' }}>
+    <header className="sticky top-0 z-50 w-full backdrop-blur-glass-heavy border-b"
+      style={{ paddingTop: 'var(--safe-top, 0px)', borderColor: 'var(--surface-divider)', background: 'var(--glass-surface)' }}>
       <div className="flex items-center justify-between h-14 px-4 max-w-5xl mx-auto">
         <button
           className="flex items-center gap-2 bg-transparent border-none cursor-pointer"

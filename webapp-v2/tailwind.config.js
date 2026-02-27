@@ -161,7 +161,7 @@ export default {
           'touch-action': 'pan-x pan-y',
         },
         html: {
-          height: '100dvh',
+          'min-height': '100dvh',
         },
         'html.app-mode': {
           overflow: 'hidden',
