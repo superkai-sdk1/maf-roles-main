@@ -411,6 +411,7 @@ export function ModeSelector() {
 
   const handleCityTouchMove = useCallback((e) => {
     if (cityDragIndex === null || !cityListRef.current) return;
+    e.preventDefault();
     e.stopPropagation();
     const y = e.touches[0].clientY;
     const slots = cityListRef.current.children;
