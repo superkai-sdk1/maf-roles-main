@@ -1005,7 +1005,7 @@ export function ModeSelector() {
                 const isDeleting = citySwipeDeleting === i;
                 return (
                   <div key={`city-slot-${i}`}
-                    className={`relative rounded-xl transition-all duration-300 ease-spring max-h-[70px] ${cityActiveInput === i ? '' : 'overflow-hidden'} ${cityDragIndex === i ? 'opacity-35 scale-[0.97]' : ''} ${cityDragOverIndex === i ? 'border-t-2 border-t-accent' : ''} ${isDeleting ? 'max-h-0 opacity-0 -mt-1.5 overflow-hidden' : ''}`}
+                    className={`relative rounded-xl transition-all duration-300 ease-spring max-h-[70px] ${cityActiveInput === i ? 'z-40' : 'overflow-hidden'} ${cityDragIndex === i ? 'opacity-35 scale-[0.97]' : ''} ${cityDragOverIndex === i ? 'border-t-2 border-t-accent' : ''} ${isDeleting ? 'max-h-0 opacity-0 -mt-1.5 overflow-hidden' : ''}`}
                     onDragOver={(e) => { e.preventDefault(); handleCityDragOver(i); }}
                     onDrop={() => handleCityDrop(i)}
                   >
