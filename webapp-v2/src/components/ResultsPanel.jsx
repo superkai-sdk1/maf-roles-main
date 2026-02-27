@@ -57,8 +57,9 @@ export const ResultsPanel = () => {
     const items = [];
     const isBlack = (r) => r === 'don' || r === 'black';
     const isFK = rk === firstKilledPlayer;
+    const playerIsBlack = isBlack(roles[rk]);
 
-    if (isFK && bestMoveAccepted && bestMove.length > 0) {
+    if (!playerIsBlack && isFK && bestMoveAccepted && bestMove.length > 0) {
       let blacks = 0;
       for (const num of bestMove) {
         const t = tableOut.find(x => x.num === num);
@@ -70,7 +71,7 @@ export const ResultsPanel = () => {
       else if (blacks === 0 && bestMove.length > 0) items.push({ type: 'neutral', label: 'ЛХ: 0 чёрных', value: 0 });
     }
 
-    if (isFK) {
+    if (!playerIsBlack && isFK) {
       const proto = protocolData[rk];
       if (proto) {
         let correctBlacks = 0, wrongBlacks = 0, correctReds = 0, wrongReds = 0;
@@ -103,7 +104,7 @@ export const ResultsPanel = () => {
           if (correctReds > 0) items.push({ type: 'neutral', label: `Красные верно: ${correctReds} (сброс)`, value: 0 });
         }
       }
-    } else {
+    } else if (!playerIsBlack && !isFK) {
       const opinion = opinionData[rk];
       if (opinion) {
         for (const [numStr, pred] of Object.entries(opinion)) {

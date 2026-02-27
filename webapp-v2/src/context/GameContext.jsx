@@ -890,9 +890,10 @@ export const GameProvider = ({ children }) => {
       let bonus = 0;
       let penalty = 0;
       const isFK = rk === firstKilledPlayer;
+      const playerIsBlack = isBlack(roles[rk]);
 
-      // 1. Best Move — only for first killed
-      if (isFK && bestMoveAccepted && bestMove.length > 0) {
+      // 1. Best Move — only for first killed, skip for mafia/don
+      if (!playerIsBlack && isFK && bestMoveAccepted && bestMove.length > 0) {
         let blacks = 0;
         for (const num of bestMove) {
           const t = tableOut.find(x => x.num === num);
@@ -902,8 +903,8 @@ export const GameProvider = ({ children }) => {
         bonus += bmTable[blacks] || 0;
       }
 
-      // 2. Protocol / Opinion
-      if (isFK) {
+      // 2. Protocol / Opinion — skip for mafia/don
+      if (!playerIsBlack && isFK) {
         const proto = protocolData[rk];
         if (proto) {
           let protoBonus = 0;
@@ -945,7 +946,7 @@ export const GameProvider = ({ children }) => {
           bonus += Math.min(protoBonus, 0.8);
           penalty += protoPenalty;
         }
-      } else {
+      } else if (!playerIsBlack && !isFK) {
         const opinion = opinionData[rk];
         if (opinion) {
           let opBonus = 0;
