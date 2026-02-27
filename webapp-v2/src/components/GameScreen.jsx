@@ -224,7 +224,7 @@ export function GameScreen() {
                     </div>
                     <div className="flex gap-3 w-full mt-2">
                       <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.04] border border-white/[0.08] text-white/60" onClick={() => { setDiscussionEndPrompt(null); triggerHaptic('light'); }}>Отмена</button>
-                      <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setDiscussionEndPrompt(null); startVoting(); triggerHaptic('medium'); }}>Начать голосование</button>
+                      <button className="flex-1 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-accent text-white" onClick={() => { setDiscussionEndPrompt(null); startVoting(); setVotingScreenTab('voting'); setShowVotingScreen(true); triggerHaptic('medium'); }}>Начать голосование</button>
                     </div>
                   </>
                 )}
