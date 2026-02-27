@@ -53,25 +53,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
 
     if (!empty($sessionId)) {
         // Удалить конкретную игру
-        $row = $database->get($TABLE_GAME_SESSIONS, ['sessions_json'], ['telegram_id' => $userId]);
+        $row = $database->get($TABLE_GAME_SESSIONS, ['sessions_json', 'deleted_json'], ['telegram_id' => $userId]);
         if (!$row) jsonError('User has no games', 404);
 
         $sessions = json_decode($row['sessions_json'], true);
         if (!is_array($sessions)) $sessions = [];
 
+        $deleted = [];
+        if (!empty($row['deleted_json'])) {
+            $decoded = json_decode($row['deleted_json'], true);
+            if (is_array($decoded)) $deleted = $decoded;
+        }
+
         $sessions = array_values(array_filter($sessions, function($s) use ($sessionId) {
             return !(isset($s['sessionId']) && $s['sessionId'] === $sessionId);
         }));
 
+        $deleted[] = ['id' => $sessionId, 'ts' => (int)(microtime(true) * 1000)];
+
         $database->update($TABLE_GAME_SESSIONS, [
             'sessions_json' => json_encode($sessions, JSON_UNESCAPED_UNICODE),
+            'deleted_json' => json_encode($deleted, JSON_UNESCAPED_UNICODE),
             'updated_at' => date('Y-m-d H:i:s')
         ], ['telegram_id' => $userId]);
 
         jsonResponse(['ok' => true, 'remaining' => count($sessions)]);
     } else {
-        // Удалить все игры пользователя
-        $database->delete($TABLE_GAME_SESSIONS, ['telegram_id' => $userId]);
+        // Удалить все игры пользователя — собираем tombstones для всех сессий
+        $row = $database->get($TABLE_GAME_SESSIONS, ['sessions_json', 'deleted_json'], ['telegram_id' => $userId]);
+
+        $deleted = [];
+        if ($row) {
+            if (!empty($row['deleted_json'])) {
+                $decoded = json_decode($row['deleted_json'], true);
+                if (is_array($decoded)) $deleted = $decoded;
+            }
+            $sessions = [];
+            if (!empty($row['sessions_json'])) {
+                $decoded = json_decode($row['sessions_json'], true);
+                if (is_array($decoded)) $sessions = $decoded;
+            }
+            $now = (int)(microtime(true) * 1000);
+            foreach ($sessions as $s) {
+                if (!empty($s['sessionId'])) {
+                    $deleted[] = ['id' => $s['sessionId'], 'ts' => $now];
+                }
+            }
+        }
+
+        if ($row) {
+            $database->update($TABLE_GAME_SESSIONS, [
+                'sessions_json' => json_encode([], JSON_UNESCAPED_UNICODE),
+                'deleted_json' => json_encode($deleted, JSON_UNESCAPED_UNICODE),
+                'updated_at' => date('Y-m-d H:i:s')
+            ], ['telegram_id' => $userId]);
+        }
+
         jsonResponse(['ok' => true, 'message' => 'All games deleted']);
     }
 }
