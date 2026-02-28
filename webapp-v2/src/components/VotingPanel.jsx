@@ -301,9 +301,6 @@ export function VotingPanel() {
 
   /* ── Voting grid button renderer ── */
   const renderVotingGrid = ({ players, isSelected, isDisabled, isPrefilled, onToggle }) => {
-    const first9 = players.slice(0, 9);
-    const player10 = players.length >= 10 ? players[9] : null;
-
     const renderBtn = (p) => {
       const selected = isSelected(p);
       const disabled = isDisabled(p);
@@ -329,14 +326,13 @@ export function VotingPanel() {
     };
 
     return (
-      <div className="flex flex-col items-center gap-3 w-full">
-        <div className="grid grid-cols-3 gap-3 w-full">
-          {first9.map(renderBtn)}
-        </div>
-        {player10 && (
-          <div className="grid grid-cols-3 gap-3 w-full">
-            <div className="col-start-2">{renderBtn(player10)}</div>
-          </div>
+      <div className="grid grid-cols-3 gap-3 w-full">
+        {players.slice(0, 9).map(renderBtn)}
+        {players.length >= 10 && (
+          <>
+            <div />
+            {renderBtn(players[9])}
+          </>
         )}
       </div>
     );
