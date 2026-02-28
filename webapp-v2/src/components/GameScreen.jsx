@@ -93,7 +93,9 @@ export function GameScreen() {
 
       const result = await goMafiaApi.saveShare(payload);
       if (!result?.id) {
-        showToast('Не удалось создать ссылку', { type: 'error' });
+        const errMsg = result?.error || 'Неизвестная ошибка';
+        console.error('Share save failed:', errMsg);
+        showToast(`Не удалось создать ссылку: ${errMsg}`, { type: 'error' });
         return;
       }
 

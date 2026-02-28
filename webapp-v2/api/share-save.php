@@ -40,9 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $input = file_get_contents('php://input');
 $payload = json_decode($input, true);
 
-if (!$payload || !isset($payload['currentGame'])) {
+if (!$payload || (!array_key_exists('currentGame', $payload) && empty($payload['gamesHistory']))) {
     http_response_code(400);
-    echo json_encode(['error' => 'Invalid payload']);
+    echo json_encode(['error' => 'Invalid payload: missing currentGame or gamesHistory']);
     exit();
 }
 
@@ -57,7 +57,7 @@ $fileData = [
     'id' => $id,
     'tournamentName' => $payload['tournamentName'] ?? '',
     'gameMode' => $payload['gameMode'] ?? 'manual',
-    'currentGame' => $payload['currentGame'],
+    'currentGame' => $payload['currentGame'] ?? null,
     'gamesHistory' => $payload['gamesHistory'] ?? [],
     'createdAt' => date('c'),
 ];

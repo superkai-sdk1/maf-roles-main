@@ -270,9 +270,15 @@ export const goMafiaApi = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!response.ok) return null;
-      return await response.json();
-    } catch (e) { return null; }
+      const text = await response.text();
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { error: `Server returned non-JSON (${response.status}): ${text.slice(0, 200)}` };
+      }
+    } catch (e) {
+      return { error: `Network error: ${e.message}` };
+    }
   },
 
   async getShare(id) {
