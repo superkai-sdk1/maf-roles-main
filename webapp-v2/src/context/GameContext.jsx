@@ -1012,13 +1012,8 @@ export const GameProvider = ({ children }) => {
 
   const canDoctorHealTarget = useCallback((num) => {
     if (num === doctorLastHealTarget) return false;
-    const doctorKey = findRoleKey('doctor');
-    if (doctorKey) {
-      const doctorPlayer = tableOut.find(p => p.roleKey === doctorKey);
-      if (doctorPlayer && doctorPlayer.num === num) return false;
-    }
     return true;
-  }, [doctorLastHealTarget, findRoleKey, tableOut]);
+  }, [doctorLastHealTarget]);
 
   // =================== Check Protocol/Opinion ===================
   const checkProtocol = useCallback((rk) => {
