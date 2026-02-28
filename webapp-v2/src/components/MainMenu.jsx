@@ -922,6 +922,7 @@ export function MainMenu() {
   const [tableExpanded, setTableExpanded] = useState(null);
   const [tableGameExpanded, setTableGameExpanded] = useState(null);
   const [tablePlayerExpanded, setTablePlayerExpanded] = useState(null);
+  const [tableSharing, setTableSharing] = useState(false);
 
   const tableData = useMemo(() => {
     if (!tableGroup) return null;
@@ -1029,6 +1030,86 @@ export function MainMenu() {
       games,
     };
   }, [tableGroup]);
+
+  const handleTableShare = useCallback(async () => {
+    if (tableSharing || !tableGroup || !tableData) return;
+    setTableSharing(true);
+    try {
+      const sessions = tableData.sessions;
+      const gamesHistory = sessions.map((s, idx) => ({
+        gameNumber: s.gameSelected || idx + 1,
+        players: [...(s.players || [])],
+        roles: { ...(s.roles || {}) },
+        playersActions: { ...(s.playersActions || {}) },
+        fouls: { ...(s.fouls || {}) },
+        techFouls: { ...(s.techFouls || {}) },
+        removed: { ...(s.removed || {}) },
+        avatars: { ...(s.avatars || {}) },
+        dayNumber: s.dayNumber,
+        nightNumber: s.nightNumber,
+        nightCheckHistory: [...(s.nightCheckHistory || [])],
+        votingHistory: [...(s.votingHistory || [])],
+        bestMove: [...(s.bestMove || [])],
+        bestMoveAccepted: s.bestMoveAccepted,
+        firstKilledPlayer: s.firstKilledPlayer,
+        winnerTeam: s.winnerTeam,
+        playerScores: { ...(s.playerScores || {}) },
+        protocolData: { ...(s.protocolData || {}) },
+        opinionData: { ...(s.opinionData || {}) },
+        opinionText: { ...(s.opinionText || {}) },
+        doctorHealHistory: [...(s.doctorHealHistory || [])],
+        nightMisses: { ...(s.nightMisses || {}) },
+        killedOnNight: { ...(s.killedOnNight || {}) },
+        dayVoteOuts: { ...(s.dayVoteOuts || {}) },
+        cityMode: s.cityMode,
+      }));
+
+      const payload = {
+        tournamentName: tableGroup.tournamentName || '',
+        gameMode: tableGroup.gameMode || 'manual',
+        currentGame: null,
+        gamesHistory,
+      };
+
+      const result = await goMafiaApi.saveShare(payload);
+      if (!result?.id) {
+        showToast('Не удалось создать ссылку', { type: 'error' });
+        return;
+      }
+
+      const shareUrl = `${window.location.origin}/share/${result.id}`;
+      const tg = window.Telegram?.WebApp;
+      const shareText = `${tableGroup.tournamentName ? tableGroup.tournamentName + ' — ' : ''}Таблица MafBoard`;
+
+      if (tg && (tg.openTelegramLink || tg.shareUrl)) {
+        if (typeof tg.shareUrl === 'function') {
+          tg.shareUrl(shareUrl, shareText);
+        } else {
+          tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`);
+        }
+      } else {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          showToast('Ссылка скопирована!', { type: 'success' });
+        } catch {
+          const input = document.createElement('input');
+          input.value = shareUrl;
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand('copy');
+          document.body.removeChild(input);
+          showToast('Ссылка скопирована!', { type: 'success' });
+        }
+      }
+      triggerHaptic('success');
+    } catch (e) {
+      console.error('Table share error:', e);
+      showToast('Ошибка при создании ссылки', { type: 'error' });
+      triggerHaptic('error');
+    } finally {
+      setTableSharing(false);
+    }
+  }, [tableSharing, tableGroup, tableData, showToast]);
 
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
 
@@ -1298,11 +1379,19 @@ export function MainMenu() {
                         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                         Закрыть
                       </button>
-                      <button disabled
-                        className="flex-1 py-3 rounded-2xl text-sm font-bold text-white/20 cursor-not-allowed flex items-center justify-center gap-1.5"
-                        style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                        Поделиться
+                      <button
+                        onClick={handleTableShare}
+                        disabled={tableSharing}
+                        className={`flex-1 py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all ${
+                          tableSharing ? 'text-white/20 cursor-wait' : 'text-accent'
+                        }`}
+                        style={{ background: tableSharing ? 'rgba(255,255,255,0.02)' : 'rgba(168,85,247,0.1)', border: `1px solid ${tableSharing ? 'rgba(255,255,255,0.05)' : 'rgba(168,85,247,0.25)'}` }}>
+                        {tableSharing ? (
+                          <div className="w-3.5 h-3.5 border-[1.5px] border-white/20 border-t-white/60 rounded-full animate-spin" />
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                        )}
+                        {tableSharing ? 'Создаём...' : 'Поделиться'}
                       </button>
                     </div>
                   </div>
@@ -1459,11 +1548,19 @@ export function MainMenu() {
                         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                         Закрыть
                       </button>
-                      <button disabled
-                        className="flex-1 py-3 rounded-2xl text-sm font-bold text-white/20 cursor-not-allowed flex items-center justify-center gap-1.5"
-                        style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                        Поделиться
+                      <button
+                        onClick={handleTableShare}
+                        disabled={tableSharing}
+                        className={`flex-1 py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all ${
+                          tableSharing ? 'text-white/20 cursor-wait' : 'text-accent'
+                        }`}
+                        style={{ background: tableSharing ? 'rgba(255,255,255,0.02)' : 'rgba(168,85,247,0.1)', border: `1px solid ${tableSharing ? 'rgba(255,255,255,0.05)' : 'rgba(168,85,247,0.25)'}` }}>
+                        {tableSharing ? (
+                          <div className="w-3.5 h-3.5 border-[1.5px] border-white/20 border-t-white/60 rounded-full animate-spin" />
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                        )}
+                        {tableSharing ? 'Создаём...' : 'Поделиться'}
                       </button>
                     </div>
                   </div>
