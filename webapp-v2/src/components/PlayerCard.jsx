@@ -540,14 +540,12 @@ export const PlayerCard = ({ player, isSpeaking = false, isBlinking = false, isN
                 onAddTime={() => { addTime(30); addFoul(rk); addFoul(rk); triggerHaptic('warning'); }}
                 onReset={() => { stop(); triggerHaptic('light'); }}
               />
-              {(isRunning || isPaused) && (
-                <button
-                  className="w-full mt-4 px-4 py-3.5 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-xl"
-                  onClick={handleAdvanceNext}
-                >
-                  Далее →
-                </button>
-              )}
+              <button
+                className="w-full mt-4 px-4 py-3.5 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-xl"
+                onClick={handleAdvanceNext}
+              >
+                Далее →
+              </button>
             </div>
           )}
 
@@ -747,7 +745,7 @@ function TimerSection({ timeLeft, timerProgress, isLow, isRunning, isPaused, onT
   return (
     <div className="flex flex-col items-center py-2">
       <div
-        className={`text-[80px] font-black leading-none tracking-tighter tabular-nums mb-2 transition-all duration-300 select-none cursor-pointer ${
+        className={`text-[80px] font-black leading-none tracking-tighter tabular-nums mb-2 select-none cursor-pointer ${
           isLow ? 'text-rose-500 animate-pulse'
             : isRunning && !isPaused ? 'text-white'
             : isPaused ? 'text-amber-400/70'
