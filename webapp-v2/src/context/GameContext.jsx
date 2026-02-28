@@ -282,7 +282,13 @@ export const GameProvider = ({ children }) => {
     setRoomInput('');
   }, []);
 
-  useEffect(() => () => { if (socketRef.current) socketRef.current.close(); }, []);
+  useEffect(() => () => {
+    if (socketRef.current) socketRef.current.close();
+    if (discussionTimerRef.current) clearInterval(discussionTimerRef.current);
+    if (freeSeatingTimerRef.current) clearInterval(freeSeatingTimerRef.current);
+    if (nightAutoCloseRef.current) clearTimeout(nightAutoCloseRef.current);
+    if (votingLastSpeechIntervalRef.current) clearInterval(votingLastSpeechIntervalRef.current);
+  }, []);
 
   // =================== Roles ===================
   const roleSet = useCallback((rk, type) => {
@@ -329,15 +335,20 @@ export const GameProvider = ({ children }) => {
     setFouls(prev => {
       const val = Math.max((prev[rk] || 0) - 1, 0);
       const next = { ...prev, [rk]: val };
-      if (val < 4 && playersActions[rk] === 'fall_removed') {
-        setRemoved(r => ({ ...r, [rk]: false }));
-        setPlayersActions(a => { const n = { ...a }; delete n[rk]; return n; });
+      if (val < 4) {
+        setPlayersActions(a => {
+          if (a[rk] === 'fall_removed') {
+            setRemoved(r => ({ ...r, [rk]: false }));
+            const n = { ...a }; delete n[rk]; return n;
+          }
+          return a;
+        });
       }
       timerModule.updatePlayerFouls(rk, val);
       syncState({ fouls: next });
       return next;
     });
-  }, [syncState, playersActions]);
+  }, [syncState]);
 
   const addTechFoul = useCallback((rk) => {
     setTechFouls(prev => {
@@ -356,21 +367,30 @@ export const GameProvider = ({ children }) => {
     setTechFouls(prev => {
       const val = Math.max((prev[rk] || 0) - 1, 0);
       const next = { ...prev, [rk]: val };
-      if (val < 2 && playersActions[rk] === 'tech_fall_removed') {
-        setRemoved(r => ({ ...r, [rk]: false }));
-        setPlayersActions(a => { const n = { ...a }; delete n[rk]; return n; });
+      if (val < 2) {
+        setPlayersActions(a => {
+          if (a[rk] === 'tech_fall_removed') {
+            setRemoved(r => ({ ...r, [rk]: false }));
+            const n = { ...a }; delete n[rk]; return n;
+          }
+          return a;
+        });
       }
       syncState({ techFouls: next });
       return next;
     });
-  }, [syncState, playersActions]);
+  }, [syncState]);
 
   // =================== Kill Player ===================
   const killPlayer = useCallback((num) => {
     const p = tableOut[num - 1];
     if (!p) return;
     const rk = p.roleKey;
-    setPlayersActions(prev => ({ ...prev, [rk]: 'killed' }));
+    setPlayersActions(prev => {
+      const next = { ...prev, [rk]: 'killed' };
+      syncState({ playersActions: next });
+      return next;
+    });
     setKilledOnNight(prev => ({ ...prev, [rk]: nightNumber || 1 }));
     const isFirst = !firstKilledEver;
     if (isFirst) {
@@ -385,8 +405,7 @@ export const GameProvider = ({ children }) => {
     }
     setKilledPlayerBlink(prev => ({ ...prev, [rk]: true }));
     setTimeout(() => setKilledPlayerBlink(prev => ({ ...prev, [rk]: false })), 5000);
-    syncState({ playersActions: { ...playersActions, [rk]: 'killed' } });
-  }, [tableOut, nightNumber, firstKilledEver, playersActions, syncState]);
+  }, [tableOut, nightNumber, firstKilledEver, syncState]);
 
   const setNightMiss = useCallback(() => {
     setNightMisses(prev => ({ ...prev, [nightNumber]: true }));
@@ -395,9 +414,12 @@ export const GameProvider = ({ children }) => {
   // =================== Action Set (generic player action) ===================
   const actionSet = useCallback((rk, action, opts = {}) => {
     if (action === null) {
-      setPlayersActions(prev => { const n = { ...prev }; delete n[rk]; return n; });
+      setPlayersActions(prev => {
+        const n = { ...prev }; delete n[rk];
+        syncState({ playersActions: n });
+        return n;
+      });
       setRemoved(prev => { const n = { ...prev }; delete n[rk]; return n; });
-      syncState({ playersActions: { ...playersActions, [rk]: null } });
       return;
     }
     if (action === 'killed' && opts.nightKill) {
@@ -406,14 +428,20 @@ export const GameProvider = ({ children }) => {
       return;
     }
     if (action === 'removed') {
-      setPlayersActions(prev => ({ ...prev, [rk]: 'removed' }));
+      setPlayersActions(prev => {
+        const next = { ...prev, [rk]: 'removed' };
+        syncState({ playersActions: next });
+        return next;
+      });
       setRemoved(prev => ({ ...prev, [rk]: true }));
-      syncState({ playersActions: { ...playersActions, [rk]: 'removed' } });
       return;
     }
-    setPlayersActions(prev => ({ ...prev, [rk]: action }));
-    syncState({ playersActions: { ...playersActions, [rk]: action } });
-  }, [playersActions, tableOut, killPlayer, syncState]);
+    setPlayersActions(prev => {
+      const next = { ...prev, [rk]: action };
+      syncState({ playersActions: next });
+      return next;
+    });
+  }, [tableOut, killPlayer, syncState]);
 
   // =================== Night Sequence ===================
   const startNightSequence = useCallback(() => {
@@ -858,8 +886,8 @@ export const GameProvider = ({ children }) => {
     if (!winnerTeam) return 0;
     let s = 0;
     const role = roles[rk];
-    if (winnerTeam === 'civilians' && (!role || role === 'sheriff' || role === 'peace')) s += 1;
-    if (winnerTeam === 'mafia' && (role === 'don' || role === 'black')) s += 1;
+    if (winnerTeam === 'civilians' && !isBlackRole(role)) s += 1;
+    if (winnerTeam === 'mafia' && isBlackRole(role)) s += 1;
     if (playerScores[rk]) { s += parseFloat(playerScores[rk].bonus || 0); s -= parseFloat(playerScores[rk].penalty || 0); }
     return parseFloat(s.toFixed(2));
   }, [winnerTeam, roles, playerScores]);
@@ -984,8 +1012,13 @@ export const GameProvider = ({ children }) => {
 
   const canDoctorHealTarget = useCallback((num) => {
     if (num === doctorLastHealTarget) return false;
+    const doctorKey = findRoleKey('doctor');
+    if (doctorKey) {
+      const doctorPlayer = tableOut.find(p => p.roleKey === doctorKey);
+      if (doctorPlayer && doctorPlayer.num === num) return false;
+    }
     return true;
-  }, [doctorLastHealTarget]);
+  }, [doctorLastHealTarget, findRoleKey, tableOut]);
 
   // =================== Check Protocol/Opinion ===================
   const checkProtocol = useCallback((rk) => {
@@ -999,9 +1032,9 @@ export const GameProvider = ({ children }) => {
       if (!tp) return;
       const actual = roles[tp.roleKey];
       let ok = false;
-      if (pred === 'peace' && !actual) ok = true;
+      if (pred === 'peace' && !isBlackRole(actual)) ok = true;
       else if (pred === 'sheriff' && actual === 'sheriff') ok = true;
-      else if (pred === 'mafia' && actual === 'black') ok = true;
+      else if (pred === 'mafia' && isBlackRole(actual)) ok = true;
       else if (pred === 'don' && actual === 'don') ok = true;
       results[idx] = { role: pred, correct: ok };
     });
@@ -1019,9 +1052,9 @@ export const GameProvider = ({ children }) => {
       if (!tp) return;
       const actual = roles[tp.roleKey];
       let ok = false;
-      if (pred === 'peace' && !actual) ok = true;
+      if (pred === 'peace' && !isBlackRole(actual)) ok = true;
       else if (pred === 'sheriff' && actual === 'sheriff') ok = true;
-      else if (pred === 'mafia' && actual === 'black') ok = true;
+      else if (pred === 'mafia' && isBlackRole(actual)) ok = true;
       else if (pred === 'don' && actual === 'don') ok = true;
       results[idx] = { role: pred, correct: ok };
     });
@@ -1126,6 +1159,17 @@ export const GameProvider = ({ children }) => {
     setVotingFinished(false);
     setVotingWinners([]);
     setVotingHistory([]);
+    setVotingStage('main');
+    setVotingTiePlayers([]);
+    setVotingLiftResults([]);
+    setVotingVotedPlayers([]);
+    setVotingSessionStages([]);
+    setCurrentVotingSession(null);
+    setVotingDay0SingleCandidate(null);
+    setVotingDay0TripleTie(false);
+    setVotingDay0TripleTiePlayers([]);
+    setCityVoteCounts({});
+    setVotingScreenTab('voting');
     setShowVotingModal(false);
     setDayVoteOuts({});
     setWinnerTeam(null);
@@ -1240,7 +1284,7 @@ export const GameProvider = ({ children }) => {
     setKilledPlayerBlink(s.killedPlayerBlink || {});
     setNightPhase(s.nightPhase || null);
     setNightChecks(s.nightChecks || {});
-    setDayVoteOuts(s.dayVoteOuts || []);
+    setDayVoteOuts(s.dayVoteOuts || {});
     setNominations(s.nominations || {});
     setNominationOrder(s.nominationOrder || []);
     setNominationsLocked(s.nominationsLocked || false);
@@ -1310,17 +1354,34 @@ export const GameProvider = ({ children }) => {
   }, [saveCurrentSession, resetGameState]);
 
   const endSession = useCallback(() => {
-    if (winnerTeam) saveGameToHistory();
-    saveCurrentSession();
+    const snapshot = winnerTeam ? saveGameToHistory() : null;
+    // saveCurrentSession reads gamesHistory from closure which may be stale,
+    // so we save directly to sessionManager with the updated history
     if (currentSessionId) {
-      const existing = sessionManager.getSession(currentSessionId);
-      if (existing) {
-        sessionManager.saveSession({
-          ...existing,
-          gameFinished: true,
-          seriesArchived: true,
-        });
-      }
+      const updatedHistory = snapshot ? [...gamesHistory, snapshot] : gamesHistory;
+      const allGames = tournament?.props?.pageProps?.serverData?.games || [];
+      const totalGamesInTournament = allGames.length || undefined;
+      const totalGamesForTable = tableSelected
+        ? allGames.filter(g => (g.game || []).some(t => t.tableNum === tableSelected)).length || undefined
+        : undefined;
+      sessionManager.saveSession({
+        sessionId: currentSessionId, tournamentId, tournamentName, gameMode,
+        gameSelected, tableSelected, roles, playersActions, fouls, techFouls,
+        removed, gamePhase, dayNumber, nightNumber, rolesDistributed,
+        nightCheckHistory, votingHistory, bestMove, bestMoveAccepted,
+        firstKilledPlayer, firstKilledEver, bestMoveSelected,
+        winnerTeam, playerScores, gameFinished: true, seriesArchived: true,
+        protocolData, opinionData, opinionText, roomId,
+        cityMode, funkyMode, manualMode, players, avatars,
+        doctorHealHistory, nightMisses, killedOnNight,
+        judgeNickname, judgeAvatar,
+        killedCardPhase, protocolAccepted, killedPlayerBlink,
+        nightPhase, nightChecks, dayVoteOuts,
+        nominations, nominationOrder, nominationsLocked,
+        discussionTimeLeft, freeSeatingTimeLeft,
+        currentDaySpeakerIndex, daySpeakerStartNum, totalGamesInTournament, totalGamesForTable,
+        gamesHistory: updatedHistory,
+      });
     }
     if (socketRef.current) socketRef.current.close();
     socketRef.current = null;
@@ -1329,7 +1390,7 @@ export const GameProvider = ({ children }) => {
     setCurrentSessionId(null);
     setSessionsList(sessionManager.getSessions());
     setScreen('menu');
-  }, [winnerTeam, saveGameToHistory, saveCurrentSession, currentSessionId, resetGameState]);
+  }, [winnerTeam, saveGameToHistory, currentSessionId, resetGameState, gamesHistory, tournament, tableSelected, tournamentId, tournamentName, gameMode, gameSelected, roles, playersActions, fouls, techFouls, removed, gamePhase, dayNumber, nightNumber, rolesDistributed, nightCheckHistory, votingHistory, bestMove, bestMoveAccepted, firstKilledPlayer, firstKilledEver, bestMoveSelected, playerScores, protocolData, opinionData, opinionText, roomId, cityMode, funkyMode, manualMode, players, avatars, doctorHealHistory, nightMisses, killedOnNight, judgeNickname, judgeAvatar, killedCardPhase, protocolAccepted, killedPlayerBlink, nightPhase, nightChecks, dayVoteOuts, nominations, nominationOrder, nominationsLocked, discussionTimeLeft, freeSeatingTimeLeft, currentDaySpeakerIndex, daySpeakerStartNum]);
 
   const startNewFunkyFromMenu = useCallback((sessionId) => {
     const s = sessionManager.getSession(sessionId);
@@ -1556,6 +1617,11 @@ export const GameProvider = ({ children }) => {
     setNominations({}); setNominationOrder([]); setNominationsLocked(false);
     setVotingOrder([]); setVotingCurrentIndex(0); setVotingResults({});
     setVotingFinished(false); setVotingWinners([]); setVotingHistory([]);
+    setVotingStage('main'); setVotingTiePlayers([]); setVotingLiftResults([]);
+    setVotingVotedPlayers([]); setVotingSessionStages([]);
+    setCurrentVotingSession(null); setVotingDay0SingleCandidate(null);
+    setVotingDay0TripleTie(false); setVotingDay0TripleTiePlayers([]);
+    setCityVoteCounts({}); setVotingScreenTab('voting');
     setShowVotingModal(false); setDayVoteOuts({});
     setWinnerTeam(null); setPlayerScores({}); setGameFinished(false);
     setHighlightedPlayer(null); setCurrentDaySpeakerIndex(-1);
@@ -1749,11 +1815,17 @@ export const GameProvider = ({ children }) => {
           gameSelected, tableSelected, roles, playersActions, fouls, techFouls,
           removed, gamePhase, dayNumber, nightNumber, rolesDistributed,
           nightCheckHistory, votingHistory, bestMove, bestMoveAccepted,
-          firstKilledPlayer, winnerTeam, playerScores, gameFinished,
+          firstKilledPlayer, firstKilledEver, bestMoveSelected,
+          winnerTeam, playerScores, gameFinished,
           protocolData, opinionData, opinionText, roomId,
           cityMode, funkyMode, manualMode, players, avatars,
           doctorHealHistory, nightMisses, killedOnNight,
           judgeNickname, judgeAvatar,
+          killedCardPhase, protocolAccepted, killedPlayerBlink,
+          nightPhase, nightChecks, dayVoteOuts,
+          nominations, nominationOrder, nominationsLocked,
+          discussionTimeLeft, freeSeatingTimeLeft,
+          currentDaySpeakerIndex, daySpeakerStartNum,
           gamesHistory,
           updatedAt: now, timestamp: now,
         };
@@ -1767,7 +1839,7 @@ export const GameProvider = ({ children }) => {
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [currentSessionId, tournamentId, tournamentName, gameMode, gameSelected, tableSelected, roles, playersActions, fouls, techFouls, removed, gamePhase, dayNumber, nightNumber, rolesDistributed, nightCheckHistory, votingHistory, bestMove, bestMoveAccepted, firstKilledPlayer, winnerTeam, playerScores, gameFinished, protocolData, opinionData, opinionText, roomId, cityMode, funkyMode, manualMode, players, avatars, doctorHealHistory, nightMisses, killedOnNight, judgeNickname, judgeAvatar, gamesHistory]);
+  }, [currentSessionId, tournamentId, tournamentName, gameMode, gameSelected, tableSelected, roles, playersActions, fouls, techFouls, removed, gamePhase, dayNumber, nightNumber, rolesDistributed, nightCheckHistory, votingHistory, bestMove, bestMoveAccepted, firstKilledPlayer, firstKilledEver, bestMoveSelected, winnerTeam, playerScores, gameFinished, protocolData, opinionData, opinionText, roomId, cityMode, funkyMode, manualMode, players, avatars, doctorHealHistory, nightMisses, killedOnNight, judgeNickname, judgeAvatar, killedCardPhase, protocolAccepted, killedPlayerBlink, nightPhase, nightChecks, dayVoteOuts, nominations, nominationOrder, nominationsLocked, discussionTimeLeft, freeSeatingTimeLeft, currentDaySpeakerIndex, daySpeakerStartNum, gamesHistory]);
 
   // =================== Visibility handling ===================
   useEffect(() => {

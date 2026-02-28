@@ -368,7 +368,7 @@ export function VotingPanel() {
                 : timer.isRunning && !timer.isPaused ? 'bg-accent shadow-glow-accent'
                 : timer.isPaused ? 'bg-amber-400/60' : 'bg-white/[0.10]'
             }`}
-            style={{ width: `${(timer.timeLeft / (timer === lastSpeechTimer ? 60 : 30)) * 100}%` }}
+            style={{ width: `${Math.min(100, (timer.timeLeft / (timer === lastSpeechTimer ? 60 : 30)) * 100)}%` }}
           />
         </div>
         {extra}

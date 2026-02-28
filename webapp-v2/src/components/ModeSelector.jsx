@@ -142,8 +142,9 @@ export function ModeSelector() {
   };
 
   const selectPlayer = (idx, player) => {
+    const gn = funkyEditSessionId ? gamesHistory.length + 1 : 1;
     const next = [...funkyPlayers];
-    next[idx] = { login: player.login, avatar_link: player.avatar_link, id: player.id, num: idx + 1, roleKey: `1-1-${idx + 1}` };
+    next[idx] = { login: player.login, avatar_link: player.avatar_link, id: player.id, num: idx + 1, roleKey: `${gn}-1-${idx + 1}` };
     setFunkyPlayers(next);
     const inputs = [...funkyPlayerInputs];
     inputs[idx] = player.login;
@@ -168,7 +169,8 @@ export function ModeSelector() {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    const reIndexed = shuffled.map((p, i) => ({ ...p, num: i + 1, roleKey: `1-1-${i + 1}` }));
+    const gn = funkyEditSessionId ? gamesHistory.length + 1 : 1;
+    const reIndexed = shuffled.map((p, i) => ({ ...p, num: i + 1, roleKey: `${gn}-1-${i + 1}` }));
     setFunkyPlayers(reIndexed);
     setFunkyPlayerInputs(reIndexed.map(p => p.login));
     triggerHaptic('medium');
@@ -178,8 +180,9 @@ export function ModeSelector() {
     const name = funkyPlayerInputs[idx];
     if (!name || !name.trim()) return;
     if (funkyPlayers.find(p => p && p.login === name.trim())) return;
+    const gn = funkyEditSessionId ? gamesHistory.length + 1 : 1;
     const next = [...funkyPlayers];
-    next[idx] = { login: name.trim(), avatar_link: null, id: null, num: idx + 1, roleKey: `1-1-${idx + 1}` };
+    next[idx] = { login: name.trim(), avatar_link: null, id: null, num: idx + 1, roleKey: `${gn}-1-${idx + 1}` };
     setFunkyPlayers(next);
     setSearchResults([]); setActiveSlot(-1);
   };
@@ -238,13 +241,14 @@ export function ModeSelector() {
     const [movedInput] = newInputs.splice(dragIndex, 1);
     newPlayers.splice(idx, 0, movedPlayer);
     newInputs.splice(idx, 0, movedInput);
-    const reIndexed = newPlayers.map((p, i) => p ? { ...p, num: i + 1, roleKey: `1-1-${i + 1}` } : null);
+    const gn = funkyEditSessionId ? gamesHistory.length + 1 : 1;
+    const reIndexed = newPlayers.map((p, i) => p ? { ...p, num: i + 1, roleKey: `${gn}-1-${i + 1}` } : null);
     setFunkyPlayers(reIndexed);
     setFunkyPlayerInputs(newInputs);
     setDragIndex(null);
     setDragOverIndex(null);
     triggerHaptic('medium');
-  }, [dragIndex, funkyPlayers, funkyPlayerInputs]);
+  }, [dragIndex, funkyPlayers, funkyPlayerInputs, funkyEditSessionId, gamesHistory.length]);
 
   const handleFunkyDragEnd = useCallback(() => {
     setDragIndex(null);
