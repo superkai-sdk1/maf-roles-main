@@ -6,12 +6,17 @@ import { timerModule } from '../services/timerModule';
 import { goMafiaApi } from '../services/api';
 import { authService } from '../services/auth';
 import { triggerHaptic } from '../utils/haptics';
+import { useToast } from '../components/Toast';
+import { useModal } from '../components/Modal';
 
 const GameContext = createContext();
 
 const INACTIVE = ['killed', 'voted', 'removed', 'tech_fall_removed', 'fall_removed'];
 
 export const GameProvider = ({ children }) => {
+  const { showToast } = useToast();
+  const { showModal } = useModal();
+
   // === Screen / Navigation ===
   const [screen, setScreen] = useState('menu'); // 'menu'|'modes'|'gomafia'|'funky'|'city'|'manual'|'game'|'gameTable'|'settings'|'themes'|'profile'|'tournamentBrowser'
   const [activeTab, setActiveTab] = useState('table'); // 'table'|'voting'|'results'|'settings'
@@ -153,6 +158,14 @@ export const GameProvider = ({ children }) => {
   const [showNoVotingAlert, setShowNoVotingAlert] = useState(false);
   const [speakerBonusRound, setSpeakerBonusRound] = useState(false);
 
+  // === City Day Phases (Добор / Общая минута) ===
+  const [doborActive, setDoborActive] = useState(false);
+  const [doborTimeLeft, setDoborTimeLeft] = useState(30);
+  const [doborRunning, setDoborRunning] = useState(false);
+  const [commonMinuteActive, setCommonMinuteActive] = useState(false);
+  const [commonMinuteTimeLeft, setCommonMinuteTimeLeft] = useState(60);
+  const [commonMinuteRunning, setCommonMinuteRunning] = useState(false);
+
   // === Funky Mode ===
   const [funkyPlayers, setFunkyPlayers] = useState([]);
   const [funkyPlayerInputs, setFunkyPlayerInputs] = useState([]);
@@ -186,6 +199,8 @@ export const GameProvider = ({ children }) => {
   const freeSeatingTimerRef = useRef(null);
   const nightAutoCloseRef = useRef(null);
   const votingLastSpeechIntervalRef = useRef(null);
+  const doborTimerRef = useRef(null);
+  const commonMinuteTimerRef = useRef(null);
 
   // =================== tableOut ===================
   const tableOut = useMemo(() => {
@@ -237,6 +252,7 @@ export const GameProvider = ({ children }) => {
     mainInfoText, additionalInfoText, judgeNickname, judgeAvatar,
     hideSeating, hideLeaveOrder, hideRolesStatus, hideBestMove,
     cityMode, gameMode, selectedColorScheme,
+    doborActive, commonMinuteActive,
   });
 
   const syncState = useCallback((partialState) => {
@@ -288,6 +304,8 @@ export const GameProvider = ({ children }) => {
     if (freeSeatingTimerRef.current) clearInterval(freeSeatingTimerRef.current);
     if (nightAutoCloseRef.current) clearTimeout(nightAutoCloseRef.current);
     if (votingLastSpeechIntervalRef.current) clearInterval(votingLastSpeechIntervalRef.current);
+    if (doborTimerRef.current) clearInterval(doborTimerRef.current);
+    if (commonMinuteTimerRef.current) clearInterval(commonMinuteTimerRef.current);
   }, []);
 
   // =================== Roles ===================
@@ -520,6 +538,68 @@ export const GameProvider = ({ children }) => {
 
   const stopFreeSeatingTimer = useCallback(() => { if (freeSeatingTimerRef.current) { clearInterval(freeSeatingTimerRef.current); freeSeatingTimerRef.current = null; } setFreeSeatingRunning(false); }, []);
 
+  // =================== Добор Timer (City Day 1) ===================
+  const startDoborTimer = useCallback(() => {
+    if (doborTimerRef.current) return;
+    setDoborActive(true);
+    setDoborRunning(true);
+    const end = Date.now() + doborTimeLeft * 1000;
+    doborTimerRef.current = setInterval(() => {
+      const rem = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+      setDoborTimeLeft(rem);
+      if (rem <= 0) {
+        clearInterval(doborTimerRef.current);
+        doborTimerRef.current = null;
+        setDoborRunning(false);
+      }
+    }, 1000);
+  }, [doborTimeLeft]);
+
+  const stopDoborTimer = useCallback(() => {
+    if (doborTimerRef.current) { clearInterval(doborTimerRef.current); doborTimerRef.current = null; }
+    setDoborRunning(false);
+  }, []);
+
+  const finishDobor = useCallback(() => {
+    stopDoborTimer();
+    setDoborActive(false);
+    setCurrentDaySpeakerIndex(-1);
+    setDiscussionEndPrompt({ type: 'city-day1-no-vote', candidates: [] });
+    syncState({ doborActive: false });
+    triggerHaptic('medium');
+  }, [stopDoborTimer, syncState]);
+
+  // =================== Общая минута Timer (City Day 2+) ===================
+  const startCommonMinuteTimer = useCallback(() => {
+    if (commonMinuteTimerRef.current) return;
+    setCommonMinuteActive(true);
+    setCommonMinuteRunning(true);
+    const end = Date.now() + commonMinuteTimeLeft * 1000;
+    commonMinuteTimerRef.current = setInterval(() => {
+      const rem = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+      setCommonMinuteTimeLeft(rem);
+      if (rem <= 0) {
+        clearInterval(commonMinuteTimerRef.current);
+        commonMinuteTimerRef.current = null;
+        setCommonMinuteRunning(false);
+      }
+    }, 1000);
+  }, [commonMinuteTimeLeft]);
+
+  const stopCommonMinuteTimer = useCallback(() => {
+    if (commonMinuteTimerRef.current) { clearInterval(commonMinuteTimerRef.current); commonMinuteTimerRef.current = null; }
+    setCommonMinuteRunning(false);
+  }, []);
+
+  const finishCommonMinute = useCallback(() => {
+    stopCommonMinuteTimer();
+    setCommonMinuteActive(false);
+    const allAlive = tableOut.filter(p => isPlayerActive(p.roleKey)).map(p => p.num);
+    setDiscussionEndPrompt({ type: 'vote', candidates: allAlive });
+    syncState({ commonMinuteActive: false });
+    triggerHaptic('medium');
+  }, [stopCommonMinuteTimer, tableOut, isPlayerActive, syncState]);
+
   // =================== Phase Management ===================
   const confirmRolesDistribution = useCallback(() => {
     const v = validateRoles();
@@ -554,6 +634,10 @@ export const GameProvider = ({ children }) => {
       if (doctorHeal?.target) setDoctorLastHealTarget(doctorHeal.target);
       setDoctorHeal(null); setHighlightedPlayer(null); setDiscussionEndPrompt(null);
       setCurrentDaySpeakerIndex(-1);
+      setDoborActive(false); setDoborRunning(false);
+      setCommonMinuteActive(false); setCommonMinuteRunning(false);
+      if (doborTimerRef.current) { clearInterval(doborTimerRef.current); doborTimerRef.current = null; }
+      if (commonMinuteTimerRef.current) { clearInterval(commonMinuteTimerRef.current); commonMinuteTimerRef.current = null; }
       syncState({ gamePhase: 'night' });
     } else if (mode === 'day') {
       const killedRK = Object.entries(killedOnNight).find(([, n]) => n === nightNumber)?.[0] || null;
@@ -1116,6 +1200,10 @@ export const GameProvider = ({ children }) => {
   }, [gamesHistory.length, gameSelected, tableSelected, players, roles, playersActions, fouls, techFouls, removed, avatars, dayNumber, nightNumber, nightCheckHistory, votingHistory, bestMove, bestMoveAccepted, firstKilledPlayer, winnerTeam, playerScores, protocolData, opinionData, opinionText, doctorHealHistory, nightMisses, killedOnNight, dayVoteOuts, cityMode]);
 
   const startNextGameInSession = useCallback(() => {
+    if (!winnerTeam && rolesDistributed) {
+      showToast('Сначала завершите текущую игру в этой серии', { type: 'warning' });
+      return;
+    }
     saveGameToHistory();
 
     setRoles({});
@@ -1176,11 +1264,15 @@ export const GameProvider = ({ children }) => {
     setDoctorHeal(null);
     setDoctorHealHistory([]);
     setDoctorLastHealTarget(null);
+    setDoborActive(false); setDoborTimeLeft(30); setDoborRunning(false);
+    setCommonMinuteActive(false); setCommonMinuteTimeLeft(60); setCommonMinuteRunning(false);
+    if (doborTimerRef.current) { clearInterval(doborTimerRef.current); doborTimerRef.current = null; }
+    if (commonMinuteTimerRef.current) { clearInterval(commonMinuteTimerRef.current); commonMinuteTimerRef.current = null; }
     timerModule.clearAllTimers();
     setActiveTab('table');
     pushFullStateToOverlay();
     triggerHaptic('success');
-  }, [saveGameToHistory, pushFullStateToOverlay]);
+  }, [saveGameToHistory, pushFullStateToOverlay, winnerTeam, rolesDistributed, showToast]);
 
   const currentGameNumber = useMemo(() => gamesHistory.length + 1, [gamesHistory.length]);
 
@@ -1265,6 +1357,9 @@ export const GameProvider = ({ children }) => {
     const archived = !!(s.seriesArchived);
     setViewOnly(options?.viewOnly || archived);
     setIsArchived(archived);
+    if (archived && !options?.viewOnly) {
+      setTimeout(() => showToast('Редактирование архивной серии запрещено', { type: 'error' }), 300);
+    }
     setProtocolData(s.protocolData || {}); setOpinionData(s.opinionData || {}); setOpinionText(s.opinionText || {});
     setRoomId(s.roomId || null); setCityMode(s.cityMode || false);
     setFunkyMode(s.funkyMode || false); setManualMode(s.manualMode || false);
@@ -1290,7 +1385,7 @@ export const GameProvider = ({ children }) => {
     setGamesHistory(s.gamesHistory || []);
     setScreen('game');
     if (s.roomId) joinRoom(s.roomId);
-  }, [joinRoom]);
+  }, [joinRoom, showToast]);
 
   const loadHistoryGame = useCallback((gameIndex) => {
     if (gameIndex < 0 || gameIndex >= gamesHistory.length) return;
@@ -1327,6 +1422,10 @@ export const GameProvider = ({ children }) => {
     setHighlightedPlayer(null); setCurrentDaySpeakerIndex(-1); setDaySpeakerStartNum(1);
     setMainInfoText(''); setAdditionalInfoText('');
     setGamesHistory([]);
+    setDoborActive(false); setDoborTimeLeft(30); setDoborRunning(false);
+    setCommonMinuteActive(false); setCommonMinuteTimeLeft(60); setCommonMinuteRunning(false);
+    if (doborTimerRef.current) { clearInterval(doborTimerRef.current); doborTimerRef.current = null; }
+    if (commonMinuteTimerRef.current) { clearInterval(commonMinuteTimerRef.current); commonMinuteTimerRef.current = null; }
     timerModule.clearAllTimers();
   }, []);
 
@@ -1456,16 +1555,40 @@ export const GameProvider = ({ children }) => {
     triggerHaptic('light');
   }, [saveCurrentSession, resetGameState, joinRoom]);
 
-  const deleteSession = useCallback((sid) => {
+  const deleteSessionDirect = useCallback((sid) => {
     sessionManager.removeSession(sid);
     setSessionsList(sessionManager.getSessions());
   }, []);
 
-  const archiveSeries = useCallback((tournamentId) => {
+  const deleteSession = useCallback((sid) => {
+    showModal({
+      icon: '🗑️',
+      title: 'Удалить игру?',
+      message: 'Это действие нельзя отменить. Все данные этой игры будут удалены.',
+      buttons: [
+        { label: 'Отмена' },
+        { label: 'Удалить', primary: true, danger: true, action: () => deleteSessionDirect(sid) },
+      ],
+    });
+  }, [showModal, deleteSessionDirect]);
+
+  const archiveSeriesDirect = useCallback((tournamentId) => {
     sessionManager.archiveSeries(tournamentId);
     setSessionsList(sessionManager.getSessions());
     triggerHaptic('medium');
   }, []);
+
+  const archiveSeries = useCallback((tournamentId) => {
+    showModal({
+      icon: '📦',
+      title: 'Завершить серию?',
+      message: 'Серия будет отправлена в историю. Все игры станут доступны только для чтения.',
+      buttons: [
+        { label: 'Отмена' },
+        { label: 'Завершить', primary: true, action: () => archiveSeriesDirect(tournamentId) },
+      ],
+    });
+  }, [showModal, archiveSeriesDirect]);
 
   const archiveSessionById = useCallback((sessionId) => {
     const s = sessionManager.getSession(sessionId);
@@ -1682,10 +1805,18 @@ export const GameProvider = ({ children }) => {
     const wrappedIdx = nextIdx % activePlayers.length;
 
     if (speakerBonusRound) {
-      setCurrentDaySpeakerIndex(-1);
       setSpeakerBonusRound(false);
-      setDiscussionEndPrompt({ type: 'city-day1-no-vote', candidates: [] });
-      triggerHaptic('medium');
+      if (cityMode && dayNumber === 1) {
+        setDoborActive(true);
+        setDoborTimeLeft(30);
+        setCurrentDaySpeakerIndex(-1);
+        syncState({ doborActive: true });
+        triggerHaptic('medium');
+      } else {
+        setCurrentDaySpeakerIndex(-1);
+        setDiscussionEndPrompt({ type: 'city-day1-no-vote', candidates: [] });
+        triggerHaptic('medium');
+      }
     } else if (wrappedIdx === actualStart && nextIdx > 0) {
       const isDay1 = dayNumber === 1;
 
@@ -1697,6 +1828,12 @@ export const GameProvider = ({ children }) => {
           setAutoExpandPlayer(firstPlayer.roleKey);
           setAutoStartTimerRK(firstPlayer.roleKey);
         }
+        triggerHaptic('medium');
+      } else if (cityMode && dayNumber >= 2) {
+        setCurrentDaySpeakerIndex(-1);
+        setCommonMinuteActive(true);
+        setCommonMinuteTimeLeft(60);
+        syncState({ commonMinuteActive: true });
         triggerHaptic('medium');
       } else {
         setCurrentDaySpeakerIndex(-1);
@@ -1726,7 +1863,7 @@ export const GameProvider = ({ children }) => {
       }
       triggerHaptic('selection');
     }
-  }, [currentDaySpeakerIndex, activePlayers, daySpeakerStartNum, getNominatedCandidates, gameMode, dayNumber, cityMode, speakerBonusRound]);
+  }, [currentDaySpeakerIndex, activePlayers, daySpeakerStartNum, getNominatedCandidates, gameMode, dayNumber, cityMode, speakerBonusRound, syncState]);
 
   const currentSpeaker = useMemo(() => {
     if (currentDaySpeakerIndex < 0 || currentDaySpeakerIndex >= activePlayers.length) return null;
@@ -1854,17 +1991,23 @@ export const GameProvider = ({ children }) => {
     if (gamePhase === 'roles') return 'Раздача ролей';
     if (gamePhase === 'discussion') return cityMode ? 'Знакомство' : 'Договорка';
     if (gamePhase === 'freeSeating') return 'Свободная посадка';
-    if (gamePhase === 'day') return dayNumber === 0 ? 'День 0' : `День ${dayNumber}`;
+    if (gamePhase === 'day') {
+      if (cityMode && doborActive) return 'Добор 1-го игрока';
+      if (cityMode && commonMinuteActive) return 'Общая минута';
+      return dayNumber === 0 ? 'День 0' : `День ${dayNumber}`;
+    }
     if (gamePhase === 'night') return `Ночь ${nightNumber}`;
     if (gamePhase === 'results') return 'Итоги';
     return '';
-  }, [gamePhase, dayNumber, nightNumber, cityMode]);
+  }, [gamePhase, dayNumber, nightNumber, cityMode, doborActive, commonMinuteActive]);
 
   const getDaySubtitle = useCallback(() => {
+    if (cityMode && doborActive) return 'День 1';
+    if (cityMode && commonMinuteActive) return `День ${dayNumber}`;
     if (dayNumber === 1) return nightMisses[1] ? 'Десятка' : 'Девятка';
     if (dayNumber === 0) return 'Нулевой круг';
     return '';
-  }, [dayNumber, nightMisses]);
+  }, [dayNumber, nightMisses, cityMode, doborActive, commonMinuteActive]);
 
   // =================== Context Value ===================
   const value = {
@@ -1961,6 +2104,11 @@ export const GameProvider = ({ children }) => {
     daySpeakerStartNum, speakerBonusRound,
     discussionEndPrompt, setDiscussionEndPrompt, skipVotingAndGoToNight,
     showNoVotingAlert, setShowNoVotingAlert,
+    // City Day Phases
+    doborActive, doborTimeLeft, doborRunning,
+    startDoborTimer, stopDoborTimer, finishDobor,
+    commonMinuteActive, commonMinuteTimeLeft, commonMinuteRunning,
+    startCommonMinuteTimer, stopCommonMinuteTimer, finishCommonMinute,
     // Funky
     funkyPlayers, setFunkyPlayers, funkyPlayerInputs, setFunkyPlayerInputs,
     funkyGameNumber, setFunkyGameNumber,

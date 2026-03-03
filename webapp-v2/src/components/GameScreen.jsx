@@ -28,6 +28,10 @@ export function GameScreen() {
     nightPhase,
     showNoVotingAlert, setShowNoVotingAlert,
     discussionEndPrompt, setDiscussionEndPrompt, skipVotingAndGoToNight,
+    doborActive, doborTimeLeft, doborRunning,
+    startDoborTimer, stopDoborTimer, finishDobor,
+    commonMinuteActive, commonMinuteTimeLeft, commonMinuteRunning,
+    startCommonMinuteTimer, stopCommonMinuteTimer, finishCommonMinute,
     winnerTeam,
     currentSpeaker, currentDaySpeakerIndex, startDaySpeakerFlow, nextDaySpeaker,
     activePlayers, isPlayerActive, daySpeakerStartNum,
@@ -392,6 +396,14 @@ export function GameScreen() {
             <div className="text-center text-xs font-bold tracking-[0.15em] uppercase text-accent mb-3 animate-fade-in">{phaseTitle}</div>
           )}
 
+          {/* City day sub-phase labels */}
+          {cityMode && doborActive && gamePhase === 'day' && (
+            <div className="text-center text-xs font-bold tracking-[0.15em] uppercase text-amber-400 mb-3 animate-fade-in">Добор 1-го игрока</div>
+          )}
+          {cityMode && commonMinuteActive && gamePhase === 'day' && (
+            <div className="text-center text-xs font-bold tracking-[0.15em] uppercase text-indigo-400 mb-3 animate-fade-in">Общая минута</div>
+          )}
+
           {/* Players list */}
           <div className="flex flex-col gap-3" style={{ padding: '16px 16px calc(120px + var(--safe-bottom, 0px)) 16px' }}>
             {/* Roles phase */}
@@ -590,6 +602,86 @@ export function GameScreen() {
 
           </div>
         </>
+      )}
+
+      {/* Fixed bottom timer bar (Добор — City Day 1) */}
+      {doborActive && gamePhase === 'day' && createPortal(
+        <div
+          className="fixed z-30 left-0 right-0 max-w-[480px] mx-auto px-4 animate-nav-slide-in"
+          style={{ bottom: 'calc(12px + var(--safe-bottom, 0px))' }}
+        >
+          <div className={`relative rounded-2xl overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-300 ${doborTimeLeft <= 10 && doborRunning ? '!border-red-500/25 !shadow-[0_0_24px_rgba(255,69,58,0.15)]' : ''}`}
+            style={{ background: 'rgba(22,16,43,0.9)' }}>
+            <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-500 to-orange-500/80 transition-[width] duration-500 ease-linear opacity-25 rounded-2xl" style={{ width: `${Math.max(0, Math.min(1, doborTimeLeft / 30)) * 100}%` }} />
+            <div className="relative z-[1] flex items-center justify-between px-5 py-3.5">
+              <div className="flex items-center gap-3">
+                <div className={`text-3xl font-extrabold tabular-nums ${doborTimeLeft <= 10 && doborRunning ? 'text-red-400 animate-timer-pulse' : 'text-white/80'}`}>
+                  {formatTimer(doborTimeLeft)}
+                </div>
+                <div className="text-[0.6rem] font-bold uppercase tracking-widest text-white/30">
+                  Добор 1-го
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {!doborRunning ? (
+                  <button className="px-5 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-gradient-to-r from-[rgba(168,85,247,0.5)] to-[rgba(99,102,241,0.5)] text-white border border-[rgba(168,85,247,0.3)] shadow-[0_0_12px_rgba(168,85,247,0.25)]" onClick={() => {
+                    startDoborTimer();
+                    triggerHaptic('light');
+                  }}>Старт</button>
+                ) : (
+                  <button className="px-5 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-amber-500/15 text-amber-400 border border-amber-500/25" onClick={() => {
+                    stopDoborTimer();
+                    triggerHaptic('light');
+                  }}>Пауза</button>
+                )}
+                <button className="px-4 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.06] border border-white/[0.10] text-white/60" onClick={() => {
+                  finishDobor();
+                }}>Далее</button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Fixed bottom timer bar (Общая минута — City Day 2+) */}
+      {commonMinuteActive && gamePhase === 'day' && createPortal(
+        <div
+          className="fixed z-30 left-0 right-0 max-w-[480px] mx-auto px-4 animate-nav-slide-in"
+          style={{ bottom: 'calc(12px + var(--safe-bottom, 0px))' }}
+        >
+          <div className={`relative rounded-2xl overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-300 ${commonMinuteTimeLeft <= 10 && commonMinuteRunning ? '!border-red-500/25 !shadow-[0_0_24px_rgba(255,69,58,0.15)]' : ''}`}
+            style={{ background: 'rgba(22,16,43,0.9)' }}>
+            <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 to-violet-500/80 transition-[width] duration-500 ease-linear opacity-25 rounded-2xl" style={{ width: `${Math.max(0, Math.min(1, commonMinuteTimeLeft / 60)) * 100}%` }} />
+            <div className="relative z-[1] flex items-center justify-between px-5 py-3.5">
+              <div className="flex items-center gap-3">
+                <div className={`text-3xl font-extrabold tabular-nums ${commonMinuteTimeLeft <= 10 && commonMinuteRunning ? 'text-red-400 animate-timer-pulse' : 'text-white/80'}`}>
+                  {formatTimer(commonMinuteTimeLeft)}
+                </div>
+                <div className="text-[0.6rem] font-bold uppercase tracking-widest text-white/30">
+                  Общая минута
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {!commonMinuteRunning ? (
+                  <button className="px-5 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-gradient-to-r from-[rgba(168,85,247,0.5)] to-[rgba(99,102,241,0.5)] text-white border border-[rgba(168,85,247,0.3)] shadow-[0_0_12px_rgba(168,85,247,0.25)]" onClick={() => {
+                    startCommonMinuteTimer();
+                    triggerHaptic('light');
+                  }}>Старт</button>
+                ) : (
+                  <button className="px-5 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-amber-500/15 text-amber-400 border border-amber-500/25" onClick={() => {
+                    stopCommonMinuteTimer();
+                    triggerHaptic('light');
+                  }}>Пауза</button>
+                )}
+                <button className="px-4 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.06] border border-white/[0.10] text-white/60" onClick={() => {
+                  finishCommonMinute();
+                }}>Далее</button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* Fixed bottom timer bar (discussion / free seating) */}

@@ -4,6 +4,7 @@ import { useTimer } from '../hooks/useTimer';
 import { SlideConfirm } from './SlideConfirm';
 import { triggerHaptic } from '../utils/haptics';
 import { ChevronRight, Users, RotateCcw, GripVertical, Plus, X, Pencil } from 'lucide-react';
+import { CityNumpad } from './CityNumpad';
 
 export function VotingPanel() {
   const {
@@ -724,18 +725,22 @@ export function VotingPanel() {
                     </h2>
                   </div>
 
-                  {/* City mode: counter */}
-                  {cityMode ? (
-                    <div className="flex items-center justify-center gap-6 mb-8">
-                      <button onClick={() => setCityVoteCounts(prev => ({ ...prev, [currentCandidate]: Math.max(0, (prev[currentCandidate] || 0) - 1) }))}
-                        className="w-16 h-16 rounded-[1.5rem] bg-white/[0.04] border border-white/[0.08] text-white/70 text-2xl font-black flex items-center justify-center active:scale-95 transition-all">−</button>
-                      <span className="text-5xl font-black text-accent tabular-nums min-w-[64px] text-center">
-                        {cityVoteCounts[currentCandidate] || 0}
-                      </span>
-                      <button onClick={() => setCityVoteCounts(prev => ({ ...prev, [currentCandidate]: (prev[currentCandidate] || 0) + 1 }))}
-                        className="w-16 h-16 rounded-[1.5rem] bg-white/[0.04] border border-white/[0.08] text-white/70 text-2xl font-black flex items-center justify-center active:scale-95 transition-all">+</button>
-                    </div>
-                  ) : (
+                  {/* City mode: numpad */}
+                  {cityMode ? (() => {
+                    const totalVoters = alivePlayers.length;
+                    const usedVotes = votingOrder.reduce((sum, c) => sum + (cityVoteCounts[c] || 0), 0);
+                    const cityRemaining = totalVoters - usedVotes;
+                    const currentVal = cityVoteCounts[currentCandidate] || 0;
+                    const cityMax = cityRemaining + currentVal;
+                    return (
+                      <CityNumpad
+                        value={currentVal}
+                        onChange={(val) => setCityVoteCounts(prev => ({ ...prev, [currentCandidate]: val }))}
+                        maxValue={cityMax}
+                        remainingVotes={cityRemaining}
+                      />
+                    );
+                  })() : (
                     <div className="mb-8">
                       {renderVotingGrid({
                         players: tableOut,

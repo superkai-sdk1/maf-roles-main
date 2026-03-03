@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '../context/GameContext';
+import { useToast } from './Toast';
 import { triggerHaptic } from '../utils/haptics';
 import { DialerPad, dialerBtn } from './DialerPad';
 import { Crosshair, Search, Star, SkipForward, XCircle, Heart } from 'lucide-react';
@@ -60,6 +61,7 @@ export const NightPanel = () => {
     doctorHeal, performDoctorHeal, canDoctorHealTarget, doctorLastHealTarget, doctorHealHistory,
     wasKilledBeforeThisNight,
   } = useGame();
+  const { showToast } = useToast();
 
   const showTimer = gameMode === 'gomafia' || gameMode === 'funky';
 
@@ -170,11 +172,19 @@ export const NightPanel = () => {
               )}
               <NightGrid
                 players={allPlayers}
-                isDisabled={(p) => !canDoctorHealTarget(p.num)}
+                isDisabled={() => false}
                 isInactive={(p) => !isPlayerActive(p.roleKey)}
-                onSelect={handleDoctorHeal}
+                onSelect={(num) => {
+                  if (!canDoctorHealTarget(num)) {
+                    showToast('Доктор не может лечить одного игрока две ночи подряд', { type: 'warning' });
+                    triggerHaptic('warning');
+                    return;
+                  }
+                  handleDoctorHeal(num);
+                }}
                 onAction={() => { advanceNightPhase(); triggerHaptic('light'); }}
                 config={PHASE_CONFIG.doctor}
+                highlightDisabled={(p) => !canDoctorHealTarget(p.num) && isPlayerActive(p.roleKey)}
               />
             </>
           )}
@@ -362,21 +372,27 @@ function PhaseTimer({ duration, textColorClass }) {
 
 /* =================== Night Grid =================== */
 
-function NightGrid({ players, isDisabled, isInactive, onSelect, onAction, config }) {
+function NightGrid({ players, isDisabled, isInactive, onSelect, onAction, config, highlightDisabled }) {
   const renderBtn = (p) => {
     const disabled = isDisabled(p);
     const inactive = isInactive ? isInactive(p) : false;
+    const blocked = highlightDisabled ? highlightDisabled(p) : false;
     return (
       <button
         key={p.num}
-        onClick={() => !disabled && onSelect(p.num)}
+        onClick={() => {
+          if (disabled) return;
+          onSelect(p.num);
+        }}
         disabled={disabled}
         className={`h-14 rounded-xl flex items-center justify-center text-lg font-bold transition-all duration-200 border ${
           disabled
             ? 'bg-slate-800/10 border-white/5 text-white/15 opacity-30 pointer-events-none'
-            : inactive
-              ? 'bg-slate-800/20 border-white/5 text-white/25 hover:border-white/15 hover:text-white/40 active:scale-95'
-              : 'bg-slate-800/30 border-white/5 text-slate-400 hover:border-white/20 hover:text-white active:scale-95'
+            : blocked
+              ? 'bg-red-900/20 border-red-500/20 text-red-400/50 active:scale-95'
+              : inactive
+                ? 'bg-slate-800/20 border-white/5 text-white/25 hover:border-white/15 hover:text-white/40 active:scale-95'
+                : 'bg-slate-800/30 border-white/5 text-slate-400 hover:border-white/20 hover:text-white active:scale-95'
         }`}
       >
         {p.num}
