@@ -129,13 +129,14 @@ export function VotingPanel() {
 
   const candidates = getNominatedCandidates();
   const currentCandidate = votingOrder[votingCurrentIndex];
-  const currentVotes = votingResults[String(currentCandidate)] || [];
+  const rawVotes = votingResults[String(currentCandidate)];
+  const currentVotes = Array.isArray(rawVotes) ? rawVotes : [];
   const alivePlayers = tableOut.filter(p => isPlayerActive(p.roleKey));
 
-  const alreadyVotedElsewhere = new Set(
+  const alreadyVotedElsewhere = cityMode ? new Set() : new Set(
     Object.entries(votingResults)
       .filter(([c]) => c !== String(currentCandidate))
-      .flatMap(([, voters]) => voters)
+      .flatMap(([, voters]) => Array.isArray(voters) ? voters : [])
   );
   const isLastCandidate = votingCurrentIndex >= votingOrder.length - 1;
   const remainingVoters = alivePlayers
@@ -786,7 +787,7 @@ export function VotingPanel() {
                             <div key={c} className="flex justify-between items-center">
                               <span className="text-xs font-bold text-white/40">#{c} {tableOut[c - 1]?.login || ''}</span>
                               <span className="text-xs font-black text-accent bg-accent-soft px-2.5 py-1 rounded-lg border border-accent-soft">
-                                {(votingResults[String(c)] || []).length} голосов
+                                {(() => { const v = votingResults[String(c)]; return typeof v === 'number' ? v : (v || []).length; })()} голосов
                               </span>
                             </div>
                           ))}
