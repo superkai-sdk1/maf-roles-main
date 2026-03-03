@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useGame } from '../context/GameContext';
 import { PlayerCard } from './PlayerCard';
@@ -10,7 +10,7 @@ import { NightPanel } from './NightPanel';
 import { InertiaSlider } from './InertiaSlider';
 import { triggerHaptic } from '../utils/haptics';
 import { useSwipeBack } from '../hooks/useSwipeBack';
-import { Gavel, Moon, Sun, X, MonitorPlay, LogOut, Trophy, Play, SkipForward, Share2 } from 'lucide-react';
+import { Gavel, Moon, Sun, X, MonitorPlay, LogOut, Trophy, Play, SkipForward, Share2, Users } from 'lucide-react';
 import { useToast } from './Toast';
 import { goMafiaApi } from '../services/api';
 
@@ -400,9 +400,7 @@ export function GameScreen() {
           {cityMode && doborActive && gamePhase === 'day' && (
             <div className="text-center text-xs font-bold tracking-[0.15em] uppercase text-amber-400 mb-3 animate-fade-in">Добор 1-го игрока</div>
           )}
-          {cityMode && commonMinuteActive && gamePhase === 'day' && (
-            <div className="text-center text-xs font-bold tracking-[0.15em] uppercase text-indigo-400 mb-3 animate-fade-in">Общая минута</div>
-          )}
+          {/* commonMinuteActive is rendered as a card inside the player list */}
 
           {/* Players list */}
           <div className="flex flex-col gap-3" style={{ padding: '16px 16px calc(120px + var(--safe-bottom, 0px)) 16px' }}>
@@ -451,6 +449,17 @@ export function GameScreen() {
                     isNextSpeaker={gamePhase === 'day' && currentDaySpeakerIndex === -1 && p.num === daySpeakerStartNum && !winnerTeam}
                   />
                 ))}
+
+                {/* Общая минута — rendered as a card in the player list */}
+                {cityMode && commonMinuteActive && gamePhase === 'day' && (
+                  <CommonMinuteCard
+                    timeLeft={commonMinuteTimeLeft}
+                    isRunning={commonMinuteRunning}
+                    onStart={() => { startCommonMinuteTimer(); triggerHaptic('light'); }}
+                    onPause={() => { stopCommonMinuteTimer(); triggerHaptic('light'); }}
+                    onFinish={() => finishCommonMinute()}
+                  />
+                )}
               </div>
             )}
 
@@ -644,45 +653,7 @@ export function GameScreen() {
         document.body
       )}
 
-      {/* Fixed bottom timer bar (Общая минута — City Day 2+) */}
-      {commonMinuteActive && gamePhase === 'day' && createPortal(
-        <div
-          className="fixed z-30 left-0 right-0 max-w-[480px] mx-auto px-4 animate-nav-slide-in"
-          style={{ bottom: 'calc(12px + var(--safe-bottom, 0px))' }}
-        >
-          <div className={`relative rounded-2xl overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl transition-all duration-300 ${commonMinuteTimeLeft <= 10 && commonMinuteRunning ? '!border-red-500/25 !shadow-[0_0_24px_rgba(255,69,58,0.15)]' : ''}`}
-            style={{ background: 'rgba(22,16,43,0.9)' }}>
-            <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 to-violet-500/80 transition-[width] duration-500 ease-linear opacity-25 rounded-2xl" style={{ width: `${Math.max(0, Math.min(1, commonMinuteTimeLeft / 60)) * 100}%` }} />
-            <div className="relative z-[1] flex items-center justify-between px-5 py-3.5">
-              <div className="flex items-center gap-3">
-                <div className={`text-3xl font-extrabold tabular-nums ${commonMinuteTimeLeft <= 10 && commonMinuteRunning ? 'text-red-400 animate-timer-pulse' : 'text-white/80'}`}>
-                  {formatTimer(commonMinuteTimeLeft)}
-                </div>
-                <div className="text-[0.6rem] font-bold uppercase tracking-widest text-white/30">
-                  Общая минута
-                </div>
-              </div>
-              <div className="flex gap-2">
-                {!commonMinuteRunning ? (
-                  <button className="px-5 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-gradient-to-r from-[rgba(168,85,247,0.5)] to-[rgba(99,102,241,0.5)] text-white border border-[rgba(168,85,247,0.3)] shadow-[0_0_12px_rgba(168,85,247,0.25)]" onClick={() => {
-                    startCommonMinuteTimer();
-                    triggerHaptic('light');
-                  }}>Старт</button>
-                ) : (
-                  <button className="px-5 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-amber-500/15 text-amber-400 border border-amber-500/25" onClick={() => {
-                    stopCommonMinuteTimer();
-                    triggerHaptic('light');
-                  }}>Пауза</button>
-                )}
-                <button className="px-4 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-transform duration-150 ease-spring bg-white/[0.06] border border-white/[0.10] text-white/60" onClick={() => {
-                  finishCommonMinute();
-                }}>Далее</button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* Общая минута timer bar removed — now rendered as a card in the player list */}
 
       {/* Fixed bottom timer bar (discussion / free seating) */}
       {rolesDistributed && isTimerPhase && !winnerTeam && createPortal(
@@ -722,6 +693,82 @@ export function GameScreen() {
         </div>,
         document.body
       )}
+    </div>
+  );
+}
+
+function CommonMinuteCard({ timeLeft, isRunning, onStart, onPause, onFinish }) {
+  const cardRef = useRef(null);
+  const isLow = timeLeft <= 10 && isRunning;
+  const progress = Math.max(0, Math.min(1, timeLeft / 60));
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 200);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div
+      ref={cardRef}
+      className="relative bg-white/[0.08] rounded-[28px] p-5 shadow-2xl border border-indigo-500/30 backdrop-blur-3xl ring-1 ring-indigo-500/10
+        transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden animate-fade-in
+        bg-gradient-to-br from-indigo-500/[0.06] to-violet-500/[0.04]"
+    >
+      <div className="space-y-5">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center border border-indigo-400/30 shadow-lg shadow-indigo-500/20">
+            <Users className="w-6 h-6 text-white/90" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black tracking-tight text-white">Общая минута</h2>
+            <div className="flex items-center gap-1.5 text-indigo-400 mt-0.5">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em]">Все игроки — 60 секунд</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center py-2">
+          <div className={`text-[80px] font-black leading-none tracking-tighter tabular-nums mb-2 select-none ${
+            isLow ? 'text-rose-500 animate-pulse'
+              : isRunning ? 'text-white'
+              : timeLeft === 0 ? 'text-red-400/60 animate-timer-blink' : 'text-white/60'
+          }`}>
+            {timeLeft}
+          </div>
+
+          <div className="w-full max-w-[200px] h-1 bg-white/5 rounded-full overflow-hidden mb-5">
+            <div
+              className={`h-full rounded-full transition-all duration-1000 ease-linear ${
+                isLow ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]' : isRunning ? 'bg-indigo-500 shadow-[0_0_8px_#6366f1]' : 'bg-white/10'
+              }`}
+              style={{ width: `${progress * 100}%` }}
+            />
+          </div>
+
+          <div className="flex gap-3">
+            {!isRunning ? (
+              <button
+                className="px-7 py-3 bg-gradient-to-r from-indigo-500 to-violet-500 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-indigo-500/25"
+                onClick={onStart}
+              >Старт</button>
+            ) : (
+              <button
+                className="px-7 py-3 bg-amber-500/15 text-amber-400 border border-amber-500/25 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all"
+                onClick={onPause}
+              >Пауза</button>
+            )}
+          </div>
+        </div>
+
+        <button
+          className="w-full px-4 py-3.5 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-xl"
+          onClick={onFinish}
+        >
+          Далее →
+        </button>
+      </div>
     </div>
   );
 }
