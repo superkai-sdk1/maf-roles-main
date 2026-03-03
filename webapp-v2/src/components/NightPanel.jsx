@@ -59,7 +59,7 @@ export const NightPanel = () => {
     firstKilledPlayer, firstKilledEver,
     killedOnNight,
     doctorHeal, performDoctorHeal, canDoctorHealTarget, doctorLastHealTarget, doctorHealHistory,
-    wasKilledBeforeThisNight,
+    doctorSave, wasKilledBeforeThisNight,
   } = useGame();
   const { showToast } = useToast();
 
@@ -172,8 +172,7 @@ export const NightPanel = () => {
               )}
               <NightGrid
                 players={allPlayers}
-                isDisabled={() => false}
-                isInactive={(p) => !isPlayerActive(p.roleKey)}
+                isDisabled={(p) => wasKilledBeforeThisNight(p.roleKey)}
                 onSelect={(num) => {
                   if (!canDoctorHealTarget(num)) {
                     showToast('Доктор не может лечить одного игрока две ночи подряд', { type: 'warning' });
@@ -184,7 +183,7 @@ export const NightPanel = () => {
                 }}
                 onAction={() => { advanceNightPhase(); triggerHaptic('light'); }}
                 config={PHASE_CONFIG.doctor}
-                highlightDisabled={(p) => !canDoctorHealTarget(p.num) && isPlayerActive(p.roleKey)}
+                highlightDisabled={(p) => !canDoctorHealTarget(p.num) && !wasKilledBeforeThisNight(p.roleKey)}
               />
             </>
           )}
@@ -194,6 +193,21 @@ export const NightPanel = () => {
       {/* Night Done */}
       {nightPhase === 'done' && (
         <div className="flex flex-col gap-3.5 animate-fade-in">
+          {/* Doctor save banner */}
+          {doctorSave && (
+            <div
+              className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl animate-scale-in"
+              style={{ borderColor: 'rgba(48,209,88,0.35)' }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-green-600/15 to-green-900/30 opacity-30" />
+              <div className="relative p-6 text-center">
+                <div className="text-[0.7em] text-white/35 uppercase tracking-wider mb-1.5">Доктор спас</div>
+                <div className="text-[2em] font-extrabold text-green-400">#{doctorSave.target}</div>
+                {(() => { const sp = tableOut[doctorSave.target - 1]; return sp?.login ? <div className="text-sm text-white/40 mt-1">{sp.login}</div> : null; })()}
+              </div>
+            </div>
+          )}
+
           {/* Kill summary */}
           <div
             className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl"
@@ -217,6 +231,11 @@ export const NightPanel = () => {
                       <div key={num} className="text-sm text-white/40 mt-1">{p.login}</div>
                     ) : null;
                   })}
+                </>
+              ) : doctorSave ? (
+                <>
+                  <div className="text-[0.7em] text-green-400/60 uppercase tracking-wider mb-1.5">Исцелён</div>
+                  <div className="text-xl font-bold text-green-400/40">Жертва спасена доктором</div>
                 </>
               ) : (
                 <>

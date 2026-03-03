@@ -58,9 +58,9 @@ export function CityNumpad({ value, onChange, maxValue, remainingVotes }) {
           </button>
         ))}
         <button
-          disabled={isDigitDisabled(0) && value === 0}
+          disabled={isDigitDisabled(0)}
           onClick={() => handleDigit(0)}
-          className={`${btnBase} ${(isDigitDisabled(0) && value === 0) ? btnDisabled : btnEnabled}`}
+          className={`${btnBase} ${isDigitDisabled(0) ? btnDisabled : btnEnabled}`}
         >
           0
         </button>

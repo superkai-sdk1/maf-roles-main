@@ -65,6 +65,7 @@ export const GameProvider = ({ children }) => {
   const [doctorHeal, setDoctorHeal] = useState(null);
   const [doctorHealHistory, setDoctorHealHistory] = useState([]);
   const [doctorLastHealTarget, setDoctorLastHealTarget] = useState(null);
+  const [doctorSave, setDoctorSave] = useState(null);
 
   // === Best Move ===
   const [firstKilledPlayer, setFirstKilledPlayer] = useState(null);
@@ -632,7 +633,7 @@ export const GameProvider = ({ children }) => {
       setNightNumber(n => n + 1);
       setNightPhase('kill'); setNightChecks({}); setDayButtonBlink(false);
       if (doctorHeal?.target) setDoctorLastHealTarget(doctorHeal.target);
-      setDoctorHeal(null); setHighlightedPlayer(null); setDiscussionEndPrompt(null);
+      setDoctorHeal(null); setDoctorSave(null); setHighlightedPlayer(null); setDiscussionEndPrompt(null);
       setCurrentDaySpeakerIndex(-1);
       setDoborActive(false); setDoborRunning(false);
       setCommonMinuteActive(false); setCommonMinuteRunning(false);
@@ -1092,7 +1093,34 @@ export const GameProvider = ({ children }) => {
   const performDoctorHeal = useCallback((num) => {
     setDoctorHeal({ target: num, night: nightNumber });
     setDoctorHealHistory(prev => [...prev, { target: num, night: nightNumber }]);
-  }, [nightNumber]);
+
+    const p = tableOut[num - 1];
+    if (!p) return;
+    const rk = p.roleKey;
+    if (killedOnNight[rk] === nightNumber) {
+      setPlayersActions(prev => {
+        const next = { ...prev };
+        delete next[rk];
+        syncState({ playersActions: next });
+        return next;
+      });
+      setKilledOnNight(prev => {
+        const next = { ...prev };
+        delete next[rk];
+        return next;
+      });
+      setDoctorSave({ target: num, night: nightNumber });
+
+      if (firstKilledPlayer === rk) {
+        setFirstKilledPlayer(null);
+        setFirstKilledEver(false);
+        setBestMove([]);
+        setBestMoveAccepted(false);
+        setBestMoveSelected(false);
+        setKilledCardPhase(prev => { const n = { ...prev }; delete n[rk]; return n; });
+      }
+    }
+  }, [nightNumber, tableOut, killedOnNight, firstKilledPlayer, syncState]);
 
   const canDoctorHealTarget = useCallback((num) => {
     if (num === doctorLastHealTarget) return false;
@@ -1264,6 +1292,7 @@ export const GameProvider = ({ children }) => {
     setDoctorHeal(null);
     setDoctorHealHistory([]);
     setDoctorLastHealTarget(null);
+    setDoctorSave(null);
     setDoborActive(false); setDoborTimeLeft(30); setDoborRunning(false);
     setCommonMinuteActive(false); setCommonMinuteTimeLeft(60); setCommonMinuteRunning(false);
     if (doborTimerRef.current) { clearInterval(doborTimerRef.current); doborTimerRef.current = null; }
@@ -1422,6 +1451,7 @@ export const GameProvider = ({ children }) => {
     setHighlightedPlayer(null); setCurrentDaySpeakerIndex(-1); setDaySpeakerStartNum(1);
     setMainInfoText(''); setAdditionalInfoText('');
     setGamesHistory([]);
+    setDoctorHeal(null); setDoctorHealHistory([]); setDoctorLastHealTarget(null); setDoctorSave(null);
     setDoborActive(false); setDoborTimeLeft(30); setDoborRunning(false);
     setCommonMinuteActive(false); setCommonMinuteTimeLeft(60); setCommonMinuteRunning(false);
     if (doborTimerRef.current) { clearInterval(doborTimerRef.current); doborTimerRef.current = null; }
@@ -2045,7 +2075,7 @@ export const GameProvider = ({ children }) => {
     findRoleKey, wasKilledBeforeThisNight,
     // Doctor
     doctorHeal, setDoctorHeal, doctorHealHistory, doctorLastHealTarget,
-    performDoctorHeal, canDoctorHealTarget,
+    performDoctorHeal, canDoctorHealTarget, doctorSave,
     // Kill
     killPlayer,
     // Fouls

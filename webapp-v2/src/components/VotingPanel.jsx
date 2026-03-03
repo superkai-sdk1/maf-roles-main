@@ -900,8 +900,10 @@ export function VotingPanel() {
                       <div className="flex flex-col gap-1.5">
                         {(s.candidates || Object.keys(s.results || {})).map(c => {
                           const cNum = String(c);
-                          const voters = Array.isArray(s.results?.[cNum]) ? s.results[cNum] : [];
-                          const voteCount = voters.length;
+                          const rawResult = s.results?.[cNum];
+                          const isNumeric = typeof rawResult === 'number';
+                          const voters = Array.isArray(rawResult) ? rawResult : [];
+                          const voteCount = isNumeric ? rawResult : voters.length;
                           return (
                             <div key={cNum} className="bg-white/[0.03] rounded-xl py-2 px-2.5">
                               <div className={`flex items-center justify-between ${voters.length > 0 ? 'mb-1' : ''}`}>
