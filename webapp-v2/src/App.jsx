@@ -107,14 +107,14 @@ function AppShell() {
 
   if (page === 'panel' && isAuthenticated) {
     return (
-      <GameProvider>
-        <ToastProvider>
-          <ModalProvider>
+      <ToastProvider>
+        <ModalProvider>
+          <GameProvider>
             <GameRouter />
             <AuthModal />
-          </ModalProvider>
-        </ToastProvider>
-      </GameProvider>
+          </GameProvider>
+        </ModalProvider>
+      </ToastProvider>
     );
   }
 
