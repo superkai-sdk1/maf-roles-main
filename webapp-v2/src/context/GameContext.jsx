@@ -777,8 +777,11 @@ export const GameProvider = ({ children }) => {
         setVotingLastSpeechActive(true);
       } else if (winners.length > 1) {
         setVotingTiePlayers(winners);
-        if (votingStage === 'main') setVotingTieTimerActive(true);
-        else { setVotingTiePlayers(winners); setVotingTieTimerActive(true); }
+        if (votingStage === 'main') {
+          setVotingTieTimerActive(true);
+        } else {
+          setVotingFinished(true); setVotingWinners([]);
+        }
       } else {
         setVotingFinished(true); setVotingWinners([]);
       }

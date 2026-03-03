@@ -821,6 +821,17 @@ export function VotingPanel() {
                         compact
                       />
                     </>
+                  ) : cityMode && votingStage === 'tie' ? (
+                    <>
+                      <h3 className="text-base font-bold mb-2">Равный счёт</h3>
+                      <p className="text-[0.85em] text-white/40 mb-5">Никто не выбывает — переход в ночь</p>
+                      <SlideConfirm
+                        label="Перейти в ночь"
+                        onConfirm={() => { closeVotingAndApply(); handleGoToNight(true); triggerHaptic('medium'); }}
+                        color="night"
+                        compact
+                      />
+                    </>
                   ) : (
                     <>
                       <h3 className="text-base font-bold mb-2">Голосование завершено</h3>
